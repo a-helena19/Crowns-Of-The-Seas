@@ -1,0 +1,14 @@
+package at.fhv.backend.application.services.ship;
+
+import at.fhv.backend.application.dtos.request.BuyShipDTO;
+import at.fhv.backend.application.dtos.response.PlayerShipDTO;
+import at.fhv.backend.application.dtos.response.ShipDTO;
+import at.fhv.backend.domain.model.ship.Ship;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
+
+public interface PurchaseShipService {
+    PlayerShipDTO buyShip(UUID playerId, BuyShipDTO request);
+}

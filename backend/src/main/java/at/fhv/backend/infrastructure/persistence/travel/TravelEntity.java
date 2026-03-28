@@ -1,0 +1,160 @@
+package at.fhv.backend.infrastructure.persistence.travel;
+
+import at.fhv.backend.domain.model.travel.TravelStatus;
+import jakarta.persistence.*;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+
+@Entity
+@Table(name = "travels")
+public class TravelEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(nullable = false, updatable = false)
+    private UUID travelId;
+
+    @Column(name = "player_ship_id", nullable = false)
+    private UUID playerShipId;
+
+    @Column(name = "player_id", nullable = false)
+    private UUID playerId;
+
+    @Column(name = "origin_port_id", nullable = false)
+    private UUID originPortId;
+
+    @Column(name = "destination_port_id", nullable = false)
+    private UUID destinationPortId;
+
+    @Column(nullable = false)
+    private double distance;
+
+    @Column(name = "speed_setting", nullable = false)
+    private double speedSetting;
+
+    @Column(name = "risk_factor", nullable = false)
+    private double riskFactor;
+
+    @Column(name = "base_reward", nullable = false, precision = 12, scale = 2)
+    private BigDecimal baseReward;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "travel_status", nullable = false)
+    private TravelStatus travelStatus;
+
+    @Column(name = "started_at", nullable = false)
+    private Instant startedAt;
+
+    @Column(name = "arrived_at")
+    private Instant arrivedAt;
+
+    @Column(name = "fuel_consumed", nullable = false)
+    private double fuelConsumed;
+
+    public TravelEntity() {}
+
+    public UUID getTravelId() {
+        return travelId;
+    }
+
+    public void setTravelId(UUID travelId) {
+        this.travelId = travelId;
+    }
+
+    public UUID getPlayerShipId() {
+        return playerShipId;
+    }
+
+    public void setPlayerShipId(UUID playerShipId) {
+        this.playerShipId = playerShipId;
+    }
+
+    public UUID getPlayerId() {
+        return playerId;
+    }
+
+    public void setPlayerId(UUID playerId) {
+        this.playerId = playerId;
+    }
+
+    public UUID getOriginPortId() {
+        return originPortId;
+    }
+
+    public void setOriginPortId(UUID originPortId) {
+        this.originPortId = originPortId;
+    }
+
+    public UUID getDestinationPortId() {
+        return destinationPortId;
+    }
+
+    public void setDestinationPortId(UUID destinationPortId) {
+        this.destinationPortId = destinationPortId;
+    }
+
+    public double getDistance() {
+        return distance;
+    }
+
+    public void setDistance(double distance) {
+        this.distance = distance;
+    }
+
+    public double getSpeedSetting() {
+        return speedSetting;
+    }
+
+    public void setSpeedSetting(double speedSetting) {
+        this.speedSetting = speedSetting;
+    }
+
+    public double getRiskFactor() {
+        return riskFactor;
+    }
+
+    public void setRiskFactor(double riskFactor) {
+        this.riskFactor = riskFactor;
+    }
+
+    public BigDecimal getBaseReward() {
+        return baseReward;
+    }
+
+    public void setBaseReward(BigDecimal baseReward) {
+        this.baseReward = baseReward;
+    }
+
+    public TravelStatus getTravelStatus() {
+        return travelStatus;
+    }
+
+    public void setTravelStatus(TravelStatus travelStatus) {
+        this.travelStatus = travelStatus;
+    }
+
+    public Instant getStartedAt() {
+        return startedAt;
+    }
+
+    public void setStartedAt(Instant startedAt) {
+        this.startedAt = startedAt;
+    }
+
+    public Instant getArrivedAt() {
+        return arrivedAt;
+    }
+
+    public void setArrivedAt(Instant arrivedAt) {
+        this.arrivedAt = arrivedAt;
+    }
+
+    public double getFuelConsumed() {
+        return fuelConsumed;
+    }
+
+    public void setFuelConsumed(double fuelConsumed) {
+        this.fuelConsumed = fuelConsumed;
+    }
+}

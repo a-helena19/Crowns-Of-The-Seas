@@ -13,4 +13,12 @@ public class InsufficientFundsException extends DomainException {
         this.price = price;
         this.playerBalance = playerBalance;
     }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public BigDecimal getPlayerBalance() {
+        return playerBalance;
+    }
 }

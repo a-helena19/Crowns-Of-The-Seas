@@ -8,74 +8,61 @@ import java.util.UUID;
 
 public class Ship {
     private final UUID id;
-    private String name;
-    private ShipClass shipClass;
-    private int maxCargoCapacity;
-    private int maxSpeed;
-    private BigDecimal operatingCost;
-    private int reliability; // der technische Zustand
-    private BigDecimal price;
-    private ShipStatus status;
-    private UUID ownerId;
+    private final String name;
+    private final String description;
+    private final ShipClass shipClass;
+    private final BigDecimal price;
+    private final int maxCargoCapacity;
+    private final double maxSpeed;
+    private final double fuelConsumption;
+    private final BigDecimal maxFuel;
+    private final BigDecimal operatingCost;
+    private final double baseReliability;
 
-    private Ship(UUID id, String name, ShipClass shipClass, int maxCargoCapacity, int maxSpeed, BigDecimal operatingCost,
-                 int reliability, BigDecimal price, ShipStatus status) {
+    private Ship(UUID id, String name, String description, ShipClass shipClass, BigDecimal price, int maxCargoCapacity, double maxSpeed,
+                 double fuelConsumption, BigDecimal maxFuel, BigDecimal operatingCost, double baseReliability) {
         this.id = id;
         this.name = name;
+        this.description = description;
         this.shipClass = shipClass;
+        this.price = price;
         this.maxCargoCapacity = maxCargoCapacity;
         this.maxSpeed = maxSpeed;
+        this.fuelConsumption = fuelConsumption;
+        this.maxFuel = maxFuel;
         this.operatingCost = operatingCost;
-        this.reliability = reliability;
-        this.price = price;
-        this.status = status;
+        this.baseReliability = baseReliability;
     }
 
-    public static Ship createForMarket(String name, ShipClass shipClass, int maxCargoCapacity, int maxSpeed, BigDecimal operatingCost, int reliability, BigDecimal price) {
+    public static Ship create(String name, String description, ShipClass shipClass, BigDecimal price, int maxCargoCapacity, double maxSpeed,
+                              double fuelConsumption, BigDecimal maxFuel, BigDecimal operatingCost, double baseReliability) {
         return new Ship(
                 UUID.randomUUID(),
-                name,
+                name, description,
                 shipClass,
+                price,
                 maxCargoCapacity,
                 maxSpeed,
+                fuelConsumption,
+                maxFuel,
                 operatingCost,
-                reliability,
+                baseReliability);
+    }
+
+    public static Ship reconstruct(UUID id, String name, String description, ShipClass shipClass, BigDecimal price, int maxCargoCapacity, double maxSpeed,
+                                   double fuelConsumption, BigDecimal maxFuel, BigDecimal operatingCost, double baseReliability) {
+        return new Ship(
+                id,
+                name,
+                description,
+                shipClass,
                 price,
-                ShipStatus.AT_MARKET
-        );
-    }
-
-    public void purchase(UUID playerId) {
-        if (this.status != ShipStatus.AT_MARKET) {
-            throw new ShipNotAvailableException("Ship is no longer available on the market.", "shipId", id);
-        }
-        this.ownerId = playerId;
-        this.status = ShipStatus.IN_REGISTRATION;
-    }
-
-    public void completeRegistration() {
-        if (this.status != ShipStatus.IN_REGISTRATION) {
-            throw new InvalidShipStatusTransition("Ship must be in status IN_REGISTRATION.", "shipId", id);
-        }
-        this.status = ShipStatus.AT_PORT;
-    }
-
-    public void startVoyage() {
-        if (this.status != ShipStatus.AT_PORT) {
-            throw new InvalidShipStatusTransition("Ship must be in a port to start a journey.", "shipId", id);
-        }
-        this.status = ShipStatus.EN_ROUTE;
-    }
-
-    public void arriveAtPort() {
-        if (this.status != ShipStatus.EN_ROUTE) {
-            throw new InvalidShipStatusTransition("Ship must be traveling (EN_ROUTE) to arrive", "shipId", id);
-        }
-        this.status = ShipStatus.AT_PORT;
-    }
-
-    public void applyWear(int wearAmount) {
-        this.reliability = Math.max(0, this.reliability - wearAmount);
+                maxCargoCapacity,
+                maxSpeed,
+                fuelConsumption,
+                maxFuel,
+                operatingCost,
+                baseReliability);
     }
 
     public UUID getId() {
@@ -86,35 +73,39 @@ public class Ship {
         return name;
     }
 
+    public String getDescription() {
+        return description;
+    }
+
     public ShipClass getShipClass() {
         return shipClass;
-    }
-
-    public int getMaxCargoCapacity() {
-        return maxCargoCapacity;
-    }
-
-    public int getMaxSpeed() {
-        return maxSpeed;
-    }
-
-    public BigDecimal getOperatingCost() {
-        return operatingCost;
-    }
-
-    public int getReliability() {
-        return reliability;
     }
 
     public BigDecimal getPrice() {
         return price;
     }
 
-    public ShipStatus getStatus() {
-        return status;
+    public int getMaxCargoCapacity() {
+        return maxCargoCapacity;
     }
 
-    public UUID getOwnerId() {
-        return ownerId;
+    public double getMaxSpeed() {
+        return maxSpeed;
+    }
+
+    public double getFuelConsumption() {
+        return fuelConsumption;
+    }
+
+    public BigDecimal getMaxFuel() {
+        return maxFuel;
+    }
+
+    public BigDecimal getOperatingCost() {
+        return operatingCost;
+    }
+
+    public double getBaseReliability() {
+        return baseReliability;
     }
 }

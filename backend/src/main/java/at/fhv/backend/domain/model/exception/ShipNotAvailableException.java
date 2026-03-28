@@ -11,4 +11,12 @@ public class ShipNotAvailableException extends DomainException {
         this.field = field;
         this.id = id;
     }
+
+    public String getField() {
+        return field;
+    }
+
+    public UUID getId() {
+        return id;
+    }
 }

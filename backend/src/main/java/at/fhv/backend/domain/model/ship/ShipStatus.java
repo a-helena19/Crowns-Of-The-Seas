@@ -6,7 +6,8 @@ public enum ShipStatus {
     IN_REGISTRATION,
     AT_PORT,
     LOADING,
-    BLOCKED_BY_CUSTOMERS,
+    UNLOADING,
+    BLOCKED,
     EN_ROUTE,
-    DRIFTING_DAMAGED
+    DAMAGED
 }
