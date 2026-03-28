@@ -6,6 +6,5 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public interface ValidateShipService {
-    void validateAndExecutePurchase(Ship ship, UUID playerId, BigDecimal playerBalance);
     BigDecimal validatePurchase(Ship ship, BigDecimal playerBalance);
 }

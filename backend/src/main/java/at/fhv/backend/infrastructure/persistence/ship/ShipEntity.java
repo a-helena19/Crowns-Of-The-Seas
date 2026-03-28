@@ -10,7 +10,6 @@ import java.util.UUID;
 @Table(name = "ships")
 public class ShipEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(nullable = false, updatable = false)
     private UUID id;
 
