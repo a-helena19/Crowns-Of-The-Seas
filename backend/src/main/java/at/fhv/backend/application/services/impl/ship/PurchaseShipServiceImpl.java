@@ -4,28 +4,19 @@ import at.fhv.backend.application.dtos.mapper.PlayerShipResponseMapper;
 import at.fhv.backend.application.dtos.mapper.ShipResponseMapper;
 import at.fhv.backend.application.dtos.request.BuyShipDTO;
 import at.fhv.backend.application.dtos.response.PlayerShipDTO;
-import at.fhv.backend.application.dtos.response.ShipDTO;
 import at.fhv.backend.application.services.impl.travel.PlayerHelper;
 import at.fhv.backend.application.services.impl.travel.PortInfoHelper;
 import at.fhv.backend.application.services.ship.PurchaseShipService;
 import at.fhv.backend.application.services.ship.ValidateShipService;
-import at.fhv.backend.domain.model.exception.DomainException;
-import at.fhv.backend.domain.model.exception.ErrorCode;
-import at.fhv.backend.domain.model.exception.InsufficientFundsException;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.ship.Ship;
 import at.fhv.backend.domain.model.ship.ShipRepository;
-import at.fhv.backend.infrastructure.mapper.PlayerShipMapper;
-import at.fhv.backend.infrastructure.mapper.ShipMapper;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class PurchaseShipServiceImpl implements PurchaseShipService {

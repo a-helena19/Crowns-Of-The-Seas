@@ -1,6 +1,5 @@
 package at.fhv.backend.infrastructure.mapper;
 
-import at.fhv.backend.application.dtos.response.PlayerShipDTO;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.infrastructure.persistence.ship.PlayerShipEntity;
 import org.springframework.stereotype.Component;

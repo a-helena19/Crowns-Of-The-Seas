@@ -65,7 +65,7 @@ public class StartTravelServiceImpl implements StartTravelService {
 
         double distance = portInfoHelper.getDistance(originPortId, destinationPortId);
         double requiredFuelPercent = calculateFuelConsumptionService.calculateFuelConsumption(ship, distance);
-        validateTravelService.validateTravelStart(playerId, originPortId, destinationPortId, requiredFuelPercent);
+        validateTravelService.validateTravelStart(playerShip, playerId, originPortId, destinationPortId, requiredFuelPercent);
         double riskFactor = calculateRiskFactor(playerShip, ship);
         BigDecimal baseReward = calculateBaseReward(distance);
 

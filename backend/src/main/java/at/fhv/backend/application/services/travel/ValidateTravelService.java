@@ -5,5 +5,5 @@ import at.fhv.backend.domain.model.ship.PlayerShip;
 import java.util.UUID;
 
 public interface ValidateTravelService {
-    void validateTravelStart(UUID playerId, UUID originPortId, UUID destinationPortId, double requiredFuelPercent);
+    void validateTravelStart(PlayerShip playerShip, UUID playerId, UUID originPortId, UUID destinationPortId, double requiredFuelPercent);
 }

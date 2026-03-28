@@ -2,7 +2,9 @@ package at.fhv.backend.application.dtos.mapper;
 
 import at.fhv.backend.application.dtos.response.TravelDTO;
 import at.fhv.backend.domain.model.travel.Travel;
+import org.springframework.stereotype.Component;
 
+@Component
 public class TravelResponseMapper implements DtoMapper<Travel, TravelDTO> {
     @Override
     public TravelDTO toResponse(Travel travel) {

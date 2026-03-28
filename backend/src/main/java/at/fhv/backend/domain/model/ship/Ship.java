@@ -1,8 +1,5 @@
 package at.fhv.backend.domain.model.ship;
 
-import at.fhv.backend.domain.model.exception.InvalidShipStatusTransition;
-import at.fhv.backend.domain.model.exception.ShipNotAvailableException;
-
 import java.math.BigDecimal;
 import java.util.UUID;
 
