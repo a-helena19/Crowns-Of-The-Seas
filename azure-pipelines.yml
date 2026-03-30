@@ -1,5 +1,6 @@
 trigger:
   - master
+  - develop
 
 pr:
   - master
@@ -22,7 +23,7 @@ steps:
   - task: NodeTool@0
     displayName: "Install Node"
     inputs:
-      versionSpec: '18.x'
+      versionSpec: '24.x'
 
   - script: |
       cd frontend
