@@ -34,6 +34,8 @@ public class GlobalExceptionHandler {
             case PLAYER_NOT_FOUND, SESSION_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case FACTION_ALREADY_ASSIGNED -> HttpStatus.CONFLICT;
             case INVALID_FACTION,
+                 PLAYER_INSUFFICIENT_FUNDS,
+                 INVALID_AMOUNT,
                  SESSION_NOT_IN_LOBBY,
                  SESSION_NOT_RUNNING,
                  INVALID_TICK_RATE -> HttpStatus.BAD_REQUEST;

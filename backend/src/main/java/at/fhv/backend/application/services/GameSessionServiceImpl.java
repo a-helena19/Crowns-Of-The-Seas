@@ -35,7 +35,7 @@ public class GameSessionServiceImpl implements GameSessionService {
     @Override
     public SessionDTO joinSession(String gameCode, UUID userId, String playerName) {
         GameSession session = gameSessionRepository.findByGameCode(gameCode)
-                .orElseThrow(() -> new SessionNotFoundException(UUID.fromString(gameCode)));
+                .orElseThrow(() -> new SessionNotFoundException(gameCode));
         ISessionPlayer player = new BaseSessionPlayer(
                 userId, session.getId(), playerName, false);
         session.addPlayer(player);

@@ -10,4 +10,9 @@ public class SessionNotFoundException extends DomainException {
         super("Session with id " + sessionId + " not found",
                 ErrorCode.SESSION_NOT_FOUND);
     }
+
+    public SessionNotFoundException(String gameCode) {
+        super("Session with code " + gameCode + " not found",
+                ErrorCode.SESSION_NOT_FOUND);
+    }
 }

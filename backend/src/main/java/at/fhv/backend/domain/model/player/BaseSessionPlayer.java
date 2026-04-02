@@ -1,5 +1,8 @@
 package at.fhv.backend.domain.model.player;
 
+import at.fhv.backend.domain.model.player.exception.InsufficientBalanceException;
+import at.fhv.backend.domain.model.player.exception.InvalidAmountException;
+
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -14,7 +17,7 @@ public class BaseSessionPlayer implements ISessionPlayer {
 
     public BaseSessionPlayer(UUID userId, UUID sessionId,
                              String playerName, boolean isHost) {
-        this.id = null;
+        this.id = UUID.randomUUID();
         this.userId = userId;
         this.sessionId = sessionId;
         this.playerName = playerName;
@@ -67,6 +70,25 @@ public class BaseSessionPlayer implements ISessionPlayer {
         return balance;
     }
 
+    @Override
+    public boolean hasSufficientBalance(BigDecimal amount) {
+        return this.balance.compareTo(amount) >= 0;
+    }
+
+    @Override
+    public void addBalance(BigDecimal amount) {
+        if (amount.compareTo(BigDecimal.ZERO) <= 0)
+            throw new InvalidAmountException(amount);
+        this.balance = this.balance.add(amount);
+    }
+
+    @Override
+    public void subtractBalance(BigDecimal amount) {
+        if (!hasSufficientBalance(amount))
+            throw new InsufficientBalanceException(userId, amount);
+        this.balance = this.balance.subtract(amount);
+    }
+
     // Kosten — alle neutral
     @Override
     public double getRepairCostModifier()  { return 1.0; }
@@ -82,26 +104,26 @@ public class BaseSessionPlayer implements ISessionPlayer {
 
     // Zeit — alle neutral
     @Override
-    public double getRepairTimeModifier()   { return 1.0; }
+    public double getRepairTimeModifier() { return 1.0; }
 
     @Override
-    public double getFuelTimeModifier()     { return 1.0; }
+    public double getFuelTimeModifier() { return 1.0; }
 
     @Override
-    public double getLoadingTimeModifier()  { return 1.0; }
+    public double getLoadingTimeModifier() { return 1.0; }
 
     @Override
-    public double getUnloadingTimeModifier(){ return 1.0; }
+    public double getUnloadingTimeModifier() { return 1.0; }
 
     // Gameplay — alle neutral
     @Override
-    public double getMiniGameRiskModifier()        { return 1.0; }
+    public double getMiniGameRiskModifier() { return 1.0; }
 
     @Override
     public double getEarlyOrderDetectionModifier() { return 1.0; }
 
     @Override
-    public double getMarketOfferModifier()         { return 1.0; }
+    public double getMarketOfferModifier() { return 1.0; }
 
     @Override
     public double getMarketOfferQuantityModifier() { return 1.0; }
