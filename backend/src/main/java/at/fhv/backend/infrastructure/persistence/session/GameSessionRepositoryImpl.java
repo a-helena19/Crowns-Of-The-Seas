@@ -3,11 +3,13 @@ package at.fhv.backend.infrastructure.persistence.session;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.infrastructure.mapper.GameSessionMapper;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Repository
 public class GameSessionRepositoryImpl implements GameSessionRepository {
 
     private final GameSessionJpaRepository jpaRepository;

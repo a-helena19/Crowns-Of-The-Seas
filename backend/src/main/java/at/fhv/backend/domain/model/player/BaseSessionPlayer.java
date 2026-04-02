@@ -13,13 +13,13 @@ public class BaseSessionPlayer implements ISessionPlayer {
     private BigDecimal balance;
 
     public BaseSessionPlayer(UUID userId, UUID sessionId,
-                             String playerName, boolean isHost, BigDecimal initialBalance) {
+                             String playerName, boolean isHost) {
         this.id = null;
         this.userId = userId;
         this.sessionId = sessionId;
         this.playerName = playerName;
         this.isHost = isHost;
-        this.balance = initialBalance;
+        this.balance = BigDecimal.valueOf(40000.00); // Startkapital
     }
 
     private BaseSessionPlayer(UUID id, UUID userId, UUID sessionId,
