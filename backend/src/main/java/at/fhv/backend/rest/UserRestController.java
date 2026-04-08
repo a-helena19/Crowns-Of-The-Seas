@@ -1,0 +1,28 @@
+package at.fhv.backend.rest;
+
+import at.fhv.backend.application.dtos.request.RegisterUserDTO;
+import at.fhv.backend.application.dtos.response.UserResponseDTO;
+import at.fhv.backend.application.services.user.RegisterUserService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/users")
+public class UserRestController {
+    private final RegisterUserService registerUserService;
+
+    public UserRestController(RegisterUserService registerUserService) {
+        this.registerUserService = registerUserService;
+    }
+
+    @PostMapping
+    public ResponseEntity<UserResponseDTO> register(@Valid @RequestBody RegisterUserDTO request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(registerUserService.register(request));
+    }
+}
