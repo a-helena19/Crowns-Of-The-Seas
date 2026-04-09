@@ -1,0 +1,220 @@
+/* Game Started Modal Styles */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 600px;
+    width: 90%;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 12px 12px 0 0;
+    text-align: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 28px;
+}
+
+.modal-body {
+    padding: 30px;
+}
+
+.game-info {
+    background: #f5f5f5;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-item .label {
+    font-weight: 500;
+    color: #666;
+    font-size: 14px;
+}
+
+.info-item .value {
+    color: #333;
+    font-weight: 500;
+    font-size: 16px;
+}
+
+.info-item .value.status-running {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+/* Players Info */
+.players-info {
+    margin-bottom: 25px;
+}
+
+.players-info h3 {
+    color: #333;
+    margin: 0 0 15px 0;
+    font-size: 18px;
+}
+
+.players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+}
+
+.player-card {
+    background: #f9f9f9;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.player-card:hover {
+    border-color: #667eea;
+    background: #f0f4ff;
+}
+
+.player-name {
+    font-weight: 500;
+    color: #333;
+    font-size: 14px;
+    margin-bottom: 8px;
+    word-break: break-word;
+}
+
+.player-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+/* Countdown */
+.countdown {
+    text-align: center;
+    color: #999;
+    font-size: 14px;
+    padding: 15px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    margin-bottom: 20px;
+}
+
+.countdown p {
+    margin: 0;
+}
+
+/* Modal Footer */
+.modal-footer {
+    padding: 20px 30px;
+    background: #f9f9f9;
+    border-top: 1px solid #eee;
+    border-radius: 0 0 12px 12px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: #d0d0d0;
+    transform: translateY(-2px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .modal-content {
+        margin: 20px;
+    }
+
+    .modal-header,
+    .modal-body {
+        padding: 20px;
+    }
+
+    .players-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
