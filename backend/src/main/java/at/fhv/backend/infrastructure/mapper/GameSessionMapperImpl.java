@@ -9,6 +9,7 @@ import at.fhv.backend.infrastructure.persistence.session.GameSessionEntity;
 import at.fhv.backend.infrastructure.persistence.session.SessionStatusEntity;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -28,7 +29,7 @@ public class GameSessionMapperImpl implements GameSessionMapper {
         List<ISessionPlayer> players = entity.getPlayers()
                 .stream()
                 .map(sessionPlayerMapper::toDomain)
-                .toList();
+                .collect(Collectors.toCollection(ArrayList::new));
 
         Map<UUID, PlayerFaction> factions = entity.getPlayers()
                 .stream()

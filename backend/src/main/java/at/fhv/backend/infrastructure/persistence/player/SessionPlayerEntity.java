@@ -11,7 +11,6 @@ import java.util.UUID;
 @Table(name = "session_players")
 public class SessionPlayerEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private UUID id;
 
     @Column(name = "user_id", nullable = false)

@@ -7,7 +7,9 @@ import at.fhv.backend.rest.dtos.session.response.SessionDTO;
 import at.fhv.backend.rest.dtos.session.response.SessionPlayerDTO;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class SessionDTOMapperImpl implements SessionDTOMapper {
@@ -18,7 +20,7 @@ public class SessionDTOMapperImpl implements SessionDTOMapper {
                 player.getUserId(),
                 player.getPlayerName(),
                 player.isHost(),
-                faction.name()
+                faction != null ? faction.name() : null
         );
     }
 

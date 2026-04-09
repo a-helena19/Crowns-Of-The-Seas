@@ -14,7 +14,6 @@ import java.util.UUID;
 public class GameSessionEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private UUID id;
 
     @Enumerated(EnumType.STRING)
