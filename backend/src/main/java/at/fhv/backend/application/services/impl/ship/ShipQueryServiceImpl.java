@@ -31,13 +31,18 @@ public class ShipQueryServiceImpl implements ShipQueryService {
         this.playerShipResponseMapper = playerShipResponseMapper;
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<ShipDTO> getMarketShips() {
-        return shipRepository.findAllAvailableOnMarket()
-                .stream()
+    public List<ShipDTO> getMarketShips(String shipClass) {
+        if (shipClass == null) {
+            return shipRepository.findAllAvailableOnMarket()
+                    .stream()
+                    .map(shipResponseMapper::toResponse)
+                    .toList();
+        }
+
+        return shipRepository.findAllAvailableOnMarket().stream()
+                .filter(ship -> ship.getShipClass().name().equalsIgnoreCase(shipClass))
                 .map(shipResponseMapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override

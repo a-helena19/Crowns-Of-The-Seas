@@ -1,9 +1,10 @@
 import GameButton from "./GameButton";
 import PixelPanel from "./PixelPanel";
 
-export default function DialogBubble({ onOpenCargo, onOpenShip, canStart}: {
+export default function DialogBubble({ onOpenCargo, onOpenShip, onStartTravel, canStart}: {
     onOpenCargo: () => void;
     onOpenShip: () => void;
+    onStartTravel: () => void;
     canStart: boolean;
 }) {
     return (
@@ -19,6 +20,7 @@ export default function DialogBubble({ onOpenCargo, onOpenShip, canStart}: {
                 <GameButton
                     variant="danger"
                     disabled={!canStart}
+                    onClick={onStartTravel}
                 >
                     Reise starten
                 </GameButton>

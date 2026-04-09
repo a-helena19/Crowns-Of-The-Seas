@@ -30,6 +30,15 @@
   }
 }
 
+:root {
+    --blue-dark: #091426;
+    --blue-mid: #0c1b33;
+    --blue-light: #12284a;
+
+    --blue-accent: #1e3a6b;
+    --blue-hover: #16345f;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --text: #9ca3af;

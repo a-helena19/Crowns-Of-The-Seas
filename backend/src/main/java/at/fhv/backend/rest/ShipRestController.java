@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api/ships")
 public class ShipRestController {
@@ -24,10 +25,6 @@ public class ShipRestController {
         this.purchaseShipService = purchaseShipService;
     }
 
-    @GetMapping("/market")
-    public ResponseEntity<List<ShipDTO>> getMarketShips() {
-        return ResponseEntity.ok(shipQueryService.getMarketShips());
-    }
 
     @GetMapping("/player/{playerId}")
     public ResponseEntity<List<PlayerShipDTO>> getPlayerShips(@PathVariable UUID playerId) {
@@ -37,6 +34,11 @@ public class ShipRestController {
     @GetMapping("/{playerShipId}/player/{playerId}")
     public ResponseEntity<PlayerShipDTO> getPlayerShip(@PathVariable UUID playerShipId, @PathVariable UUID playerId) {
         return ResponseEntity.ok(shipQueryService.getPlayerShip(playerShipId, playerId));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<ShipDTO>> getShipsByClass(@RequestParam(required = false) String shipClass) {
+        return ResponseEntity.ok(shipQueryService.getMarketShips(shipClass));
     }
 
     @PostMapping("/buy/{playerId}")

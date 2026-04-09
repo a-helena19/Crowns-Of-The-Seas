@@ -15,9 +15,10 @@ public class Ship {
     private final BigDecimal maxFuel;
     private final BigDecimal operatingCost;
     private final double baseReliability;
+    private final String iconUrl;
 
     private Ship(UUID id, String name, String description, ShipClass shipClass, BigDecimal price, int maxCargoCapacity, double maxSpeed,
-                 double fuelConsumption, BigDecimal maxFuel, BigDecimal operatingCost, double baseReliability) {
+                 double fuelConsumption, BigDecimal maxFuel, BigDecimal operatingCost, double baseReliability, String iconUrl) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -29,10 +30,11 @@ public class Ship {
         this.maxFuel = maxFuel;
         this.operatingCost = operatingCost;
         this.baseReliability = baseReliability;
+        this.iconUrl = iconUrl;
     }
 
     public static Ship create(String name, String description, ShipClass shipClass, BigDecimal price, int maxCargoCapacity, double maxSpeed,
-                              double fuelConsumption, BigDecimal maxFuel, BigDecimal operatingCost, double baseReliability) {
+                              double fuelConsumption, BigDecimal maxFuel, BigDecimal operatingCost, double baseReliability, String iconUrl) {
         return new Ship(
                 UUID.randomUUID(),
                 name, description,
@@ -43,11 +45,12 @@ public class Ship {
                 fuelConsumption,
                 maxFuel,
                 operatingCost,
-                baseReliability);
+                baseReliability,
+                iconUrl);
     }
 
     public static Ship reconstruct(UUID id, String name, String description, ShipClass shipClass, BigDecimal price, int maxCargoCapacity, double maxSpeed,
-                                   double fuelConsumption, BigDecimal maxFuel, BigDecimal operatingCost, double baseReliability) {
+                                   double fuelConsumption, BigDecimal maxFuel, BigDecimal operatingCost, double baseReliability, String iconUrl) {
         return new Ship(
                 id,
                 name,
@@ -59,7 +62,9 @@ public class Ship {
                 fuelConsumption,
                 maxFuel,
                 operatingCost,
-                baseReliability);
+                baseReliability,
+                iconUrl
+                );
     }
 
     public UUID getId() {
@@ -105,4 +110,9 @@ public class Ship {
     public double getBaseReliability() {
         return baseReliability;
     }
+
+    public String getIconUrl() {
+        return iconUrl;
+    }
+
 }

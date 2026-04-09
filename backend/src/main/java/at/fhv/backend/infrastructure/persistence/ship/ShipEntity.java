@@ -11,6 +11,7 @@ import java.util.UUID;
 public class ShipEntity {
     @Id
     @Column(nullable = false, updatable = false)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(nullable = false)
@@ -43,6 +44,9 @@ public class ShipEntity {
 
     @Column(name = "base_reliability", nullable = false)
     private double baseReliability;
+
+    @Column(name = "icon_url")
+    private String iconUrl;
 
     public ShipEntity() {}
 
@@ -132,5 +136,13 @@ public class ShipEntity {
 
     public void setBaseReliability(double baseReliability) {
         this.baseReliability = baseReliability;
+    }
+
+    public String getIconUrl() {
+        return iconUrl;
+    }
+
+    public void setIconUrl(String iconUrl) {
+        this.iconUrl = iconUrl;
     }
 }

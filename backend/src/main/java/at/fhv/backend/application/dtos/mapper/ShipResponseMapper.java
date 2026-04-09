@@ -20,6 +20,7 @@ public class ShipResponseMapper implements DtoMapper<Ship, ShipDTO> {
         response.setMaxFuel(ship.getMaxFuel());
         response.setOperatingCost(ship.getOperatingCost());
         response.setBaseReliability(ship.getBaseReliability());
+        response.setIconUrl(ship.getIconUrl());
         return response;
     }
 }

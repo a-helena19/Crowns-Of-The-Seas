@@ -22,9 +22,6 @@ export default function TopBar() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <button style={btnStyle}>Hafen</button>
-                <button style={btnStyle}>Markt</button>
-                <button style={btnStyle}>Aufträge</button>
                 <button style={{ ...btnStyle, fontSize: '18px', padding: '6px 10px' }}>⚙️</button>
             </div>
         </div>
