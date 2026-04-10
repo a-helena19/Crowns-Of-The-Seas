@@ -9,4 +9,5 @@ public interface GameSessionRepository {
     Optional<GameSession> findById(UUID id);
     Optional<GameSession> findByGameCode(String gameCode);
     List<GameSession> findAll();
+    List<GameSession> findActiveSessionsByUserId(UUID userId);
 }

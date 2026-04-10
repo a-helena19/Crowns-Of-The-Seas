@@ -172,6 +172,68 @@ export default function GameScreen() {
                         borderRadius: '6px',
                         border: '1px solid #8a7a5a'
                     }}>
+                        <p style={{ margin: '5px 0 10px 0', color: '#d1ba7e', fontSize: '12px', fontWeight: 'bold' }}>
+                            Join-Link:
+                        </p>
+                        <div style={{
+                            display: 'flex',
+                            gap: '8px',
+                            alignItems: 'center'
+                        }}>
+                            <input
+                                type="text"
+                                value={`${window.location.origin}/join/${session.gameCode}`}
+                                readOnly
+                                style={{
+                                    flex: 1,
+                                    background: 'rgba(30, 20, 15, 0.9)',
+                                    color: '#ffd700',
+                                    border: '1px solid rgba(209, 186, 126, 0.5)',
+                                    padding: '8px 12px',
+                                    borderRadius: '4px',
+                                    fontFamily: "'Courier New', monospace",
+                                    fontSize: '11px',
+                                    cursor: 'text'
+                                }}
+                            />
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(`${window.location.origin}/join/${session.gameCode}`);
+                                    alert('Link kopiert!');
+                                }}
+                                style={{
+                                    background: '#8B4513',
+                                    color: '#f5e6c8',
+                                    border: '1px solid #d1ba7e',
+                                    padding: '8px 14px',
+                                    borderRadius: '4px',
+                                    fontSize: '11px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap',
+                                    transition: 'all 0.3s ease'
+                                }}
+                                onMouseOver={(e) => {
+                                    e.currentTarget.style.background = '#a0522d';
+                                    e.currentTarget.style.boxShadow = '0 0 8px rgba(209, 186, 126, 0.4)';
+                                }}
+                                onMouseOut={(e) => {
+                                    e.currentTarget.style.background = '#8B4513';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }}
+                            >
+                                Kopieren
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style={{
+                        marginBottom: '20px',
+                        padding: '15px',
+                        background: 'rgba(30, 20, 15, 0.8)',
+                        borderRadius: '6px',
+                        border: '1px solid #8a7a5a'
+                    }}>
                         <p style={{ margin: '5px 0', color: '#d1ba7e', fontSize: '12px' }}>
                             Host: {session.hostName}
                         </p>

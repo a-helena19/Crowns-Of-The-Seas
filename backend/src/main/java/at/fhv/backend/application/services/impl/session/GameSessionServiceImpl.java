@@ -11,6 +11,7 @@ import at.fhv.backend.rest.dtos.session.response.SessionDTO;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -57,6 +58,14 @@ public class GameSessionServiceImpl implements GameSessionService {
                 .orElseThrow(() -> new SessionNotFoundException(sessionId));
         session.changeTickRate(hostUserId, tickRateSeconds);
         return sessionDTOMapper.sessionToDTO(gameSessionRepository.save(session));
+    }
+
+    @Override
+    public List<SessionDTO> getActiveSessionsForUser(UUID userId) {
+        return gameSessionRepository.findActiveSessionsByUserId(userId)
+                .stream()
+                .map(sessionDTOMapper::sessionToDTO)
+                .toList();
     }
 
     /*

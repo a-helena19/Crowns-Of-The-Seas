@@ -3,6 +3,7 @@ const API_BASE = '/api';
 export interface UserResponse {
     id: string;
     username: string;
+    token?: string;
 }
 
 export interface ApiError {
@@ -23,7 +24,14 @@ export async function registerUser(username: string, password: string): Promise<
         throw error;
     }
 
-    return response.json();
+    const data: UserResponse = await response.json();
+
+    // Store JWT token if provided (backend returns token on register too!)
+    if (data.token) {
+        localStorage.setItem('auth_token', data.token);
+    }
+
+    return data;
 }
 
 export async function loginUser(username: string, password: string): Promise<UserResponse> {
@@ -38,5 +46,12 @@ export async function loginUser(username: string, password: string): Promise<Use
         throw error;
     }
 
-    return response.json();
+    const data: UserResponse = await response.json();
+
+    // Store JWT token if provided
+    if (data.token) {
+        localStorage.setItem('auth_token', data.token);
+    }
+
+    return data;
 }

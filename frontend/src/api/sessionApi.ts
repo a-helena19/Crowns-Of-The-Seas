@@ -6,7 +6,8 @@ import type {
     StartGameRequest
 } from '../types/session';
 
-const API_BASE_URL = 'http://localhost:8080/api/sessions';
+// Use relative URLs to respect same origin
+const API_BASE_URL = '/api/sessions';
 
 const apiClient = axios.create({
     baseURL: API_BASE_URL,
@@ -14,6 +15,32 @@ const apiClient = axios.create({
         'Content-Type': 'application/json'
     }
 });
+
+// Add JWT token to every request
+apiClient.interceptors.request.use((config) => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+        console.log('✅ Authorization header set with token:', token.substring(0, 20) + '...');
+    } else {
+        console.warn('⚠️ No auth token found in localStorage');
+    }
+    return config;
+}, (error) => {
+    return Promise.reject(error);
+});
+
+// Add error interceptor for debugging
+apiClient.interceptors.response.use(
+    response => response,
+    error => {
+        console.error('API Error:', error);
+        if (error.response?.status === 401) {
+            console.error('Unauthorized - Check JWT token');
+        }
+        return Promise.reject(error);
+    }
+);
 
 export const sessionApi = {
 
@@ -23,7 +50,10 @@ export const sessionApi = {
     },
 
     async joinSession(request: JoinSessionRequest): Promise<SessionDTO> {
-        const response = await apiClient.post<SessionDTO>('/join', request);
+        const response = await apiClient.post<SessionDTO>('/join', {
+            ...request,
+            gameCode: request.gameCode.toUpperCase()
+        });
         return response.data;
     },
 
@@ -45,4 +75,6 @@ export const sessionApi = {
         return response.data;
     }
 };
+
+
 

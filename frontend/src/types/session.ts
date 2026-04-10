@@ -19,21 +19,21 @@ export interface SessionPlayerDTO {
 
 // Request DTOs
 export interface CreateSessionRequest {
-    hostUserId: string;
     hostName: string;
     maxPlayers: number;
     tickRateSeconds: number;
     duration: string; // ISO 8601 Duration
+    // hostUserId comes from JWT in backend
 }
 
 export interface JoinSessionRequest {
     gameCode: string;
-    userId: string;
     playerName: string;
+    // userId comes from JWT in backend
 }
 
 export interface StartGameRequest {
-    hostUserId: string;
+    // hostUserId comes from JWT in backend
 }
 
 // Status Type (not enum due to erasableSyntaxOnly)

@@ -49,7 +49,6 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
             console.log('Creating session with duration:', durationStr);
 
             await createSession({
-                hostUserId: currentUserId,
                 hostName: createForm.hostName,
                 maxPlayers: createForm.maxPlayers,
                 tickRateSeconds: createForm.tickRateSeconds,
@@ -65,7 +64,6 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
         try {
             await joinSession({
                 gameCode: joinForm.gameCode,
-                userId: currentUserId,
                 playerName: joinForm.playerName
             });
         } catch (err) {

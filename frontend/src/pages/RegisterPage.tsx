@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { registerUser, type ApiError } from '../api/userApi';
+import { useAuth } from '../context/AuthContext';
 import '../style/auth.css';
 
 export default function RegisterPage() {
@@ -10,6 +11,7 @@ export default function RegisterPage() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const { login } = useAuth();
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -28,8 +30,11 @@ export default function RegisterPage() {
         setLoading(true);
 
         try {
-            await registerUser(username, password);
-            navigate('/login?registered=true');
+            const response = await registerUser(username, password);
+            // Auto-login after registration
+            login({ id: response.id, username: response.username });
+            // Redirect to lobby
+            navigate('/lobby');
         } catch (err) {
             const apiError = err as ApiError;
             if (apiError.errorCode === 'USERNAME_ALREADY_EXISTS') {

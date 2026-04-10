@@ -1,28 +1,22 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useSessionContext } from '../context/SessionContext';
 import '../styles/gameLobby.css';
-
-export interface Session {
-    id: string;
-    gameCode: string;
-    status: 'LOBBY' | 'RUNNING' | 'FINISHED';
-    hostName: string;
-    players: number;
-    maxPlayers: number;
-}
 
 export default function GameLobby() {
     const { user, logout } = useAuth();
+    const { createSession, joinSession, getSessionByCode } = useSessionContext();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'create' | 'join'>('create');
-    const [sessions, setSessions] = useState<Session[]>([]);
     const [error, setError] = useState('');
 
     // Create Session Form State
     const [createForm, setCreateForm] = useState({
         hostName: user?.username || '',
         maxPlayers: 2,
+        tickRateSeconds: 3,
+        duration: '1h'
     });
 
     // Join Session Form State
@@ -31,7 +25,7 @@ export default function GameLobby() {
         playerName: user?.username || ''
     });
 
-    const handleCreateSession = (e: React.FormEvent) => {
+    const handleCreateSession = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
@@ -40,19 +34,27 @@ export default function GameLobby() {
             return;
         }
 
-        // Generate random game code
-        const gameCode = Math.random().toString(36).substr(2, 6).toUpperCase();
-
-        const newSession: Session = {
-            id: 'session-' + Math.random().toString(36).substr(2, 9),
-            gameCode,
-            status: 'LOBBY',
-            hostName: createForm.hostName,
-            players: 1,
-            maxPlayers: createForm.maxPlayers
+        // Convert duration from "1h" to "PT1H" format
+        const durationMap: { [key: string]: string } = {
+            '1h': 'PT1H',
+            '2h': 'PT2H',
+            '3h': 'PT3H',
+            '4h': 'PT4H'
         };
+        const isoDuration = durationMap[createForm.duration] || 'PT1H';
 
-        setSessions([...sessions, newSession]);
+        // Create session using context (now async)
+        const newSession = await createSession(
+            createForm.hostName,
+            createForm.maxPlayers,
+            createForm.tickRateSeconds,
+            isoDuration
+        );
+
+        if (!newSession) {
+            setError('Fehler beim Erstellen der Session. Ist das Backend aktiv?');
+            return;
+        }
 
         // Redirect to game with session data
         sessionStorage.setItem('currentSession', JSON.stringify(newSession));
@@ -60,7 +62,7 @@ export default function GameLobby() {
         navigate('/game');
     };
 
-    const handleJoinSession = (e: React.FormEvent) => {
+    const handleJoinSession = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
@@ -74,33 +76,23 @@ export default function GameLobby() {
             return;
         }
 
-        // Find session by code
-        const session = sessions.find(s => s.gameCode === joinForm.gameCode.toUpperCase());
+        // Try to join session using context (now async)
+        const session = await joinSession(joinForm.gameCode, joinForm.playerName);
+
         if (!session) {
-            setError('Session mit diesem Code nicht gefunden.');
+            const foundSession = getSessionByCode(joinForm.gameCode);
+            if (!foundSession) {
+                setError('Session mit diesem Code nicht gefunden. Ist das Backend aktiv?');
+            } else if (foundSession.status !== 'LOBBY') {
+                setError('Diese Session läuft bereits oder ist beendet.');
+            } else if (foundSession.players >= foundSession.maxPlayers) {
+                setError('Diese Session ist voll.');
+            }
             return;
         }
-
-        if (session.status !== 'LOBBY') {
-            setError('Diese Session läuft bereits oder ist beendet.');
-            return;
-        }
-
-        if (session.players >= session.maxPlayers) {
-            setError('Diese Session ist voll.');
-            return;
-        }
-
-        // Join session
-        const updatedSession = {
-            ...session,
-            players: session.players + 1
-        };
-
-        setSessions(sessions.map(s => s.id === session.id ? updatedSession : s));
 
         // Redirect to game with session data
-        sessionStorage.setItem('currentSession', JSON.stringify(updatedSession));
+        sessionStorage.setItem('currentSession', JSON.stringify(session));
         sessionStorage.setItem('userRole', 'guest');
         sessionStorage.setItem('playerName', joinForm.playerName);
         navigate('/game');
@@ -109,17 +101,6 @@ export default function GameLobby() {
     const handleLogout = () => {
         logout();
         navigate('/login');
-    };
-
-    const getStatusBadgeClass = (status: string) => {
-        switch (status) {
-            case 'RUNNING':
-                return 'status-running';
-            case 'FINISHED':
-                return 'status-finished';
-            default:
-                return 'status-lobby';
-        }
     };
 
     return (
@@ -185,6 +166,32 @@ export default function GameLobby() {
                                     </select>
                                 </div>
 
+                                <div className="form-group">
+                                    <label htmlFor="tickRate">Tick Rate (Spieltempo):</label>
+                                    <select
+                                        id="tickRate"
+                                        value={createForm.tickRateSeconds}
+                                        onChange={(e) => setCreateForm({ ...createForm, tickRateSeconds: parseInt(e.target.value) })}
+                                    >
+                                        <option value={3}>3 Sekunden</option>
+                                        <option value={10}>10 Sekunden</option>
+                                    </select>
+                                </div>
+
+                                <div className="form-group">
+                                    <label htmlFor="duration">Spieldauer:</label>
+                                    <select
+                                        id="duration"
+                                        value={createForm.duration}
+                                        onChange={(e) => setCreateForm({ ...createForm, duration: e.target.value })}
+                                    >
+                                        <option value="1h">1 Stunde</option>
+                                        <option value="2h">2 Stunden</option>
+                                        <option value="3h">3 Stunden</option>
+                                        <option value="4h">4 Stunden</option>
+                                    </select>
+                                </div>
+
                                 <button type="submit" className="submit-btn">
                                     Session Erstellen
                                 </button>
@@ -222,30 +229,6 @@ export default function GameLobby() {
                                     Beitreten
                                 </button>
                             </form>
-                        )}
-                    </div>
-
-                    <div className="sessions-section">
-                        <h2>Verfügbare Sessions</h2>
-                        {sessions.length === 0 ? (
-                            <p className="no-sessions">Noch keine Sessions verfügbar.</p>
-                        ) : (
-                            <div className="sessions-list">
-                                {sessions.map((session) => (
-                                    <div key={session.id} className="session-card">
-                                        <div className="session-header">
-                                            <h3>{session.hostName}'s Session</h3>
-                                            <span className={`status-badge ${getStatusBadgeClass(session.status)}`}>
-                                                {session.status === 'RUNNING' ? 'Läuft' : 'Wartet'}
-                                            </span>
-                                        </div>
-                                        <div className="session-details">
-                                            <p><strong>Code:</strong> <code>{session.gameCode}</code></p>
-                                            <p><strong>Spieler:</strong> {session.players}/{session.maxPlayers}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
                         )}
                     </div>
                 </div>

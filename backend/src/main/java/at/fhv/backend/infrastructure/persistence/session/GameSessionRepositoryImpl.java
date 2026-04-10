@@ -41,4 +41,12 @@ public class GameSessionRepositoryImpl implements GameSessionRepository {
                 .map(mapper::toDomain)
                 .toList();
     }
+
+    @Override
+    public List<GameSession> findActiveSessionsByUserId(UUID userId) {
+        return jpaRepository.findActiveSessionsByUserId(userId)
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
 }

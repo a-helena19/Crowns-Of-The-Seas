@@ -22,7 +22,14 @@ export default function LoginPage() {
         try {
             const user = await loginUser(username, password);
             login(user);
-            navigate('/lobby');
+
+            // Check if there's a redirect parameter (e.g., /join/ABC123)
+            const redirect = searchParams.get('redirect');
+            if (redirect) {
+                navigate(redirect);
+            } else {
+                navigate('/lobby');
+            }
         } catch (err) {
             const apiError = err as ApiError;
             if (apiError.errorCode === 'INVALID_CREDENTIALS') {
