@@ -9,7 +9,6 @@ public class TravelMapper implements  EntityMapper<Travel, TravelEntity> {
     @Override
     public TravelEntity toJpaEntity(Travel travel) {
         TravelEntity entity = new TravelEntity();
-        entity.setTravelId(travel.getTravelId());
         entity.setPlayerShipId(travel.getPlayerShipId());
         entity.setPlayerId(travel.getPlayerId());
         entity.setOriginPortId(travel.getOriginPortId());

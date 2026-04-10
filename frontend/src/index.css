@@ -17,7 +17,6 @@
   --heading: 'Press Start 2P', system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: 'Press Start 2P', ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
   color-scheme: light dark;
   color: var(--text);
@@ -30,6 +29,12 @@
   @media (max-width: 1024px) {
     font-size: 16px;
   }
+}
+
+.game-lobby-page,
+.login-page,
+.register-page {
+    font-family: 'Press Start 2P', system-ui, sans-serif;
 }
 
 :root {

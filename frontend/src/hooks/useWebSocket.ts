@@ -1,4 +1,7 @@
+// frontend/src/hooks/useWebSocket.ts
 import { useEffect, useRef, useState } from 'react';
+import SockJS from 'sockjs-client';
+import Stomp, { Client } from 'stompjs';
 
 interface GameState {
     ship: { x: number; y: number; status: string };
@@ -12,61 +15,51 @@ interface UseGameWebSocketResult {
     send: (message: object) => void;
 }
 
-const WS_URL = 'ws://localhost:8080/game';
-
 export default function useGameWebSocket(): UseGameWebSocketResult {
     const [connected, setConnected] = useState(false);
     const [gameState, setGameState] = useState<GameState | null>(null);
-    const wsRef = useRef<WebSocket | null>(null);
-    const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const unmounted = useRef(false);
-
-    const connect = () => {
-        if (unmounted.current) return;
-
-        const ws = new WebSocket(WS_URL);
-        wsRef.current = ws;
-
-        ws.onopen = () => {
-            if (unmounted.current) return;
-            setConnected(true);
-        };
-
-        ws.onmessage = (event) => {
-            if (unmounted.current) return;
-            try {
-                const data = JSON.parse(event.data) as GameState;
-                setGameState(data);
-            } catch {
-                // ignore malformed messages
-            }
-        };
-
-        ws.onclose = () => {
-            if (unmounted.current) return;
-            setConnected(false);
-            reconnectTimer.current = setTimeout(connect, 3000);
-        };
-
-        ws.onerror = () => {
-            ws.close();
-        };
-    };
+    const clientRef = useRef<Client | null>(null);
 
     useEffect(() => {
-        unmounted.current = false;
-        connect();
+        const token = localStorage.getItem('auth_token');
+        const sessionData = sessionStorage.getItem('currentSession');
+        const sessionId = sessionData ? JSON.parse(sessionData).id : null;
+
+        const socket = new SockJS('http://localhost:8080/ws');
+        const client = Stomp.over(socket);
+
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        client.connect(headers, () => {
+            setConnected(true);
+            clientRef.current = client;
+
+            if (sessionId) {
+                client.subscribe(`/topic/session/${sessionId}`, (msg) => {
+                    try {
+                        setGameState(JSON.parse(msg.body));
+                    } catch { /* ignore */ }
+                });
+                client.send(`/app/session/${sessionId}/subscribe`, {});
+            }
+        }, () => {
+            setConnected(false);
+        });
 
         return () => {
-            unmounted.current = true;
-            if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-            wsRef.current?.close();
+            const c = clientRef.current;
+            if (c && c.connected) {
+                c.disconnect(() => {});
+            }
+            clientRef.current = null;
+            setConnected(false);
         };
     }, []);
 
     const send = (message: object) => {
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify(message));
+        if (clientRef.current?.connected) {
+            clientRef.current.send('/app/game', {}, JSON.stringify(message));
         }
     };
 

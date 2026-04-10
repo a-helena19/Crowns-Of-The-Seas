@@ -21,7 +21,9 @@ export default function ShipScreen({
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch(`http://localhost:8080/api/ships/player/${PLAYER_ID}`)
+        fetch(`http://localhost:8080/api/ships/player/${PLAYER_ID}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token') ?? ''}` }
+        })
             .then(res => res.json())
             .then(data => {
                 setShips(data);

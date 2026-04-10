@@ -47,20 +47,22 @@ public class ShipQueryServiceImpl implements ShipQueryService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<PlayerShipDTO> getPlayerShips(UUID playerId) {
-        return playerShipRepository.findAllByPlayerId(playerId)
+    public List<PlayerShipDTO> getPlayerShips(UUID playerId, UUID sessionId) {
+        return playerShipRepository
+                .findAllByPlayerIdAndSessionId(playerId, sessionId)
                 .stream()
-                .map(ps -> toPlayerShipResponse(ps))
+                .map(this::toPlayerShipResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PlayerShipDTO getPlayerShip(UUID playerShipId, UUID playerId) {
-        PlayerShip playerShip = findPlayerShipOrThrow(playerShipId);
-        if (!playerShip.isOwnedBy(playerId)) {
-            throw new ShipNotFoundException("playerId", playerId);
-        }
+    public PlayerShipDTO getPlayerShip(UUID playerShipId, UUID playerId, UUID sessionId) {
+
+        PlayerShip playerShip = playerShipRepository
+                .findAllByPlayerIdAndSessionId(playerId, sessionId)
+                .orElseThrow(() -> new ShipNotFoundException("playerShipId", playerShipId));
+
         return toPlayerShipResponse(playerShip);
     }
 

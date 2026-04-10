@@ -14,7 +14,7 @@ public class PortInfoHelperImpl implements  PortInfoHelper {
 
     @Override
     public double getDistance(UUID originPortId, UUID destinationPortId) {
-        return 100.0;
+        return 5.0;
     }
 
     @Override

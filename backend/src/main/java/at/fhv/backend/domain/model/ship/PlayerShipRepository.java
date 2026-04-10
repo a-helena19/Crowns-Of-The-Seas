@@ -6,7 +6,20 @@ import java.util.UUID;
 
 public interface PlayerShipRepository {
     PlayerShip save(PlayerShip playerShip);
+
     Optional<PlayerShip> findById(UUID id);
-    List<PlayerShip> findAllByPlayerId(UUID playerId);
-    List<PlayerShip> findAllByPlayerIdAndStatus(UUID playerId, ShipStatus status);
+
+    Optional<PlayerShip> findByIdAndPlayerIdAndSessionId(
+            UUID id,
+            UUID playerId,
+            UUID sessionId
+    );
+
+    List<PlayerShip> findAllByPlayerIdAndSessionId(UUID playerId, UUID sessionId);
+
+    List<PlayerShip> findAllByPlayerIdAndSessionIdAndStatus(
+            UUID playerId,
+            UUID sessionId,
+            ShipStatus status
+    );
 }

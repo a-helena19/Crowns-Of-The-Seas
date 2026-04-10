@@ -1,6 +1,41 @@
-import { TOP_BAR_HEIGHT } from '../App';
+import { TOP_BAR_HEIGHT } from '../scenes/GameScreen';
+import { useEffect, useState } from 'react';
 
 export default function TopBar() {
+    const [balance, setBalance] = useState<number | null>(null);
+    const [shipCount, setShipCount] = useState<number | null>(null);
+
+    const userData = localStorage.getItem('crowns_user');
+    const playerId = userData ? JSON.parse(userData).id : null;
+    const token = localStorage.getItem('auth_token') ?? '';
+    const sessionData = sessionStorage.getItem('currentSession');
+    const sessionId = sessionData ? JSON.parse(sessionData).id : null;
+
+    useEffect(() => {
+        if (!playerId || !sessionId) return;
+
+        const fetchPlayerData = () => {
+            fetch(`http://localhost:8080/api/ships/player/${playerId}/balance?sessionId=${sessionId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+                .then(res => res.json())
+                .then(data => setBalance(Number(data)))
+                .catch(() => setBalance(null));
+
+            fetch(`http://localhost:8080/api/ships/player/${playerId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+                .then(res => res.json())
+                .then(data => setShipCount(data.length))
+                .catch(() => setShipCount(null));
+        };
+
+        fetchPlayerData();
+
+        window.addEventListener('player-balance-updated', fetchPlayerData);
+        return () => window.removeEventListener('player-balance-updated', fetchPlayerData);
+    }, [playerId, sessionId, token]);
+
     return (
         <div style={{
             height: TOP_BAR_HEIGHT,
@@ -16,9 +51,11 @@ export default function TopBar() {
         }}>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                <span>💵 25.000</span>
-                <span>🚢 1 Schiff</span>
-                <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>⏱ 00:00 - 1/1/2026</span>
+                <span>💵 {balance !== null ? balance.toLocaleString('de') : '...'}</span>
+                <span>🚢 {shipCount !== null ? `${shipCount} Schiff${shipCount !== 1 ? 'e' : ''}` : '...'}</span>
+                <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+                    ⏱ 00:00 - 1/1/2026
+                </span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

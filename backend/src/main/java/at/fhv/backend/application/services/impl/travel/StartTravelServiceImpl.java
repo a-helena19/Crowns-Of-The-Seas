@@ -52,9 +52,12 @@ public class StartTravelServiceImpl implements StartTravelService {
 
     @Override
     public TravelDTO startTravel(UUID playerId, StartTravelDTO request) {
+        System.out.println("=== START TRAVEL ===");
         PlayerShip playerShip = playerShipRepository.findById(request.getPlayerShipId())
                 .orElseThrow(() -> new ShipNotFoundException("PlayerShip", request.getPlayerShipId()));
 
+        System.out.println("Ship status: " + playerShip.getStatus());
+        System.out.println("Ship currentPortId: " + playerShip.getCurrentPortId());
         Ship ship = shipRepository.findById(playerShip.getShipId()).orElseThrow(() -> new ShipNotFoundException("Ship", playerShip.getShipId()));
 
         UUID destinationPortId = request.getDestinationPortId();
@@ -62,10 +65,24 @@ public class StartTravelServiceImpl implements StartTravelService {
         // PortNotFoundException
 
         UUID originPortId = playerShip.getCurrentPortId();
+        System.out.println("originPortId: " + originPortId);
+        System.out.println("destinationPortId: " + destinationPortId);
+
+        if (originPortId == null) {
+            // Fallback solange Ports noch nicht implementiert sind
+            originPortId = UUID.fromString("00000000-0000-0000-0000-000000000099");
+            System.out.println("originPortId was null, using fallback");
+        }
 
         double distance = portInfoHelper.getDistance(originPortId, destinationPortId);
+        System.out.println("distance: " + distance);
+
         double requiredFuelPercent = calculateFuelConsumptionService.calculateFuelConsumption(ship, distance);
+        System.out.println("requiredFuel: " + requiredFuelPercent);
+
         validateTravelService.validateTravelStart(playerShip, playerId, originPortId, destinationPortId, requiredFuelPercent);
+        System.out.println("Validation passed");
+
         double riskFactor = calculateRiskFactor(playerShip, ship);
         BigDecimal baseReward = calculateBaseReward(distance);
 

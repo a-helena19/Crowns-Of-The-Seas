@@ -29,7 +29,6 @@ interface Props {
 
 
 const PLAYER_ID = "00000000-0000-0000-0000-000000000001";
-const BALANCE = 25000;
 
 export default function ShipClassScreen({ shipClass, onBack }: Props) {
     const [ships, setShips] = useState<Ship[]>([]);
@@ -38,12 +37,28 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
     const [buyingId, setBuyingId] = useState<string | null>(null);
     const [boughtIds, setBoughtIds] = useState<Set<string>>(new Set());
     const [toast, setToast] = useState<string | null>(null);
+    const [balance, setBalance] = useState<number | null>(null);
+
+    useEffect(() => {
+        const sessionData = sessionStorage.getItem('currentSession');
+        const sessionId = sessionData ? JSON.parse(sessionData).id : null;
+        if (!sessionId) return;
+
+        fetch(`http://localhost:8080/api/ships/player/${PLAYER_ID}/balance?sessionId=${sessionId}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token') ?? ''}` }
+        })
+            .then(res => res.json())
+            .then(data => setBalance(Number(data)))
+            .catch(() => setBalance(null));
+    }, []);
 
     useEffect(() => {
         setLoading(true);
         setError(null);
 
-        fetch(`http://localhost:8080/api/ships?shipClass=${shipClass}`)
+        fetch(`http://localhost:8080/api/ships?shipClass=${shipClass}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token') ?? ''}` }
+        })
             .then(res => {
                 if (!res.ok) throw new Error("Fehler beim Laden");
                 return res.json();
@@ -70,7 +85,9 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
                 `http://localhost:8080/api/ships/buy/${PLAYER_ID}`,
                 {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { "Content-Type": "application/json",
+                        'Authorization': `Bearer ${localStorage.getItem('auth_token') ?? ''}`,
+                    },
                     body: JSON.stringify({
                         shipId: ship.id,
                     }),
@@ -82,6 +99,8 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
             const data = await res.json();
 
             setBoughtIds(prev => new Set(prev).add(ship.id));
+            setBalance(prev => prev !== null ? prev - ship.price : null);
+            window.dispatchEvent(new CustomEvent('player-balance-updated')); // ← neu
             showToast(`${ship.name} gekauft!`);
 
             console.log("Gekauft:", data);
@@ -124,7 +143,7 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
             <div className="ship-grid-wrapper">
             <div className="ship-grid">
                 {ships.map(ship => {
-                    const canAfford = BALANCE >= ship.price;
+                    const canAfford = balance !== null ? balance >= ship.price : false;
                     const bought = boughtIds.has(ship.id);
 
                     return (

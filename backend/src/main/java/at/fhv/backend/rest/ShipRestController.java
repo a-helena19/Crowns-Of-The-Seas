@@ -5,11 +5,13 @@ import at.fhv.backend.application.dtos.response.PlayerShipDTO;
 import at.fhv.backend.application.dtos.response.ShipDTO;
 import at.fhv.backend.application.services.ship.PurchaseShipService;
 import at.fhv.backend.application.services.ship.ShipQueryService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,8 +29,15 @@ public class ShipRestController {
 
 
     @GetMapping("/player/{playerId}")
-    public ResponseEntity<List<PlayerShipDTO>> getPlayerShips(@PathVariable UUID playerId) {
-        return ResponseEntity.ok(shipQueryService.getPlayerShips(playerId));
+    public ResponseEntity<List<PlayerShipDTO>> getPlayerShips(
+            @PathVariable UUID playerId,
+            HttpServletRequest request) {
+
+        UUID sessionId = (UUID) request.getAttribute("sessionId");
+
+        return ResponseEntity.ok(
+                shipQueryService.getPlayerShips(playerId, sessionId)
+        );
     }
 
     @GetMapping("/{playerShipId}/player/{playerId}")
@@ -41,10 +50,26 @@ public class ShipRestController {
         return ResponseEntity.ok(shipQueryService.getMarketShips(shipClass));
     }
 
+    @GetMapping("/player/{playerId}/balance")
+    public ResponseEntity<BigDecimal> getPlayerBalance(
+            @PathVariable UUID playerId,
+            HttpServletRequest request) {
+        UUID sessionId = (UUID) request.getAttribute("sessionId"); // falls JwtFilter das setzt
+        return ResponseEntity.ok(purchaseShipService.getBalanceByPlayerId(playerId, sessionId));
+    }
+
+
     @PostMapping("/buy/{playerId}")
-    public ResponseEntity<PlayerShipDTO> buyShip(@PathVariable UUID playerId, @Valid @RequestBody BuyShipDTO request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(purchaseShipService.buyShip(playerId, request));
+    public ResponseEntity<PlayerShipDTO> buyShip(
+            @PathVariable UUID playerId,
+            @RequestBody BuyShipDTO request,
+            HttpServletRequest httpRequest) {
+
+        UUID sessionId = (UUID) httpRequest.getAttribute("sessionId");
+
+        return ResponseEntity.ok(
+                purchaseShipService.buyShip(playerId, sessionId, request)
+        );
     }
 
 }

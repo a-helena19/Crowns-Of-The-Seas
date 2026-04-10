@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BOTTOM_BAR_HEIGHT } from '../App';
+import { BOTTOM_BAR_HEIGHT } from '../scenes/GameScreen';
 
 interface BottomBarProps {
     send: (message: object) => void;
