@@ -1,7 +1,7 @@
 package at.fhv.backend.rest;
 
 
-import at.fhv.backend.application.services.GameSessionService;
+import at.fhv.backend.application.services.session.GameSessionService;
 import at.fhv.backend.rest.dtos.session.request.*;
 import at.fhv.backend.rest.dtos.session.response.SessionDTO;
 import org.springframework.http.HttpStatus;

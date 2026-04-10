@@ -1,5 +1,6 @@
 package at.fhv.backend.application.services;
 
+import at.fhv.backend.application.services.session.GameSessionService;
 import at.fhv.backend.config.TestDatasourceConfig;
 import at.fhv.backend.domain.model.session.exception.*;
 import at.fhv.backend.domain.model.session.exception.OnlyHostCanStartException;
@@ -8,7 +9,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 

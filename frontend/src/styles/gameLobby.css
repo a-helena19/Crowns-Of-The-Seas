@@ -1,0 +1,307 @@
+.game-lobby-page {
+    width: 100%;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a0e07 0%, #2d1810 100%);
+    color: #f5e6c8;
+    font-family: 'Arial', sans-serif;
+    padding: 20px;
+}
+
+.lobby-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.lobby-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+    padding: 20px;
+    background: rgba(45, 24, 16, 0.7);
+    border: 2px solid #d1ba7e;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.lobby-header h1 {
+    font-size: 32px;
+    color: #d1ba7e;
+    margin: 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.welcome-text {
+    margin: 0;
+    color: #c9b8a8;
+    font-size: 14px;
+}
+
+.logout-btn {
+    background: #8B4513;
+    color: #f5e6c8;
+    border: 2px solid #d1ba7e;
+    padding: 10px 20px;
+    font-size: 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+    background: #a0522d;
+    box-shadow: 0 0 10px rgba(209, 186, 126, 0.5);
+}
+
+.lobby-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 20px;
+}
+
+.form-section {
+    background: rgba(45, 24, 16, 0.8);
+    border: 2px solid #d1ba7e;
+    border-radius: 8px;
+    padding: 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 25px;
+    border-bottom: 2px solid #8a7a5a;
+}
+
+.tab-btn {
+    background: transparent;
+    color: #8a7a5a;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.tab-btn.active {
+    color: #d1ba7e;
+    border-bottom-color: #d1ba7e;
+}
+
+.tab-btn:hover {
+    color: #f5e6c8;
+}
+
+.error-message {
+    background: #8B0000;
+    color: #f5e6c8;
+    padding: 12px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    border-left: 4px solid #d1ba7e;
+}
+
+.lobby-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    color: #d1ba7e;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.form-group input,
+.form-group select {
+    background: rgba(30, 20, 15, 0.9);
+    color: #f5e6c8;
+    border: 1px solid #8a7a5a;
+    padding: 10px 12px;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #d1ba7e;
+    box-shadow: 0 0 8px rgba(209, 186, 126, 0.3);
+    background: rgba(45, 24, 16, 0.9);
+}
+
+.form-group input::placeholder {
+    color: #8a7a5a;
+}
+
+.submit-btn {
+    background: #8B4513;
+    color: #f5e6c8;
+    border: 2px solid #d1ba7e;
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+}
+
+.submit-btn:hover {
+    background: #a0522d;
+    box-shadow: 0 0 15px rgba(209, 186, 126, 0.5);
+    transform: translateY(-2px);
+}
+
+.submit-btn:active {
+    transform: translateY(0);
+}
+
+.sessions-section {
+    background: rgba(45, 24, 16, 0.8);
+    border: 2px solid #d1ba7e;
+    border-radius: 8px;
+    padding: 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.sessions-section h2 {
+    color: #d1ba7e;
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 20px;
+}
+
+.no-sessions {
+    color: #8a7a5a;
+    text-align: center;
+    padding: 40px 20px;
+    font-style: italic;
+}
+
+.sessions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.session-card {
+    background: rgba(30, 20, 15, 0.8);
+    border: 1px solid #8a7a5a;
+    border-radius: 4px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.session-card:hover {
+    border-color: #d1ba7e;
+    background: rgba(45, 24, 16, 0.9);
+    box-shadow: 0 2px 8px rgba(209, 186, 126, 0.2);
+}
+
+.session-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.session-header h3 {
+    margin: 0;
+    color: #d1ba7e;
+    font-size: 16px;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.status-badge.status-lobby {
+    background: #4a6b4a;
+    color: #b0e0b0;
+    border: 1px solid #7a9a7a;
+}
+
+.status-badge.status-running {
+    background: #8B4513;
+    color: #ffd700;
+    border: 1px solid #d1ba7e;
+}
+
+.status-badge.status-finished {
+    background: #4a4a4a;
+    color: #a0a0a0;
+    border: 1px solid #6a6a6a;
+}
+
+.session-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: #c9b8a8;
+    font-size: 13px;
+}
+
+.session-details p {
+    margin: 0;
+}
+
+.session-details code {
+    background: rgba(30, 20, 15, 0.9);
+    color: #ffd700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .lobby-content {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .lobby-header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+
+    .lobby-header h1 {
+        font-size: 24px;
+    }
+
+    .form-section,
+    .sessions-section {
+        padding: 20px;
+    }
+
+    .tabs {
+        margin-bottom: 20px;
+    }
+
+    .tab-btn {
+        padding: 10px 15px;
+        font-size: 13px;
+    }
+}
+

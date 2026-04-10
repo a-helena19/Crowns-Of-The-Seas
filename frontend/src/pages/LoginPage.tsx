@@ -22,7 +22,7 @@ export default function LoginPage() {
         try {
             const user = await loginUser(username, password);
             login(user);
-            navigate('/game');
+            navigate('/lobby');
         } catch (err) {
             const apiError = err as ApiError;
             if (apiError.errorCode === 'INVALID_CREDENTIALS') {

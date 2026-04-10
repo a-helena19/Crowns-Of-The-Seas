@@ -5,7 +5,7 @@ import at.fhv.backend.application.dtos.request.LoginUserDTO;
 import at.fhv.backend.application.dtos.response.UserResponseDTO;
 import at.fhv.backend.application.services.user.LoginUserService;
 import at.fhv.backend.config.JwtService;
-import at.fhv.backend.domain.model.exception.InvalidCredentialsException;
+import at.fhv.backend.domain.model.user.exception.InvalidCredentialsException;
 import at.fhv.backend.domain.model.user.User;
 import at.fhv.backend.domain.model.user.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;

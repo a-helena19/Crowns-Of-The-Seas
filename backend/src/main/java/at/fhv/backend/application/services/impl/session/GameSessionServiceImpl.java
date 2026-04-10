@@ -1,6 +1,7 @@
-package at.fhv.backend.application.services;
+package at.fhv.backend.application.services.impl.session;
 
 import at.fhv.backend.application.dtos.mapper.session.SessionDTOMapper;
+import at.fhv.backend.application.services.session.GameSessionService;
 import at.fhv.backend.domain.model.player.BaseSessionPlayer;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.session.GameSession;

@@ -1,4 +1,4 @@
-package at.fhv.backend.application.services;
+package at.fhv.backend.application.services.session;
 
 import at.fhv.backend.rest.dtos.session.response.SessionDTO;
 

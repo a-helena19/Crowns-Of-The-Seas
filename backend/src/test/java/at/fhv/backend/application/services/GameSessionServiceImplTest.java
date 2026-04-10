@@ -1,11 +1,11 @@
 package at.fhv.backend.application.services;
 
 import at.fhv.backend.application.dtos.mapper.session.SessionDTOMapperImpl;
+import at.fhv.backend.application.services.impl.session.GameSessionServiceImpl;
 import at.fhv.backend.domain.model.player.BaseSessionPlayer;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
-import at.fhv.backend.domain.model.session.SessionStatus;
 import at.fhv.backend.domain.model.session.exception.SessionNotFoundException;
 import at.fhv.backend.domain.model.session.exception.SessionFullException;
 import at.fhv.backend.domain.model.session.exception.SessionNotInLobbyException;
@@ -15,13 +15,10 @@ import at.fhv.backend.rest.dtos.session.response.SessionDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 

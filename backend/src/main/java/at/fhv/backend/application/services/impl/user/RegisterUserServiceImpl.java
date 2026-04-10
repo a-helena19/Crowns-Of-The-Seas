@@ -5,7 +5,7 @@ import at.fhv.backend.application.dtos.request.RegisterUserDTO;
 import at.fhv.backend.application.dtos.response.UserResponseDTO;
 import at.fhv.backend.application.services.user.RegisterUserService;
 import at.fhv.backend.config.JwtService;
-import at.fhv.backend.domain.model.exception.UsernameTakenException;
+import at.fhv.backend.domain.model.user.exception.UsernameTakenException;
 import at.fhv.backend.domain.model.user.User;
 import at.fhv.backend.domain.model.user.UserRepository;
 import org.springframework.dao.DataIntegrityViolationException;
