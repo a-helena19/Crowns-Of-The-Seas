@@ -1,4 +1,4 @@
-/* Game Started Modal Styles */
+/* Game Started Modal Styles - Ports of Call Theme */
 
 .modal-overlay {
     position: fixed;
@@ -6,12 +6,12 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.8);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 1000;
-    animation: fadeIn 0.3s ease;
+    animation: fadeIn 0.4s ease;
 }
 
 @keyframes fadeIn {
@@ -24,12 +24,14 @@
 }
 
 .modal-content {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    background: rgba(20, 25, 45, 0.98);
+    border: 2px solid #8b7355;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.1);
     max-width: 600px;
     width: 90%;
-    animation: slideUp 0.3s ease;
+    animation: slideUp 0.4s ease;
+    font-family: 'Courier New', monospace;
+    color: #c0b0a0;
 }
 
 @keyframes slideUp {
@@ -44,35 +46,40 @@
 }
 
 .modal-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 30px;
-    border-radius: 12px 12px 0 0;
+    background: linear-gradient(135deg, rgba(139, 115, 85, 0.3) 0%, rgba(212, 175, 55, 0.1) 100%);
+    border-bottom: 1px solid #8b7355;
+    color: #d4af37;
+    padding: 25px;
     text-align: center;
 }
 
 .modal-header h2 {
     margin: 0;
-    font-size: 28px;
+    font-size: 26px;
+    letter-spacing: 2px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    font-family: Georgia, serif;
 }
 
 .modal-body {
-    padding: 30px;
+    padding: 25px;
 }
 
 .game-info {
-    background: #f5f5f5;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 25px;
+    background: rgba(10, 10, 20, 0.6);
+    border: 1px solid #8b7355;
+    border-radius: 1px;
+    padding: 18px;
+    margin-bottom: 22px;
 }
 
 .info-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid #e0e0e0;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(139, 115, 85, 0.4);
+    font-size: 12px;
 }
 
 .info-item:last-child {
@@ -80,126 +87,143 @@
 }
 
 .info-item .label {
-    font-weight: 500;
-    color: #666;
-    font-size: 14px;
+    font-weight: 600;
+    color: #a89968;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .info-item .value {
-    color: #333;
-    font-weight: 500;
-    font-size: 16px;
+    color: #d4af37;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
 }
 
 .info-item .value.status-running {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 12px;
+    background: rgba(212, 175, 55, 0.2);
+    color: #d4af37;
+    padding: 4px 8px;
+    border: 1px solid #d4af37;
+    border-radius: 1px;
+    font-size: 10px;
     text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 /* Players Info */
 .players-info {
-    margin-bottom: 25px;
+    margin-bottom: 20px;
 }
 
 .players-info h3 {
-    color: #333;
-    margin: 0 0 15px 0;
-    font-size: 18px;
+    color: #a89968;
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .players-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 10px;
 }
 
 .player-card {
-    background: #f9f9f9;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 16px;
+    background: rgba(10, 10, 20, 0.7);
+    border: 1px solid #8b7355;
+    border-radius: 1px;
+    padding: 12px;
     text-align: center;
     transition: all 0.2s ease;
 }
 
 .player-card:hover {
-    border-color: #667eea;
-    background: #f0f4ff;
+    border-color: #d4af37;
+    background: rgba(212, 175, 55, 0.1);
+    box-shadow: 0 0 8px rgba(212, 175, 55, 0.2);
 }
 
 .player-name {
     font-weight: 500;
-    color: #333;
-    font-size: 14px;
-    margin-bottom: 8px;
+    color: #c0b0a0;
+    font-size: 12px;
+    margin-bottom: 6px;
     word-break: break-word;
 }
 
 .player-badge {
     display: inline-block;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 11px;
+    background: rgba(212, 175, 55, 0.2);
+    color: #d4af37;
+    padding: 3px 6px;
+    border: 1px solid #d4af37;
+    border-radius: 1px;
+    font-size: 10px;
     text-transform: uppercase;
     font-weight: bold;
+    letter-spacing: 1px;
 }
 
 /* Countdown */
 .countdown {
     text-align: center;
-    color: #999;
-    font-size: 14px;
-    padding: 15px;
-    background: #f5f5f5;
-    border-radius: 6px;
-    margin-bottom: 20px;
+    color: #a89968;
+    font-size: 12px;
+    padding: 12px;
+    background: rgba(139, 115, 85, 0.1);
+    border: 1px solid #8b7355;
+    border-radius: 1px;
+    margin-bottom: 15px;
+    font-weight: 600;
 }
 
 .countdown p {
     margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 /* Modal Footer */
 .modal-footer {
-    padding: 20px 30px;
-    background: #f9f9f9;
-    border-top: 1px solid #eee;
-    border-radius: 0 0 12px 12px;
+    padding: 18px 25px;
+    background: rgba(10, 10, 20, 0.5);
+    border-top: 1px solid #8b7355;
     display: flex;
     justify-content: center;
     gap: 10px;
 }
 
 .btn {
-    padding: 10px 24px;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
+    padding: 9px 20px;
+    border: 1px solid #8b7355;
+    background: rgba(139, 115, 85, 0.15);
+    color: #a89968;
+    font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
-    font-family: inherit;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .btn:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
 }
 
 .btn-secondary {
-    background: #e0e0e0;
-    color: #333;
+    background: rgba(139, 115, 85, 0.2);
+    color: #a89968;
+    border-color: #8b7355;
 }
 
 .btn-secondary:hover:not(:disabled) {
-    background: #d0d0d0;
-    transform: translateY(-2px);
+    background: rgba(212, 175, 55, 0.2);
+    border-color: #d4af37;
+    color: #d4af37;
+    box-shadow: 0 0 8px rgba(212, 175, 55, 0.2);
 }
 
 /* Responsive */

@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.util.UUID;
 
 @RestController
@@ -23,10 +24,13 @@ public class GameSessionRestController {
     @PostMapping
     public ResponseEntity<SessionDTO> create(
             @RequestBody CreateSessionRequest req) {
+        // Parse ISO 8601 duration string (e.g., "PT3600S") to Java Duration
+        Duration duration = Duration.parse(req.duration());
+
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(gameSessionService.createSession(
                         req.hostUserId(), req.hostName(),
-                        req.maxPlayers(), req.tickRateSeconds(), req.duration()));
+                        req.maxPlayers(), req.tickRateSeconds(), duration));
     }
 
     @PostMapping("/join")

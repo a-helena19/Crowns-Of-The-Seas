@@ -30,9 +30,23 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
         e.preventDefault();
         try {
             // Convert duration string to ISO 8601 format
-            const [hours, minutes, seconds] = createForm.duration.split(':').map(Number);
+            const parts = createForm.duration.split(':');
+            if (parts.length !== 3) {
+                throw new Error('Duration must be in HH:MM:SS format');
+            }
+
+            const hours = parseInt(parts[0], 10) || 0;
+            const minutes = parseInt(parts[1], 10) || 0;
+            const seconds = parseInt(parts[2], 10) || 0;
+
+            if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) {
+                throw new Error('Invalid duration format');
+            }
+
             const totalSeconds = hours * 3600 + minutes * 60 + seconds;
             const durationStr = `PT${totalSeconds}S`;
+
+            console.log('Creating session with duration:', durationStr);
 
             await createSession({
                 hostUserId: currentUserId,

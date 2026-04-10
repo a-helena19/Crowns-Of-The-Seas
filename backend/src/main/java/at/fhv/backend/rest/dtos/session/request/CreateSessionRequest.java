@@ -1,6 +1,5 @@
 package at.fhv.backend.rest.dtos.session.request;
 
-import java.time.Duration;
 import java.util.UUID;
 
 public record CreateSessionRequest(
@@ -8,4 +7,4 @@ public record CreateSessionRequest(
         String hostName,
         int maxPlayers,
         int tickRateSeconds,
-        Duration duration) {}
+        String duration) {}

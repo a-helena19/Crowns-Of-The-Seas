@@ -1,4 +1,4 @@
-/* Game Screen Styles */
+/* Game Screen Styles - Ports of Call Theme */
 
 .game-screen-container {
     width: 100%;
@@ -6,7 +6,8 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    background: #1a1a2e;
+    background: linear-gradient(180deg, #0a0e27 0%, #151f3a 50%, #0f1428 100%);
+    background-attachment: fixed;
     overflow: hidden;
 }
 
@@ -15,6 +16,7 @@
     max-width: 100%;
     max-height: 100%;
     display: block;
+    border: 2px solid #8b7355;
 }
 
 /* Responsive */
