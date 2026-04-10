@@ -17,7 +17,7 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
         hostName: '',
         maxPlayers: 2,
         tickRateSeconds: 5,
-        duration: '1:00:00' // HH:MM:SS format
+        duration: '01:00:00' // HH:MM:SS format
     });
 
     // Join Session Form State
@@ -178,17 +178,17 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
                             <div className="form-group">
                                 <label>Max Players</label>
                                 <select
-                                    value={createForm.maxPlayers}
+                                    value={String(createForm.maxPlayers)}
                                     onChange={(e) =>
                                         setCreateForm({
                                             ...createForm,
-                                            maxPlayers: parseInt(e.target.value)
+                                            maxPlayers: parseInt(e.target.value, 10)
                                         })
                                     }
                                 >
-                                    <option value={2}>2 Players</option>
-                                    <option value={3}>3 Players</option>
-                                    <option value={4}>4 Players</option>
+                                    <option value="2">2 Players</option>
+                                    <option value="3">3 Players</option>
+                                    <option value="4">4 Players</option>
                                 </select>
                             </div>
 
@@ -198,11 +198,11 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
                                     type="number"
                                     min="1"
                                     max="10"
-                                    value={createForm.tickRateSeconds}
+                                    value={String(createForm.tickRateSeconds)}
                                     onChange={(e) =>
                                         setCreateForm({
                                             ...createForm,
-                                            tickRateSeconds: parseInt(e.target.value)
+                                            tickRateSeconds: parseInt(e.target.value, 10) || 5
                                         })
                                     }
                                 />
