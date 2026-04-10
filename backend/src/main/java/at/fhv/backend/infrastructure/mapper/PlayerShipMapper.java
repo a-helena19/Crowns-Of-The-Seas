@@ -12,6 +12,7 @@ public class PlayerShipMapper implements EntityMapper<PlayerShip, PlayerShipEnti
         entity.setId(playerShip.getId());
         entity.setShipId(playerShip.getShipId());
         entity.setPlayerId(playerShip.getPlayerId());
+        entity.setSessionId(playerShip.getSessionId());
         entity.setStatus(playerShip.getStatus());
         entity.setCondition(playerShip.getCondition());
         entity.setFuel(playerShip.getFuel());
@@ -26,6 +27,7 @@ public class PlayerShipMapper implements EntityMapper<PlayerShip, PlayerShipEnti
                 entity.getId(),
                 entity.getShipId(),
                 entity.getPlayerId(),
+                entity.getSessionId(),
                 entity.getStatus(),
                 entity.getCondition(),
                 entity.getFuel(),

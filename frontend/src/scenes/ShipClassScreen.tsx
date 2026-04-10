@@ -28,8 +28,6 @@ interface Props {
 }
 
 
-const PLAYER_ID = "00000000-0000-0000-0000-000000000001";
-
 export default function ShipClassScreen({ shipClass, onBack }: Props) {
     const [ships, setShips] = useState<Ship[]>([]);
     const [loading, setLoading] = useState(true);
@@ -39,18 +37,21 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
     const [toast, setToast] = useState<string | null>(null);
     const [balance, setBalance] = useState<number | null>(null);
 
+    const userData = localStorage.getItem('crowns_user');
+    const playerId = userData ? JSON.parse(userData).id : null;
+
     useEffect(() => {
         const sessionData = sessionStorage.getItem('currentSession');
         const sessionId = sessionData ? JSON.parse(sessionData).id : null;
-        if (!sessionId) return;
+        if (!sessionId || !playerId) return;
 
-        fetch(`http://localhost:8080/api/ships/player/${PLAYER_ID}/balance?sessionId=${sessionId}`, {
+        fetch(`http://localhost:8080/api/ships/player/${playerId}/balance?sessionId=${sessionId}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token') ?? ''}` }
         })
             .then(res => res.json())
             .then(data => setBalance(Number(data)))
             .catch(() => setBalance(null));
-    }, []);
+    }, [playerId]);
 
     useEffect(() => {
         setLoading(true);
@@ -79,10 +80,17 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
     }
     async function handleBuy(ship: Ship) {
         setBuyingId(ship.id);
+        const sessionData = sessionStorage.getItem('currentSession');
+        const sessionId = sessionData ? JSON.parse(sessionData).id : null;
+        if (!sessionId || !playerId) {
+            showToast("Session nicht gefunden.");
+            setBuyingId(null);
+            return;
+        }
 
         try {
             const res = await fetch(
-                `http://localhost:8080/api/ships/buy/${PLAYER_ID}`,
+                `http://localhost:8080/api/ships/buy/${playerId}?sessionId=${sessionId}`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json",
@@ -141,61 +149,61 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
 
             {/* GRID */}
             <div className="ship-grid-wrapper">
-            <div className="ship-grid">
-                {ships.map(ship => {
-                    const canAfford = balance !== null ? balance >= ship.price : false;
-                    const bought = boughtIds.has(ship.id);
+                <div className="ship-grid">
+                    {ships.map(ship => {
+                        const canAfford = balance !== null ? balance >= ship.price : false;
+                        const bought = boughtIds.has(ship.id);
 
-                    return (
-                        <div key={ship.id} className="ship-listing-card">
-                            <div className="ship-listing-img-wrap">
-                                <img
-                                    src={ship.iconUrl}
-                                    alt={ship.name}
-                                    className="ship-listing-img"
-                                    onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.src = "/fallback-ship.png"; // local placeholder
-                                    }}
-                                />
-                            </div>
-
-                            <div className="ship-listing-info">
-                                <div className="ship-listing-name">{ship.name}</div>
-                                <div className="ship-listing-desc">{ship.description}</div>
-
-                                <div className="ship-listing-stats">
-                                    <StatRow label="Geschwindigkeit" value={`${ship.maxSpeed} kn`} />
-                                    <StatRow label="Kapazität" value={`${ship.maxCargoCapacity} t`} />
-                                    <StatRow label="Tank" value={`${ship.maxFuel} t`} />
-                                    <StatRow label="Verbrauch" value={`${ship.fuelConsumption} t/d`} />
-                                    <StatRow label="Betriebskosten" value={`${ship.operatingCost}`} />
-                                    <StatRow label="Zuverlässigkeit" value={`${Math.round(ship.baseReliability * 100)}%`} />
+                        return (
+                            <div key={ship.id} className="ship-listing-card">
+                                <div className="ship-listing-img-wrap">
+                                    <img
+                                        src={ship.iconUrl}
+                                        alt={ship.name}
+                                        className="ship-listing-img"
+                                        onError={(e) => {
+                                            const target = e.target as HTMLImageElement;
+                                            target.src = "/fallback-ship.png"; // local placeholder
+                                        }}
+                                    />
                                 </div>
 
-                                <div className="ship-listing-footer">
+                                <div className="ship-listing-info">
+                                    <div className="ship-listing-name">{ship.name}</div>
+                                    <div className="ship-listing-desc">{ship.description}</div>
+
+                                    <div className="ship-listing-stats">
+                                        <StatRow label="Geschwindigkeit" value={`${ship.maxSpeed} kn`} />
+                                        <StatRow label="Kapazität" value={`${ship.maxCargoCapacity} t`} />
+                                        <StatRow label="Tank" value={`${ship.maxFuel} t`} />
+                                        <StatRow label="Verbrauch" value={`${ship.fuelConsumption} t/d`} />
+                                        <StatRow label="Betriebskosten" value={`${ship.operatingCost}`} />
+                                        <StatRow label="Zuverlässigkeit" value={`${Math.round(ship.baseReliability * 100)}%`} />
+                                    </div>
+
+                                    <div className="ship-listing-footer">
                                 <span className="ship-listing-price">
                                     {ship.price.toLocaleString("de")}
                                 </span>
 
-                                    <GameButton
-                                        onClick={() => handleBuy(ship)}
-                                        disabled={!canAfford || bought || buyingId === ship.id}
-                                    >
-                                        {bought
-                                            ? "Gekauft"
-                                            : buyingId === ship.id
-                                                ? "..."
-                                                : !canAfford
-                                                    ? "Zu teuer"
-                                                    : "Kaufen"}
-                                    </GameButton>
+                                        <GameButton
+                                            onClick={() => handleBuy(ship)}
+                                            disabled={!canAfford || bought || buyingId === ship.id}
+                                        >
+                                            {bought
+                                                ? "Gekauft"
+                                                : buyingId === ship.id
+                                                    ? "..."
+                                                    : !canAfford
+                                                        ? "Zu teuer"
+                                                        : "Kaufen"}
+                                        </GameButton>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    );
-                })}
-            </div>
+                        );
+                    })}
+                </div>
             </div>
 
             {toast && <div className="shipclass-toast">{toast}</div>}

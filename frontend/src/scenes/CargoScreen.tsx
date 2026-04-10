@@ -8,7 +8,8 @@ export default function CargoScreen({ onSelect }: {
         to: "New York",
         profit: "12.000",
         duration: "5 Tage",
-        risk: "Mittel"
+        risk: "Mittel",
+        destinationPortId: "00000000-0000-0000-0000-000000000002", // TODO: vom Kollegen befüllen
     };
 
     return (

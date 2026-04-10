@@ -45,7 +45,7 @@ public class PlayerShipRepositoryImpl implements PlayerShipRepository {
 
     @Override
     public List<PlayerShip> findAllByPlayerIdAndSessionId(UUID playerId, UUID sessionId) {
-        return playerShipRepository
+        return playerShipJpaRepository
                 .findAllByPlayerIdAndSessionId(playerId, sessionId)
                 .stream()
                 .map(playerShipMapper::toDomainModel)
@@ -53,11 +53,7 @@ public class PlayerShipRepositoryImpl implements PlayerShipRepository {
     }
 
     @Override
-    public Optional<PlayerShip> findByIdAndPlayerIdAndSessionId(
-            UUID id,
-            UUID playerId,
-            UUID sessionId
-    ) {
+    public Optional<PlayerShip> findByIdAndPlayerIdAndSessionId(UUID id, UUID playerId, UUID sessionId) {
         return playerShipJpaRepository
                 .findByIdAndPlayerIdAndSessionId(id, playerId, sessionId)
                 .map(playerShipMapper::toDomainModel);

@@ -18,6 +18,9 @@ public class PlayerShipEntity {
     @Column(name = "player_id", nullable = false)
     private UUID playerId;
 
+    @Column(name = "session_id", nullable = false)
+    private UUID sessionId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ShipStatus status;
@@ -58,6 +61,14 @@ public class PlayerShipEntity {
 
     public void setPlayerId(UUID playerId) {
         this.playerId = playerId;
+    }
+
+    public UUID getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(UUID sessionId) {
+        this.sessionId = sessionId;
     }
 
     public ShipStatus getStatus() {

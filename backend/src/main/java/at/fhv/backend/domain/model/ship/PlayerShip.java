@@ -9,17 +9,19 @@ public class PlayerShip {
     private final UUID id;
     private final UUID shipId;
     private final UUID playerId;
+    private final UUID sessionId;
     private ShipStatus status;
     private double condition;
     private double fuel;
     private UUID currentPortId;
     private UUID targetPortId;
 
-    private PlayerShip(UUID id, UUID shipId, UUID playerId, ShipStatus status, double condition, double fuel,
+    private PlayerShip(UUID id, UUID shipId, UUID playerId, UUID sessionId, ShipStatus status, double condition, double fuel,
                        UUID currentPortId, UUID targetPortId) {
         this.id = id;
         this.shipId = shipId;
         this.playerId = playerId;
+        this.sessionId = sessionId;
         this.status = status;
         this.condition = condition;
         this.fuel = fuel;
@@ -27,11 +29,12 @@ public class PlayerShip {
         this.targetPortId = targetPortId;
     }
 
-    public static PlayerShip createFromPurchase(UUID shipId, UUID playerId, UUID startPortId) {
+    public static PlayerShip createFromPurchase(UUID shipId, UUID playerId, UUID sessionId, UUID startPortId) {
         return new PlayerShip(
                 UUID.randomUUID(),
                 shipId,
                 playerId,
+                sessionId,
                 ShipStatus.IN_REGISTRATION,
                 100.0,
                 100.0,
@@ -40,12 +43,13 @@ public class PlayerShip {
         );
     }
 
-    public static PlayerShip reconstruct(UUID id, UUID shipId, UUID playerId, ShipStatus status, double condition, double fuel,
+    public static PlayerShip reconstruct(UUID id, UUID shipId, UUID playerId, UUID sessionId, ShipStatus status, double condition, double fuel,
                                          UUID currentPortId, UUID targetPortId) {
         return new PlayerShip(
                 id,
                 shipId,
                 playerId,
+                sessionId,
                 status,
                 condition,
                 fuel,
@@ -101,6 +105,10 @@ public class PlayerShip {
 
     public UUID getPlayerId() {
         return playerId;
+    }
+
+    public UUID getSessionId() {
+        return sessionId;
     }
 
     public ShipStatus getStatus() {

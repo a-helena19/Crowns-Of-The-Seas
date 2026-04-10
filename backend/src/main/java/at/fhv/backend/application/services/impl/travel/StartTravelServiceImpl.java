@@ -51,9 +51,10 @@ public class StartTravelServiceImpl implements StartTravelService {
     }
 
     @Override
-    public TravelDTO startTravel(UUID playerId, StartTravelDTO request) {
+    public TravelDTO startTravel(UUID playerId, UUID sessionId, StartTravelDTO request) {
         System.out.println("=== START TRAVEL ===");
-        PlayerShip playerShip = playerShipRepository.findById(request.getPlayerShipId())
+        PlayerShip playerShip = playerShipRepository
+                .findByIdAndPlayerIdAndSessionId(request.getPlayerShipId(), playerId, sessionId)
                 .orElseThrow(() -> new ShipNotFoundException("PlayerShip", request.getPlayerShipId()));
 
         System.out.println("Ship status: " + playerShip.getStatus());

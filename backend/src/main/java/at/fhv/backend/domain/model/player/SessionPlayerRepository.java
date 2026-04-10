@@ -1,0 +1,9 @@
+package at.fhv.backend.domain.model.player;
+
+import java.util.Optional;
+import java.util.UUID;
+
+public interface SessionPlayerRepository {
+    Optional<ISessionPlayer> findByUserIdAndSessionId(UUID userId, UUID sessionId);
+    ISessionPlayer save(ISessionPlayer player);
+}

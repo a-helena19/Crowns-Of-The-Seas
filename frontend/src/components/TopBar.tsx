@@ -22,7 +22,7 @@ export default function TopBar() {
                 .then(data => setBalance(Number(data)))
                 .catch(() => setBalance(null));
 
-            fetch(`http://localhost:8080/api/ships/player/${playerId}`, {
+            fetch(`http://localhost:8080/api/ships/player/${playerId}?sessionId=${sessionId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
                 .then(res => res.json())

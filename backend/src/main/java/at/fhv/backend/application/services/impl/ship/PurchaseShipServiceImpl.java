@@ -52,15 +52,15 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
     public PlayerShipDTO buyShip(UUID playerId, UUID sessionId, BuyShipDTO request) {
         Ship ship = shipRepository.findById(request.getShipId()).orElseThrow(() -> new ShipNotFoundException("shipId", request.getShipId()));
         ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId).orElseThrow(() -> new PlayerNotFoundException(playerId));
-        BigDecimal playerBalance = player.getBalance();;
+        BigDecimal playerBalance = player.getBalance();
         BigDecimal price = validateShipService.validatePurchase(ship, playerBalance);
         player.subtractBalance(price);
         sessionPlayerRepository.save(player);
         UUID startPortId = portInfoHelper.getDefaultStartPortId();
-        PlayerShip playerShip = PlayerShip.createFromPurchase(ship.getId(), playerId, startPortId);
+        PlayerShip playerShip = PlayerShip.createFromPurchase(ship.getId(), playerId, sessionId, startPortId);
         playerShip.completeRegistration();
         PlayerShip saved = playerShipRepository.save(playerShip);
-        return toPlayerShipResponse(playerShipRepository.save(playerShip));
+        return toPlayerShipResponse(saved);
     }
 
     @Override

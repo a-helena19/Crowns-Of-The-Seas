@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface StartTravelService {
-    TravelDTO startTravel(UUID playerId, StartTravelDTO request);
+    TravelDTO startTravel(UUID playerId, UUID sessionId, StartTravelDTO request);
     List<TravelDTO> getActiveTravels(UUID playerId);
     TravelDTO getTravelStatus(UUID travelId, UUID playerId);
 }

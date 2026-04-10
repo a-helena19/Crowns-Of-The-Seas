@@ -60,16 +60,10 @@ public class ShipQueryServiceImpl implements ShipQueryService {
     public PlayerShipDTO getPlayerShip(UUID playerShipId, UUID playerId, UUID sessionId) {
 
         PlayerShip playerShip = playerShipRepository
-                .findAllByPlayerIdAndSessionId(playerId, sessionId)
+                .findByIdAndPlayerIdAndSessionId(playerShipId, playerId, sessionId)
                 .orElseThrow(() -> new ShipNotFoundException("playerShipId", playerShipId));
 
         return toPlayerShipResponse(playerShip);
-    }
-
-    private PlayerShip findPlayerShipOrThrow(UUID playerShipId) {
-        return playerShipRepository.findById(playerShipId)
-                .orElseThrow(() -> new ShipNotFoundException("playerShipId", playerShipId));
-
     }
 
     private PlayerShipDTO toPlayerShipResponse(PlayerShip playerShip) {

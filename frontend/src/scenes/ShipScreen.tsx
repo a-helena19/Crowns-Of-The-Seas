@@ -10,8 +10,6 @@ interface PlayerShip {
     iconUrl?: string;
 }
 
-const PLAYER_ID = "00000000-0000-0000-0000-000000000001";
-
 export default function ShipScreen({
                                        onSelect,
                                    }: {
@@ -20,8 +18,21 @@ export default function ShipScreen({
     const [ships, setShips] = useState<PlayerShip[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const userData = localStorage.getItem('crowns_user');
+    const playerId = userData ? JSON.parse(userData).id : null;
+
     useEffect(() => {
-        fetch(`http://localhost:8080/api/ships/player/${PLAYER_ID}`, {
+        if (!playerId) {
+            setLoading(false);
+            return;
+        }
+        const sessionData = sessionStorage.getItem('currentSession');
+        const sessionId = sessionData ? JSON.parse(sessionData).id : null;
+        if (!sessionId) {
+            setLoading(false);
+            return;
+        }
+        fetch(`http://localhost:8080/api/ships/player/${playerId}?sessionId=${sessionId}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token') ?? ''}` }
         })
             .then(res => res.json())

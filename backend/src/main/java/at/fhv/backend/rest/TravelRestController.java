@@ -22,9 +22,12 @@ public class TravelRestController {
     }
 
     @PostMapping("/start/{playerId}")
-    public ResponseEntity<TravelDTO> startTravel(@PathVariable UUID playerId, @Valid @RequestBody StartTravelDTO request) {
+    public ResponseEntity<TravelDTO> startTravel(
+            @PathVariable UUID playerId,
+            @RequestParam UUID sessionId,
+            @Valid @RequestBody StartTravelDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(startTravelService.startTravel(playerId, request));
+                .body(startTravelService.startTravel(playerId, sessionId, request));
     }
 
     @GetMapping("/active/{playerId}")
