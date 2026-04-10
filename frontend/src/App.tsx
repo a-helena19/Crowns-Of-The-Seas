@@ -44,15 +44,14 @@ export default function App() {
 
             <div className="game">
                 <Game view={view} />
-
-                <div className={`fullscreen-overlay ${view !== "map" ? "open" : "closed"}`}>
-                    {view === "harbor" && (
-                        <HarborScene onClose={() => setView("map")} />
-                    )}
-                    {view === "broker" && (
-                        <ShipBrokerScene onClose={() => setView("map")} />
-                    )}
-                </div>
+            </div>
+            <div className={`fullscreen-overlay ${view !== "map" ? "open" : "closed"}`}>
+                {view === "harbor" && (
+                    <HarborScene onClose={() => setView("map")} />
+                )}
+                {view === "broker" && (
+                    <ShipBrokerScene onClose={() => setView("map")} />
+                )}
             </div>
 
             {view === "map" && (

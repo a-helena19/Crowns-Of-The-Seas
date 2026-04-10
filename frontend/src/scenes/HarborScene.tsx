@@ -19,6 +19,10 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
 
     async function handleStartTravel() {
         console.log("START TRAVEL CLICKED");
+
+        console.log("SHIP:", selectedShip);
+        console.log("CARGO:", selectedCargo);
+        console.log("START TRAVEL CLICKED");
         if (!selectedShip || !selectedCargo) return;
 
         try {
