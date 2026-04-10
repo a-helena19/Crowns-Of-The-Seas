@@ -44,6 +44,7 @@ public class GlobalExceptionHandler {
     private HttpStatus mapToHttpStatus(DomainException exception) {
         return switch (exception.getErrorCode()) {
             case USERNAME_ALREADY_EXISTS -> HttpStatus.CONFLICT;
+            case INVALID_CREDENTIALS -> HttpStatus.UNAUTHORIZED;
         };
     }
 }

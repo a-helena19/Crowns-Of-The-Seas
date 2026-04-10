@@ -1,8 +1,10 @@
 package at.fhv.backend.application.services.impl.user;
 
+import at.fhv.backend.application.dtos.mapper.UserDTOMapper;
 import at.fhv.backend.application.dtos.request.RegisterUserDTO;
 import at.fhv.backend.application.dtos.response.UserResponseDTO;
 import at.fhv.backend.application.services.user.RegisterUserService;
+import at.fhv.backend.config.JwtService;
 import at.fhv.backend.domain.model.exception.UsernameTakenException;
 import at.fhv.backend.domain.model.user.User;
 import at.fhv.backend.domain.model.user.UserRepository;
@@ -17,10 +19,15 @@ import java.util.UUID;
 public class RegisterUserServiceImpl implements RegisterUserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserDTOMapper userDTOMapper;
+    private final JwtService jwtService;
 
-    public RegisterUserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public RegisterUserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                                   UserDTOMapper userDTOMapper, JwtService jwtService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.userDTOMapper = userDTOMapper;
+        this.jwtService = jwtService;
     }
 
     @Override
@@ -34,7 +41,8 @@ public class RegisterUserServiceImpl implements RegisterUserService {
         User user = User.register(id, request.getUsername(), passwordHash);
         try {
             User saved = userRepository.save(user);
-            return new UserResponseDTO(saved.getId(), saved.getUsername());
+            String token = jwtService.generateToken(saved.getId(), saved.getUsername());
+            return userDTOMapper.toResponseDTO(saved, token);
         } catch (DataIntegrityViolationException e) {
             throw new UsernameTakenException(request.getUsername());
         }

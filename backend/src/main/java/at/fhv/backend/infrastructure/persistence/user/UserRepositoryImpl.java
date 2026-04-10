@@ -5,6 +5,8 @@ import at.fhv.backend.domain.model.user.UserRepository;
 import at.fhv.backend.infrastructure.mapper.UserMapper;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
 public class UserRepositoryImpl implements UserRepository {
     private final UserJpaRepository userJpaRepository;
@@ -25,5 +27,11 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public boolean existsByUsername(String username) {
         return userJpaRepository.existsByUsername(username);
+    }
+
+    @Override
+    public Optional<User> findByUsername(String username) {
+        return userJpaRepository.findByUsername(username)
+                .map(userMapper::toDomainModel);
     }
 }

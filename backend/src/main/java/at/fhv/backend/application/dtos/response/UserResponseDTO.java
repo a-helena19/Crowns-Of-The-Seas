@@ -5,13 +5,15 @@ import java.util.UUID;
 public class UserResponseDTO {
     private UUID id;
     private String username;
+    private String token;
 
     public UserResponseDTO() {
     }
 
-    public UserResponseDTO(UUID id, String username) {
+    public UserResponseDTO(UUID id, String username, String token) {
         this.id = id;
         this.username = username;
+        this.token = token;
     }
 
     public UUID getId() {
@@ -28,5 +30,13 @@ public class UserResponseDTO {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
     }
 }
