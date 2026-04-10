@@ -18,7 +18,7 @@ public enum ErrorCode {
     INSUFFICIENT_FUEL,
     SHIP_NOT_OWNED_BY_PLAYER,
     SHIP_NOT_FOUND,
-    TRAVEL_NOT_FOUND
+    TRAVEL_NOT_FOUND,
     INVALID_AMOUNT,
 
     // Session
