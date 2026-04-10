@@ -1,0 +1,31 @@
+trigger:
+  - master
+
+pr:
+  - master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+  # Backend (Gradle)
+  - task: Gradle@2
+    displayName: "Build Backend"
+    inputs:
+      workingDirectory: 'backend'
+      gradleWrapperFile: 'backend/gradlew'
+      tasks: 'build'
+      publishJUnitResults: true
+      testResultsFiles: '**/TEST-*.xml'
+
+  # Frontend (React + Vite)
+  - task: NodeTool@0
+    displayName: "Install Node"
+    inputs:
+      versionSpec: '24.x'
+
+  - script: |
+      cd frontend
+      npm install
+      npm run build
+    displayName: "Build Frontend"

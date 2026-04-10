@@ -1,0 +1,362 @@
+/* Session Lobby Styles - Ports of Call Theme */
+
+* {
+    box-sizing: border-box;
+}
+
+.session-lobby-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(180deg, #0a0e27 0%, #1a1f3a 50%, #0f1428 100%);
+    background-attachment: fixed;
+    padding: 20px;
+    font-family: 'Courier New', monospace;
+    color: #c0b0a0;
+}
+
+/* Main Card */
+.lobby-card {
+    background: rgba(20, 25, 45, 0.95);
+    border: 2px solid #8b7355;
+    border-radius: 2px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    padding: 40px;
+    max-width: 520px;
+    width: 100%;
+    position: relative;
+}
+
+.lobby-card::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    border: 1px solid rgba(139, 115, 85, 0.3);
+    pointer-events: none;
+}
+
+/* Title */
+.lobby-card h1 {
+    text-align: center;
+    color: #d4af37;
+    margin: 0 0 30px 0;
+    font-size: 36px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    letter-spacing: 2px;
+    font-family: Georgia, serif;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #8b7355;
+    background: rgba(10, 10, 20, 0.5);
+}
+
+.tab {
+    flex: 1;
+    padding: 14px 16px;
+    border: none;
+    background: rgba(15, 20, 35, 0.8);
+    color: #a89968;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-right: 1px solid #8b7355;
+    transition: all 0.3s ease;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.tab:last-child {
+    border-right: none;
+}
+
+.tab:hover {
+    background: rgba(30, 40, 60, 0.9);
+    color: #d4af37;
+}
+
+.tab.active {
+    background: rgba(139, 115, 85, 0.3);
+    color: #d4af37;
+    border-bottom: 2px solid #d4af37;
+}
+
+/* Form */
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #a89968;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.form-group input,
+.form-group select {
+    padding: 10px 12px;
+    border: 1px solid #8b7355;
+    background: rgba(10, 10, 20, 0.8);
+    color: #c0b0a0;
+    font-size: 13px;
+    font-family: 'Courier New', monospace;
+    transition: all 0.3s ease;
+}
+
+.form-group input::placeholder {
+    color: #6b6b5b;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #d4af37;
+    background: rgba(20, 20, 35, 0.9);
+    box-shadow: 0 0 8px rgba(212, 175, 55, 0.3);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+/* Session Info Card */
+.session-info-card {
+    background: rgba(20, 25, 45, 0.95);
+    border: 2px solid #8b7355;
+    border-radius: 2px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    padding: 40px;
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.session-info-card h2 {
+    color: #d4af37;
+    margin: 0 0 25px 0;
+    text-align: center;
+    font-size: 28px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    letter-spacing: 1px;
+}
+
+/* Session Details */
+.session-details {
+    background: rgba(10, 10, 20, 0.6);
+    border: 1px solid #8b7355;
+    border-radius: 1px;
+    padding: 20px;
+    margin-bottom: 25px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(139, 115, 85, 0.5);
+    font-size: 13px;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-row .label {
+    font-weight: 600;
+    color: #a89968;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.detail-row .value {
+    color: #d4af37;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
+.detail-row .value.code {
+    background: rgba(0, 0, 0, 0.5);
+    padding: 6px 10px;
+    border: 1px solid #8b7355;
+    border-radius: 1px;
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+
+.detail-row .value.status {
+    background: rgba(212, 175, 55, 0.2);
+    color: #d4af37;
+    padding: 6px 10px;
+    border: 1px solid #d4af37;
+    border-radius: 1px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Players List */
+.players-list {
+    margin-bottom: 25px;
+}
+
+.players-list h3 {
+    color: #a89968;
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.players-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border: 1px solid #8b7355;
+    background: rgba(10, 10, 20, 0.6);
+    border-radius: 1px;
+    overflow: hidden;
+}
+
+.players-list li {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(139, 115, 85, 0.5);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(10, 10, 20, 0.6);
+    transition: all 0.2s ease;
+    font-size: 13px;
+}
+
+.players-list li:last-child {
+    border-bottom: none;
+}
+
+.players-list li:hover {
+    background: rgba(139, 115, 85, 0.15);
+}
+
+.players-list li.host {
+    background: rgba(212, 175, 55, 0.1);
+}
+
+.player-name {
+    color: #c0b0a0;
+    font-weight: 500;
+}
+
+.host-badge {
+    background: rgba(212, 175, 55, 0.3);
+    color: #d4af37;
+    padding: 3px 8px;
+    border: 1px solid #d4af37;
+    border-radius: 1px;
+    font-size: 10px;
+    text-transform: uppercase;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+/* Buttons */
+.btn {
+    padding: 11px 20px;
+    border: 1px solid #8b7355;
+    background: rgba(139, 115, 85, 0.2);
+    color: #a89968;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.btn:hover:not(:disabled) {
+    background: rgba(212, 175, 55, 0.2);
+    color: #d4af37;
+    border-color: #d4af37;
+    box-shadow: 0 0 12px rgba(212, 175, 55, 0.2);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: rgba(212, 175, 55, 0.15);
+    color: #d4af37;
+    border-color: #8b7355;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: rgba(212, 175, 55, 0.3);
+    border-color: #d4af37;
+}
+
+.btn-secondary {
+    background: rgba(139, 115, 85, 0.1);
+    color: #a89968;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: rgba(139, 115, 85, 0.2);
+    color: #d4af37;
+}
+
+.btn-block {
+    width: 100%;
+}
+
+/* Error Message */
+.error-message {
+    background: rgba(139, 69, 19, 0.3);
+    color: #d4af37;
+    padding: 12px 14px;
+    border: 1px solid #8b7355;
+    border-radius: 1px;
+    font-size: 12px;
+    margin-top: 18px;
+    font-family: 'Courier New', monospace;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .lobby-card,
+    .session-info-card {
+        padding: 25px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .lobby-card h1 {
+        font-size: 28px;
+    }
+}
+

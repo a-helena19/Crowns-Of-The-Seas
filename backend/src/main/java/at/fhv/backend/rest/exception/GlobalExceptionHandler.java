@@ -3,6 +3,8 @@ package at.fhv.backend.rest.exception;
 import at.fhv.backend.domain.model.exception.DomainException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -17,6 +19,17 @@ public class GlobalExceptionHandler {
                 exception.getErrorCode().name()
         );
         return new ResponseEntity<>(response, status);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException exception) {
+        FieldError fieldError = exception.getBindingResult().getFieldError();
+        String message = fieldError != null ? fieldError.getDefaultMessage() : "Validation failed";
+        ErrorResponse response = new ErrorResponse(
+                message,
+                "VALIDATION_ERROR"
+        );
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(Exception.class)
@@ -37,13 +50,23 @@ public class GlobalExceptionHandler {
                  INSUFFICIENT_FUEL,
                  SHIP_NOT_AVAILABLE_FOR_PURCHASE,
                  SHIP_NOT_OWNED_BY_PLAYER -> HttpStatus.BAD_REQUEST;
+            case PLAYER_NOT_FOUND, SESSION_NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case FACTION_ALREADY_ASSIGNED, USERNAME_ALREADY_EXISTS -> HttpStatus.CONFLICT;
+            case INVALID_FACTION,
+                 PLAYER_INSUFFICIENT_FUNDS,
+                 INVALID_AMOUNT,
+                 SESSION_NOT_IN_LOBBY,
+                 SESSION_NOT_RUNNING,
+                 INVALID_TICK_RATE -> HttpStatus.BAD_REQUEST;
 
             case SHIP_INVALID_STATUS_TRANSITION,
                  TRAVEL_INVALID_STATE,
                  TRAVEL_INVALID_DATA,
                  TRAVEL_SAME_PORT -> HttpStatus.CONFLICT;
+            case SESSION_FULL,
+                 ONLY_HOST_CAN_START -> HttpStatus.FORBIDDEN;
+            case INVALID_CREDENTIALS -> HttpStatus.UNAUTHORIZED;
 
-            default -> HttpStatus.BAD_REQUEST;
         };
     }
 }
