@@ -1,6 +1,10 @@
 package at.fhv.backend.domain.model.exception;
 
 public enum ErrorCode {
+    // User
+    USERNAME_ALREADY_EXISTS,
+    INVALID_CREDENTIALS,
+
     // Player
     PLAYER_NOT_FOUND,
     FACTION_ALREADY_ASSIGNED,

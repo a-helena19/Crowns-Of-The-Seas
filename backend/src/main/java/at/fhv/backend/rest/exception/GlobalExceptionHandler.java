@@ -3,6 +3,8 @@ package at.fhv.backend.rest.exception;
 import at.fhv.backend.domain.model.exception.DomainException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -19,6 +21,17 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, status);
     }
 
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException exception) {
+        FieldError fieldError = exception.getBindingResult().getFieldError();
+        String message = fieldError != null ? fieldError.getDefaultMessage() : "Validation failed";
+        ErrorResponse response = new ErrorResponse(
+                message,
+                "VALIDATION_ERROR"
+        );
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
         ErrorResponse response = new ErrorResponse(
@@ -32,7 +45,7 @@ public class GlobalExceptionHandler {
         return switch (exception.getErrorCode()) {
 
             case PLAYER_NOT_FOUND, SESSION_NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case FACTION_ALREADY_ASSIGNED -> HttpStatus.CONFLICT;
+            case FACTION_ALREADY_ASSIGNED, USERNAME_ALREADY_EXISTS -> HttpStatus.CONFLICT;
             case INVALID_FACTION,
                  PLAYER_INSUFFICIENT_FUNDS,
                  INVALID_AMOUNT,
@@ -42,6 +55,7 @@ public class GlobalExceptionHandler {
 
             case SESSION_FULL,
                  ONLY_HOST_CAN_START -> HttpStatus.FORBIDDEN;
+            case INVALID_CREDENTIALS -> HttpStatus.UNAUTHORIZED;
 
         };
     }
