@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import type { SessionDTO } from '../types/session';
-import '../styles/gameStartedModal.css';
+import '../style/gameStartedModal.css';
 
 interface GameStartedModalProps {
     session: SessionDTO;

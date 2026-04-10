@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSessionContext } from '../context/SessionContext';
-import '../styles/gameLobby.css';
+import '../style/gameLobby.css';
 
 export default function GameLobby() {
     const { user, logout } = useAuth();

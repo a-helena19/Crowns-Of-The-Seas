@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGameSession } from '../hooks/useGameSession';
-import '../styles/sessionLobby.css';
+import '../style/sessionLobby.css';
 
 interface SessionLobbyProps {
     currentUserId: string;

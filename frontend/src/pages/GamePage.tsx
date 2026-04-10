@@ -6,7 +6,7 @@ import { useSessionStore } from '../store/sessionStore';
 import { useGameEvents } from '../hooks/useGameEvents';
 import type { SessionPlayerDTO } from '../types/session';
 import { SESSION_STATUS } from '../types/session';
-import '../styles/gamePage.css';
+import '../style/gamePage.css';
 
 // main game page that handles the flow of the game
 export const GamePage: React.FC = () => {

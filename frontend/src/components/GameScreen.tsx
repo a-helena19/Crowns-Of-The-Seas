@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import type { SessionDTO } from '../types/session';
-import '../styles/gameScreen.css';
+import '../style/gameScreen.css';
 
 interface GameScreenProps {
     session: SessionDTO;
