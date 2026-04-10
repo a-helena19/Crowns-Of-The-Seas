@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useGameSessionWebSocket } from '../hooks/useGameSessionWebSocket';
+import { sessionApi } from '../api/sessionApi';
 import '../style/auth.css';
 
 interface GameSession {
@@ -12,12 +14,25 @@ interface GameSession {
     maxPlayers: number;
 }
 
+interface SessionUpdateEvent {
+    sessionId: string;
+    gameCode: string;
+    status: 'LOBBY' | 'RUNNING' | 'FINISHED';
+    playerCount: number;
+    maxPlayers: number;
+    players: Array<{
+        userId: string;
+        playerName: string;
+        isHost: boolean;
+    }>;
+    eventType: string;
+}
+
 export default function GameScreen() {
     const { logout } = useAuth();
     const navigate = useNavigate();
     const [session, setSession] = useState<GameSession | null>(null);
     const [userRole, setUserRole] = useState<'host' | 'guest'>('guest');
-    const [gameStatus, setGameStatus] = useState<'LOBBY' | 'RUNNING' | 'FINISHED'>('LOBBY');
 
     useEffect(() => {
         // Load session from sessionStorage
@@ -26,8 +41,8 @@ export default function GameScreen() {
 
         if (sessionData) {
             const parsedSession = JSON.parse(sessionData);
+            // eslint-disable-next-line react-hooks/exhaustive-deps
             setSession(parsedSession);
-            setGameStatus(parsedSession.status);
         }
 
         if (role) {
@@ -35,15 +50,49 @@ export default function GameScreen() {
         }
     }, []);
 
-    const handleStartGame = () => {
+    // WebSocket for real-time updates
+    const { isConnected } = useGameSessionWebSocket({
+        sessionId: session?.id || null,
+        onSessionUpdate: (event: SessionUpdateEvent) => {
+            console.log('Session update received:', event);
+
+            // Update session with new data
+            if (session) {
+                const updatedSession: GameSession = {
+                    ...session,
+                    status: event.status,
+                    players: event.playerCount,
+                    maxPlayers: event.maxPlayers
+                };
+                setSession(updatedSession);
+                sessionStorage.setItem('currentSession', JSON.stringify(updatedSession));
+            }
+        }
+    });
+
+    const handleStartGame = async () => {
         if (session) {
-            const updatedSession = {
-                ...session,
-                status: 'RUNNING' as const
-            };
-            setSession(updatedSession);
-            setGameStatus('RUNNING');
-            sessionStorage.setItem('currentSession', JSON.stringify(updatedSession));
+            try {
+                console.log('Calling backend to start game with sessionId:', session.id);
+                // Call backend API to start game
+                // This will trigger the WebSocket broadcast to all connected clients
+                const response = await sessionApi.startGame(session.id, {});
+                console.log('Game started response:', response);
+
+                // Update local state with response
+                const updatedSession: GameSession = {
+                    id: response.id,
+                    gameCode: response.gameCode,
+                    status: response.status as 'LOBBY' | 'RUNNING' | 'FINISHED',
+                    hostName: session.hostName,
+                    players: response.players ? response.players.length : session.players,
+                    maxPlayers: response.maxPlayers
+                };
+                setSession(updatedSession);
+                sessionStorage.setItem('currentSession', JSON.stringify(updatedSession));
+            } catch (error) {
+                console.error('Error starting game:', error);
+            }
         }
     };
 
@@ -63,7 +112,8 @@ export default function GameScreen() {
     };
 
     const getStatusColor = () => {
-        switch (gameStatus) {
+        const status = session?.status || 'LOBBY';
+        switch (status) {
             case 'RUNNING':
                 return '#ffd700';
             case 'LOBBY':
@@ -76,7 +126,8 @@ export default function GameScreen() {
     };
 
     const getStatusText = () => {
-        switch (gameStatus) {
+        const status = session?.status || 'LOBBY';
+        switch (status) {
             case 'RUNNING':
                 return 'LÄUFT';
             case 'LOBBY':
@@ -111,6 +162,14 @@ export default function GameScreen() {
             }}>
                 Crown of the Seas
             </h1>
+
+            <div style={{
+                fontSize: '12px',
+                color: isConnected ? '#90ee90' : '#ff6b6b',
+                marginBottom: '20px'
+            }}>
+                ● WebSocket: {isConnected ? 'Connected' : 'Connecting...'}
+            </div>
 
             {session ? (
                 <div style={{
@@ -251,7 +310,7 @@ export default function GameScreen() {
                         justifyContent: 'center',
                         flexWrap: 'wrap'
                     }}>
-                        {userRole === 'host' && gameStatus === 'LOBBY' && (
+                        {userRole === 'host' && session?.status === 'LOBBY' && (
                             <button
                                 onClick={handleStartGame}
                                 style={{
