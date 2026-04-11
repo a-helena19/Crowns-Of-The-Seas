@@ -20,6 +20,7 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
     const playerId = userData ? JSON.parse(userData).id : null;
 
     async function handleStartTravel() {
+        console.log("CLICKED START TRAVEL");
         const sessionData = sessionStorage.getItem('currentSession');
         const sessionId = sessionData ? JSON.parse(sessionData).id : null;
 
@@ -39,6 +40,14 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
         setLoading(true);
         setError(null);
 
+        console.log("playerId:", playerId);
+        console.log("sessionId:", sessionId);
+        console.log("selectedShip:", selectedShip);
+        console.log("selectedCargo:", selectedCargo);
+        console.log("SHIP ID:", selectedShip?.id);
+        console.log("DEST PORT:", selectedCargo?.destinationPortId);
+        console.log("TOKEN:", localStorage.getItem("auth_token"));
+
         try {
             const response = await fetch(
                 `http://localhost:8080/api/travels/start/${playerId}?sessionId=${sessionId}`,
@@ -56,12 +65,25 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
                 }
             );
 
+            const text = await response.text();
+            console.log("RAW RESPONSE:", text);
+
+            let data;
+            try {
+                data = text ? JSON.parse(text) : null;
+            } catch {
+                data = null;
+            }
+
+            console.log("STATUS:", response.status);
+            console.log("RESPONSE:", data);
+
             if (!response.ok) {
-                const err = await response.json().catch(() => ({}));
-                setError(err.message ?? "Travel konnte nicht gestartet werden.");
+                setError(data?.message ?? "Travel konnte nicht gestartet werden.");
                 return;
             }
 
+            console.log("SUCCESS:", data);
             onClose();
         } catch (err) {
             setError("Verbindungsfehler.");

@@ -50,52 +50,65 @@ public class StartTravelServiceImpl implements StartTravelService {
 
     @Override
     public TravelDTO startTravel(UUID playerId, UUID sessionId, StartTravelDTO request) {
-        System.out.println("=== START TRAVEL ===");
-        PlayerShip playerShip = playerShipRepository
-                .findByIdAndPlayerIdAndSessionId(request.getPlayerShipId(), playerId, sessionId)
-                .orElseThrow(() -> new ShipNotFoundException("PlayerShip", request.getPlayerShipId()));
+        try {
 
-        System.out.println("Ship status: " + playerShip.getStatus());
-        System.out.println("Ship currentPortId: " + playerShip.getCurrentPortId());
-        Ship ship = shipRepository.findById(playerShip.getShipId()).orElseThrow(() -> new ShipNotFoundException("Ship", playerShip.getShipId()));
 
-        UUID destinationPortId = request.getDestinationPortId();
-        // Zielhafen validieren - skipped, port gibt es noch nicht
-        // PortNotFoundException
+            System.out.println("START TRAVEL");
+            PlayerShip playerShip = playerShipRepository
+                    .findByIdAndPlayerIdAndSessionId(request.getPlayerShipId(), playerId, sessionId)
+                    .orElseThrow(() -> new ShipNotFoundException("PlayerShip", request.getPlayerShipId()));
 
-        UUID originPortId = playerShip.getCurrentPortId();
-        System.out.println("originPortId: " + originPortId);
-        System.out.println("destinationPortId: " + destinationPortId);
+            System.out.println("Ship status: " + playerShip.getStatus());
+            System.out.println("Ship currentPortId: " + playerShip.getCurrentPortId());
+            Ship ship = shipRepository.findById(playerShip.getShipId()).orElseThrow(() -> new ShipNotFoundException("Ship", playerShip.getShipId()));
 
-        if (originPortId == null) {
-            // Fallback solange Ports noch nicht implementiert sind
-            originPortId = UUID.fromString("00000000-0000-0000-0000-000000000099");
-            System.out.println("originPortId was null, using fallback");
+            UUID destinationPortId = request.getDestinationPortId();
+            // Zielhafen validieren - skipped, port gibt es noch nicht
+            // PortNotFoundException
+
+            UUID originPortId = playerShip.getCurrentPortId();
+            System.out.println("originPortId: " + originPortId);
+            System.out.println("destinationPortId: " + destinationPortId);
+
+            if (originPortId == null) {
+                // Fallback solange Ports noch nicht implementiert sind
+                originPortId = UUID.fromString("00000000-0000-0000-0000-000000000099");
+                System.out.println("originPortId was null, using fallback");
+            }
+
+            double distance;
+
+            try {
+                distance = portInfoHelper.getDistance(originPortId, destinationPortId);
+            } catch (Exception e) {
+                System.out.println("Distance fallback used");
+                distance = 1000;
+            }
+
+            double requiredFuelPercent = calculateFuelConsumptionService.calculateFuelConsumption(ship, distance);
+            System.out.println("requiredFuel: " + requiredFuelPercent);
+
+            validateTravelService.validateTravelStart(playerShip, playerId, originPortId, destinationPortId, requiredFuelPercent);
+            System.out.println("Validation passed");
+
+            double riskFactor = calculateRiskFactor(playerShip, ship);
+            BigDecimal baseReward = calculateBaseReward(distance);
+
+            Travel travel = Travel.start(
+                    playerShip.getId(), playerId,
+                    originPortId, destinationPortId,
+                    distance, request.getSpeedSetting(),
+                    riskFactor, baseReward
+            );
+
+            playerShip.departForVoyage(destinationPortId);
+            playerShipRepository.save(playerShip);
+            Travel saved = travelRepository.save(travel);
+            return travelResponseMapper.toResponse(saved);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
         }
-
-        double distance = portInfoHelper.getDistance(originPortId, destinationPortId);
-        System.out.println("distance: " + distance);
-
-        double requiredFuelPercent = calculateFuelConsumptionService.calculateFuelConsumption(ship, distance);
-        System.out.println("requiredFuel: " + requiredFuelPercent);
-
-        validateTravelService.validateTravelStart(playerShip, playerId, originPortId, destinationPortId, requiredFuelPercent);
-        System.out.println("Validation passed");
-
-        double riskFactor = calculateRiskFactor(playerShip, ship);
-        BigDecimal baseReward = calculateBaseReward(distance);
-
-        Travel travel = Travel.start(
-                playerShip.getId(), playerId,
-                originPortId, destinationPortId,
-                distance, request.getSpeedSetting(),
-                riskFactor, baseReward
-        );
-
-        playerShip.departForVoyage(destinationPortId);
-        playerShipRepository.save(playerShip);
-        Travel saved = travelRepository.save(travel);
-        return travelResponseMapper.toResponse(saved);
     }
 
     @Override

@@ -26,8 +26,13 @@ public class TravelRestController {
             @PathVariable UUID playerId,
             @RequestParam UUID sessionId,
             @Valid @RequestBody StartTravelDTO request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(startTravelService.startTravel(playerId, sessionId, request));
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(startTravelService.startTravel(playerId, sessionId, request));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(null);
+        }
     }
 
     @GetMapping("/active/{playerId}")

@@ -24,6 +24,7 @@ public class PlayerShipDTO {
     private BigDecimal maxFuel;
     private BigDecimal operatingCost;
     private double baseReliability;
+    private String iconUrl;
 
     public PlayerShipDTO() {}
 
@@ -161,5 +162,13 @@ public class PlayerShipDTO {
 
     public void setBaseReliability(double baseReliability) {
         this.baseReliability = baseReliability;
+    }
+
+    public String getIconUrl() {
+        return iconUrl;
+    }
+
+    public void setIconUrl(String iconUrl) {
+        this.iconUrl = iconUrl;
     }
 }
