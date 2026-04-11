@@ -15,9 +15,10 @@ public class PlayerShip {
     private double fuel;
     private UUID currentPortId;
     private UUID targetPortId;
+    private String customName;
 
     private PlayerShip(UUID id, UUID shipId, UUID playerId, UUID sessionId, ShipStatus status, double condition, double fuel,
-                       UUID currentPortId, UUID targetPortId) {
+                       UUID currentPortId, UUID targetPortId, String customName) {
         this.id = id;
         this.shipId = shipId;
         this.playerId = playerId;
@@ -27,9 +28,10 @@ public class PlayerShip {
         this.fuel = fuel;
         this.currentPortId = currentPortId;
         this.targetPortId = targetPortId;
+        this.customName = customName;
     }
 
-    public static PlayerShip createFromPurchase(UUID shipId, UUID playerId, UUID sessionId, UUID startPortId) {
+    public static PlayerShip createFromPurchase(UUID shipId, UUID playerId, UUID sessionId, UUID startPortId, String customName) {
         return new PlayerShip(
                 UUID.randomUUID(),
                 shipId,
@@ -39,12 +41,13 @@ public class PlayerShip {
                 100.0,
                 100.0,
                 startPortId,
-                null
+                null,
+                customName
         );
     }
 
     public static PlayerShip reconstruct(UUID id, UUID shipId, UUID playerId, UUID sessionId, ShipStatus status, double condition, double fuel,
-                                         UUID currentPortId, UUID targetPortId) {
+                                         UUID currentPortId, UUID targetPortId, String customName) {
         return new PlayerShip(
                 id,
                 shipId,
@@ -54,7 +57,8 @@ public class PlayerShip {
                 condition,
                 fuel,
                 currentPortId,
-                targetPortId);
+                targetPortId,
+                customName);
     }
 
     public void completeRegistration() {
@@ -129,5 +133,9 @@ public class PlayerShip {
 
     public UUID getTargetPortId() {
         return targetPortId;
+    }
+
+    public String getCustomName() {
+        return customName;
     }
 }

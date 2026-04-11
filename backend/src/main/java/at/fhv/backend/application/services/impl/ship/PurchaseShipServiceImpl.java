@@ -4,7 +4,6 @@ import at.fhv.backend.application.dtos.mapper.PlayerShipResponseMapper;
 import at.fhv.backend.application.dtos.mapper.ShipResponseMapper;
 import at.fhv.backend.application.dtos.request.BuyShipDTO;
 import at.fhv.backend.application.dtos.response.PlayerShipDTO;
-import at.fhv.backend.application.services.impl.travel.PlayerHelper;
 import at.fhv.backend.application.services.impl.travel.PortInfoHelper;
 import at.fhv.backend.application.services.ship.PurchaseShipService;
 import at.fhv.backend.application.services.ship.ValidateShipService;
@@ -32,18 +31,16 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
     private final PlayerShipRepository playerShipRepository;
     private final PlayerShipResponseMapper playerShipResponseMapper;
     private final ShipResponseMapper shipResponseMapper;
-    private final PlayerHelper playerHelper;
     private final PortInfoHelper portInfoHelper;
     private final SessionPlayerRepository sessionPlayerRepository;
 
     public PurchaseShipServiceImpl(ValidateShipService validateShipService, ShipRepository shipRepository, PlayerShipRepository playerShipRepository, PlayerShipResponseMapper playerShipResponseMapper,
-                                   ShipResponseMapper shipResponseMapper, PlayerHelper playerHelper, PortInfoHelper portInfoHelper, SessionPlayerRepository sessionPlayerRepository) {
+                                   ShipResponseMapper shipResponseMapper, PortInfoHelper portInfoHelper, SessionPlayerRepository sessionPlayerRepository) {
         this.validateShipService = validateShipService;
         this.shipRepository = shipRepository;
         this.playerShipRepository = playerShipRepository;
         this.playerShipResponseMapper = playerShipResponseMapper;
         this.shipResponseMapper = shipResponseMapper;
-        this.playerHelper = playerHelper;
         this.portInfoHelper = portInfoHelper;
         this.sessionPlayerRepository = sessionPlayerRepository;
     }
@@ -57,7 +54,7 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
         player.subtractBalance(price);
         sessionPlayerRepository.save(player);
         UUID startPortId = portInfoHelper.getDefaultStartPortId();
-        PlayerShip playerShip = PlayerShip.createFromPurchase(ship.getId(), playerId, sessionId, startPortId);
+        PlayerShip playerShip = PlayerShip.createFromPurchase(ship.getId(), playerId, sessionId, startPortId, request.getCustomName());
         playerShip.completeRegistration();
         PlayerShip saved = playerShipRepository.save(playerShip);
         return toPlayerShipResponse(saved);

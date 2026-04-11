@@ -18,7 +18,7 @@ public class PlayerShipResponseMapper {
         response.setCurrentPortId(playerShip.getCurrentPortId());
         response.setTargetPortId(playerShip.getTargetPortId());
 
-        response.setName(ship.getName());
+        response.setName(playerShip.getCustomName());
         response.setDescription(ship.getDescription());
         response.setShipClass(ship.getShipClass());
         response.setMaxCargoCapacity(ship.getMaxCargoCapacity());

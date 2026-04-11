@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ShipJpaRepository extends JpaRepository<ShipEntity, UUID> {
-    @Query("SELECT s FROM ShipEntity s WHERE s.id NOT IN " +
-            "(SELECT ps.shipId FROM PlayerShipEntity ps)")
+    @Query("SELECT s FROM ShipEntity s")
     List<ShipEntity> findAllAvailableOnMarket();
 }

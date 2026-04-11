@@ -30,18 +30,16 @@ public class StartTravelServiceImpl implements StartTravelService {
     private final PlayerShipRepository playerShipRepository;
     private final ShipRepository shipRepository;
     private final PortInfoHelper portInfoHelper;
-    private final PlayerHelper playerHelper;
     private final CalculateFuelConsumptionService calculateFuelConsumptionService;
     private final ValidateTravelService validateTravelService;
     private final TravelRepository travelRepository;
     private final TravelMapper travelMapper;
     private final TravelResponseMapper travelResponseMapper;
 
-    public StartTravelServiceImpl(PlayerShipRepository playerShipRepository, ShipRepository shipRepository, PortInfoHelper portInfoHelper, PlayerHelper playerHelper,
+    public StartTravelServiceImpl(PlayerShipRepository playerShipRepository, ShipRepository shipRepository, PortInfoHelper portInfoHelper,
                                   CalculateFuelConsumptionService calculateFuelConsumptionService, ValidateTravelService validateTravelService, TravelRepository travelRepository, TravelMapper travelMapper, TravelResponseMapper travelResponseMapper) {
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
-        this.playerHelper = playerHelper;
         this.portInfoHelper = portInfoHelper;
         this.calculateFuelConsumptionService = calculateFuelConsumptionService;
         this.validateTravelService = validateTravelService;
