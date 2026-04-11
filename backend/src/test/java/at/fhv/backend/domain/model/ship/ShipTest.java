@@ -48,8 +48,6 @@ class ShipTest {
         assertThat(ship.getIconUrl()).isEqualTo("icons/black_pearl.png");
     }
 
-    // reconstruct
-
     @Test
     void givenReconstructedShip_thenIdIsPreserved() {
         UUID fixedId = UUID.randomUUID();

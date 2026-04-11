@@ -13,7 +13,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.*;
 
 class TravelTest {
-
     private UUID playerShipId;
     private UUID playerId;
     private UUID originPortId;
@@ -29,8 +28,6 @@ class TravelTest {
         travel = Travel.start(playerShipId, playerId, originPortId, destinationPortId,
                 500.0, 1.0, 0.1, new BigDecimal("1000.00"));
     }
-
-    // Konstruktor / Initialzustand
 
     @Test
     void givenValidData_whenStart_thenTravelIdIsAssigned() {
@@ -76,8 +73,6 @@ class TravelTest {
         assertThat(travel.getBaseReward()).isEqualByComparingTo(new BigDecimal("1000.00"));
     }
 
-    // start – Validierungen
-
     @Test
     void givenSameOriginAndDestination_whenStart_thenThrowsSamePortException() {
         assertThatThrownBy(() -> Travel.start(playerShipId, playerId,
@@ -98,8 +93,6 @@ class TravelTest {
                 originPortId, destinationPortId, -100.0, 1.0, 0.1, new BigDecimal("1000.00")))
                 .isInstanceOf(InvalidTravelDataException.class);
     }
-
-    // markAsArrived
 
     @Test
     void givenInProgress_whenMarkAsArrived_thenStatusIsArrived() {
@@ -133,8 +126,6 @@ class TravelTest {
                 .isInstanceOf(InvalidTravelStateException.class);
     }
 
-    // cancel
-
     @Test
     void givenInProgress_whenCancel_thenStatusIsCancelled() {
         travel.cancel();
@@ -144,18 +135,14 @@ class TravelTest {
     @Test
     void givenAlreadyCancelled_whenCancel_thenThrowsInvalidTravelStateException() {
         travel.cancel();
-        assertThatThrownBy(() -> travel.cancel())
-                .isInstanceOf(InvalidTravelStateException.class);
+        assertThatThrownBy(() -> travel.cancel()).isInstanceOf(InvalidTravelStateException.class);
     }
 
     @Test
     void givenArrived_whenCancel_thenThrowsInvalidTravelStateException() {
         travel.markAsArrived(80.0, TravelStatus.ARRIVED);
-        assertThatThrownBy(() -> travel.cancel())
-                .isInstanceOf(InvalidTravelStateException.class);
+        assertThatThrownBy(() -> travel.cancel()).isInstanceOf(InvalidTravelStateException.class);
     }
-
-    // reconstruct
 
     @Test
     void givenReconstructedTravel_thenFieldsMatch() {

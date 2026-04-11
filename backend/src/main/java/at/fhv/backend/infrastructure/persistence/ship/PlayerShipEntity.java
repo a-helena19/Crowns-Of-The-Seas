@@ -37,9 +37,6 @@ public class PlayerShipEntity {
     @Column(name = "target_port_id")
     private UUID targetPortId;
 
-    @Column(name = "custom_name")
-    private String customName;
-
     public PlayerShipEntity() {}
 
     public UUID getId() {
@@ -112,13 +109,5 @@ public class PlayerShipEntity {
 
     public void setTargetPortId(UUID targetPortId) {
         this.targetPortId = targetPortId;
-    }
-
-    public String getCustomName() {
-        return customName;
-    }
-
-    public void setCustomName(String customName) {
-        this.customName = customName;
     }
 }

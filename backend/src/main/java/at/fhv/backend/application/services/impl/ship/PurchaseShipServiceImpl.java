@@ -54,7 +54,7 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
         player.subtractBalance(price);
         sessionPlayerRepository.save(player);
         UUID startPortId = portInfoHelper.getDefaultStartPortId();
-        PlayerShip playerShip = PlayerShip.createFromPurchase(ship.getId(), playerId, sessionId, startPortId, request.getCustomName());
+        PlayerShip playerShip = PlayerShip.createFromPurchase(ship.getId(), playerId, sessionId, startPortId);
         playerShip.completeRegistration();
         PlayerShip saved = playerShipRepository.save(playerShip);
         return toPlayerShipResponse(saved);

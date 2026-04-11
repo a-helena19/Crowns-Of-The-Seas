@@ -15,10 +15,9 @@ public class PlayerShip {
     private double fuel;
     private UUID currentPortId;
     private UUID targetPortId;
-    private String customName;
 
     private PlayerShip(UUID id, UUID shipId, UUID playerId, UUID sessionId, ShipStatus status, double condition, double fuel,
-                       UUID currentPortId, UUID targetPortId, String customName) {
+                       UUID currentPortId, UUID targetPortId) {
         this.id = id;
         this.shipId = shipId;
         this.playerId = playerId;
@@ -28,10 +27,9 @@ public class PlayerShip {
         this.fuel = fuel;
         this.currentPortId = currentPortId;
         this.targetPortId = targetPortId;
-        this.customName = customName;
     }
 
-    public static PlayerShip createFromPurchase(UUID shipId, UUID playerId, UUID sessionId, UUID startPortId, String customName) {
+    public static PlayerShip createFromPurchase(UUID shipId, UUID playerId, UUID sessionId, UUID startPortId) {
         return new PlayerShip(
                 UUID.randomUUID(),
                 shipId,
@@ -41,13 +39,12 @@ public class PlayerShip {
                 100.0,
                 100.0,
                 startPortId,
-                null,
-                customName
+                null
         );
     }
 
     public static PlayerShip reconstruct(UUID id, UUID shipId, UUID playerId, UUID sessionId, ShipStatus status, double condition, double fuel,
-                                         UUID currentPortId, UUID targetPortId, String customName) {
+                                         UUID currentPortId, UUID targetPortId) {
         return new PlayerShip(
                 id,
                 shipId,
@@ -57,8 +54,8 @@ public class PlayerShip {
                 condition,
                 fuel,
                 currentPortId,
-                targetPortId,
-                customName);
+                targetPortId
+                );
     }
 
     public void completeRegistration() {
@@ -133,9 +130,5 @@ public class PlayerShip {
 
     public UUID getTargetPortId() {
         return targetPortId;
-    }
-
-    public String getCustomName() {
-        return customName;
     }
 }

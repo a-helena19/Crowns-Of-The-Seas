@@ -9,7 +9,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.*;
 
 class PlayerShipTest {
-
     private UUID shipId;
     private UUID playerId;
     private UUID sessionId;
@@ -22,10 +21,8 @@ class PlayerShipTest {
         playerId    = UUID.randomUUID();
         sessionId   = UUID.randomUUID();
         startPortId = UUID.randomUUID();
-        playerShip  = PlayerShip.createFromPurchase(shipId, playerId, sessionId, startPortId, "Die Schwarze Perle");
+        playerShip  = PlayerShip.createFromPurchase(shipId, playerId, sessionId, startPortId);
     }
-
-    // Konstruktor / Initialzustand
 
     @Test
     void givenNewPurchase_thenIdIsAssigned() {
@@ -34,7 +31,7 @@ class PlayerShipTest {
 
     @Test
     void givenTwoPurchases_thenIdsAreUnique() {
-        PlayerShip other = PlayerShip.createFromPurchase(shipId, playerId, sessionId, startPortId, "Andere");
+        PlayerShip other = PlayerShip.createFromPurchase(shipId, playerId, sessionId, startPortId);
         assertThat(playerShip.getId()).isNotEqualTo(other.getId());
     }
 
@@ -60,10 +57,7 @@ class PlayerShipTest {
         assertThat(playerShip.getSessionId()).isEqualTo(sessionId);
         assertThat(playerShip.getCurrentPortId()).isEqualTo(startPortId);
         assertThat(playerShip.getTargetPortId()).isNull();
-        assertThat(playerShip.getCustomName()).isEqualTo("Die Schwarze Perle");
     }
-
-    // completeRegistration
 
     @Test
     void givenInRegistration_whenCompleteRegistration_thenStatusIsAtPort() {
@@ -74,19 +68,16 @@ class PlayerShipTest {
     @Test
     void givenAtPort_whenCompleteRegistration_thenThrowsInvalidShipStatusTransition() {
         playerShip.completeRegistration();
-        assertThatThrownBy(() -> playerShip.completeRegistration())
-                .isInstanceOf(InvalidShipStatusTransition.class);
+        assertThatThrownBy(() -> playerShip.completeRegistration()).isInstanceOf(InvalidShipStatusTransition.class);
     }
 
     @Test
     void givenEnRoute_whenCompleteRegistration_thenThrowsInvalidShipStatusTransition() {
         playerShip.completeRegistration();
         playerShip.departForVoyage(UUID.randomUUID());
-        assertThatThrownBy(() -> playerShip.completeRegistration())
-                .isInstanceOf(InvalidShipStatusTransition.class);
+        assertThatThrownBy(() -> playerShip.completeRegistration()).isInstanceOf(InvalidShipStatusTransition.class);
     }
 
-    // departForVoyage
 
     @Test
     void givenAtPort_whenDepartForVoyage_thenStatusIsEnRoute() {
@@ -112,11 +103,8 @@ class PlayerShipTest {
 
     @Test
     void givenInRegistration_whenDepartForVoyage_thenThrowsInvalidShipStatusTransition() {
-        assertThatThrownBy(() -> playerShip.departForVoyage(UUID.randomUUID()))
-                .isInstanceOf(InvalidShipStatusTransition.class);
+        assertThatThrownBy(() -> playerShip.departForVoyage(UUID.randomUUID())).isInstanceOf(InvalidShipStatusTransition.class);
     }
-
-    // arriveAtPort
 
     @Test
     void givenEnRoute_whenArriveAtPort_thenStatusIsAtPort() {
@@ -146,11 +134,8 @@ class PlayerShipTest {
     @Test
     void givenAtPort_whenArriveAtPort_thenThrowsInvalidShipStatusTransition() {
         playerShip.completeRegistration();
-        assertThatThrownBy(() -> playerShip.arriveAtPort(UUID.randomUUID()))
-                .isInstanceOf(InvalidShipStatusTransition.class);
+        assertThatThrownBy(() -> playerShip.arriveAtPort(UUID.randomUUID())).isInstanceOf(InvalidShipStatusTransition.class);
     }
-
-    // consumeFuel
 
     @Test
     void givenFullFuel_whenConsumeFuel_thenFuelIsReduced() {
@@ -171,8 +156,6 @@ class PlayerShipTest {
         assertThat(playerShip.getFuel()).isEqualTo(0.0);
     }
 
-    // applyWear
-
     @Test
     void givenFullCondition_whenApplyWear_thenConditionIsReduced() {
         playerShip.applyWear(10.0);
@@ -192,8 +175,6 @@ class PlayerShipTest {
         assertThat(playerShip.getCondition()).isEqualTo(0.0);
     }
 
-    // isOwnedBy
-
     @Test
     void givenCorrectPlayerId_whenIsOwnedBy_thenTrue() {
         assertThat(playerShip.isOwnedBy(playerId)).isTrue();
@@ -204,17 +185,13 @@ class PlayerShipTest {
         assertThat(playerShip.isOwnedBy(UUID.randomUUID())).isFalse();
     }
 
-    // reconstruct
-
     @Test
     void givenReconstructedPlayerShip_thenFieldsMatch() {
         UUID id         = UUID.randomUUID();
         UUID portId     = UUID.randomUUID();
         UUID targetPort = UUID.randomUUID();
 
-        PlayerShip reconstructed = PlayerShip.reconstruct(id, shipId, playerId, sessionId,
-                ShipStatus.EN_ROUTE, 75.0, 60.0, portId, targetPort, "Meine Fregatte");
-
+        PlayerShip reconstructed = PlayerShip.reconstruct(id, shipId, playerId, sessionId, ShipStatus.EN_ROUTE, 75.0, 60.0, portId, targetPort);
         assertThat(reconstructed.getId()).isEqualTo(id);
         assertThat(reconstructed.getShipId()).isEqualTo(shipId);
         assertThat(reconstructed.getPlayerId()).isEqualTo(playerId);
@@ -224,6 +201,5 @@ class PlayerShipTest {
         assertThat(reconstructed.getFuel()).isEqualTo(60.0);
         assertThat(reconstructed.getCurrentPortId()).isEqualTo(portId);
         assertThat(reconstructed.getTargetPortId()).isEqualTo(targetPort);
-        assertThat(reconstructed.getCustomName()).isEqualTo("Meine Fregatte");
     }
 }
