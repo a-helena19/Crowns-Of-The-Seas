@@ -63,7 +63,8 @@ public class GlobalExceptionHandler {
                  TRAVEL_INVALID_DATA,
                  TRAVEL_SAME_PORT -> HttpStatus.CONFLICT;
             case SESSION_FULL,
-                 ONLY_HOST_CAN_START -> HttpStatus.FORBIDDEN;
+                 ONLY_HOST_CAN_START,
+                 PLAYER_ALREADY_IN_SESSION -> HttpStatus.CONFLICT;
             case INVALID_CREDENTIALS -> HttpStatus.UNAUTHORIZED;
 
         };

@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import GameLobby from './pages/GameLobby';
+import SessionWaitingScreen from './pages/SessionWaitingScreen';
 import JoinSessionPage from './pages/JoinSessionPage';
 import GameScreen from './scenes/GameScreen';
 import './App.css';
@@ -20,6 +21,9 @@ function App() {
                         <Route path="/join/:code" element={<JoinSessionPage />} />
                         <Route path="/lobby" element={
                             <ProtectedRoute><GameLobby /></ProtectedRoute>
+                        } />
+                        <Route path="/session-waiting" element={
+                            <ProtectedRoute><SessionWaitingScreen /></ProtectedRoute>
                         } />
                         <Route path="/game" element={
                             <ProtectedRoute><GameScreen /></ProtectedRoute>

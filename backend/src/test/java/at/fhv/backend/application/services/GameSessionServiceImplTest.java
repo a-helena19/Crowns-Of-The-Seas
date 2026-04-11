@@ -11,6 +11,7 @@ import at.fhv.backend.domain.model.session.exception.SessionFullException;
 import at.fhv.backend.domain.model.session.exception.SessionNotInLobbyException;
 import at.fhv.backend.domain.model.session.exception.OnlyHostCanStartException;
 import at.fhv.backend.domain.model.session.exception.InvalidTickRateException;
+import at.fhv.backend.rest.GameSessionWebSocketController;
 import at.fhv.backend.rest.dtos.session.response.SessionDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,11 +33,14 @@ class GameSessionServiceImplTest {
     @Mock
     private GameSessionRepository gameSessionRepository;
 
+    @Mock
+    private GameSessionWebSocketController webSocketController;
+
     private GameSessionServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new GameSessionServiceImpl(gameSessionRepository, new SessionDTOMapperImpl());
+        service = new GameSessionServiceImpl(gameSessionRepository, new SessionDTOMapperImpl(), webSocketController);
     }
 
     // Hilfsmethode: fertige LOBBY-Session ohne Spieler zurückliefern
@@ -115,6 +119,7 @@ class GameSessionServiceImplTest {
         SessionDTO dto = service.joinSession(session.getGameCode(), newUserId, "Alice");
 
         assertThat(dto.players()).hasSize(2);
+        verify(webSocketController, times(1)).broadcastSessionUpdate(anyString(), any());
     }
 
     @Test
@@ -168,6 +173,7 @@ class GameSessionServiceImplTest {
         SessionDTO dto = service.startGame(session.getId(), hostId);
 
         assertThat(dto.status()).isEqualTo("RUNNING");
+        verify(webSocketController, times(1)).broadcastSessionUpdate(anyString(), any());
     }
 
     @Test
@@ -260,5 +266,94 @@ class GameSessionServiceImplTest {
 
         assertThatThrownBy(() -> service.changeTickRate(session.getId(), hostId, 10))
                 .isInstanceOf(SessionNotInLobbyException.class);
+    }
+
+    // Zusätzliche Tests für erweiterte Szenarien
+
+    @Test
+    void givenValidGameCode_whenJoinSession_thenBroadcastHasSessionUpdateEvent() {
+        UUID hostId = UUID.randomUUID();
+        GameSession session = buildSavedSession(hostId, 4);
+        when(gameSessionRepository.findByGameCode(session.getGameCode()))
+                .thenReturn(Optional.of(session));
+        when(gameSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UUID newUserId = UUID.randomUUID();
+        service.joinSession(session.getGameCode(), newUserId, "Bob");
+
+        verify(webSocketController, times(1))
+                .broadcastSessionUpdate(eq(session.getId().toString()), any());
+    }
+
+    @Test
+    void givenMultiplePlayers_whenJoinSession_thenAllPlayersCanBeRetrieved() {
+        UUID hostId = UUID.randomUUID();
+        GameSession session = buildSavedSession(hostId, 4);
+        when(gameSessionRepository.findByGameCode(session.getGameCode()))
+                .thenReturn(Optional.of(session));
+        when(gameSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.joinSession(session.getGameCode(), UUID.randomUUID(), "Player1");
+        SessionDTO dto = service.joinSession(session.getGameCode(), UUID.randomUUID(), "Player2");
+
+        assertThat(dto.players()).hasSize(3);
+        assertThat(dto.players().stream().map(p -> p.playerName()).toList())
+                .contains("Host", "Player1", "Player2");
+    }
+
+    @Test
+    void givenValidInput_whenCreateSession_thenGameCodeIsGenerated() {
+        UUID hostId = UUID.randomUUID();
+        when(gameSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        SessionDTO dto = service.createSession(hostId, "Host", 4, 5, Duration.ofMinutes(30));
+
+        assertThat(dto.gameCode()).isNotNull();
+        assertThat(dto.gameCode()).hasSize(6);
+    }
+
+    @Test
+    void givenValidInput_whenCreateSession_thenSessionIdIsGenerated() {
+        UUID hostId = UUID.randomUUID();
+        when(gameSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        SessionDTO dto = service.createSession(hostId, "Host", 4, 5, Duration.ofMinutes(30));
+
+        assertThat(dto.id()).isNotNull();
+    }
+
+    @Test
+    void givenTickRateAt60_whenChangeTickRate_thenTickRateIsUpdated() {
+        UUID hostId = UUID.randomUUID();
+        GameSession session = buildSavedSession(hostId, 4);
+        when(gameSessionRepository.findById(session.getId()))
+                .thenReturn(Optional.of(session));
+        when(gameSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        SessionDTO dto = service.changeTickRate(session.getId(), hostId, 60);
+
+        assertThat(dto.tickRateSeconds()).isEqualTo(60);
+    }
+
+    @Test
+    void givenTickRateTooHigh_whenChangeTickRate_thenThrowsInvalidTickRateException() {
+        UUID hostId = UUID.randomUUID();
+        GameSession session = buildSavedSession(hostId, 4);
+        when(gameSessionRepository.findById(session.getId()))
+                .thenReturn(Optional.of(session));
+
+        assertThatThrownBy(() -> service.changeTickRate(session.getId(), hostId, 61))
+                .isInstanceOf(InvalidTickRateException.class);
+    }
+
+    @Test
+    void givenTickRateNegative_whenChangeTickRate_thenThrowsInvalidTickRateException() {
+        UUID hostId = UUID.randomUUID();
+        GameSession session = buildSavedSession(hostId, 4);
+        when(gameSessionRepository.findById(session.getId()))
+                .thenReturn(Optional.of(session));
+
+        assertThatThrownBy(() -> service.changeTickRate(session.getId(), hostId, -5))
+                .isInstanceOf(InvalidTickRateException.class);
     }
 }

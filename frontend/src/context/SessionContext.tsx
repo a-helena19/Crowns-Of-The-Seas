@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode, useCallback } from 'react';
+import { createContext, useState, type ReactNode, useCallback } from 'react';
 import { sessionApi } from '../api/sessionApi';
 
 export interface Session {
@@ -19,7 +19,11 @@ interface SessionContextType {
     updateSessionPlayers: (gameCode: string, playerCount: number) => void;
 }
 
+export type { SessionContextType };
+
 const SessionContext = createContext<SessionContextType | null>(null);
+
+export { SessionContext };
 
 export function SessionProvider({ children }: { children: ReactNode }) {
     const [sessions, setSessions] = useState<Session[]>([]);
@@ -44,7 +48,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
             setSessions(prev => [...prev, newSession]);
             return newSession;
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Error creating session:', error);
             return null;
         }
@@ -61,7 +65,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             console.log('API response:', response);
 
             // Find the host player (isHost: true)
-            const hostPlayer = response.players.find((p: any) => p.isHost);
+            interface Player {
+                playerName: string;
+                isHost?: boolean;
+            }
+            const hostPlayer = response.players.find((p: Player) => p.isHost);
             const hostName = hostPlayer?.playerName || 'Host';
 
             const updatedSession: Session = {
@@ -84,9 +92,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             });
 
             return updatedSession;
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Error joining session:', error);
-            return null;
+            // Re-throw the error so JoinSessionPage can handle it
+            throw error;
         }
     }, []);
 
@@ -101,7 +110,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                         : s
                 )
             );
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Error starting session:', error);
         }
     }, []);
@@ -134,11 +143,4 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     );
 }
 
-export function useSessionContext(): SessionContextType {
-    const context = useContext(SessionContext);
-    if (!context) {
-        throw new Error('useSessionContext must be used within SessionProvider');
-    }
-    return context;
-}
 

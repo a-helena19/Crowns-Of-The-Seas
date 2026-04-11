@@ -73,6 +73,9 @@ public class GameSession {
             throw new SessionNotInLobbyException(id);
         if (players.size() >= maxPlayers)
             throw new SessionFullException(id);
+        // Check if player already in session
+        if (players.stream().anyMatch(p -> p.getUserId().equals(player.getUserId())))
+            throw new PlayerAlreadyInSessionException(id, player.getUserId());
         players.add(player);
     }
 

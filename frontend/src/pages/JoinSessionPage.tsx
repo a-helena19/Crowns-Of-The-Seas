@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useSessionContext } from '../context/SessionContext';
+import { useSessionContext } from '../context/useSessionContext';
 
 export default function JoinSessionPage() {
     const { code } = useParams<{ code: string }>();
@@ -9,11 +9,13 @@ export default function JoinSessionPage() {
     const { joinSession } = useSessionContext();
     const navigate = useNavigate();
     const hasAttemptedJoin = useRef(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         // If not authenticated, redirect to login with return URL
         if (!user) {
-            console.log('Not authenticated, redirecting to login');
+            console.log('Not authenticated, redirecting to loginRedirect');
             navigate(`/login?redirect=/join/${code}`);
             return;
         }
@@ -28,9 +30,13 @@ export default function JoinSessionPage() {
 
         // If authenticated, automatically join the session
         const joinSessionAsync = async () => {
+            setLoading(true);
+            setError(null);
+
             if (!code) {
                 console.log('No code provided');
-                navigate('/lobby');
+                setError('Kein Session-Code vorhanden.');
+                setLoading(false);
                 return;
             }
 
@@ -41,26 +47,43 @@ export default function JoinSessionPage() {
                 console.log('Join result:', session);
 
                 if (session) {
-                    console.log('Successfully joined, storing data and navigating to /game');
+                    console.log('Successfully joined, storing data and navigating to /session-waiting');
                     // Store session data
                     sessionStorage.setItem('currentSession', JSON.stringify(session));
                     sessionStorage.setItem('userRole', 'guest');
                     sessionStorage.setItem('playerName', user.username);
 
-                    // Redirect to game
-                    navigate('/game');
-                } else {
-                    console.log('Session is null, redirecting to lobby');
-                    // Session not found or full, redirect to lobby
-                    navigate('/lobby');
+                    // Redirect to session waiting screen
+                    navigate('/session-waiting');
                 }
-            } catch (error) {
+            } catch (error: unknown) {
                 console.error('Error joining session:', error);
-                navigate('/lobby');
+
+                const axiosError = error as { response?: { data?: { code?: string; message?: string }; status?: number } };
+
+                // Spezifische Fehlermeldungen basierend auf API-Antwort
+                if (axiosError.response?.data?.code === 'PLAYER_ALREADY_IN_SESSION') {
+                    setError('Du bist bereits dieser Session beigetreten! Bitte wechsle den Tab nicht zweimal bei.');
+                } else if (axiosError.response?.data?.code === 'SESSION_FULL') {
+                    setError('Die Session ist voll.');
+                } else if (axiosError.response?.data?.code === 'SESSION_NOT_FOUND') {
+                    setError('Session mit diesem Code nicht gefunden.');
+                } else if (axiosError.response?.status === 404) {
+                    setError('Session mit diesem Code nicht gefunden.');
+                } else if (axiosError.response?.status === 409) {
+                    setError('Konflikt beim Beitritt - versuche es später erneut.');
+                } else if (axiosError.response?.data?.message) {
+                    setError(axiosError.response.data.message);
+                } else {
+                    setError('Fehler beim Beitritt zur Session. Bitte versuche es später erneut.');
+                }
+
+                setLoading(false);
+                setTimeout(() => navigate('/lobby'), 3000);
             }
         };
 
-        joinSessionAsync();
+        void joinSessionAsync();
     }, [code, user, navigate, joinSession]);
 
     return (
@@ -73,8 +96,21 @@ export default function JoinSessionPage() {
             color: '#fff'
         }}>
             <div style={{ textAlign: 'center' }}>
-                <h2>Trete Session bei...</h2>
-                <p>Code: {code}</p>
+                {error ? (
+                    <>
+                        <h2 style={{ color: '#ff6b6b', marginBottom: '10px' }}>Fehler</h2>
+                        <p>{error}</p>
+                        <p style={{ marginTop: '20px', fontSize: '12px', color: '#999' }}>
+                            Du wirst zurück zur Lobby weitergeleitet...
+                        </p>
+                    </>
+                ) : (
+                    <>
+                        <h2>Trete Session bei...</h2>
+                        <p>Code: {code}</p>
+                        {loading && <p style={{ marginTop: '20px', fontSize: '12px', color: '#999' }}>Verbindung wird hergestellt...</p>}
+                    </>
+                )}
             </div>
         </div>
     );

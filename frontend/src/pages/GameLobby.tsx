@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useSessionContext } from '../context/SessionContext';
+import { useSessionContext } from '../context/useSessionContext';
 import '../style/gameLobby.css';
 
 export default function GameLobby() {
     const { user, logout } = useAuth();
-    const { createSession, joinSession, getSessionByCode } = useSessionContext();
+    const { createSession, joinSession } = useSessionContext();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'create' | 'join'>('create');
     const [error, setError] = useState('');
@@ -56,10 +56,10 @@ export default function GameLobby() {
             return;
         }
 
-        // Redirect to game with session data
+        // Redirect to session waiting screen
         sessionStorage.setItem('currentSession', JSON.stringify(newSession));
         sessionStorage.setItem('userRole', 'host');
-        navigate('/game');
+        navigate('/session-waiting');
     };
 
     const handleJoinSession = async (e: React.FormEvent) => {
@@ -76,26 +76,39 @@ export default function GameLobby() {
             return;
         }
 
-        // Try to join session using context (now async)
-        const session = await joinSession(joinForm.gameCode, joinForm.playerName);
+        // Try to join session using context
+        try {
+            const session = await joinSession(joinForm.gameCode, joinForm.playerName);
 
-        if (!session) {
-            const foundSession = getSessionByCode(joinForm.gameCode);
-            if (!foundSession) {
-                setError('Session mit diesem Code nicht gefunden. Ist das Backend aktiv?');
-            } else if (foundSession.status !== 'LOBBY') {
-                setError('Diese Session läuft bereits oder ist beendet.');
-            } else if (foundSession.players >= foundSession.maxPlayers) {
-                setError('Diese Session ist voll.');
+            if (session) {
+                // Redirect to session waiting screen
+                sessionStorage.setItem('currentSession', JSON.stringify(session));
+                sessionStorage.setItem('userRole', 'guest');
+                sessionStorage.setItem('playerName', joinForm.playerName);
+                navigate('/session-waiting');
             }
-            return;
-        }
+        } catch (error: unknown) {
+            console.error('Error joining session:', error);
 
-        // Redirect to game with session data
-        sessionStorage.setItem('currentSession', JSON.stringify(session));
-        sessionStorage.setItem('userRole', 'guest');
-        sessionStorage.setItem('playerName', joinForm.playerName);
-        navigate('/game');
+            const axiosError = error as { response?: { data?: { code?: string; message?: string }; status?: number } };
+
+            // Spezifische Fehlermeldungen
+            if (axiosError.response?.data?.code === 'PLAYER_ALREADY_IN_SESSION') {
+                setError('Du bist bereits dieser Session beigetreten!');
+            } else if (axiosError.response?.data?.code === 'SESSION_FULL') {
+                setError('Diese Session ist voll.');
+            } else if (axiosError.response?.data?.code === 'SESSION_NOT_FOUND') {
+                setError('Session mit diesem Code nicht gefunden. Ist das Backend aktiv?');
+            } else if (axiosError.response?.status === 404) {
+                setError('Session mit diesem Code nicht gefunden. Ist das Backend aktiv?');
+            } else if (axiosError.response?.status === 409) {
+                setError('Konflikt beim Beitritt - versuche es später erneut.');
+            } else if (axiosError.response?.data?.message) {
+                setError(axiosError.response.data.message);
+            } else {
+                setError('Fehler beim Beitritt zur Session. Bitte versuche es später erneut.');
+            }
+        }
     };
 
     const handleLogout = () => {
