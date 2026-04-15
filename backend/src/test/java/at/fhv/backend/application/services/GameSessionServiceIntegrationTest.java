@@ -36,7 +36,7 @@ class GameSessionServiceIntegrationTest {
     void givenValidInput_whenCreateSession_thenSessionIsPersisted() {
         UUID hostId = UUID.randomUUID();
 
-        SessionDTO dto = gameSessionService.createSession(hostId, "Host", 4, 5, Duration.ofMinutes(30));
+        SessionDTO dto = gameSessionService.createSession(hostId, "Host", 4, 5, 100, Duration.ofMinutes(30));
 
         assertThat(dto.id()).isNotNull();
         assertThat(dto.status()).isEqualTo("LOBBY");
@@ -50,7 +50,7 @@ class GameSessionServiceIntegrationTest {
     void givenValidInput_whenCreateSession_thenGameCodeIsNotBlank() {
         UUID hostId = UUID.randomUUID();
 
-        SessionDTO dto = gameSessionService.createSession(hostId, "Host", 4, 5, Duration.ofMinutes(30));
+        SessionDTO dto = gameSessionService.createSession(hostId, "Host", 4, 5, 100, Duration.ofMinutes(30));
 
         assertThat(dto.gameCode()).isNotBlank();
         assertThat(dto.gameCode()).hasSize(6);
@@ -61,7 +61,7 @@ class GameSessionServiceIntegrationTest {
     @Test
     void givenExistingLobby_whenJoin_thenPlayerCountIncreases() {
         UUID hostId = UUID.randomUUID();
-        SessionDTO created = gameSessionService.createSession(hostId, "Host", 4, 5, Duration.ofMinutes(30));
+        SessionDTO created = gameSessionService.createSession(hostId, "Host", 4, 5, 100, Duration.ofMinutes(30));
 
         SessionDTO joined = gameSessionService.joinSession(created.gameCode(), UUID.randomUUID(), "Alice");
 
@@ -71,7 +71,7 @@ class GameSessionServiceIntegrationTest {
     @Test
     void givenMultipleJoins_whenFull_thenThrowsSessionFullException() {
         UUID hostId = UUID.randomUUID();
-        SessionDTO created = gameSessionService.createSession(hostId, "Host", 2, 5, Duration.ofMinutes(30));
+        SessionDTO created = gameSessionService.createSession(hostId, "Host", 2, 5, 100, Duration.ofMinutes(30));
 
         gameSessionService.joinSession(created.gameCode(), UUID.randomUUID(), "Alice");
 
@@ -92,7 +92,7 @@ class GameSessionServiceIntegrationTest {
     @Test
     void givenLobbyWithHost_whenHostStartsGame_thenStatusChangesToRunning() {
         UUID hostId = UUID.randomUUID();
-        SessionDTO created = gameSessionService.createSession(hostId, "Host", 4, 5, Duration.ofMinutes(30));
+        SessionDTO created = gameSessionService.createSession(hostId, "Host", 4, 5, 100, Duration.ofMinutes(30));
 
         SessionDTO started = gameSessionService.startGame(created.id(), hostId);
 
@@ -102,7 +102,7 @@ class GameSessionServiceIntegrationTest {
     @Test
     void givenLobbyWithHost_whenNonHostStartsGame_thenThrowsOnlyHostCanStartException() {
         UUID hostId = UUID.randomUUID();
-        SessionDTO created = gameSessionService.createSession(hostId, "Host", 4, 5, Duration.ofMinutes(30));
+        SessionDTO created = gameSessionService.createSession(hostId, "Host", 4, 5, 100, Duration.ofMinutes(30));
 
         assertThatThrownBy(() ->
                 gameSessionService.startGame(created.id(), UUID.randomUUID()))
@@ -112,7 +112,7 @@ class GameSessionServiceIntegrationTest {
     @Test
     void givenAlreadyRunningSession_whenStartGame_thenThrowsSessionNotInLobbyException() {
         UUID hostId = UUID.randomUUID();
-        SessionDTO created = gameSessionService.createSession(hostId, "Host", 4, 5, Duration.ofMinutes(30));
+        SessionDTO created = gameSessionService.createSession(hostId, "Host", 4, 5, 100, Duration.ofMinutes(30));
         gameSessionService.startGame(created.id(), hostId);
 
         assertThatThrownBy(() ->
@@ -125,7 +125,7 @@ class GameSessionServiceIntegrationTest {
     @Test
     void givenLobbySession_whenHostChangesTickRate_thenTickRateIsPersisted() {
         UUID hostId = UUID.randomUUID();
-        SessionDTO created = gameSessionService.createSession(hostId, "Host", 4, 5, Duration.ofMinutes(30));
+        SessionDTO created = gameSessionService.createSession(hostId, "Host", 4, 5, 100, Duration.ofMinutes(30));
 
         SessionDTO updated = gameSessionService.changeTickRate(created.id(), hostId, 30);
 
@@ -135,7 +135,7 @@ class GameSessionServiceIntegrationTest {
     @Test
     void givenLobbySession_whenNonHostChangesTickRate_thenThrowsOnlyHostCanStartException() {
         UUID hostId = UUID.randomUUID();
-        SessionDTO created = gameSessionService.createSession(hostId, "Host", 4, 5, Duration.ofMinutes(30));
+        SessionDTO created = gameSessionService.createSession(hostId, "Host", 4, 5, 100, Duration.ofMinutes(30));
 
         assertThatThrownBy(() ->
                 gameSessionService.changeTickRate(created.id(), UUID.randomUUID(), 10))
@@ -145,7 +145,7 @@ class GameSessionServiceIntegrationTest {
     @Test
     void givenLobbySession_whenInvalidTickRate_thenThrowsInvalidTickRateException() {
         UUID hostId = UUID.randomUUID();
-        SessionDTO created = gameSessionService.createSession(hostId, "Host", 4, 5, Duration.ofMinutes(30));
+        SessionDTO created = gameSessionService.createSession(hostId, "Host", 4, 5, 100, Duration.ofMinutes(30));
 
         assertThatThrownBy(() ->
                 gameSessionService.changeTickRate(created.id(), hostId, 99))
@@ -160,7 +160,7 @@ class GameSessionServiceIntegrationTest {
         UUID player2Id = UUID.randomUUID();
 
         // 1. Host erstellt Session
-        SessionDTO created = gameSessionService.createSession(hostId, "Captain", 4, 5, Duration.ofMinutes(60));
+        SessionDTO created = gameSessionService.createSession(hostId, "Captain", 4, 5, 100, Duration.ofMinutes(60));
         assertThat(created.status()).isEqualTo("LOBBY");
 
         // 2. Spieler tritt bei

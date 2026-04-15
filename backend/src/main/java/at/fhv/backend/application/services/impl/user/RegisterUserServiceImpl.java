@@ -1,8 +1,8 @@
 package at.fhv.backend.application.services.impl.user;
 
 import at.fhv.backend.application.dtos.mapper.UserDTOMapper;
-import at.fhv.backend.application.dtos.request.RegisterUserDTO;
-import at.fhv.backend.application.dtos.response.UserResponseDTO;
+import at.fhv.backend.rest.dtos.ship.request.RegisterUserDTO;
+import at.fhv.backend.rest.dtos.ship.response.UserResponseDTO;
 import at.fhv.backend.application.services.user.RegisterUserService;
 import at.fhv.backend.config.JwtService;
 import at.fhv.backend.domain.model.user.exception.UsernameTakenException;

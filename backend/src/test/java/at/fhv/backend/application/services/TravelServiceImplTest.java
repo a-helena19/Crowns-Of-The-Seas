@@ -2,8 +2,9 @@ package at.fhv.backend.application.services;
 
 
 import at.fhv.backend.application.dtos.mapper.TravelResponseMapper;
-import at.fhv.backend.application.dtos.request.StartTravelDTO;
-import at.fhv.backend.application.dtos.response.TravelDTO;
+import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
+import at.fhv.backend.rest.dtos.ship.response.TravelDTO;
+import at.fhv.backend.application.services.impl.session.GameTickScheduler;
 import at.fhv.backend.application.services.impl.travel.PortInfoHelper;
 import at.fhv.backend.application.services.impl.travel.StartTravelServiceImpl;
 import at.fhv.backend.application.services.impl.travel.ValidateTravelServiceImpl;
@@ -14,6 +15,7 @@ import at.fhv.backend.domain.model.exception.SamePortException;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
 import at.fhv.backend.domain.model.exception.ShipNotOwnedException;
 import at.fhv.backend.domain.model.exception.TravelNotFoundException;
+import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.ship.Ship;
@@ -31,7 +33,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -127,6 +128,10 @@ class TravelServiceImplTest {
         private TravelMapper travelMapper;
         @Mock
         private TravelResponseMapper travelResponseMapper;
+        @Mock
+        private GameSessionRepository gameSessionRepository;
+        @Mock
+        private GameTickScheduler gameTickScheduler;
 
         private StartTravelServiceImpl service;
 
@@ -136,7 +141,8 @@ class TravelServiceImplTest {
             service = new StartTravelServiceImpl(
                     playerShipRepository, shipRepository, portInfoHelper,
                     calculateFuelConsumptionService, validateTravelService,
-                    travelRepository, travelMapper, travelResponseMapper
+                    travelRepository, travelMapper, travelResponseMapper,
+                    gameSessionRepository, gameTickScheduler
             );
         }
 
@@ -160,10 +166,10 @@ class TravelServiceImplTest {
             return dto;
         }
 
-        private Travel buildTravel(UUID playerShipId, UUID playerId) {
+        private Travel buildTravel(UUID playerShipId, UUID playerId, UUID sessionId) {
             UUID origin = UUID.randomUUID();
             UUID destination = UUID.randomUUID();
-            return Travel.start(playerShipId, playerId, origin, destination, 5.0, 1.0, 0.1, BigDecimal.valueOf(500));
+            return Travel.start(playerShipId, playerId, sessionId, origin, destination, 5.0, 1.0, 0.1, BigDecimal.valueOf(500), 0);
         }
 
         @Test
@@ -173,8 +179,9 @@ class TravelServiceImplTest {
             Ship ship = buildShip();
             PlayerShip playerShip = buildAtPortShip(playerId, sessionId, ship.getId());
             UUID destinationPortId = UUID.randomUUID();
-            Travel travel = buildTravel(playerShip.getId(), playerId);
+            Travel travel = buildTravel(playerShip.getId(), playerId, sessionId);
 
+            when(gameSessionRepository.findById(sessionId)).thenReturn(java.util.Optional.of(new at.fhv.backend.domain.model.session.GameSession(playerId, 4, 5, 100, java.time.Duration.ofMinutes(30))));
             when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId)).thenReturn(Optional.of(playerShip));
             when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
             when(portInfoHelper.getDistance(any(), eq(destinationPortId))).thenReturn(5.0);
@@ -195,8 +202,9 @@ class TravelServiceImplTest {
             Ship ship = buildShip();
             PlayerShip playerShip = buildAtPortShip(playerId, sessionId, ship.getId());
             UUID destinationPortId = UUID.randomUUID();
-            Travel travel = buildTravel(playerShip.getId(), playerId);
+            Travel travel = buildTravel(playerShip.getId(), playerId, sessionId);
 
+            when(gameSessionRepository.findById(sessionId)).thenReturn(java.util.Optional.of(new at.fhv.backend.domain.model.session.GameSession(playerId, 4, 5, 100, java.time.Duration.ofMinutes(30))));
             when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId)).thenReturn(Optional.of(playerShip));
             when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
             when(portInfoHelper.getDistance(any(), eq(destinationPortId))).thenReturn(5.0);
@@ -228,9 +236,10 @@ class TravelServiceImplTest {
             Ship ship = buildShip();
             PlayerShip playerShip = buildAtPortShip(playerId, sessionId, ship.getId());
             UUID destinationPortId = UUID.randomUUID();
-            Travel travel = buildTravel(playerShip.getId(), playerId);
+            Travel travel = buildTravel(playerShip.getId(), playerId, sessionId);
             TravelDTO expectedDto = new TravelDTO();
 
+            when(gameSessionRepository.findById(sessionId)).thenReturn(java.util.Optional.of(new at.fhv.backend.domain.model.session.GameSession(playerId, 4, 5, 100, java.time.Duration.ofMinutes(30))));
             when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId)).thenReturn(Optional.of(playerShip));
             when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
             when(portInfoHelper.getDistance(any(), eq(destinationPortId))).thenReturn(5.0);
@@ -247,8 +256,9 @@ class TravelServiceImplTest {
         @Test
         void givenExistingTravel_whenGetTravelStatus_thenReturnsMappedDTO() {
             UUID playerId = UUID.randomUUID();
+            UUID sessionId = UUID.randomUUID();
             UUID playerShipId = UUID.randomUUID();
-            Travel travel = buildTravel(playerShipId, playerId);
+            Travel travel = buildTravel(playerShipId, playerId, sessionId);
             TravelDTO expectedDto = new TravelDTO();
 
             when(travelRepository.findById(travel.getTravelId())).thenReturn(Optional.of(travel));
@@ -270,9 +280,10 @@ class TravelServiceImplTest {
         @Test
         void givenTravelOwnedByOtherPlayer_whenGetTravelStatus_thenThrowsShipNotFoundException() {
             UUID playerId = UUID.randomUUID();
+            UUID sessionId = UUID.randomUUID();
             UUID otherPlayerId = UUID.randomUUID();
             UUID playerShipId = UUID.randomUUID();
-            Travel travel = buildTravel(playerShipId, otherPlayerId);
+            Travel travel = buildTravel(playerShipId, otherPlayerId, sessionId);
 
             when(travelRepository.findById(travel.getTravelId())).thenReturn(Optional.of(travel));
 
@@ -282,8 +293,9 @@ class TravelServiceImplTest {
         @Test
         void givenPlayerWithActiveTravels_whenGetActiveTravels_thenReturnsAllInProgress() {
             UUID playerId = UUID.randomUUID();
+            UUID sessionId = UUID.randomUUID();
             UUID shipId = UUID.randomUUID();
-            Travel travel = buildTravel(shipId, playerId);
+            Travel travel = buildTravel(shipId, playerId, sessionId);
             TravelDTO dto = new TravelDTO();
 
             when(travelRepository.findAllByPlayerIdAndStatus(playerId, TravelStatus.IN_PROGRESS)).thenReturn(List.of(travel));

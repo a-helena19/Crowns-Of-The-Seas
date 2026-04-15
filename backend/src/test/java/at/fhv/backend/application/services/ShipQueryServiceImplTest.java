@@ -3,8 +3,8 @@ package at.fhv.backend.application.services;
 
 import at.fhv.backend.application.dtos.mapper.PlayerShipResponseMapper;
 import at.fhv.backend.application.dtos.mapper.ShipResponseMapper;
-import at.fhv.backend.application.dtos.response.PlayerShipDTO;
-import at.fhv.backend.application.dtos.response.ShipDTO;
+import at.fhv.backend.rest.dtos.ship.response.PlayerShipDTO;
+import at.fhv.backend.rest.dtos.ship.response.ShipDTO;
 import at.fhv.backend.application.services.impl.ship.ShipQueryServiceImpl;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
 import at.fhv.backend.domain.model.ship.PlayerShip;

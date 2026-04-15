@@ -2,11 +2,10 @@ package at.fhv.backend.application.services.impl.travel;
 
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
-import at.fhv.backend.port.application.PortQueryService;
-import at.fhv.backend.port.application.dto.PortResponseDTO;
-import at.fhv.backend.port.domain.exception.PortNotFoundException;
-import at.fhv.backend.port.domain.model.PortId;
-import at.fhv.backend.port.domain.repository.PortRepository;
+import at.fhv.backend.application.services.port.PortQueryService;
+import at.fhv.backend.rest.dtos.port.PortResponseDTO;
+import at.fhv.backend.domain.model.port.PortId;
+import at.fhv.backend.domain.model.port.PortRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

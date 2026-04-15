@@ -19,7 +19,7 @@ class GameSessionTest {
     @BeforeEach
     void setUp() {
         hostId = UUID.randomUUID();
-        session = new GameSession(hostId, 4, 5, Duration.ofMinutes(30));
+        session = new GameSession(hostId, 4, 5, 100, Duration.ofMinutes(30));
     }
 
     //  Konstruktor / Initialzustand
@@ -204,7 +204,7 @@ class GameSessionTest {
         UUID id = UUID.randomUUID();
         GameSession reconstructed = GameSession.reconstruct(
                 id, SessionStatus.RUNNING, hostId, 6,
-                3, 10, "ABC123",
+                3, 10, 100, "ABC123",
                 java.util.List.of(), java.util.Map.of(),
                 java.time.LocalDateTime.now(), Duration.ofHours(1));
 

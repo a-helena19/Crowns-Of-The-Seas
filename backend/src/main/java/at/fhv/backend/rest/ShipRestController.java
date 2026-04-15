@@ -1,8 +1,8 @@
 package at.fhv.backend.rest;
 
-import at.fhv.backend.application.dtos.request.BuyShipDTO;
-import at.fhv.backend.application.dtos.response.PlayerShipDTO;
-import at.fhv.backend.application.dtos.response.ShipDTO;
+import at.fhv.backend.rest.dtos.ship.request.BuyShipDTO;
+import at.fhv.backend.rest.dtos.ship.response.PlayerShipDTO;
+import at.fhv.backend.rest.dtos.ship.response.ShipDTO;
 import at.fhv.backend.application.services.ship.PurchaseShipService;
 import at.fhv.backend.application.services.ship.ShipQueryService;
 import jakarta.validation.Valid;

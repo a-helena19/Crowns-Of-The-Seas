@@ -1,6 +1,6 @@
 package at.fhv.backend.application.dtos.mapper;
 
-import at.fhv.backend.application.dtos.response.ShipDTO;
+import at.fhv.backend.rest.dtos.ship.response.ShipDTO;
 import at.fhv.backend.domain.model.ship.Ship;
 import org.springframework.stereotype.Component;
 

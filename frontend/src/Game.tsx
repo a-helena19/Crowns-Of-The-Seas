@@ -2,7 +2,10 @@ import { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import MainScene from "./scenes/MainScenes";
 
-export default function Game() {
+export default function Game({view}: {view: "map" | "harbor" | "broker"}) {
+
+    console.log(view); // nur um view zu verwenden und damit React nicht meckert, dass es ungenutzt ist
+
     const gameRef = useRef<HTMLDivElement>(null);
     const gameInstance = useRef<Phaser.Game | null>(null);
 

@@ -2,8 +2,8 @@ package at.fhv.backend.application.services.impl.ship;
 
 import at.fhv.backend.application.dtos.mapper.PlayerShipResponseMapper;
 import at.fhv.backend.application.dtos.mapper.ShipResponseMapper;
-import at.fhv.backend.application.dtos.request.BuyShipDTO;
-import at.fhv.backend.application.dtos.response.PlayerShipDTO;
+import at.fhv.backend.rest.dtos.ship.request.BuyShipDTO;
+import at.fhv.backend.rest.dtos.ship.response.PlayerShipDTO;
 import at.fhv.backend.application.services.impl.travel.PortInfoHelper;
 import at.fhv.backend.application.services.ship.PurchaseShipService;
 import at.fhv.backend.application.services.ship.ValidateShipService;
@@ -15,11 +15,7 @@ import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.ship.Ship;
 import at.fhv.backend.domain.model.ship.ShipRepository;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
 
 import java.math.BigDecimal;
 import java.util.UUID;

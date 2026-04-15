@@ -15,6 +15,7 @@ import static org.assertj.core.api.Assertions.*;
 class TravelTest {
     private UUID playerShipId;
     private UUID playerId;
+    private UUID sessionId;
     private UUID originPortId;
     private UUID destinationPortId;
     private Travel travel;
@@ -23,10 +24,11 @@ class TravelTest {
     void setUp() {
         playerShipId      = UUID.randomUUID();
         playerId          = UUID.randomUUID();
+        sessionId         = UUID.randomUUID();
         originPortId      = UUID.randomUUID();
         destinationPortId = UUID.randomUUID();
-        travel = Travel.start(playerShipId, playerId, originPortId, destinationPortId,
-                500.0, 1.0, 0.1, new BigDecimal("1000.00"));
+        travel = Travel.start(playerShipId, playerId, sessionId, originPortId, destinationPortId,
+                500.0, 1.0, 0.1, new BigDecimal("1000.00"), 0);
     }
 
     @Test
@@ -36,8 +38,8 @@ class TravelTest {
 
     @Test
     void givenTwoTravels_thenIdsAreUnique() {
-        Travel other = Travel.start(playerShipId, playerId, originPortId, destinationPortId,
-                500.0, 1.0, 0.1, new BigDecimal("1000.00"));
+        Travel other = Travel.start(playerShipId, playerId, sessionId, originPortId, destinationPortId,
+                500.0, 1.0, 0.1, new BigDecimal("1000.00"), 0);
         assertThat(travel.getTravelId()).isNotEqualTo(other.getTravelId());
     }
 
@@ -75,22 +77,22 @@ class TravelTest {
 
     @Test
     void givenSameOriginAndDestination_whenStart_thenThrowsSamePortException() {
-        assertThatThrownBy(() -> Travel.start(playerShipId, playerId,
-                originPortId, originPortId, 500.0, 1.0, 0.1, new BigDecimal("1000.00")))
+        assertThatThrownBy(() -> Travel.start(playerShipId, playerId, sessionId,
+                originPortId, originPortId, 500.0, 1.0, 0.1, new BigDecimal("1000.00"), 0))
                 .isInstanceOf(SamePortException.class);
     }
 
     @Test
     void givenZeroDistance_whenStart_thenThrowsInvalidTravelDataException() {
-        assertThatThrownBy(() -> Travel.start(playerShipId, playerId,
-                originPortId, destinationPortId, 0.0, 1.0, 0.1, new BigDecimal("1000.00")))
+        assertThatThrownBy(() -> Travel.start(playerShipId, playerId, sessionId,
+                originPortId, destinationPortId, 0.0, 1.0, 0.1, new BigDecimal("1000.00"), 0))
                 .isInstanceOf(InvalidTravelDataException.class);
     }
 
     @Test
     void givenNegativeDistance_whenStart_thenThrowsInvalidTravelDataException() {
-        assertThatThrownBy(() -> Travel.start(playerShipId, playerId,
-                originPortId, destinationPortId, -100.0, 1.0, 0.1, new BigDecimal("1000.00")))
+        assertThatThrownBy(() -> Travel.start(playerShipId, playerId, sessionId,
+                originPortId, destinationPortId, -100.0, 1.0, 0.1, new BigDecimal("1000.00"), 0))
                 .isInstanceOf(InvalidTravelDataException.class);
     }
 
@@ -150,9 +152,9 @@ class TravelTest {
         Instant started = Instant.now().minusSeconds(3600);
         Instant arrived = Instant.now();
 
-        Travel reconstructed = Travel.reconstruct(travelId, playerShipId, playerId,
+        Travel reconstructed = Travel.reconstruct(travelId, playerShipId, playerId, sessionId,
                 originPortId, destinationPortId, 300.0, 0.8, 0.2,
-                new BigDecimal("500.00"), TravelStatus.ARRIVED, started, arrived, 45.0);
+                new BigDecimal("500.00"), TravelStatus.ARRIVED, started, arrived, 45.0, 0, 10);
 
         assertThat(reconstructed.getTravelId()).isEqualTo(travelId);
         assertThat(reconstructed.getPlayerShipId()).isEqualTo(playerShipId);

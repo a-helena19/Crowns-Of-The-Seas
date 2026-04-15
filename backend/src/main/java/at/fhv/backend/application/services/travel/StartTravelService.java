@@ -1,7 +1,7 @@
 package at.fhv.backend.application.services.travel;
 
-import at.fhv.backend.application.dtos.request.StartTravelDTO;
-import at.fhv.backend.application.dtos.response.TravelDTO;
+import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
+import at.fhv.backend.rest.dtos.ship.response.TravelDTO;
 
 import java.util.List;
 import java.util.UUID;

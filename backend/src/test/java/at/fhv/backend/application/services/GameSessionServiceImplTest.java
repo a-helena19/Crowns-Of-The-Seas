@@ -2,6 +2,8 @@ package at.fhv.backend.application.services;
 
 import at.fhv.backend.application.dtos.mapper.session.SessionDTOMapperImpl;
 import at.fhv.backend.application.services.impl.session.GameSessionServiceImpl;
+import at.fhv.backend.application.services.port.PortQueryService;
+import at.fhv.backend.application.services.impl.session.GameTickScheduler;
 import at.fhv.backend.domain.model.player.BaseSessionPlayer;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.session.GameSession;
@@ -36,17 +38,23 @@ class GameSessionServiceImplTest {
     @Mock
     private GameSessionWebSocketController webSocketController;
 
+    @Mock
+    private PortQueryService portQueryService;
+
+    @Mock
+    private GameTickScheduler gameTickScheduler;
+
     private GameSessionServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new GameSessionServiceImpl(gameSessionRepository, new SessionDTOMapperImpl(), webSocketController);
+        service = new GameSessionServiceImpl(gameSessionRepository, new SessionDTOMapperImpl(), webSocketController, portQueryService, gameTickScheduler);
     }
 
     // Hilfsmethode: fertige LOBBY-Session ohne Spieler zurückliefern
 
     private GameSession buildSavedSession(UUID hostId, int maxPlayers) {
-        GameSession session = new GameSession(hostId, maxPlayers, 5, Duration.ofMinutes(30));
+        GameSession session = new GameSession(hostId, maxPlayers, 5, 100, Duration.ofMinutes(30));
         ISessionPlayer host = new BaseSessionPlayer(hostId, session.getId(), "Host", true);
         session.addPlayer(host);
         return session;
@@ -58,7 +66,7 @@ class GameSessionServiceImplTest {
         UUID hostId = UUID.randomUUID();
         when(gameSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.createSession(hostId, "Host", 4, 5, Duration.ofMinutes(30));
+        service.createSession(hostId, "Host", 4, 5, 100, Duration.ofMinutes(30));
 
         verify(gameSessionRepository, times(1)).save(any(GameSession.class));
     }
@@ -68,7 +76,7 @@ class GameSessionServiceImplTest {
         UUID hostId = UUID.randomUUID();
         when(gameSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        SessionDTO dto = service.createSession(hostId, "Host", 4, 5, Duration.ofMinutes(30));
+        SessionDTO dto = service.createSession(hostId, "Host", 4, 5, 100, Duration.ofMinutes(30));
 
         assertThat(dto.status()).isEqualTo("LOBBY");
     }
@@ -78,7 +86,7 @@ class GameSessionServiceImplTest {
         UUID hostId = UUID.randomUUID();
         when(gameSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        SessionDTO dto = service.createSession(hostId, "Host", 4, 5, Duration.ofMinutes(30));
+        SessionDTO dto = service.createSession(hostId, "Host", 4, 5, 100, Duration.ofMinutes(30));
 
         assertThat(dto.players()).hasSize(1);
         assertThat(dto.players().get(0).isHost()).isTrue();
@@ -90,7 +98,7 @@ class GameSessionServiceImplTest {
         UUID hostId = UUID.randomUUID();
         when(gameSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        SessionDTO dto = service.createSession(hostId, "Host", 6, 5, Duration.ofMinutes(30));
+        SessionDTO dto = service.createSession(hostId, "Host", 6, 5, 100, Duration.ofMinutes(30));
 
         assertThat(dto.maxPlayers()).isEqualTo(6);
     }
@@ -100,7 +108,7 @@ class GameSessionServiceImplTest {
         UUID hostId = UUID.randomUUID();
         when(gameSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        SessionDTO dto = service.createSession(hostId, "Host", 4, 15, Duration.ofMinutes(30));
+        SessionDTO dto = service.createSession(hostId, "Host", 4, 15, 100, Duration.ofMinutes(30));
 
         assertThat(dto.tickRateSeconds()).isEqualTo(15);
     }
@@ -306,7 +314,7 @@ class GameSessionServiceImplTest {
         UUID hostId = UUID.randomUUID();
         when(gameSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        SessionDTO dto = service.createSession(hostId, "Host", 4, 5, Duration.ofMinutes(30));
+        SessionDTO dto = service.createSession(hostId, "Host", 4, 5, 100, Duration.ofMinutes(30));
 
         assertThat(dto.gameCode()).isNotNull();
         assertThat(dto.gameCode()).hasSize(6);
@@ -317,7 +325,7 @@ class GameSessionServiceImplTest {
         UUID hostId = UUID.randomUUID();
         when(gameSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        SessionDTO dto = service.createSession(hostId, "Host", 4, 5, Duration.ofMinutes(30));
+        SessionDTO dto = service.createSession(hostId, "Host", 4, 5, 100, Duration.ofMinutes(30));
 
         assertThat(dto.id()).isNotNull();
     }

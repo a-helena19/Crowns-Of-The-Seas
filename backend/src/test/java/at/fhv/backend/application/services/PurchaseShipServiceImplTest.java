@@ -2,8 +2,8 @@ package at.fhv.backend.application.services;
 
 import at.fhv.backend.application.dtos.mapper.PlayerShipResponseMapper;
 import at.fhv.backend.application.dtos.mapper.ShipResponseMapper;
-import at.fhv.backend.application.dtos.request.BuyShipDTO;
-import at.fhv.backend.application.dtos.response.PlayerShipDTO;
+import at.fhv.backend.rest.dtos.ship.request.BuyShipDTO;
+import at.fhv.backend.rest.dtos.ship.response.PlayerShipDTO;
 import at.fhv.backend.application.services.impl.ship.PurchaseShipServiceImpl;
 import at.fhv.backend.application.services.impl.travel.PortInfoHelper;
 import at.fhv.backend.application.services.ship.ValidateShipService;

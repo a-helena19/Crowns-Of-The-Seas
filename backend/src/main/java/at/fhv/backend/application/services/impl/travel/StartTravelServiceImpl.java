@@ -1,9 +1,8 @@
 package at.fhv.backend.application.services.impl.travel;
 
 import at.fhv.backend.application.dtos.mapper.TravelResponseMapper;
-import at.fhv.backend.application.dtos.request.StartTravelDTO;
-import at.fhv.backend.application.dtos.response.PlayerShipDTO;
-import at.fhv.backend.application.dtos.response.TravelDTO;
+import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
+import at.fhv.backend.rest.dtos.ship.response.TravelDTO;
 import at.fhv.backend.application.services.impl.session.GameTickScheduler;
 import at.fhv.backend.application.services.travel.CalculateFuelConsumptionService;
 import at.fhv.backend.application.services.travel.StartTravelService;

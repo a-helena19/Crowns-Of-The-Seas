@@ -1,7 +1,7 @@
 package at.fhv.backend.application.services.ship;
 
-import at.fhv.backend.application.dtos.request.BuyShipDTO;
-import at.fhv.backend.application.dtos.response.PlayerShipDTO;
+import at.fhv.backend.rest.dtos.ship.request.BuyShipDTO;
+import at.fhv.backend.rest.dtos.ship.response.PlayerShipDTO;
 
 import java.math.BigDecimal;
 import java.util.UUID;
