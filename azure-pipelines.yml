@@ -14,8 +14,8 @@ steps:
     inputs:
       workingDirectory: 'backend'
       gradleWrapperFile: 'backend/gradlew'
-      tasks: 'build'
-      publishJUnitResults: true
+      tasks: 'test build'
+      publishJUnitResults: false
       testResultsFiles: '**/TEST-*.xml'
 
   # Frontend (React + Vite)
