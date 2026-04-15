@@ -50,7 +50,7 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
 
         try {
             const response = await fetch(
-                `http://localhost:8080/api/travels/start/${playerId}?sessionId=${sessionId}`,
+                `/api/travels/start/${playerId}?sessionId=${sessionId}`,
                 {
                     method: "POST",
                     headers: {

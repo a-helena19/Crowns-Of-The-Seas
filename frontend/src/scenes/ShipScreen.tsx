@@ -56,7 +56,7 @@ export default function ShipScreen({ onSelect }: { onSelect: (ship: PlayerShip) 
 
         if (!sessionId) return;
 
-        fetch(`http://localhost:8080/api/ships/player/${playerId}?sessionId=${sessionId}`, {
+        fetch(`/api/ships/player/${playerId}?sessionId=${sessionId}`, {
             headers: { Authorization: `Bearer ${localStorage.getItem("auth_token") ?? ""}` },
         })
             .then(res => res.json())

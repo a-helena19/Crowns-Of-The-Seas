@@ -17,14 +17,14 @@ export default function TopBar() {
         if (!playerId || !sessionId) return;
 
         const fetchPlayerData = () => {
-            fetch(`http://localhost:8080/api/ships/player/${playerId}/balance?sessionId=${sessionId}`, {
+            fetch(`/api/ships/player/${playerId}/balance?sessionId=${sessionId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
                 .then(res => res.json())
                 .then(data => setBalance(Number(data)))
                 .catch(() => setBalance(null));
 
-            fetch(`http://localhost:8080/api/ships/player/${playerId}?sessionId=${sessionId}`, {
+            fetch(`/api/ships/player/${playerId}?sessionId=${sessionId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
                 .then(res => res.json())
