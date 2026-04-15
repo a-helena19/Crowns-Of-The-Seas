@@ -1,0 +1,593 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,400;1,400&display=swap');
+
+:root {
+    --bg:          #f0e6c8;
+    --wood-dark:   #3d1f0a;
+    --wood-mid:    #6b3c18;
+    --gold:        #b8762a;
+    --gold-bright: #d4962e;
+    --gold-light:  #f0c060;
+    --gold-pale:   #faeac8;
+    --ink:         #2a1408;
+    --ink-light: #502e15;
+    --rope:        #8b5a2b;
+}
+
+.shipclass-scene {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    font-family: 'Crimson Pro', Georgia, serif;
+    overflow: hidden;
+    overflow-y: auto;
+}
+
+.shipclass-title-area::after {
+    content: "";
+    display: block;
+    height: 1px;
+    margin-top: 12px;
+    background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(184,118,42,0.4),
+            transparent
+    );
+}
+
+.shipclass-title-area {
+    position: relative;
+    z-index: 2;
+
+    text-align: center;
+    padding: 20px 20px 10px;
+
+    flex-shrink: 0;
+
+    background: linear-gradient(
+            180deg,
+            rgba(180,120,40,0.15) 0%,
+            transparent 100%
+    );
+}
+
+.shipclass-title-main {
+    font-family: 'Cinzel', serif;
+    font-size: 30px;
+    font-weight: 700;
+    margin-top: 70px;
+
+    color: var(--wood-dark);
+
+    letter-spacing: 5px;
+    text-transform: uppercase;
+
+    text-shadow:
+            1px 1px 0 rgba(255,255,255,0.6),
+            0 2px 6px rgba(0,0,0,0.15);
+}
+
+.shipclass-title-sub {
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+    font-size: 14px;
+
+    color: var(--ink-light);
+
+    letter-spacing: 2px;
+    margin-top: 4px;
+}
+
+.shipclass-ornament {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.shipclass-orn-line {
+    flex: 1;
+    max-width: 140px;
+    height: 2px;
+
+    background: linear-gradient(
+            90deg,
+            transparent,
+            var(--gold),
+            transparent
+    );
+}
+
+.shipclass-orn-diamond {
+    width: 8px;
+    height: 8px;
+
+    background: var(--gold-bright);
+
+    transform: rotate(45deg);
+    border: 1px solid var(--wood-dark);
+}
+
+.shipclass-scene::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+            repeating-linear-gradient(0deg,
+            transparent 0px, transparent 28px,
+            rgba(0,0,0,0.025) 28px, rgba(0,0,0,0.025) 29px),
+            repeating-linear-gradient(90deg,
+            transparent 0px, transparent 40px,
+            rgba(0,0,0,0.015) 40px, rgba(0,0,0,0.015) 41px);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.shipclass-back-btn {
+    position: relative;
+    z-index: 10;
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--ink);
+    background: var(--gold-pale);
+    border: 2px solid var(--wood-dark);
+    padding: 7px 16px;
+    cursor: pointer;
+    text-transform: uppercase;
+    clip-path: polygon(
+            4px 0%, calc(100% - 4px) 0%,
+            100% 4px, 100% calc(100% - 4px),
+            calc(100% - 4px) 100%, 4px 100%,
+            0% calc(100% - 4px), 0% 4px
+    );
+    transition: background 0.15s;
+}
+.shipclass-back-btn:hover { background: var(--gold-light); }
+
+
+.shipclass-status {
+    position: relative;
+    z-index: 2;
+    color: var(--ink-light);
+    text-align: center;
+    padding: 40px;
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    letter-spacing: 2px;
+    opacity: 0.7;
+}
+
+.shipclass-page-title {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding: 20px 20px 10px;
+    flex-shrink: 0;
+    background: linear-gradient(180deg, rgba(180,120,40,0.10) 0%, transparent 100%);
+    border-bottom: 1px solid rgba(184,118,42,0.25);
+}
+
+.shipclass-page-title h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--wood-dark);
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    margin: 0 0 4px;
+    text-shadow: 1px 1px 0 rgba(255,255,255,0.6), 0 2px 6px rgba(0,0,0,0.12);
+}
+
+.shipclass-page-title p {
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--ink-light);
+    letter-spacing: 2px;
+    margin: 0 0 10px;
+}
+
+.shipclass-title-ornament {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.shipclass-orn-line {
+    display: block;
+    flex: 1;
+    max-width: 140px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+
+.shipclass-orn-diamond {
+    display: block;
+    width: 8px;
+    height: 8px;
+    background: var(--gold-bright);
+    transform: rotate(45deg);
+    border: 1px solid var(--wood-dark);
+    flex-shrink: 0;
+}
+
+.ship-grid {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    padding: 18px 22px 28px;
+    flex: 1;
+    overflow-y: auto;
+    justify-content: center;
+    max-width: 900px;
+    width: 100%;
+}
+
+.ship-grid-wrapper {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+
+    padding: 30px 40px;
+}
+
+.ship-listing-card {
+    height: 100%;
+    position: relative;
+    background: linear-gradient(160deg, #fdf4e0 0%, #f5e8c0 60%, #ecddb0 100%);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    cursor: pointer;
+    animation: cardIn 0.45s ease both;
+    clip-path: polygon(
+            8px 0%, calc(100% - 8px) 0%,
+            100% 8px, 100% calc(100% - 8px),
+            calc(100% - 8px) 100%, 8px 100%,
+            0% calc(100% - 8px), 0% 8px
+    );
+
+    box-shadow:
+            0 0 0 2px var(--wood-dark),
+            inset 0 0 0 1px rgba(255,255,255,0.55);
+
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ship-listing-card:nth-child(1) { animation-delay: 0.05s; }
+.ship-listing-card:nth-child(2) { animation-delay: 0.12s; }
+.ship-listing-card:nth-child(3) { animation-delay: 0.19s; }
+.ship-listing-card:nth-child(4) { animation-delay: 0.26s; }
+.ship-listing-card:nth-child(5) { animation-delay: 0.33s; }
+.ship-listing-card:nth-child(6) { animation-delay: 0.40s; }
+
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.ship-listing-card:hover {
+    transform: translateY(-5px);
+    box-shadow:
+            0 0 0 2px var(--gold-bright),
+            inset 0 0 0 1px rgba(255,255,255,0.55),
+            0 8px 24px rgba(61,31,10,0.18);
+}
+
+.ship-listing-card:hover .ship-listing-img-wrap {
+    background: linear-gradient(180deg, #1e3f5a 0%, #102540 100%);
+}
+
+.ship-listing-img-wrap {
+    position: relative;
+    height: 110px;
+    background: linear-gradient(180deg, #163248 0%, #0e2035 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 2px solid var(--wood-dark);
+    overflow: hidden;
+    flex-shrink: 0;
+    transition: background 0.3s;
+}
+
+.ship-listing-img-wrap::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+            radial-gradient(circle 1px at 18% 22%, rgba(255,255,255,0.75) 0%, transparent 1px),
+            radial-gradient(circle 1px at 72% 14%, rgba(255,255,255,0.65) 0%, transparent 1px),
+            radial-gradient(circle 1px at 52% 38%, rgba(255,255,255,0.5)  0%, transparent 1px),
+            radial-gradient(circle 1px at 84% 42%, rgba(255,255,255,0.4)  0%, transparent 1px),
+            radial-gradient(circle 1px at 8%  58%, rgba(255,255,255,0.35) 0%, transparent 1px),
+            radial-gradient(circle 1px at 40% 20%, rgba(255,255,255,0.3)  0%, transparent 1px);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.ship-listing-img-wrap::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 18px;
+    background: repeating-linear-gradient(90deg,
+    rgba(74,136,176,0.45) 0px,  rgba(74,136,176,0.45) 10px,
+    rgba(42,88,120,0.30)  10px, rgba(42,88,120,0.30)  20px
+    );
+    animation: waveScroll 2.5s linear infinite;
+    z-index: 1;
+}
+
+@keyframes waveScroll {
+    from { background-position: 0 0; }
+    to   { background-position: 20px 0; }
+}
+
+.ship-listing-img {
+    position: relative;
+    z-index: 2;
+    max-height: 78%;
+    max-width: 82%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    animation: bob 3s ease-in-out infinite;
+}
+
+@keyframes bob {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-5px); }
+}
+
+.ship-listing-info {
+    padding: 11px 13px 13px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.ship-listing-name {
+    font-family: 'Cinzel', serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--wood-dark);
+    text-align: center;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+}
+
+.ship-listing-desc {
+    font-style: italic;
+    font-size: 14px;
+    color: var(--ink-light);
+    text-align: center;
+    line-height: 1.4;
+    margin-bottom: 8px;
+    opacity: 0.8;
+}
+
+.ship-listing-divider {
+    height: 3px;
+    background: repeating-linear-gradient(90deg,
+    var(--gold-bright) 0px, var(--gold-bright) 6px,
+    transparent 6px, transparent 8px
+    );
+    margin: 4px 0 8px;
+    opacity: 0.55;
+}
+
+.ship-listing-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px 8px;
+    margin-bottom: 6px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+    border-bottom: 1px dotted rgba(100,60,20,0.18);
+}
+
+.stat-label {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+
+    letter-spacing: 0.4px;
+    color: var(--ink-light);
+    opacity: 0.85;
+}
+
+.back-icon-btn {
+    position: fixed;
+    top: 80px;
+    left: 20px;
+
+    z-index: 1000;
+
+    width: 64px;
+    height: 64px;
+
+    cursor: pointer;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.back-icon-btn img {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+}
+
+.back-icon-btn:hover {
+    filter: brightness(1.1) drop-shadow(0 0 6px rgba(255, 200, 80, 0.6));
+}
+
+.stat-value {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--wood-dark);
+}
+
+.ship-grid {
+    overflow: visible;
+    max-height: none;
+}
+
+.rel-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 4px 0 8px;
+}
+
+.rel-bar-label {
+    font-family: 'Cinzel', serif;
+    font-size: 7.5px;
+    text-transform: uppercase;
+    color: var(--ink-light);
+    flex-shrink: 0;
+    letter-spacing: 0.4px;
+}
+
+.rel-bar-bg {
+    flex: 1;
+    height: 6px;
+    background: rgba(0,0,0,0.08);
+    border: 1px solid var(--wood-dark);
+    clip-path: polygon(
+            2px 0%, calc(100% - 2px) 0%,
+            100% 2px, 100% calc(100% - 2px),
+            calc(100% - 2px) 100%, 2px 100%,
+            0% calc(100% - 2px), 0% 2px
+    );
+    overflow: hidden;
+}
+
+.rel-bar-fill {
+    height: 100%;
+    background: repeating-linear-gradient(90deg,
+    var(--gold-bright) 0px, var(--gold-bright) 4px,
+    var(--gold)        4px, var(--gold)        6px
+    );
+}
+
+.rel-bar-pct {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--wood-dark);
+    flex-shrink: 0;
+}
+
+.ship-listing-footer {
+    margin-top: auto;
+    padding-top: 8px;
+
+}
+
+.ship-listing-price {
+    display: block;
+    font-family: 'Cinzel', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gold);
+    text-align: center;
+    margin-bottom: 9px;
+    letter-spacing: 1px;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.12);
+}
+
+.ship-listing-footer button {
+    width: 100%;
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #fff;
+    background: linear-gradient(180deg, #5a9a38 0%, #3a7a20 50%, #4a8a28 100%);
+    border: 2px solid #2a5a10;
+    padding: 9px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    clip-path: polygon(
+            4px 0%, calc(100% - 4px) 0%,
+            100% 4px, 100% calc(100% - 4px),
+            calc(100% - 4px) 100%, 4px 100%,
+            0% calc(100% - 4px), 0% 4px
+    );
+    transition: background 0.15s, transform 0.1s;
+}
+
+.ship-listing-footer button::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+    transition: left 0.38s;
+}
+
+.ship-listing-footer button:hover::before { left: 100%; }
+.ship-listing-footer button:hover {
+    background: linear-gradient(180deg, #6aaa48 0%, #4a8a30 50%, #5a9a38 100%);
+}
+.ship-listing-footer button:active { transform: scale(0.97); }
+
+.ship-listing-footer button:disabled {
+    background: linear-gradient(180deg, #8a5040 0%, #6a3020 100%);
+    border-color: #4a1810;
+    color: white;
+    cursor: not-allowed;
+    opacity: 1;
+}
+.ship-listing-footer button:disabled::before { display: none; }
+
+.shipclass-toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #fdf4e0, #f0e0b0);
+    border: 2px solid var(--wood-dark);
+    color: var(--wood-dark);
+    font-family: 'Cinzel', serif;
+    font-size: 15px;
+    letter-spacing: 1.5px;
+    padding: 10px 28px;
+    z-index: 200;
+    animation: toastIn 0.3s ease;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    clip-path: polygon(
+            4px 0%, calc(100% - 4px) 0%,
+            100% 4px, 100% calc(100% - 4px),
+            calc(100% - 4px) 100%, 4px 100%,
+            0% calc(100% - 4px), 0% 4px
+    );
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

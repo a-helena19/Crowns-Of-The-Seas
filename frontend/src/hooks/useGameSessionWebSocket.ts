@@ -1,0 +1,196 @@
+import { useEffect, useRef, useCallback, useState } from 'react';
+import SockJS from 'sockjs-client';
+import Stomp, { Client } from 'stompjs';
+
+interface SessionUpdateEvent {
+    sessionId: string;
+    gameCode: string;
+    status: 'LOBBY' | 'RUNNING' | 'FINISHED';
+    playerCount: number;
+    maxPlayers: number;
+    players: Array<{
+        userId: string;
+        playerName: string;
+        isHost: boolean;
+    }>;
+    eventType: string;
+}
+
+interface PortInfo {
+    id: string;
+    name: string;
+    x: number;
+    y: number;
+}
+
+interface PortsUpdateEvent {
+    eventType: 'PORTS_UPDATE';
+    ports: PortInfo[];
+}
+
+interface TickUpdateEvent {
+    eventType: 'TICK_UPDATE';
+    currentTick: number;
+    totalTicks: number;
+}
+
+export interface ShipPosition {
+    playerShipId: string;
+    playerId: string;
+    playerName: string;
+    iconUrl: string;
+    x: number;
+    y: number;
+    status: 'EN_ROUTE' | 'AT_PORT';
+    arrivalTick: number | null;
+    originX: number | null;
+    originY: number | null;
+    destX: number | null;
+    destY: number | null;
+    startTick: number | null;
+}
+
+interface ShipPositionsUpdateEvent {
+    eventType: 'SHIP_POSITIONS_UPDATE';
+    ships: ShipPosition[];
+}
+
+interface UseGameSessionWebSocketProps {
+    sessionId: string | null;
+    onSessionUpdate: (event: SessionUpdateEvent) => void;
+    onTickUpdate?: (event: TickUpdateEvent) => void;
+}
+
+export function useGameSessionWebSocket({
+    sessionId,
+    onSessionUpdate,
+    onTickUpdate
+}: UseGameSessionWebSocketProps) {
+    const stompClientRef = useRef<Client | null>(null);
+    const [isConnected, setIsConnected] = useState(false);
+    const connectAttemptedRef = useRef(false);
+
+    const connect = useCallback(() => {
+        if (!sessionId) {
+            console.log('No sessionId provided');
+            return;
+        }
+
+        if (connectAttemptedRef.current && isConnected) {
+            console.log('Already connected');
+            return;
+        }
+
+        connectAttemptedRef.current = true;
+
+        try {
+            // Connect directly to backend WebSocket, not through proxy
+            // This avoids issues with vite proxy and ECONNRESET
+            const wsUrl = window.location.hostname === 'localhost'
+                ? 'http://localhost:8080/ws'
+                : `/ws`;
+
+            console.log('Connecting to WebSocket:', wsUrl);
+            const socket = new SockJS(wsUrl);
+            const client = Stomp.over(socket);
+
+            client.connect(
+                {},
+                () => {
+                    console.log('WebSocket connected');
+                    setIsConnected(true);
+                    stompClientRef.current = client;
+
+                    // Subscribe to session updates
+                    client.subscribe(`/topic/session/${sessionId}`, (message) => {
+                        console.log('Received session update:', message.body);
+                        try {
+                            const event = JSON.parse(message.body) as SessionUpdateEvent;
+                            onSessionUpdate(event);
+                        } catch (error) {
+                            console.error('Error parsing session update:', error);
+                        }
+                    });
+
+                    // Subscribe to ports update
+                    client.subscribe(`/topic/session/${sessionId}/ports`, (message) => {
+                        console.log('Received ports update:', message.body);
+                        try {
+                            const event = JSON.parse(message.body) as PortsUpdateEvent;
+                            window.__latestPorts = event.ports;
+                            window.dispatchEvent(new CustomEvent('backend-ports', { detail: event.ports }));
+                        } catch (error) {
+                            console.error('Error parsing ports update:', error);
+                        }
+                    });
+
+                    // Subscribe to tick update
+                    client.subscribe(`/topic/session/${sessionId}/tick`, (message) => {
+                        try {
+                            const event = JSON.parse(message.body) as TickUpdateEvent;
+                            window.__latestTick = event;
+                            window.dispatchEvent(new CustomEvent('backend-tick', { detail: event }));
+                            if (onTickUpdate) onTickUpdate(event);
+                        } catch (error) {
+                            console.error('Error parsing tick update:', error);
+                        }
+                    });
+
+                    // Subscribe to ship positions
+                    client.subscribe(`/topic/session/${sessionId}/ships`, (message) => {
+                        try {
+                            const event = JSON.parse(message.body) as ShipPositionsUpdateEvent;
+                            window.__latestShips = event.ships;
+                            window.dispatchEvent(new CustomEvent('backend-ship-positions', { detail: event.ships }));
+                        } catch (error) {
+                            console.error('Error parsing ship positions:', error);
+                        }
+                    });
+
+                    // Send subscribe message
+                    client.send(`/app/session/${sessionId}/subscribe`, {});
+                },
+                (error) => {
+                    console.error('WebSocket connection error:', error);
+                    setIsConnected(false);
+                    connectAttemptedRef.current = false; // Reset so we can try again
+                }
+            );
+        } catch (error) {
+            console.error('Failed to connect to WebSocket:', error);
+            setIsConnected(false);
+            connectAttemptedRef.current = false; // Reset so we can try again
+        }
+    }, [sessionId, onSessionUpdate, isConnected]);
+
+    const disconnect = useCallback(() => {
+        if (stompClientRef.current) {
+            stompClientRef.current.disconnect(() => {
+                console.log('WebSocket disconnected');
+                setIsConnected(false);
+                connectAttemptedRef.current = false;
+                stompClientRef.current = null;
+            });
+        }
+    }, []);
+
+    useEffect(() => {
+        if (sessionId && !isConnected) {
+            const timer = setTimeout(() => {
+                connect();
+            }, 500); // Small delay to ensure session is ready
+
+            return () => clearTimeout(timer);
+        }
+
+        return () => {
+            disconnect();
+        };
+    }, [sessionId, isConnected, connect, disconnect]);
+
+    return {
+        isConnected,
+        disconnect
+    };
+}
+

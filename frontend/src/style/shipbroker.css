@@ -1,0 +1,187 @@
+.broker-scene {
+    position: absolute;
+
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 100%;
+
+    z-index: 50;
+}
+
+.app-layout.broker {
+    grid-template-columns: 1fr;
+
+    grid-template-rows: 8vh 1fr;
+
+    grid-template-areas:
+        "top"
+        "game";
+}
+
+.broker-top-bar {
+    font-family: var(--font-game);
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+
+    height: 60px;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 0 20px;
+
+    background: linear-gradient(180deg, #0c1b33, #091426);
+    border-bottom: 3px solid #1e3a6b;
+
+    font-family: var(--font-body);
+    letter-spacing: 1px;
+
+    z-index: 2;
+}
+
+.background {
+    position: absolute;
+
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+
+    z-index: 0;
+}
+
+.broker-center {
+    position: relative;
+    z-index: 1;
+}
+
+.broker-title {
+    color: #cfe9ff;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+.broker-close-btn {
+    font-family: var(--font-body);
+    background: #0a1628;
+    color: #8ab4d4;
+    margin-bottom: 600px;
+    margin-left: -800px;
+    top: 50px;
+
+    border: 2px solid #1f3c6d;
+    border-radius: 4px;
+
+    padding: 8px 12px;
+
+    font-family: var(--font-body);
+    font-size: 11px;
+    text-transform: uppercase;
+
+    cursor: pointer;
+
+    transition: all 0.15s ease;
+}
+
+.broker-close-btn:hover {
+    background: #122a4d;
+    color: #ffffff;
+    box-shadow: 0 0 8px rgba(77, 159, 255, 0.6);
+}
+
+.broker-center {
+    position: absolute;
+
+    top: 0px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.broker-panel {
+    font-family: var(--font-game);
+    background: #ffeee4;
+    border: 4px solid #5a3a0a;
+    padding: 12px;
+    box-shadow: inset -4px -4px 0 #2a1408, inset 4px 4px 0 #6a3f1a;
+
+
+    color: #f0d080;
+
+    border-radius: 6px;
+    margin-top: 300px;
+    margin-right: 40px;
+    left: 100px;
+    width: 420px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+
+    padding: 25px;
+}
+
+.broker-panel-title {
+    font-family: var(--font-game);
+
+    font-size: 25px;
+    font-weight: bold;
+    text-align: center;
+    color: #2e0b0b;
+
+}
+
+.broker-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.broker-options button {
+    width: 100%;
+}
+
+.broker-options button:hover {
+    transform: scale(1.05);
+}
+
+.back-icon-btn {
+    position: fixed;
+    top: 80px;
+    left: 20px;
+
+    z-index: 1000;
+
+    width: 64px;
+    height: 64px;
+
+    cursor: pointer;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.back-icon-btn img {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+}
+
+.back-icon-btn:hover {
+    filter: brightness(1.1) drop-shadow(0 0 6px rgba(255, 200, 80, 0.6));
+}

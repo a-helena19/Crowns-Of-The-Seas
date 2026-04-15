@@ -1,0 +1,72 @@
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    height: 100%;
+    gap: 10px;
+
+    background: linear-gradient(180deg, #0c1b33, #091426);
+
+}
+
+.sidebar-btn {
+    background: #051e59;
+    border: 3px solid #053d8a;
+    color: white;
+    padding: 20px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+
+    transition: 0.2s;
+}
+
+.sidebar-btn:hover {
+    background: linear-gradient(180deg, #02244e, #3d81e4);
+
+    transform: translateY(1px);
+
+    box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.15),
+            inset 0 -1px 0 rgba(0,0,0,0.5);
+}
+
+.sidebar-btn.active {
+    border-color: gold;
+
+    box-shadow:
+            0 0 10px rgba(255, 215, 0, 0.6),
+            inset 0 2px 0 rgba(255,255,255,0.2),
+            inset 0 -2px 0 rgba(0,0,0,0.4);
+}
+
+.start-btn {
+    background: #014c15;
+    border: 3px solid #1a7000;
+    color: white;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+
+    transition: 0.2s;
+}
+
+.start-btn:hover {
+    background: linear-gradient(180deg, #054e02, #009307);
+
+    transform: translateY(1px);
+
+    box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.15),
+            inset 0 -1px 0 rgba(0,0,0,0.5);
+}
+
+.start-btn.active {
+    border-color: darkgreen;
+
+    box-shadow:
+            0 0 10px rgba(31, 147, 0, 0.6),
+            inset 0 2px 0 rgba(255,255,255,0.2),
+            inset 0 -2px 0 rgba(0,0,0,0.4);
+}
