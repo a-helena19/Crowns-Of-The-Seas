@@ -27,18 +27,14 @@ stages:
         displayName: 'Backend Tests'
         steps:
           - script: |
-              cd backend
-              chmod +x ./gradlew
-              ./gradlew test
+              docker run --rm -v "$(Build.SourcesDirectory)/backend":/app -w /app eclipse-temurin:17-jdk bash -c "chmod +x ./gradlew && ./gradlew test"
             displayName: 'Run Backend Tests'
 
       - job: TestFrontend
         displayName: 'Frontend Build Check'
         steps:
           - script: |
-              cd frontend
-              npm ci
-              npm run build
+              docker run --rm -v "$(Build.SourcesDirectory)/frontend":/app -w /app node:20-alpine sh -c "npm ci && npm run build"
             displayName: 'Build Frontend'
 
   - stage: Build
