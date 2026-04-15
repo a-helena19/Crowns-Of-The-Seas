@@ -27,14 +27,18 @@ stages:
         displayName: 'Backend Tests'
         steps:
           - script: |
-              docker run --rm -v "$(Build.SourcesDirectory)/backend":/app -w /app eclipse-temurin:17-jdk bash -c "chmod +x ./gradlew && ./gradlew test"
+              docker run --rm -v "$(Build.SourcesDirectory)/backend":/app -w /app eclipse-temurin:17-jdk bash -c "rm -rf .gradle build"
+            displayName: 'Cleanup old root files'
+
+          - script: |
+              docker run --rm -v "$(Build.SourcesDirectory)/backend":/app -w /app eclipse-temurin:17-jdk bash -c "chmod +x ./gradlew && ./gradlew test --project-cache-dir /tmp/.gradle && rm -rf build .gradle"
             displayName: 'Run Backend Tests'
 
       - job: TestFrontend
         displayName: 'Frontend Build Check'
         steps:
           - script: |
-              docker run --rm -v "$(Build.SourcesDirectory)/frontend":/app -w /app node:20-alpine sh -c "npm ci && npm run build"
+              docker run --rm -v "$(Build.SourcesDirectory)/frontend":/app -w /app node:20-alpine sh -c "npm ci && npm run build && rm -rf node_modules dist"
             displayName: 'Build Frontend'
 
   - stage: Build
