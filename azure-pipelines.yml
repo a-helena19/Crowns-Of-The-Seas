@@ -38,7 +38,7 @@ stages:
         displayName: 'Frontend Build Check'
         steps:
           - script: |
-              docker run --rm -v "$(Build.SourcesDirectory)/frontend":/app -w /app node:20-alpine sh -c "npm ci && npm run build && rm -rf node_modules dist"
+              docker run --rm -v "$(Build.SourcesDirectory)/frontend":/app -w /app node:24-alpine sh -c "npm ci && npm run build && rm -rf node_modules dist"
             displayName: 'Build Frontend'
 
   - stage: Build
