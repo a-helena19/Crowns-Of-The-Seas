@@ -5,6 +5,8 @@ export interface SessionDTO {
     status: SessionStatus;
     maxPlayers: number;
     tickRateSeconds: number;
+    totalTicks: number;
+    currentTick: number;
     players: SessionPlayerDTO[];
 }
 
@@ -22,6 +24,7 @@ export interface CreateSessionRequest {
     hostName: string;
     maxPlayers: number;
     tickRateSeconds: number;
+    totalTicks: number;
     duration: string; // ISO 8601 Duration
     // hostUserId comes from JWT in backend
 }

@@ -11,7 +11,6 @@ import java.util.UUID;
 @Table(name = "travels")
 public class TravelEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(nullable = false, updatable = false)
     private UUID travelId;
 
@@ -20,6 +19,9 @@ public class TravelEntity {
 
     @Column(name = "player_id", nullable = false)
     private UUID playerId;
+
+    @Column(name = "session_id", nullable = false, columnDefinition = "uuid default '00000000-0000-0000-0000-000000000000'")
+    private UUID sessionId;
 
     @Column(name = "origin_port_id", nullable = false)
     private UUID originPortId;
@@ -52,6 +54,12 @@ public class TravelEntity {
     @Column(name = "fuel_consumed", nullable = false)
     private double fuelConsumed;
 
+    @Column(name = "start_tick", nullable = false, columnDefinition = "int default 0")
+    private int startTick;
+
+    @Column(name = "arrival_tick", nullable = false, columnDefinition = "int default 0")
+    private int arrivalTick;
+
     public TravelEntity() {}
 
     public UUID getTravelId() {
@@ -76,6 +84,14 @@ public class TravelEntity {
 
     public void setPlayerId(UUID playerId) {
         this.playerId = playerId;
+    }
+
+    public UUID getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(UUID sessionId) {
+        this.sessionId = sessionId;
     }
 
     public UUID getOriginPortId() {
@@ -156,5 +172,21 @@ public class TravelEntity {
 
     public void setFuelConsumed(double fuelConsumed) {
         this.fuelConsumed = fuelConsumed;
+    }
+
+    public int getStartTick() {
+        return startTick;
+    }
+
+    public void setStartTick(int startTick) {
+        this.startTick = startTick;
+    }
+
+    public int getArrivalTick() {
+        return arrivalTick;
+    }
+
+    public void setArrivalTick(int arrivalTick) {
+        this.arrivalTick = arrivalTick;
     }
 }

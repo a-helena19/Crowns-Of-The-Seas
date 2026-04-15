@@ -45,6 +45,7 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
 
             const totalSeconds = hours * 3600 + minutes * 60 + seconds;
             const durationStr = `PT${totalSeconds}S`;
+            const totalTicks = Math.round(totalSeconds / createForm.tickRateSeconds);
 
             console.log('Creating session with duration:', durationStr);
 
@@ -52,6 +53,7 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
                 hostName: createForm.hostName,
                 maxPlayers: createForm.maxPlayers,
                 tickRateSeconds: createForm.tickRateSeconds,
+                totalTicks,
                 duration: durationStr
             });
         } catch (err) {

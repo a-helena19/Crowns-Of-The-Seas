@@ -5,6 +5,7 @@ import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.ship.ShipStatus;
 import at.fhv.backend.infrastructure.mapper.PlayerShipMapper;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +13,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Repository
+@Transactional
 public class PlayerShipRepositoryImpl implements PlayerShipRepository {
     private final PlayerShipJpaRepository playerShipJpaRepository;
     private final PlayerShipMapper playerShipMapper;
@@ -57,5 +59,13 @@ public class PlayerShipRepositoryImpl implements PlayerShipRepository {
         return playerShipJpaRepository
                 .findByIdAndPlayerIdAndSessionId(id, playerId, sessionId)
                 .map(playerShipMapper::toDomainModel);
+    }
+
+    @Override
+    public List<PlayerShip> findAllBySessionId(UUID sessionId) {
+        return playerShipJpaRepository.findAllBySessionId(sessionId)
+                .stream()
+                .map(playerShipMapper::toDomainModel)
+                .collect(Collectors.toList());
     }
 }

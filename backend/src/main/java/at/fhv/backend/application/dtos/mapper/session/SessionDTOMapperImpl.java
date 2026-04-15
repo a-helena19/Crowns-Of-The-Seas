@@ -37,6 +37,8 @@ public class SessionDTOMapperImpl implements SessionDTOMapper {
                 session.getStatus().name(),
                 session.getMaxPlayers(),
                 session.getTickRateSeconds(),
+                session.getTotalTicks(),
+                session.getCurrentTick(),
                 playerDTOs
         );
     }

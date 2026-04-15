@@ -7,4 +7,5 @@ public record CreateSessionRequest(
         String hostName,
         int maxPlayers,
         int tickRateSeconds,
+        int totalTicks,
         String duration) {}

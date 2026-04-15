@@ -4,11 +4,15 @@ import at.fhv.backend.application.dtos.mapper.TravelResponseMapper;
 import at.fhv.backend.application.dtos.request.StartTravelDTO;
 import at.fhv.backend.application.dtos.response.PlayerShipDTO;
 import at.fhv.backend.application.dtos.response.TravelDTO;
+import at.fhv.backend.application.services.impl.session.GameTickScheduler;
 import at.fhv.backend.application.services.travel.CalculateFuelConsumptionService;
 import at.fhv.backend.application.services.travel.StartTravelService;
 import at.fhv.backend.application.services.travel.ValidateTravelService;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
 import at.fhv.backend.domain.model.exception.TravelNotFoundException;
+import at.fhv.backend.domain.model.session.GameSession;
+import at.fhv.backend.domain.model.session.GameSessionRepository;
+import at.fhv.backend.domain.model.session.exception.SessionNotFoundException;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.ship.Ship;
@@ -35,9 +39,13 @@ public class StartTravelServiceImpl implements StartTravelService {
     private final TravelRepository travelRepository;
     private final TravelMapper travelMapper;
     private final TravelResponseMapper travelResponseMapper;
+    private final GameSessionRepository gameSessionRepository;
+    private final GameTickScheduler gameTickScheduler;
 
     public StartTravelServiceImpl(PlayerShipRepository playerShipRepository, ShipRepository shipRepository, PortInfoHelper portInfoHelper,
-                                  CalculateFuelConsumptionService calculateFuelConsumptionService, ValidateTravelService validateTravelService, TravelRepository travelRepository, TravelMapper travelMapper, TravelResponseMapper travelResponseMapper) {
+                                  CalculateFuelConsumptionService calculateFuelConsumptionService, ValidateTravelService validateTravelService,
+                                  TravelRepository travelRepository, TravelMapper travelMapper, TravelResponseMapper travelResponseMapper,
+                                  GameSessionRepository gameSessionRepository, GameTickScheduler gameTickScheduler) {
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
         this.portInfoHelper = portInfoHelper;
@@ -46,9 +54,12 @@ public class StartTravelServiceImpl implements StartTravelService {
         this.travelRepository = travelRepository;
         this.travelMapper = travelMapper;
         this.travelResponseMapper = travelResponseMapper;
+        this.gameSessionRepository = gameSessionRepository;
+        this.gameTickScheduler = gameTickScheduler;
     }
 
     @Override
+    @Transactional
     public TravelDTO startTravel(UUID playerId, UUID sessionId, StartTravelDTO request) {
         try {
 
@@ -94,16 +105,25 @@ public class StartTravelServiceImpl implements StartTravelService {
             double riskFactor = calculateRiskFactor(playerShip, ship);
             BigDecimal baseReward = calculateBaseReward(distance);
 
+            GameSession session = gameSessionRepository.findById(sessionId)
+                    .orElseThrow(() -> new SessionNotFoundException(sessionId));
+            int currentTick = session.getCurrentTick();
+
             Travel travel = Travel.start(
-                    playerShip.getId(), playerId,
+                    playerShip.getId(), playerId, sessionId,
                     originPortId, destinationPortId,
                     distance, request.getSpeedSetting(),
-                    riskFactor, baseReward
+                    riskFactor, baseReward,
+                    currentTick
             );
 
             playerShip.departForVoyage(destinationPortId);
             playerShipRepository.save(playerShip);
             Travel saved = travelRepository.save(travel);
+
+            // Sofort Schiffspositionen broadcasten, ohne auf den nächsten Tick zu warten
+            gameTickScheduler.triggerImmediateBroadcast(sessionId);
+
             return travelResponseMapper.toResponse(saved);
         } catch (Exception e) {
             e.printStackTrace();

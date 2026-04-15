@@ -1,6 +1,9 @@
 package at.fhv.backend.rest;
 
+import at.fhv.backend.rest.dtos.websocket.PortsUpdateEvent;
 import at.fhv.backend.rest.dtos.websocket.SessionUpdateEvent;
+import at.fhv.backend.rest.dtos.websocket.ShipPositionsUpdateEvent;
+import at.fhv.backend.rest.dtos.websocket.TickUpdateEvent;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -22,6 +25,18 @@ public class GameSessionWebSocketController {
 
     public void broadcastSessionUpdate(String sessionId, SessionUpdateEvent event) {
         messagingTemplate.convertAndSend("/topic/session/" + sessionId, event);
+    }
+
+    public void broadcastPortsUpdate(String sessionId, PortsUpdateEvent event) {
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/ports", event);
+    }
+
+    public void broadcastTickUpdate(String sessionId, TickUpdateEvent event) {
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/tick", event);
+    }
+
+    public void broadcastShipPositions(String sessionId, ShipPositionsUpdateEvent event) {
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/ships", event);
     }
 }
 

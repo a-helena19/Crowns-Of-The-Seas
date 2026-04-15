@@ -12,6 +12,7 @@ public class Travel {
     private final UUID travelId;
     private final UUID playerShipId;
     private final UUID playerId;
+    private final UUID sessionId;
     private final UUID originPortId;
     private final UUID destinationPortId;
     private final double distance;
@@ -22,14 +23,18 @@ public class Travel {
     private final Instant startedAt;
     private Instant arrivedAt;
     private double fuelConsumed;
+    private final int startTick;
+    private final int arrivalTick;
 
-
-    private Travel(UUID travelId, UUID playerShipId, UUID playerId, UUID originPortId, UUID destinationPortId,
-                   double distance, double speedSetting, double riskFactor, BigDecimal baseReward, TravelStatus travelStatus,
-                   Instant startedAt, Instant arrivedAt, double fuelConsumed) {
+    private Travel(UUID travelId, UUID playerShipId, UUID playerId, UUID sessionId,
+                   UUID originPortId, UUID destinationPortId,
+                   double distance, double speedSetting, double riskFactor, BigDecimal baseReward,
+                   TravelStatus travelStatus, Instant startedAt, Instant arrivedAt,
+                   double fuelConsumed, int startTick, int arrivalTick) {
         this.travelId = travelId;
         this.playerShipId = playerShipId;
         this.playerId = playerId;
+        this.sessionId = sessionId;
         this.originPortId = originPortId;
         this.destinationPortId = destinationPortId;
         this.distance = distance;
@@ -40,49 +45,47 @@ public class Travel {
         this.startedAt = startedAt;
         this.arrivedAt = arrivedAt;
         this.fuelConsumed = fuelConsumed;
+        this.startTick = startTick;
+        this.arrivalTick = arrivalTick;
     }
 
-    public static Travel start (UUID playerShipId, UUID playerId, UUID originPortId, UUID destinationPortId,
-                                double distance, double speedSetting, double riskFactor, BigDecimal baseReward) {
+    public static Travel start(UUID playerShipId, UUID playerId, UUID sessionId,
+                               UUID originPortId, UUID destinationPortId,
+                               double distance, double speedSetting,
+                               double riskFactor, BigDecimal baseReward,
+                               int currentTick) {
         if (originPortId.equals(destinationPortId)) {
             throw new SamePortException("Same port", originPortId);
         }
-
         if (distance <= 0) {
             throw new InvalidTravelDataException("Distance must be more than 0", "distance", destinationPortId);
         }
 
+        int durationTicks = (int) Math.ceil(distance / Math.max(speedSetting, 0.01));
+        int arrivalTick = currentTick + durationTicks;
+
         return new Travel(
                 UUID.randomUUID(),
-                playerShipId,
-                playerId,
-                originPortId,
-                destinationPortId,
-                distance,
-                speedSetting,
-                riskFactor,
-                baseReward,
+                playerShipId, playerId, sessionId,
+                originPortId, destinationPortId,
+                distance, speedSetting, riskFactor, baseReward,
                 TravelStatus.IN_PROGRESS,
-                Instant.now(), null, 0.0
+                Instant.now(), null, 0.0,
+                currentTick, arrivalTick
         );
     }
 
-    public static Travel reconstruct(UUID travelId, UUID playerShipId, UUID playerId, UUID originPortId, UUID destinationPortId,
-                                     double distance, double speedSetting, double riskFactor, BigDecimal baseReward, TravelStatus travelStatus,
-                                     Instant startedAt, Instant arrivedAt, double fuelConsumed) {
-        return new Travel(travelId,
-                playerShipId,
-                playerId,
-                originPortId,
-                destinationPortId,
-                distance,
-                speedSetting,
-                riskFactor,
-                baseReward,
-                travelStatus,
-                startedAt,
-                arrivedAt,
-                fuelConsumed);
+    public static Travel reconstruct(UUID travelId, UUID playerShipId, UUID playerId, UUID sessionId,
+                                     UUID originPortId, UUID destinationPortId,
+                                     double distance, double speedSetting, double riskFactor,
+                                     BigDecimal baseReward, TravelStatus travelStatus,
+                                     Instant startedAt, Instant arrivedAt, double fuelConsumed,
+                                     int startTick, int arrivalTick) {
+        return new Travel(travelId, playerShipId, playerId, sessionId,
+                originPortId, destinationPortId,
+                distance, speedSetting, riskFactor, baseReward,
+                travelStatus, startedAt, arrivedAt, fuelConsumed,
+                startTick, arrivalTick);
     }
 
     public void markAsArrived(double fuelConsumed, TravelStatus travelStatus) {
@@ -111,6 +114,10 @@ public class Travel {
 
     public UUID getPlayerId() {
         return playerId;
+    }
+
+    public UUID getSessionId() {
+        return sessionId;
     }
 
     public UUID getOriginPortId() {
@@ -151,5 +158,18 @@ public class Travel {
 
     public double getFuelConsumed() {
         return fuelConsumed;
+    }
+
+    public int getStartTick() {
+        return startTick;
+    }
+
+    public int getArrivalTick() {
+        return arrivalTick;
+    }
+
+    public double getProgress(int currentTick) {
+        if (arrivalTick <= startTick) return 1.0;
+        return Math.min(1.0, (double)(currentTick - startTick) / (arrivalTick - startTick));
     }
 }

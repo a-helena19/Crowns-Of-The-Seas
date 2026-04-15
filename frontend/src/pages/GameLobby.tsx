@@ -42,12 +42,15 @@ export default function GameLobby() {
             '4h': 'PT4H'
         };
         const isoDuration = durationMap[createForm.duration] || 'PT1H';
+        const durationSeconds = { '1h': 3600, '2h': 7200, '3h': 10800, '4h': 14400 }[createForm.duration] ?? 3600;
+        const totalTicks = Math.round(durationSeconds / createForm.tickRateSeconds);
 
         // Create session using context (now async)
         const newSession = await createSession(
             createForm.hostName,
             createForm.maxPlayers,
             createForm.tickRateSeconds,
+            totalTicks,
             isoDuration
         );
 

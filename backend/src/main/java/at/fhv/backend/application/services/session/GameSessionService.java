@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface GameSessionService {
-    SessionDTO createSession(UUID hostUserId, String hostName, int maxPlayers, int tickRateSeconds, Duration duration);
+    SessionDTO createSession(UUID hostUserId, String hostName, int maxPlayers, int tickRateSeconds, int totalTicks, Duration duration);
     SessionDTO joinSession(String gameCode, UUID userId, String playerName);
     SessionDTO startGame(UUID sessionId, UUID hostUserId);
     SessionDTO changeTickRate(UUID sessionId, UUID hostUserId, int tickRateSeconds);

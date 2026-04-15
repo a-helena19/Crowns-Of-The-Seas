@@ -11,6 +11,31 @@ export default class Ship {
         this.sprite = sprite;
     }
 
+    /** Start animating from origin→dest, placing the ship at the correct mid-route position. */
+    setRoute(
+        originX: number, originY: number,
+        destX: number, destY: number,
+        elapsedMs: number, totalMs: number,
+    ) {
+        const progress = Math.max(0, Math.min(1, elapsedMs / totalMs));
+        const startX = originX + (destX - originX) * progress;
+        const startY = originY + (destY - originY) * progress;
+        this.sprite.setPosition(startX, startY);
+        this.sprite.setFlipX(destX < startX);
+
+        const remaining = totalMs - elapsedMs;
+        if (remaining > 0) {
+            this.targetX = destX;
+            this.targetY = destY;
+            this.velX = (destX - startX) / remaining;
+            this.velY = (destY - startY) / remaining;
+            this.timeLeft = remaining;
+            this.moving = true;
+        } else {
+            this.teleport(destX, destY);
+        }
+    }
+
     moveTo(x: number, y: number, duration: number) {
         this.sprite.setFlipX(x < this.sprite.x);
 

@@ -16,6 +16,7 @@ public interface PlayerShipRepository {
     );
 
     List<PlayerShip> findAllByPlayerIdAndSessionId(UUID playerId, UUID sessionId);
+    List<PlayerShip> findAllBySessionId(UUID sessionId);
 
     List<PlayerShip> findAllByPlayerIdAndSessionIdAndStatus(
             UUID playerId,

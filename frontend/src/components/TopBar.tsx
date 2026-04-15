@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 export default function TopBar() {
     const [balance, setBalance] = useState<number | null>(null);
     const [shipCount, setShipCount] = useState<number | null>(null);
+    const [currentTick, setCurrentTick] = useState<number | null>(null);
+    const [totalTicks, setTotalTicks] = useState<number | null>(null);
 
     const userData = localStorage.getItem('crowns_user');
     const playerId = userData ? JSON.parse(userData).id : null;
@@ -36,6 +38,22 @@ export default function TopBar() {
         return () => window.removeEventListener('player-balance-updated', fetchPlayerData);
     }, [playerId, sessionId, token]);
 
+    useEffect(() => {
+        if (window.__latestTick) {
+            setCurrentTick(window.__latestTick.currentTick);
+            setTotalTicks(window.__latestTick.totalTicks);
+        }
+
+        const handleTick = (e: Event) => {
+            const { currentTick, totalTicks } = (e as CustomEvent).detail;
+            setCurrentTick(currentTick);
+            setTotalTicks(totalTicks);
+        };
+
+        window.addEventListener('backend-tick', handleTick);
+        return () => window.removeEventListener('backend-tick', handleTick);
+    }, []);
+
     return (
         <div style={{
             height: TOP_BAR_HEIGHT,
@@ -54,7 +72,12 @@ export default function TopBar() {
                 <span>💵 {balance !== null ? balance.toLocaleString('de') : '...'}</span>
                 <span>🚢 {shipCount !== null ? `${shipCount} Schiff${shipCount !== 1 ? 'e' : ''}` : '...'}</span>
                 <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
-                    ⏱ 00:00 - 1/1/2026
+                    Tag {currentTick !== null ? currentTick : '1'}
+                    {totalTicks !== null && (
+                        <span style={{ opacity: 0.6, fontSize: '12px', marginLeft: '4px' }}>
+                            / {totalTicks}
+                        </span>
+                    )}
                 </span>
             </div>
 

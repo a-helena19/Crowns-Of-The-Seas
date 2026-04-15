@@ -5,6 +5,7 @@ import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.domain.model.travel.TravelStatus;
 import at.fhv.backend.infrastructure.mapper.TravelMapper;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +13,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Repository
+@Transactional
 public class TravelRepositoryImpl implements TravelRepository {
     private final TravelJpaRepository travelJpaRepository;
     private final TravelMapper travelMapper;
@@ -54,5 +56,13 @@ public class TravelRepositoryImpl implements TravelRepository {
     public Optional<Travel> findActiveByPlayerShipId(UUID playerShipId) {
         return travelJpaRepository.findActiveByPlayerShipId(playerShipId)
                 .map(travelMapper::toDomainModel);
+    }
+
+    @Override
+    public List<Travel> findAllInProgressBySessionId(UUID sessionId) {
+        return travelJpaRepository.findAllInProgressBySessionId(sessionId)
+                .stream()
+                .map(travelMapper::toDomainModel)
+                .collect(Collectors.toList());
     }
 }

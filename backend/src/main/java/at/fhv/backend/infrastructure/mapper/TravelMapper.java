@@ -9,8 +9,10 @@ public class TravelMapper implements  EntityMapper<Travel, TravelEntity> {
     @Override
     public TravelEntity toJpaEntity(Travel travel) {
         TravelEntity entity = new TravelEntity();
+        entity.setTravelId(travel.getTravelId());
         entity.setPlayerShipId(travel.getPlayerShipId());
         entity.setPlayerId(travel.getPlayerId());
+        entity.setSessionId(travel.getSessionId());
         entity.setOriginPortId(travel.getOriginPortId());
         entity.setDestinationPortId(travel.getDestinationPortId());
         entity.setDistance(travel.getDistance());
@@ -21,6 +23,8 @@ public class TravelMapper implements  EntityMapper<Travel, TravelEntity> {
         entity.setStartedAt(travel.getStartedAt());
         entity.setArrivedAt(travel.getArrivedAt());
         entity.setFuelConsumed(travel.getFuelConsumed());
+        entity.setStartTick(travel.getStartTick());
+        entity.setArrivalTick(travel.getArrivalTick());
         return entity;
     }
 
@@ -30,6 +34,7 @@ public class TravelMapper implements  EntityMapper<Travel, TravelEntity> {
                 entity.getTravelId(),
                 entity.getPlayerShipId(),
                 entity.getPlayerId(),
+                entity.getSessionId(),
                 entity.getOriginPortId(),
                 entity.getDestinationPortId(),
                 entity.getDistance(),
@@ -39,7 +44,9 @@ public class TravelMapper implements  EntityMapper<Travel, TravelEntity> {
                 entity.getTravelStatus(),
                 entity.getStartedAt(),
                 entity.getArrivedAt(),
-                entity.getFuelConsumed()
+                entity.getFuelConsumed(),
+                entity.getStartTick(),
+                entity.getArrivalTick()
         );
     }
 }

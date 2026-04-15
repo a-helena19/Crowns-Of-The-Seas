@@ -19,19 +19,21 @@ public class GameSession {
     private final int maxPlayers;
     private int currentTick;
     private int tickRateSeconds;
+    private final int totalTicks;
     private final String gameCode;
     private final List<ISessionPlayer> players;
     private final Map<UUID, PlayerFaction> playerFactions;
     private LocalDateTime startTime;
     private final Duration duration;
 
-    public GameSession(UUID hostUserId, int maxPlayers, int tickRateSeconds, Duration duration) {
+    public GameSession(UUID hostUserId, int maxPlayers, int tickRateSeconds, int totalTicks, Duration duration) {
         this.id = UUID.randomUUID();
         this.status = SessionStatus.LOBBY;
         this.hostUserId = hostUserId;
         this.maxPlayers = maxPlayers;
         this.currentTick = 0;
         this.tickRateSeconds = tickRateSeconds;
+        this.totalTicks = totalTicks;
         this.gameCode = generateCode();
         this.players = new ArrayList<>();
         this.playerFactions = new HashMap<>();
@@ -41,19 +43,19 @@ public class GameSession {
     public static GameSession reconstruct(UUID id, SessionStatus status,
                                           UUID hostUserId, int maxPlayers,
                                           int currentTick, int tickRateSeconds,
-                                          String gameCode,
+                                          int totalTicks, String gameCode,
                                           List<ISessionPlayer> players,
                                           Map<UUID, PlayerFaction> factions,
                                           LocalDateTime startTime,
                                           Duration duration) {
         return new GameSession(id, status, hostUserId, maxPlayers,
-                currentTick, tickRateSeconds, gameCode,
+                currentTick, tickRateSeconds, totalTicks, gameCode,
                 players, factions, startTime, duration);
     }
 
     private GameSession(UUID id, SessionStatus status, UUID hostUserId,
                         int maxPlayers, int currentTick, int tickRateSeconds,
-                        String gameCode, List<ISessionPlayer> players,
+                        int totalTicks, String gameCode, List<ISessionPlayer> players,
                         Map<UUID, PlayerFaction> factions, LocalDateTime startTime, Duration duration) {
         this.id = id;
         this.status = status;
@@ -61,6 +63,7 @@ public class GameSession {
         this.maxPlayers = maxPlayers;
         this.currentTick = currentTick;
         this.tickRateSeconds = tickRateSeconds;
+        this.totalTicks = totalTicks;
         this.gameCode = gameCode;
         this.players = players;
         this.playerFactions = factions;
@@ -117,6 +120,16 @@ public class GameSession {
         currentTick++;
     }
 
+    public void finish() {
+        if (!status.canTransitionTo(SessionStatus.FINISHED))
+            throw new SessionNotRunningException(id);
+        this.status = SessionStatus.FINISHED;
+    }
+
+    public boolean isExpired() {
+        return currentTick >= totalTicks;
+    }
+
     private String generateCode() {
         return UUID.randomUUID().toString()
                 .substring(0, 6).toUpperCase();
@@ -139,6 +152,9 @@ public class GameSession {
     }
     public int getTickRateSeconds(){
         return tickRateSeconds;
+    }
+    public int getTotalTicks(){
+        return totalTicks;
     }
     public String getGameCode(){
         return gameCode;

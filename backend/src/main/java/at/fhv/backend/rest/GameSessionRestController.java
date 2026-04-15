@@ -42,7 +42,7 @@ public class GameSessionRestController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(gameSessionService.createSession(
                         userId, req.hostName(),
-                        req.maxPlayers(), req.tickRateSeconds(), duration));
+                        req.maxPlayers(), req.tickRateSeconds(), req.totalTicks(), duration));
     }
 
     @PostMapping("/join")

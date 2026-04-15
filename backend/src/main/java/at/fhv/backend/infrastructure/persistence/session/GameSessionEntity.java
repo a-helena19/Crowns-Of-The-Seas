@@ -32,6 +32,9 @@ public class GameSessionEntity {
     @Column(nullable = false)
     private int tickRateSeconds;
 
+    @Column(nullable = false, columnDefinition = "int default 0")
+    private int totalTicks;
+
     @Column(nullable = false, unique = true)
     private String gameCode;
 
@@ -46,12 +49,13 @@ public class GameSessionEntity {
 
     public GameSessionEntity() {}
 
-    public GameSessionEntity(SessionStatusEntity status, UUID hostUserId, int maxPlayers, int currentTick, int tickRateSeconds, String gameCode, LocalDateTime startTime, Duration duration) {
+    public GameSessionEntity(SessionStatusEntity status, UUID hostUserId, int maxPlayers, int currentTick, int tickRateSeconds, int totalTicks, String gameCode, LocalDateTime startTime, Duration duration) {
         this.status = status;
         this.hostUserId = hostUserId;
         this.maxPlayers = maxPlayers;
         this.currentTick = currentTick;
         this.tickRateSeconds = tickRateSeconds;
+        this.totalTicks = totalTicks;
         this.gameCode = gameCode;
         this.startTime = startTime;
         this.duration = duration;
@@ -79,6 +83,10 @@ public class GameSessionEntity {
 
     public int getTickRateSeconds() {
         return tickRateSeconds;
+    }
+
+    public int getTotalTicks() {
+        return totalTicks;
     }
 
     public String getGameCode() {
@@ -116,6 +124,10 @@ public class GameSessionEntity {
 
     public void setTickRateSeconds(int tickRateSeconds) {
         this.tickRateSeconds = tickRateSeconds;
+    }
+
+    public void setTotalTicks(int totalTicks) {
+        this.totalTicks = totalTicks;
     }
 
     public void setGameCode(String gameCode) {

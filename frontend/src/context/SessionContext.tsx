@@ -12,7 +12,7 @@ export interface Session {
 
 interface SessionContextType {
     sessions: Session[];
-    createSession: (hostName: string, maxPlayers: number, tickRateSeconds: number, duration: string) => Promise<Session | null>;
+    createSession: (hostName: string, maxPlayers: number, tickRateSeconds: number, totalTicks: number, duration: string) => Promise<Session | null>;
     joinSession: (gameCode: string, playerName?: string) => Promise<Session | null>;
     startSession: (sessionId: string) => Promise<void>;
     getSessionByCode: (gameCode: string) => Session | null;
@@ -28,12 +28,13 @@ export { SessionContext };
 export function SessionProvider({ children }: { children: ReactNode }) {
     const [sessions, setSessions] = useState<Session[]>([]);
 
-    const createSession = useCallback(async (hostName: string, maxPlayers: number, tickRateSeconds: number, duration: string): Promise<Session | null> => {
+    const createSession = useCallback(async (hostName: string, maxPlayers: number, tickRateSeconds: number, totalTicks: number, duration: string): Promise<Session | null> => {
         try {
             const response = await sessionApi.createSession({
                 hostName,
                 maxPlayers,
                 tickRateSeconds,
+                totalTicks,
                 duration
             });
 

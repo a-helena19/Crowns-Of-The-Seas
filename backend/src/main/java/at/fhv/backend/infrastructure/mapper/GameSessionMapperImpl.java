@@ -46,6 +46,7 @@ public class GameSessionMapperImpl implements GameSessionMapper {
                 entity.getMaxPlayers(),
                 entity.getCurrentTick(),
                 entity.getTickRateSeconds(),
+                entity.getTotalTicks(),
                 entity.getGameCode(),
                 players,
                 factions,
@@ -63,6 +64,7 @@ public class GameSessionMapperImpl implements GameSessionMapper {
         entity.setMaxPlayers(domain.getMaxPlayers());
         entity.setCurrentTick(domain.getCurrentTick());
         entity.setTickRateSeconds(domain.getTickRateSeconds());
+        entity.setTotalTicks(domain.getTotalTicks());
         entity.setGameCode(domain.getGameCode());
         entity.setStartTime(domain.getStartTime());
         entity.setDuration(domain.getDuration());

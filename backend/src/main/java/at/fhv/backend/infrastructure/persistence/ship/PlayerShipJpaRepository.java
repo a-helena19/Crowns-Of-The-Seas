@@ -13,4 +13,5 @@ public interface PlayerShipJpaRepository extends JpaRepository<PlayerShipEntity,
     List<PlayerShipEntity> findAllByPlayerIdAndSessionId(UUID playerId, UUID sessionId);
     List<PlayerShipEntity> findAllByPlayerIdAndSessionIdAndStatus(UUID playerId, UUID sessionId, ShipStatus status);
     Optional<PlayerShipEntity> findByIdAndPlayerIdAndSessionId(UUID id, UUID playerId, UUID sessionId);
+    List<PlayerShipEntity> findAllBySessionId(UUID sessionId);
 }

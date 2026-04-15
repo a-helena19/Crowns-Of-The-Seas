@@ -9,5 +9,7 @@ public record SessionDTO(
         String status,
         int maxPlayers,
         int tickRateSeconds,
+        int totalTicks,
+        int currentTick,
         List<SessionPlayerDTO> players
 ) {}

@@ -15,4 +15,8 @@ public interface TravelJpaRepository extends JpaRepository<TravelEntity, UUID> {
     @Query("SELECT t FROM TravelEntity t " +
             "WHERE t.playerShipId = :playerShipId AND t.travelStatus = 'IN_PROGRESS'")
     Optional<TravelEntity> findActiveByPlayerShipId(@Param("playerShipId") UUID playerShipId);
+
+    @Query("SELECT t FROM TravelEntity t " +
+            "WHERE t.sessionId = :sessionId AND t.travelStatus = 'IN_PROGRESS'")
+    List<TravelEntity> findAllInProgressBySessionId(@Param("sessionId") UUID sessionId);
 }

@@ -7,8 +7,11 @@ import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.session.exception.SessionNotFoundException;
+import at.fhv.backend.port.application.PortQueryService;
+import at.fhv.backend.port.application.dto.PortResponseDTO;
 import at.fhv.backend.rest.GameSessionWebSocketController;
 import at.fhv.backend.rest.dtos.session.response.SessionDTO;
+import at.fhv.backend.rest.dtos.websocket.PortsUpdateEvent;
 import at.fhv.backend.rest.dtos.websocket.SessionUpdateEvent;
 import org.springframework.stereotype.Service;
 
@@ -23,18 +26,24 @@ public class GameSessionServiceImpl implements GameSessionService {
     private final GameSessionRepository gameSessionRepository;
     private final SessionDTOMapper sessionDTOMapper;
     private final GameSessionWebSocketController webSocketController;
+    private final PortQueryService portQueryService;
+    private final GameTickScheduler gameTickScheduler;
 
     public GameSessionServiceImpl(GameSessionRepository gameSessionRepository,
                                 SessionDTOMapper sessionDTOMapper,
-                                GameSessionWebSocketController webSocketController) {
+                                GameSessionWebSocketController webSocketController,
+                                PortQueryService portQueryService,
+                                GameTickScheduler gameTickScheduler) {
         this.sessionDTOMapper = sessionDTOMapper;
         this.gameSessionRepository = gameSessionRepository;
         this.webSocketController = webSocketController;
+        this.portQueryService = portQueryService;
+        this.gameTickScheduler = gameTickScheduler;
     }
 
     @Override
-    public SessionDTO createSession(UUID hostUserId, String hostName, int maxPlayers, int tickRateSeconds, Duration duration) {
-        GameSession session = new GameSession(hostUserId, maxPlayers, tickRateSeconds, duration);
+    public SessionDTO createSession(UUID hostUserId, String hostName, int maxPlayers, int tickRateSeconds, int totalTicks, Duration duration) {
+        GameSession session = new GameSession(hostUserId, maxPlayers, tickRateSeconds, totalTicks, duration);
         ISessionPlayer host = new BaseSessionPlayer(
                 hostUserId, session.getId(), hostName, true);
         session.addPlayer(host);
@@ -94,6 +103,17 @@ public class GameSessionServiceImpl implements GameSessionService {
                 "GAME_STARTED"
         );
         webSocketController.broadcastSessionUpdate(session.getId().toString(), event);
+
+        gameTickScheduler.startForSession(session.getId(), session.getTickRateSeconds());
+
+        List<PortResponseDTO> ports = portQueryService.findAll();
+        PortsUpdateEvent portsEvent = new PortsUpdateEvent(
+                "PORTS_UPDATE",
+                ports.stream()
+                        .map(p -> new PortsUpdateEvent.PortInfo(p.id(), p.name(), p.x(), p.y()))
+                        .toList()
+        );
+        webSocketController.broadcastPortsUpdate(session.getId().toString(), portsEvent);
 
         return savedSession;
     }

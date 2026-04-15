@@ -16,14 +16,55 @@ interface SessionUpdateEvent {
     eventType: string;
 }
 
+interface PortInfo {
+    id: string;
+    name: string;
+    x: number;
+    y: number;
+}
+
+interface PortsUpdateEvent {
+    eventType: 'PORTS_UPDATE';
+    ports: PortInfo[];
+}
+
+interface TickUpdateEvent {
+    eventType: 'TICK_UPDATE';
+    currentTick: number;
+    totalTicks: number;
+}
+
+export interface ShipPosition {
+    playerShipId: string;
+    playerId: string;
+    playerName: string;
+    iconUrl: string;
+    x: number;
+    y: number;
+    status: 'EN_ROUTE' | 'AT_PORT';
+    arrivalTick: number | null;
+    originX: number | null;
+    originY: number | null;
+    destX: number | null;
+    destY: number | null;
+    startTick: number | null;
+}
+
+interface ShipPositionsUpdateEvent {
+    eventType: 'SHIP_POSITIONS_UPDATE';
+    ships: ShipPosition[];
+}
+
 interface UseGameSessionWebSocketProps {
     sessionId: string | null;
     onSessionUpdate: (event: SessionUpdateEvent) => void;
+    onTickUpdate?: (event: TickUpdateEvent) => void;
 }
 
 export function useGameSessionWebSocket({
     sessionId,
-    onSessionUpdate
+    onSessionUpdate,
+    onTickUpdate
 }: UseGameSessionWebSocketProps) {
     const stompClientRef = useRef<Client | null>(null);
     const [isConnected, setIsConnected] = useState(false);
@@ -68,6 +109,41 @@ export function useGameSessionWebSocket({
                             onSessionUpdate(event);
                         } catch (error) {
                             console.error('Error parsing session update:', error);
+                        }
+                    });
+
+                    // Subscribe to ports update
+                    client.subscribe(`/topic/session/${sessionId}/ports`, (message) => {
+                        console.log('Received ports update:', message.body);
+                        try {
+                            const event = JSON.parse(message.body) as PortsUpdateEvent;
+                            window.__latestPorts = event.ports;
+                            window.dispatchEvent(new CustomEvent('backend-ports', { detail: event.ports }));
+                        } catch (error) {
+                            console.error('Error parsing ports update:', error);
+                        }
+                    });
+
+                    // Subscribe to tick update
+                    client.subscribe(`/topic/session/${sessionId}/tick`, (message) => {
+                        try {
+                            const event = JSON.parse(message.body) as TickUpdateEvent;
+                            window.__latestTick = event;
+                            window.dispatchEvent(new CustomEvent('backend-tick', { detail: event }));
+                            if (onTickUpdate) onTickUpdate(event);
+                        } catch (error) {
+                            console.error('Error parsing tick update:', error);
+                        }
+                    });
+
+                    // Subscribe to ship positions
+                    client.subscribe(`/topic/session/${sessionId}/ships`, (message) => {
+                        try {
+                            const event = JSON.parse(message.body) as ShipPositionsUpdateEvent;
+                            window.__latestShips = event.ships;
+                            window.dispatchEvent(new CustomEvent('backend-ship-positions', { detail: event.ships }));
+                        } catch (error) {
+                            console.error('Error parsing ship positions:', error);
                         }
                     });
 
