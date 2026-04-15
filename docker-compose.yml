@@ -1,0 +1,16 @@
+services:
+  backend:
+    image: eateam6-backend:latest
+    container_name: eateam6-backend-container
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  frontend:
+    image: eateam6-frontend:latest
+    container_name: eateam6-frontend-container
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
