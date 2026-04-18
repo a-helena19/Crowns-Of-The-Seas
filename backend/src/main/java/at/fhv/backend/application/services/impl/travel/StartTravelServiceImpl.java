@@ -21,7 +21,6 @@ import at.fhv.backend.domain.model.ship.ShipRepository;
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.domain.model.travel.TravelStatus;
-import at.fhv.backend.infrastructure.mapper.TravelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,7 +37,6 @@ public class StartTravelServiceImpl implements StartTravelService {
     private final CalculateFuelConsumptionService calculateFuelConsumptionService;
     private final ValidateTravelService validateTravelService;
     private final TravelRepository travelRepository;
-    private final TravelMapper travelMapper;
     private final TravelResponseMapper travelResponseMapper;
     private final GameSessionRepository gameSessionRepository;
     private final GameTickScheduler gameTickScheduler;
@@ -49,7 +47,6 @@ public class StartTravelServiceImpl implements StartTravelService {
                                   CalculateFuelConsumptionService calculateFuelConsumptionService,
                                   ValidateTravelService validateTravelService,
                                   TravelRepository travelRepository,
-                                  TravelMapper travelMapper,
                                   TravelResponseMapper travelResponseMapper,
                                   GameSessionRepository gameSessionRepository,
                                   GameTickScheduler gameTickScheduler) {
@@ -59,7 +56,6 @@ public class StartTravelServiceImpl implements StartTravelService {
         this.calculateFuelConsumptionService = calculateFuelConsumptionService;
         this.validateTravelService = validateTravelService;
         this.travelRepository = travelRepository;
-        this.travelMapper = travelMapper;
         this.travelResponseMapper = travelResponseMapper;
         this.gameSessionRepository = gameSessionRepository;
         this.gameTickScheduler = gameTickScheduler;
@@ -106,6 +102,7 @@ public class StartTravelServiceImpl implements StartTravelService {
             );
 
             playerShip.departForVoyage(destinationPortId);
+            playerShip.consumeFuel(requiredFuelPercent);
             playerShipRepository.save(playerShip);
             Travel saved = travelRepository.save(travel);
 

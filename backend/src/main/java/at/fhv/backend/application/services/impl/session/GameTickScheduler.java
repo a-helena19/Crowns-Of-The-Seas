@@ -150,6 +150,20 @@ public class GameTickScheduler {
             ship.arriveAtPort(travel.getDestinationPortId());
             playerShipRepository.save(ship);
         }
+
+        // Deliver cargo assigned to this ship and start its respawn cooldown
+        List<SessionCargo> assignedCargos = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
+        for (SessionCargo cargo : assignedCargos) {
+            if (cargo.getAssignedPlayerShipId() != null
+                    && cargo.getAssignedPlayerShipId().equals(travel.getPlayerShipId())
+                    && cargo.getDestinationPortId().equals(travel.getDestinationPortId())
+                    && cargo.getCargoStatus() == CargoStatus.ASSIGNED) {
+                cargo.deliver();
+                int cooldown = CargoSessionInitializer.cooldownTicksFor(cargo.getCargoType());
+                cargo.startCooldown(travel.getArrivalTick() + cooldown);
+                sessionCargoRepository.save(cargo);
+            }
+        }
     }
 
     public void triggerImmediateBroadcast(UUID sessionId) {

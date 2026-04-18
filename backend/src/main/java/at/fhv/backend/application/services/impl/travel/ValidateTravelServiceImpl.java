@@ -27,9 +27,8 @@ public class ValidateTravelServiceImpl implements ValidateTravelService {
             throw new SamePortException("Same origin and destination port: ", originPortId);
         }
 
-        // TODO Elif: fuel validation, kann aktuell fuel nicht berechnen, da die distance Berechnung fehlt.
-        // if (playerShip.getFuel() < requiredFuelPercent) {
-        //    throw new InsufficientFuelException("Insufficient fuel", requiredFuelPercent, playerShip.getFuel());
-        //}
+        if (playerShip.getFuel() < requiredFuelPercent) {
+            throw new InsufficientFuelException("Insufficient fuel", requiredFuelPercent, playerShip.getFuel());
+        }
     }
 }

@@ -12,15 +12,10 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.messaging.simp.annotation.SendToUser;
-import org.springframework.messaging.support.MessageHeaderAccessor;
-import org.springframework.messaging.support.NativeMessageHeaderAccessor;
 import org.springframework.stereotype.Controller;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
-import java.security.Principal;
 
 @Controller
 public class CargoWebSocketController {
@@ -39,21 +34,17 @@ public class CargoWebSocketController {
                             @Payload AcceptCargoRequest request,
                             SimpMessageHeaderAccessor headerAccessor) {
 
-        String playerIdStr = (String) headerAccessor.getSessionAttributes()
-                .getOrDefault("playerId", null);
-
-        if (playerIdStr == null) {
-            String authHeader = headerAccessor.getFirstNativeHeader("Authorization");
+        // playerId comes from the request payload - no session attribute needed
+        UUID playerId = request.getPlayerId();
+        if (playerId == null) {
             messaging.convertAndSendToUser(
                     headerAccessor.getSessionId(),
                     "/queue/cargo/error",
-                    "Not authenticated",
-                    MessageHeaderAccessor.getAccessor(headerAccessor.getMessageHeaders(), NativeMessageHeaderAccessor.class) != null ? new HashMap<>() : new HashMap<>()
+                    "Not authenticated"
             );
             return;
         }
 
-        UUID playerId = UUID.fromString(playerIdStr);
         UUID sessionUUID = UUID.fromString(sessionId);
 
         try {
