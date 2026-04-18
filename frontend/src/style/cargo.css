@@ -224,3 +224,23 @@
     gap: 40px;
     flex: 1;
 }
+
+.risk-low     { color: #4caf50; }
+.risk-medium  { color: #ff9800; }
+.risk-high    { color: #f44336; }
+.risk-extreme { color: #9c27b0; }
+
+.cargo-message {
+    text-align: center;
+    color: #4caf50;
+    font-size: 13px;
+    letter-spacing: 1px;
+    padding: 8px;
+    background: rgba(76,175,80,0.1);
+    border: 1px solid rgba(76,175,80,0.3);
+}
+
+.cargo-port-icon {
+    font-size: 24px;
+    margin-bottom: 6px;
+}

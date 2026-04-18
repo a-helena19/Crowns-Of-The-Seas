@@ -95,7 +95,8 @@ public class StartTravelServiceImpl implements StartTravelService {
                 distance = 1000;
             }
 
-            double requiredFuelPercent = calculateFuelConsumptionService.calculateFuelConsumption(ship, distance);
+            double speedMultiplier = 1.0 + Math.pow(request.getSpeedSetting() / ship.getMaxSpeed() - 0.5, 2);
+            double requiredFuelPercent = calculateFuelConsumptionService.calculateFuelConsumption(ship, distance) * speedMultiplier;
             System.out.println("requiredFuel: " + requiredFuelPercent);
 
             validateTravelService.validateTravelStart(playerShip, playerId, originPortId, destinationPortId, requiredFuelPercent);

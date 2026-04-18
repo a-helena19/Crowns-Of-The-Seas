@@ -1,5 +1,8 @@
 package at.fhv.backend.application.services.impl.session;
 
+import at.fhv.backend.domain.model.cargo.CargoStatus;
+import at.fhv.backend.domain.model.cargo.SessionCargo;
+import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.ship.PlayerShip;
@@ -10,6 +13,7 @@ import at.fhv.backend.domain.model.ship.ShipStatus;
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.application.services.port.PortQueryService;
+import at.fhv.backend.rest.CargoWebSocketController;
 import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.GameSessionWebSocketController;
 import at.fhv.backend.rest.dtos.websocket.ShipPositionsUpdateEvent;
@@ -36,6 +40,8 @@ public class GameTickScheduler {
     private final PlayerShipRepository playerShipRepository;
     private final ShipRepository shipRepository;
     private final PortQueryService portQueryService;
+    private final SessionCargoRepository sessionCargoRepository;
+    private final CargoWebSocketController cargoWebSocketController;
     private final GameSessionWebSocketController webSocketController;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
@@ -46,12 +52,16 @@ public class GameTickScheduler {
                              PlayerShipRepository playerShipRepository,
                              ShipRepository shipRepository,
                              PortQueryService portQueryService,
+                             SessionCargoRepository sessionCargoRepository,
+                             CargoWebSocketController cargoWebSocketController,
                              GameSessionWebSocketController webSocketController) {
         this.gameSessionRepository = gameSessionRepository;
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
         this.portQueryService = portQueryService;
+        this.sessionCargoRepository = sessionCargoRepository;
+        this.cargoWebSocketController = cargoWebSocketController;
         this.webSocketController = webSocketController;
     }
 
@@ -122,6 +132,7 @@ public class GameTickScheduler {
                 }
             }
 
+            processCargoLifecycle(sessionId, currentTick);
             broadcastShipPositions(sessionId, currentTick, session);
         } catch (Exception e) {
             System.err.println("Ship update error for session " + sessionId + ": " + e.getMessage());
@@ -222,6 +233,29 @@ public class GameTickScheduler {
                     sessionId.toString(),
                     new ShipPositionsUpdateEvent(positions)
             );
+        }
+    }
+
+    private void processCargoLifecycle(UUID sessionId, int currentTick) {
+        List<SessionCargo> all = sessionCargoRepository.findAllBySessionId(sessionId);
+        boolean changed = false;
+
+        for (SessionCargo sc : all) {
+            if (sc.getCargoStatus() == CargoStatus.INACTIVE && sc.getSpawnTick() <= currentTick
+                    && sc.getCooldownUntilTick() < 0) {
+                sc.activate();
+                sessionCargoRepository.save(sc);
+                changed = true;
+            }
+            else if (sc.shouldRespawnAt(currentTick)) {
+                sc.activate();
+                sessionCargoRepository.save(sc);
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            cargoWebSocketController.broadcastMarketUpdate(sessionId);
         }
     }
 }
