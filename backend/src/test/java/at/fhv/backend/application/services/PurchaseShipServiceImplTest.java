@@ -5,6 +5,7 @@ import at.fhv.backend.application.dtos.mapper.ShipResponseMapper;
 import at.fhv.backend.rest.dtos.ship.request.BuyShipDTO;
 import at.fhv.backend.rest.dtos.ship.response.PlayerShipDTO;
 import at.fhv.backend.application.services.impl.ship.PurchaseShipServiceImpl;
+import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.application.services.ship.ValidateShipService;
 import at.fhv.backend.domain.model.exception.InsufficientFundsException;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
@@ -17,6 +18,7 @@ import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.ship.Ship;
 import at.fhv.backend.domain.model.ship.ShipClass;
 import at.fhv.backend.domain.model.ship.ShipRepository;
+import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -34,20 +37,14 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PurchaseShipServiceImplTest {
-    @Mock
-    private ValidateShipService validateShipService;
-    @Mock
-    private ShipRepository shipRepository;
-    @Mock
-    private PlayerShipRepository playerShipRepository;
-    @Mock
-    private PlayerShipResponseMapper playerShipResponseMapper;
-    @Mock
-    private ShipResponseMapper shipResponseMapper;
-    @Mock
-    private PortInfoHelper portInfoHelper;
-    @Mock
-    private SessionPlayerRepository sessionPlayerRepository;
+
+    @Mock private ValidateShipService validateShipService;
+    @Mock private ShipRepository shipRepository;
+    @Mock private PlayerShipRepository playerShipRepository;
+    @Mock private PlayerShipResponseMapper playerShipResponseMapper;
+    @Mock private ShipResponseMapper shipResponseMapper;
+    @Mock private PortQueryService portQueryService;
+    @Mock private SessionPlayerRepository sessionPlayerRepository;
 
     private PurchaseShipServiceImpl service;
 
@@ -55,17 +52,20 @@ class PurchaseShipServiceImplTest {
     void setUp() {
         service = new PurchaseShipServiceImpl(
                 validateShipService, shipRepository, playerShipRepository,
-                playerShipResponseMapper, shipResponseMapper, portInfoHelper, sessionPlayerRepository
+                playerShipResponseMapper, shipResponseMapper,
+                portQueryService, sessionPlayerRepository
         );
     }
 
     private Ship buildShip(BigDecimal price) {
         return Ship.create("Black Pearl", "A fast ship", ShipClass.STANDARD,
-                price, 100, 15.0, 2.5, BigDecimal.valueOf(500), BigDecimal.valueOf(200), 0.9, "icon.png");
+                price, 100, 15.0, 2.5,
+                BigDecimal.valueOf(500), BigDecimal.valueOf(200), 0.9, "icon.png");
     }
 
     private ISessionPlayer buildPlayer(UUID userId, UUID sessionId, BigDecimal balance) {
-        return BaseSessionPlayer.reconstruct(UUID.randomUUID(), userId, sessionId, "TestPlayer", false, balance);
+        return BaseSessionPlayer.reconstruct(
+                UUID.randomUUID(), userId, sessionId, "TestPlayer", false, balance);
     }
 
     private BuyShipDTO buildBuyShipDTO(UUID shipId) {
@@ -74,25 +74,33 @@ class PurchaseShipServiceImplTest {
         return dto;
     }
 
+    private UUID stubSuccessfulPurchase(Ship ship, ISessionPlayer player,
+                                        UUID playerId, UUID sessionId) {
+        UUID startPortId = UUID.randomUUID();
+        when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
+        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId))
+                .thenReturn(Optional.of(player));
+        when(validateShipService.validatePurchase(eq(ship), any())).thenReturn(ship.getPrice());
+        when(sessionPlayerRepository.save(player)).thenReturn(player);
+        when(portQueryService.findAll())
+                .thenReturn(List.of(new PortResponseDTO(startPortId, "Hamburg", 49.5, 22.0)));
+        when(playerShipRepository.save(any(PlayerShip.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        when(playerShipResponseMapper.toResponse(any(PlayerShip.class), eq(ship)))
+                .thenReturn(new PlayerShipDTO());
+        return startPortId;
+    }
+
     @Test
     void givenValidPurchase_whenBuyShip_thenPlayerShipRepositorySaveIsCalled() {
         UUID playerId = UUID.randomUUID();
         UUID sessionId = UUID.randomUUID();
         Ship ship = buildShip(BigDecimal.valueOf(1000));
         ISessionPlayer player = buildPlayer(playerId, sessionId, BigDecimal.valueOf(5000));
-        UUID startPortId = UUID.randomUUID();
+        stubSuccessfulPurchase(ship, player, playerId, sessionId);
 
-        when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
-        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(player));
-        when(validateShipService.validatePurchase(ship, player.getBalance())).thenReturn(ship.getPrice());
-        when(sessionPlayerRepository.save(player)).thenReturn(player);
-        when(portInfoHelper.getDefaultStartPortId()).thenReturn(startPortId);
-        when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
-        when(playerShipResponseMapper.toResponse(any(PlayerShip.class), eq(ship))).thenReturn(new PlayerShipDTO());
+        service.buyShip(playerId, sessionId, buildBuyShipDTO(ship.getId()));
 
-        BuyShipDTO dto = buildBuyShipDTO(ship.getId());
-        service.buyShip(playerId, sessionId, dto);
         verify(playerShipRepository, times(1)).save(any(PlayerShip.class));
     }
 
@@ -102,16 +110,10 @@ class PurchaseShipServiceImplTest {
         UUID sessionId = UUID.randomUUID();
         Ship ship = buildShip(BigDecimal.valueOf(1000));
         ISessionPlayer player = buildPlayer(playerId, sessionId, BigDecimal.valueOf(5000));
-
-        when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
-        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(player));
-        when(validateShipService.validatePurchase(eq(ship), any())).thenReturn(ship.getPrice());
-        when(sessionPlayerRepository.save(player)).thenReturn(player);
-        when(portInfoHelper.getDefaultStartPortId()).thenReturn(UUID.randomUUID());
-        when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(playerShipResponseMapper.toResponse(any(PlayerShip.class), eq(ship))).thenReturn(new PlayerShipDTO());
+        stubSuccessfulPurchase(ship, player, playerId, sessionId);
 
         service.buyShip(playerId, sessionId, buildBuyShipDTO(ship.getId()));
+
         assertThat(player.getBalance()).isEqualByComparingTo(BigDecimal.valueOf(4000));
     }
 
@@ -120,11 +122,11 @@ class PurchaseShipServiceImplTest {
         UUID playerId = UUID.randomUUID();
         UUID sessionId = UUID.randomUUID();
         UUID unknownShipId = UUID.randomUUID();
-
         when(shipRepository.findById(unknownShipId)).thenReturn(Optional.empty());
 
-        BuyShipDTO dto = buildBuyShipDTO(unknownShipId);
-        assertThatThrownBy(() -> service.buyShip(playerId, sessionId, dto)).isInstanceOf(ShipNotFoundException.class);
+        assertThatThrownBy(() ->
+                service.buyShip(playerId, sessionId, buildBuyShipDTO(unknownShipId)))
+                .isInstanceOf(ShipNotFoundException.class);
     }
 
     @Test
@@ -132,11 +134,13 @@ class PurchaseShipServiceImplTest {
         UUID playerId = UUID.randomUUID();
         UUID sessionId = UUID.randomUUID();
         Ship ship = buildShip(BigDecimal.valueOf(1000));
-
         when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
-        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.empty());
+        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId))
+                .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.buyShip(playerId, sessionId, buildBuyShipDTO(ship.getId()))).isInstanceOf(PlayerNotFoundException.class);
+        assertThatThrownBy(() ->
+                service.buyShip(playerId, sessionId, buildBuyShipDTO(ship.getId())))
+                .isInstanceOf(PlayerNotFoundException.class);
     }
 
     @Test
@@ -145,12 +149,15 @@ class PurchaseShipServiceImplTest {
         UUID sessionId = UUID.randomUUID();
         Ship ship = buildShip(BigDecimal.valueOf(99999));
         ISessionPlayer player = buildPlayer(playerId, sessionId, BigDecimal.valueOf(100));
-
         when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
-        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(player));
-        when(validateShipService.validatePurchase(ship, player.getBalance())).thenThrow(new InsufficientFundsException(ship.getPrice(), player.getBalance()));
+        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId))
+                .thenReturn(Optional.of(player));
+        when(validateShipService.validatePurchase(ship, player.getBalance()))
+                .thenThrow(new InsufficientFundsException(ship.getPrice(), player.getBalance()));
 
-        assertThatThrownBy(() -> service.buyShip(playerId, sessionId, buildBuyShipDTO(ship.getId()))).isInstanceOf(InsufficientFundsException.class);
+        assertThatThrownBy(() ->
+                service.buyShip(playerId, sessionId, buildBuyShipDTO(ship.getId())))
+                .isInstanceOf(InsufficientFundsException.class);
     }
 
     @Test
@@ -159,19 +166,14 @@ class PurchaseShipServiceImplTest {
         UUID sessionId = UUID.randomUUID();
         Ship ship = buildShip(BigDecimal.valueOf(1000));
         ISessionPlayer player = buildPlayer(playerId, sessionId, BigDecimal.valueOf(5000));
-
-        when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
-        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(player));
-        when(validateShipService.validatePurchase(any(), any())).thenReturn(ship.getPrice());
-        when(sessionPlayerRepository.save(player)).thenReturn(player);
-        when(portInfoHelper.getDefaultStartPortId()).thenReturn(UUID.randomUUID());
+        stubSuccessfulPurchase(ship, player, playerId, sessionId);
 
         when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> {
             PlayerShip ps = inv.getArgument(0);
             assertThat(ps.getStatus().name()).isEqualTo("AT_PORT");
             return ps;
         });
-        when(playerShipResponseMapper.toResponse(any(), eq(ship))).thenReturn(new PlayerShipDTO());
+
         service.buyShip(playerId, sessionId, buildBuyShipDTO(ship.getId()));
     }
 
@@ -180,9 +182,11 @@ class PurchaseShipServiceImplTest {
         UUID playerId = UUID.randomUUID();
         UUID sessionId = UUID.randomUUID();
         ISessionPlayer player = buildPlayer(playerId, sessionId, BigDecimal.valueOf(12345));
+        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId))
+                .thenReturn(Optional.of(player));
 
-        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(player));
         BigDecimal balance = service.getBalanceByPlayerId(playerId, sessionId);
+
         assertThat(balance).isEqualByComparingTo(BigDecimal.valueOf(12345));
     }
 
@@ -190,9 +194,11 @@ class PurchaseShipServiceImplTest {
     void givenUnknownPlayer_whenGetBalance_thenReturnsZero() {
         UUID playerId = UUID.randomUUID();
         UUID sessionId = UUID.randomUUID();
+        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId))
+                .thenReturn(Optional.empty());
 
-        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.empty());
         BigDecimal balance = service.getBalanceByPlayerId(playerId, sessionId);
+
         assertThat(balance).isEqualByComparingTo(BigDecimal.ZERO);
     }
 }
