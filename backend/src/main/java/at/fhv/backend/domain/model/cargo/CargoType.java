@@ -7,6 +7,5 @@ public enum CargoType {
     ELECTRONICS,
     FRAGILE,
     HAZARDOUS,
-    LUXURY_GOODS,
-    ILLEGAL_GOODS
+    LUXURY_GOODS
 }

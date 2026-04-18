@@ -1,6 +1,8 @@
 package at.fhv.backend.application.services.impl.travel;
 
 import at.fhv.backend.application.dtos.mapper.TravelResponseMapper;
+import at.fhv.backend.application.services.port.PortQueryService;
+import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
 import at.fhv.backend.rest.dtos.ship.response.TravelDTO;
 import at.fhv.backend.application.services.impl.session.GameTickScheduler;
@@ -32,7 +34,7 @@ import java.util.stream.Collectors;
 public class StartTravelServiceImpl implements StartTravelService {
     private final PlayerShipRepository playerShipRepository;
     private final ShipRepository shipRepository;
-    private final PortInfoHelper portInfoHelper;
+    private final PortQueryService portQueryService;
     private final CalculateFuelConsumptionService calculateFuelConsumptionService;
     private final ValidateTravelService validateTravelService;
     private final TravelRepository travelRepository;
@@ -41,13 +43,19 @@ public class StartTravelServiceImpl implements StartTravelService {
     private final GameSessionRepository gameSessionRepository;
     private final GameTickScheduler gameTickScheduler;
 
-    public StartTravelServiceImpl(PlayerShipRepository playerShipRepository, ShipRepository shipRepository, PortInfoHelper portInfoHelper,
-                                  CalculateFuelConsumptionService calculateFuelConsumptionService, ValidateTravelService validateTravelService,
-                                  TravelRepository travelRepository, TravelMapper travelMapper, TravelResponseMapper travelResponseMapper,
-                                  GameSessionRepository gameSessionRepository, GameTickScheduler gameTickScheduler) {
+    public StartTravelServiceImpl(PlayerShipRepository playerShipRepository,
+                                  ShipRepository shipRepository,
+                                  PortQueryService portQueryService,
+                                  CalculateFuelConsumptionService calculateFuelConsumptionService,
+                                  ValidateTravelService validateTravelService,
+                                  TravelRepository travelRepository,
+                                  TravelMapper travelMapper,
+                                  TravelResponseMapper travelResponseMapper,
+                                  GameSessionRepository gameSessionRepository,
+                                  GameTickScheduler gameTickScheduler) {
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
-        this.portInfoHelper = portInfoHelper;
+        this.portQueryService = portQueryService;
         this.calculateFuelConsumptionService = calculateFuelConsumptionService;
         this.validateTravelService = validateTravelService;
         this.travelRepository = travelRepository;
@@ -61,46 +69,26 @@ public class StartTravelServiceImpl implements StartTravelService {
     @Transactional
     public TravelDTO startTravel(UUID playerId, UUID sessionId, StartTravelDTO request) {
         try {
-
-
-            System.out.println("START TRAVEL");
             PlayerShip playerShip = playerShipRepository
                     .findByIdAndPlayerIdAndSessionId(request.getPlayerShipId(), playerId, sessionId)
                     .orElseThrow(() -> new ShipNotFoundException("PlayerShip", request.getPlayerShipId()));
 
-            System.out.println("Ship status: " + playerShip.getStatus());
-            System.out.println("Ship currentPortId: " + playerShip.getCurrentPortId());
-            Ship ship = shipRepository.findById(playerShip.getShipId()).orElseThrow(() -> new ShipNotFoundException("Ship", playerShip.getShipId()));
-
-            UUID destinationPortId = request.getDestinationPortId();
-            // Zielhafen validieren - skipped, port gibt es noch nicht
-            // PortNotFoundException
+            Ship ship = shipRepository.findById(playerShip.getShipId())
+                    .orElseThrow(() -> new ShipNotFoundException("Ship", playerShip.getShipId()));
 
             UUID originPortId = playerShip.getCurrentPortId();
-            System.out.println("originPortId: " + originPortId);
-            System.out.println("destinationPortId: " + destinationPortId);
+            UUID destinationPortId = request.getDestinationPortId();
 
-            if (originPortId == null) {
-                // Fallback solange Ports noch nicht implementiert sind
-                originPortId = UUID.fromString("00000000-0000-0000-0000-000000000099");
-                System.out.println("originPortId was null, using fallback");
-            }
-
-            double distance;
-
-            try {
-                distance = portInfoHelper.getDistance(originPortId, destinationPortId);
-            } catch (Exception e) {
-                System.out.println("Distance fallback used");
-                distance = 1000;
-            }
+            PortResponseDTO originPort = portQueryService.findById(originPortId);
+            PortResponseDTO destinationPort = portQueryService.findById(destinationPortId);
+            double dx = originPort.x() - destinationPort.x();
+            double dy = originPort.y() - destinationPort.y();
+            double distance = Math.sqrt(dx * dx + dy * dy);
 
             double speedMultiplier = 1.0 + Math.pow(request.getSpeedSetting() / ship.getMaxSpeed() - 0.5, 2);
             double requiredFuelPercent = calculateFuelConsumptionService.calculateFuelConsumption(ship, distance) * speedMultiplier;
-            System.out.println("requiredFuel: " + requiredFuelPercent);
 
             validateTravelService.validateTravelStart(playerShip, playerId, originPortId, destinationPortId, requiredFuelPercent);
-            System.out.println("Validation passed");
 
             double riskFactor = calculateRiskFactor(playerShip, ship);
             BigDecimal baseReward = calculateBaseReward(distance);
@@ -121,7 +109,6 @@ public class StartTravelServiceImpl implements StartTravelService {
             playerShipRepository.save(playerShip);
             Travel saved = travelRepository.save(travel);
 
-            // Sofort Schiffspositionen broadcasten, ohne auf den nächsten Tick zu warten
             gameTickScheduler.triggerImmediateBroadcast(sessionId);
 
             return travelResponseMapper.toResponse(saved);

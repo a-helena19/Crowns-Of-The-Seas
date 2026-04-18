@@ -1,5 +1,6 @@
 package at.fhv.backend.application.services.impl.session;
 
+import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
 import at.fhv.backend.domain.model.cargo.SessionCargoRepository;

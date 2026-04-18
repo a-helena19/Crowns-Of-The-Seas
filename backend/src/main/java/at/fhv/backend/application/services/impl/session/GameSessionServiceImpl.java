@@ -32,11 +32,11 @@ public class GameSessionServiceImpl implements GameSessionService {
     private final CargoSessionInitializer cargoSessionInitializer;
 
     public GameSessionServiceImpl(GameSessionRepository gameSessionRepository,
-                                SessionDTOMapper sessionDTOMapper,
-                                GameSessionWebSocketController webSocketController,
-                                PortQueryService portQueryService,
-                                GameTickScheduler gameTickScheduler,
-                                CargoSessionInitializer cargoSessionInitializer) {
+                                  SessionDTOMapper sessionDTOMapper,
+                                  GameSessionWebSocketController webSocketController,
+                                  PortQueryService portQueryService,
+                                  GameTickScheduler gameTickScheduler,
+                                  CargoSessionInitializer cargoSessionInitializer) {
         this.sessionDTOMapper = sessionDTOMapper;
         this.gameSessionRepository = gameSessionRepository;
         this.webSocketController = webSocketController;
@@ -71,11 +71,11 @@ public class GameSessionServiceImpl implements GameSessionService {
                 session.getPlayers().size(),
                 session.getMaxPlayers(),
                 session.getPlayers().stream()
-                    .map(p -> new SessionUpdateEvent.PlayerInfo(
-                        p.getUserId(),
-                        p.getPlayerName(),
-                        p.isHost()))
-                    .collect(Collectors.toList()),
+                        .map(p -> new SessionUpdateEvent.PlayerInfo(
+                                p.getUserId(),
+                                p.getPlayerName(),
+                                p.isHost()))
+                        .collect(Collectors.toList()),
                 "PLAYER_JOINED"
         );
         // Use sessionId (UUID) not gameCode for WebSocket topic!
@@ -99,11 +99,11 @@ public class GameSessionServiceImpl implements GameSessionService {
                 session.getPlayers().size(),
                 session.getMaxPlayers(),
                 session.getPlayers().stream()
-                    .map(p -> new SessionUpdateEvent.PlayerInfo(
-                        p.getUserId(),
-                        p.getPlayerName(),
-                        p.isHost()))
-                    .collect(Collectors.toList()),
+                        .map(p -> new SessionUpdateEvent.PlayerInfo(
+                                p.getUserId(),
+                                p.getPlayerName(),
+                                p.isHost()))
+                        .collect(Collectors.toList()),
                 "GAME_STARTED"
         );
         webSocketController.broadcastSessionUpdate(session.getId().toString(), event);

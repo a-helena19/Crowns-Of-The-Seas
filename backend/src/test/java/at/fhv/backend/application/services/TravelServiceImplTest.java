@@ -5,7 +5,6 @@ import at.fhv.backend.application.dtos.mapper.TravelResponseMapper;
 import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
 import at.fhv.backend.rest.dtos.ship.response.TravelDTO;
 import at.fhv.backend.application.services.impl.session.GameTickScheduler;
-import at.fhv.backend.application.services.impl.travel.PortInfoHelper;
 import at.fhv.backend.application.services.impl.travel.StartTravelServiceImpl;
 import at.fhv.backend.application.services.impl.travel.ValidateTravelServiceImpl;
 import at.fhv.backend.application.services.travel.CalculateFuelConsumptionService;

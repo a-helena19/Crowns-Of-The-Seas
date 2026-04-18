@@ -5,7 +5,6 @@ import at.fhv.backend.application.dtos.mapper.ShipResponseMapper;
 import at.fhv.backend.rest.dtos.ship.request.BuyShipDTO;
 import at.fhv.backend.rest.dtos.ship.response.PlayerShipDTO;
 import at.fhv.backend.application.services.impl.ship.PurchaseShipServiceImpl;
-import at.fhv.backend.application.services.impl.travel.PortInfoHelper;
 import at.fhv.backend.application.services.ship.ValidateShipService;
 import at.fhv.backend.domain.model.exception.InsufficientFundsException;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
