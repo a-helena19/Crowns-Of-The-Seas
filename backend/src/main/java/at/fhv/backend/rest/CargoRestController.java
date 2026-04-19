@@ -3,10 +3,7 @@ package at.fhv.backend.rest;
 import at.fhv.backend.application.services.cargo.CargoQueryService;
 import at.fhv.backend.rest.dtos.cargo.response.SessionCargoDTO;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
@@ -21,8 +18,10 @@ public class CargoRestController {
     }
 
     @GetMapping("/{sessionId}/available")
-    public ResponseEntity<List<SessionCargoDTO>> getAvailable(@PathVariable UUID sessionId) {
-        return ResponseEntity.ok(cargoQueryService.getAvailableCargos(sessionId));
+    public ResponseEntity<List<SessionCargoDTO>> getAvailable(
+            @PathVariable UUID sessionId,
+            @RequestParam UUID portId) {
+        return ResponseEntity.ok(cargoQueryService.getAvailableCargos(sessionId, portId));
     }
 
     @GetMapping("/offer/{sessionCargoId}")

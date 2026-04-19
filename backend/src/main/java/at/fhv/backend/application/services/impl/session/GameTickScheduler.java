@@ -255,22 +255,61 @@ public class GameTickScheduler {
         List<SessionCargo> all = sessionCargoRepository.findAllBySessionId(sessionId);
         boolean changed = false;
 
+        // Gruppiere alle Cargos nach originPortId
+        Map<UUID, List<SessionCargo>> byPort = new java.util.HashMap<>();
         for (SessionCargo sc : all) {
-            if (sc.getCargoStatus() == CargoStatus.INACTIVE && sc.getSpawnTick() <= currentTick
-                    && sc.getCooldownUntilTick() < 0) {
-                sc.activate();
-                sessionCargoRepository.save(sc);
-                changed = true;
-            }
-            else if (sc.shouldRespawnAt(currentTick)) {
-                sc.activate();
-                sessionCargoRepository.save(sc);
-                changed = true;
+            byPort.computeIfAbsent(sc.getOriginPortId(), k -> new ArrayList<>()).add(sc);
+        }
+
+        java.util.Random rng = new java.util.Random();
+
+        for (Map.Entry<UUID, List<SessionCargo>> entry : byPort.entrySet()) {
+            List<SessionCargo> portCargos = entry.getValue();
+
+            long activeCount = portCargos.stream()
+                    .filter(sc -> sc.getCargoStatus() == CargoStatus.AVAILABLE)
+                    .count();
+
+            // Maximal 3 gleichzeitig aktive Cargos pro Port
+            int maxActive = 3;
+
+            for (SessionCargo sc : portCargos) {
+                // Initial-Spawn: spawnTick erreicht, noch nie aktiviert (cooldownUntilTick == -1)
+                boolean isInitialSpawn = sc.getCargoStatus() == CargoStatus.INACTIVE
+                        && sc.getSpawnTick() <= currentTick
+                        && sc.getCooldownUntilTick() < 0;
+
+                // Respawn nach Cooldown
+                boolean isRespawn = sc.shouldRespawnAt(currentTick);
+
+                if ((isInitialSpawn || isRespawn) && activeCount < maxActive) {
+                    // Zufällige Erscheinungswahrscheinlichkeit pro Tick (ca. 20-30% pro Tick)
+                    // GENERAL_GOODS / FOOD erscheinen häufiger, LUXURY seltener
+                    double spawnChance = spawnChanceFor(sc.getCargoType());
+                    if (rng.nextDouble() < spawnChance) {
+                        sc.activate();
+                        sessionCargoRepository.save(sc);
+                        activeCount++;
+                        changed = true;
+                    }
+                }
             }
         }
 
         if (changed) {
             cargoWebSocketController.broadcastMarketUpdate(sessionId);
         }
+    }
+
+    private double spawnChanceFor(at.fhv.backend.domain.model.cargo.CargoType type) {
+        return switch (type) {
+            case GENERAL_GOODS    -> 0.35;
+            case FOOD             -> 0.30;
+            case INDUSTRIAL_GOODS -> 0.25;
+            case FRAGILE          -> 0.20;
+            case ELECTRONICS      -> 0.15;
+            case HAZARDOUS        -> 0.12;
+            case LUXURY_GOODS     -> 0.08;
+        };
     }
 }

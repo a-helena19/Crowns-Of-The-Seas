@@ -41,8 +41,20 @@ public class SessionCargoRepositoryImpl implements SessionCargoRepository {
     }
 
     @Override
+    public List<SessionCargo> findAvailableBySessionIdAndPort(UUID sessionId, UUID portId, int currentTick) {
+        return sessionCargoJpaRepository.findAvailableBySessionIdAndPort(sessionId, portId, currentTick)
+                .stream().map(sessionCargoMapper::toDomainModel).collect(Collectors.toList());
+    }
+
+    @Override
     public List<SessionCargo> findAllBySessionId(UUID sessionId) {
         return sessionCargoJpaRepository.findAllBySessionId(sessionId)
+                .stream().map(sessionCargoMapper::toDomainModel).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<SessionCargo> findAllBySessionIdAndPort(UUID sessionId, UUID portId) {
+        return sessionCargoJpaRepository.findAllBySessionIdAndPort(sessionId, portId)
                 .stream().map(sessionCargoMapper::toDomainModel).collect(Collectors.toList());
     }
 

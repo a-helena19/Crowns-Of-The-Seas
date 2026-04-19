@@ -1,6 +1,7 @@
 package at.fhv.backend.application.services;
 
 import at.fhv.backend.application.dtos.mapper.session.SessionDTOMapperImpl;
+import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.application.services.impl.session.GameSessionServiceImpl;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.application.services.impl.session.GameTickScheduler;
@@ -46,9 +47,12 @@ class GameSessionServiceImplTest {
 
     private GameSessionServiceImpl service;
 
+    @Mock
+    private CargoSessionInitializer cargoSessionInitializer;
+
     @BeforeEach
     void setUp() {
-        service = new GameSessionServiceImpl(gameSessionRepository, new SessionDTOMapperImpl(), webSocketController, portQueryService, gameTickScheduler);
+        service = new GameSessionServiceImpl(gameSessionRepository, new SessionDTOMapperImpl(), webSocketController, portQueryService, gameTickScheduler, cargoSessionInitializer);
     }
 
     // Hilfsmethode: fertige LOBBY-Session ohne Spieler zurückliefern

@@ -44,12 +44,15 @@ public class GlobalExceptionHandler {
     private HttpStatus mapToHttpStatus(DomainException exception) {
         return switch (exception.getErrorCode()) {
             case SHIP_NOT_FOUND,
-                 TRAVEL_NOT_FOUND -> HttpStatus.NOT_FOUND;
+                 TRAVEL_NOT_FOUND, CARGO_NOT_FOUND -> HttpStatus.NOT_FOUND;
 
             case PLAYER_INSUFFICIENT_FUNDS,
                  INSUFFICIENT_FUEL,
                  SHIP_NOT_AVAILABLE_FOR_PURCHASE,
-                 SHIP_NOT_OWNED_BY_PLAYER -> HttpStatus.BAD_REQUEST;
+                 SHIP_NOT_OWNED_BY_PLAYER,
+                 CARGO_NOT_AVAILABLE,
+                 CARGO_NOT_ASSIGNED,
+                 CARGO_CAPACITY_EXCEEDED -> HttpStatus.BAD_REQUEST;
             case PLAYER_NOT_FOUND, SESSION_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case FACTION_ALREADY_ASSIGNED, USERNAME_ALREADY_EXISTS -> HttpStatus.CONFLICT;
             case INVALID_FACTION,
@@ -68,5 +71,6 @@ public class GlobalExceptionHandler {
             case INVALID_CREDENTIALS -> HttpStatus.UNAUTHORIZED;
 
         };
+
     }
 }

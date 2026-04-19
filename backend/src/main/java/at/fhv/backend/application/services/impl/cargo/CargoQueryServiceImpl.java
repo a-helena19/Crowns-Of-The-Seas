@@ -35,7 +35,18 @@ public class CargoQueryServiceImpl implements CargoQueryService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<SessionCargoDTO> getAvailableCargos(UUID sessionId) {
+    public List<SessionCargoDTO> getAvailableCargos(UUID sessionId, UUID portId) {
+        GameSession session = gameSessionRepository.findById(sessionId).orElseThrow(() -> new SessionNotFoundException(sessionId));
+        int currentTick = session.getCurrentTick();
+        return sessionCargoRepository.findAvailableBySessionIdAndPort(sessionId, portId, currentTick)
+                .stream()
+                .map(sc -> enrichDto(sc))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SessionCargoDTO> getAvailableCargosBySession(UUID sessionId) {
         GameSession session = gameSessionRepository.findById(sessionId).orElseThrow(() -> new SessionNotFoundException(sessionId));
         int currentTick = session.getCurrentTick();
         return sessionCargoRepository.findAvailableBySessionId(sessionId, currentTick)
@@ -47,7 +58,7 @@ public class CargoQueryServiceImpl implements CargoQueryService {
     @Override
     @Transactional(readOnly = true)
     public SessionCargoDTO getCargoById(UUID sessionCargoId) {
-        SessionCargo sc = sessionCargoRepository.findById(sessionCargoId).orElseThrow(() -> new CargoNotFoundException("SessionCargo not found:" + sessionCargoId));
+        SessionCargo sc = sessionCargoRepository.findById(sessionCargoId).orElseThrow(() -> new CargoNotFoundException(sessionCargoId));
         return enrichDto(sc);
     }
 

@@ -50,7 +50,7 @@ public class AcceptCargoServiceImpl implements AcceptCargoService {
     public SessionCargoDTO acceptCargo(UUID playerId, UUID sessionId, AcceptCargoRequest request) {
         GameSession session = gameSessionRepository.findById(sessionId).orElseThrow(() -> new SessionNotFoundException(sessionId));
         int currentTick = session.getCurrentTick();
-        SessionCargo cargo = sessionCargoRepository.findByIdForUpdate(request.getSessionCargoId()).orElseThrow(() -> new CargoNotFoundException("SessionCargo not found for: " + request.getSessionCargoId()));
+        SessionCargo cargo = sessionCargoRepository.findByIdForUpdate(request.getSessionCargoId()).orElseThrow(() -> new CargoNotFoundException(request.getSessionCargoId()));
 
         if (cargo.getCargoStatus() != CargoStatus.AVAILABLE || !cargo.isVisibleAt(currentTick)) {
             throw new CargoNotAvailableException(request.getSessionCargoId());

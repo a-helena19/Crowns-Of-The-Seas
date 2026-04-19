@@ -5,24 +5,46 @@
     display: flex;
     gap: 40px;
     padding: 50px;
-
-    background:
-            linear-gradient(160deg, #e8e1c4 0%, #f2ebd3 50%, #dcd4b0 100%);
-
+    background: linear-gradient(160deg, #e8e1c4 0%, #f2ebd3 50%, #dcd4b0 100%);
     font-family: "Georgia", serif;
     color: #2b2418;
 }
 
-.cargo-list {
-    width: 320px;
+.cargo-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    height: 100%;
+}
+
+.cargo-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
 }
 
 .cargo-title {
     text-align: center;
     font-size: 30px;
+    margin: 0;
 }
 
-.cargo-list-title {
+.cargo-layout {
+    display: flex;
+    gap: 40px;
+    flex: 1;
+    min-height: 0;
+}
+
+.cargo-list {
+    width: 320px;
+    flex-shrink: 0;
+    overflow-y: auto;
+}
+
+.cargo-list-header {
     font-size: 13px;
     letter-spacing: 3px;
     margin-bottom: 20px;
@@ -32,8 +54,8 @@
 
 .cargo-item {
     border: 1px solid rgba(120,90,40,0.25);
-    padding: 16px;
-    margin-bottom: 14px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
     background: #efe7cd;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -50,23 +72,41 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
-.cargo-item-title {
+.cargo-item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.cargo-item-name {
     font-weight: bold;
-    font-size: 15px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cargo-type-icon {
+    font-size: 13px;
+    font-style: normal;
+}
+
+.cargo-item-profit {
+    font-weight: bold;
+    color: #7a5020;
+    white-space: nowrap;
+    font-size: 14px;
 }
 
 .cargo-item-sub {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: 11px;
     color: #7a6a4a;
     margin-top: 6px;
     letter-spacing: 1px;
-}
-
-.cargo-item-right {
-    float: right;
-    text-align: right;
-    font-weight: bold;
-    color: #8c6a3a;
 }
 
 .cargo-detail {
@@ -74,10 +114,8 @@
     background: #f4ecd2;
     border: 1px solid rgba(120,90,40,0.3);
     padding: 30px;
-    max-height: 400px;
-    max-width: 900px;
+    overflow-y: auto;
     position: relative;
-
 }
 
 .cargo-detail::before {
@@ -88,28 +126,17 @@
     pointer-events: none;
 }
 
-.cargo-detail-header {
-    margin-bottom: 20px;
-}
-
-.cargo-detail-sub {
-    font-size: 11px;
-    letter-spacing: 2px;
-    color: #8c6a3a;
-    margin-bottom: 6px;
-    text-transform: uppercase;
-}
-
 .cargo-detail-title {
     font-size: 24px;
     font-weight: bold;
+    margin-bottom: 8px;
 }
 
 .cargo-route {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin: 30px 0;
+    margin: 24px 0;
 }
 
 .cargo-port {
@@ -117,25 +144,19 @@
 }
 
 .cargo-port-icon {
-    width: 50px;
-    height: 50px;
-    border: 1px solid rgba(140,106,58,0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 8px;
-    background: rgba(255,255,255,0.2);
+    font-size: 24px;
+    margin-bottom: 6px;
 }
 
 .cargo-port-name {
     font-weight: bold;
+    font-size: 14px;
 }
 
 .cargo-route-line {
     flex: 1;
     height: 2px;
     margin: 0 20px;
-
     background: repeating-linear-gradient(
             90deg,
             #b89b5e,
@@ -148,51 +169,135 @@
 .cargo-stats {
     display: flex;
     border: 1px solid rgba(120,90,40,0.2);
-    margin-top: 30px;
+    margin-top: 16px;
     background: rgba(255,255,255,0.15);
 }
 
 .cargo-stat {
     flex: 1;
-    padding: 20px;
+    padding: 16px;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .cargo-stat:not(:last-child) {
     border-right: 1px solid rgba(120,90,40,0.2);
 }
 
-.cargo-stat svg {
-    margin-bottom: 8px;
-    color: #8c6a3a;
-}
-
-.cargo-stat-label {
+.cargo-stat span {
     font-size: 11px;
     color: #7a6a4a;
-    margin-bottom: 6px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.cargo-stat strong {
+    font-size: 16px;
+}
+
+.cargo-speed-section {
+    margin-top: 24px;
+    background: rgba(255,255,255,0.25);
+    border: 1px solid rgba(120,90,40,0.2);
+    padding: 18px 20px 14px;
+}
+
+.cargo-speed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #6b5a3a;
+}
+
+.cargo-speed-value {
+    font-weight: bold;
+    font-size: 13px;
+    color: #3a2a14;
+}
+
+.cargo-speed-slider {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #c8b060 0%, #a04020 100%);
+    outline: none;
+    cursor: pointer;
+}
+
+.cargo-speed-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #8c6a3a;
+    border: 2px solid #f4ecd2;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    cursor: pointer;
+}
+
+.cargo-speed-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #8c6a3a;
+    border: 2px solid #f4ecd2;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    cursor: pointer;
+}
+
+.cargo-speed-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #9a8a6a;
+    margin-top: 4px;
     letter-spacing: 1px;
 }
 
-.cargo-stat-value {
-    font-size: 18px;
-    font-weight: bold;
+.cargo-speed-info {
+    margin-top: 12px;
+    display: flex;
+    gap: 20px;
+}
+
+.cargo-speed-row {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #6b5a3a;
+    padding: 6px 0;
+    border-top: 1px solid rgba(120,90,40,0.15);
+}
+
+.cargo-speed-row strong {
+    font-size: 13px;
 }
 
 .cargo-btn {
-    margin-top: 40px;
-    text-align: center;
+    display: block;
+    width: 100%;
+    margin-top: 24px;
     padding: 14px;
-
+    text-align: center;
     background: #a37c45;
     color: white;
     font-weight: bold;
     letter-spacing: 2px;
     text-transform: uppercase;
-
     border: 2px solid #8c6a3a;
     cursor: pointer;
     transition: all 0.15s ease;
+    font-family: "Georgia", serif;
+    font-size: 14px;
 }
 
 .cargo-btn:hover {
@@ -201,46 +306,19 @@
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
-.cargo-container {
-    display: flex;
-    flex-direction: column;
-    gap: 40px;
-    width: 100%;
-    height: 100%;
+.cargo-btn:active {
+    transform: translateY(1px);
 }
 
-.cargo-list {
-    width: 320px;
-    flex-shrink: 0;
-}
-
-.cargo-detail {
-    flex: 1;
-    min-width: 0;
-}
-
-.cargo-layout {
-    display: flex;
-    gap: 40px;
-    flex: 1;
+.cargo-message {
+    text-align: center;
+    font-size: 13px;
+    letter-spacing: 1px;
+    padding: 8px 16px;
+    border: 1px solid;
 }
 
 .risk-low     { color: #4caf50; }
 .risk-medium  { color: #ff9800; }
 .risk-high    { color: #f44336; }
 .risk-extreme { color: #9c27b0; }
-
-.cargo-message {
-    text-align: center;
-    color: #4caf50;
-    font-size: 13px;
-    letter-spacing: 1px;
-    padding: 8px;
-    background: rgba(76,175,80,0.1);
-    border: 1px solid rgba(76,175,80,0.3);
-}
-
-.cargo-port-icon {
-    font-size: 24px;
-    margin-bottom: 6px;
-}

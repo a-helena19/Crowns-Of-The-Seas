@@ -15,6 +15,12 @@ public interface SessionCargoJpaRepository extends JpaRepository<SessionCargoEnt
     @Query("SELECT s FROM SessionCargoEntity s WHERE s.sessionId = :sessionId AND s.cargoStatus = 'AVAILABLE' AND s.spawnTick <= :currentTick")
     List<SessionCargoEntity> findAvailableBySessionId(@Param("sessionId") UUID sessionId, @Param("currentTick") int currentTick);
 
+    @Query("SELECT s FROM SessionCargoEntity s WHERE s.sessionId = :sessionId AND s.originPortId = :portId AND s.cargoStatus = 'AVAILABLE' AND s.spawnTick <= :currentTick")
+    List<SessionCargoEntity> findAvailableBySessionIdAndPort(@Param("sessionId") UUID sessionId, @Param("portId") UUID portId, @Param("currentTick") int currentTick);
+
+    @Query("SELECT s FROM SessionCargoEntity s WHERE s.sessionId = :sessionId AND s.originPortId = :portId")
+    List<SessionCargoEntity> findAllBySessionIdAndPort(@Param("sessionId") UUID sessionId, @Param("portId") UUID portId);
+
     List<SessionCargoEntity> findAllBySessionId(UUID sessionId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

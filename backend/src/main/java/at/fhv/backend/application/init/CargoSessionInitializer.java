@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.*;
-
 /**
  * Type           spawnTick   cooldownTicks   rewardMultiplier   containsIllegal chance
  * GENERAL_GOODS     0           5               1.0x               0%
@@ -103,12 +102,16 @@ public class CargoSessionInitializer {
 
             boolean illegal = false;
 
+            // Zufälliger Versatz beim initialen spawnTick, damit Cargos gestaffelt erscheinen
+            int randomOffset = rng.nextInt(8); // 0-7 Ticks Versatz
+            int finalSpawnTick = cfg.spawnTick + randomOffset;
+
             SessionCargo sc = SessionCargo.create(
                     template.getId(), sessionId,
                     origin.getId().getValue(), dest.getId().getValue(),
                     reward, illegal,
                     template.getCapacity(), type, template.getRisk(),
-                    cfg.spawnTick
+                    finalSpawnTick
             );
             result.add(sc);
         }

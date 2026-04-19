@@ -1,5 +1,8 @@
 package at.fhv.backend.rest;
 
+import at.fhv.backend.domain.model.cargo.exception.CargoCapacityExceededException;
+import at.fhv.backend.domain.model.cargo.exception.CargoNotAvailableException;
+import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
 import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
 import at.fhv.backend.rest.dtos.ship.response.TravelDTO;
 import at.fhv.backend.application.services.travel.StartTravelService;
@@ -9,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -21,16 +25,26 @@ public class TravelRestController {
     }
 
     @PostMapping("/start/{playerId}")
-    public ResponseEntity<TravelDTO> startTravel(
+    public ResponseEntity<?> startTravel(
             @PathVariable UUID playerId,
             @RequestParam UUID sessionId,
             @Valid @RequestBody StartTravelDTO request) {
         try {
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(startTravelService.startTravel(playerId, sessionId, request));
+            TravelDTO result = startTravelService.startTravel(playerId, sessionId, request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(result);
+        } catch (CargoNotAvailableException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "CARGO_TAKEN", "message", "Diese Fracht wurde gerade von einem anderen Kapitän übernommen."));
+        } catch (CargoCapacityExceededException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "CAPACITY_EXCEEDED", "message", "Dein Schiff ist zu klein für diese Fracht."));
+        } catch (CargoNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "CARGO_NOT_FOUND", "message", "Frachtangebot nicht gefunden."));
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(500).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "SERVER_ERROR", "message", e.getMessage() != null ? e.getMessage() : "Unbekannter Fehler"));
         }
     }
 

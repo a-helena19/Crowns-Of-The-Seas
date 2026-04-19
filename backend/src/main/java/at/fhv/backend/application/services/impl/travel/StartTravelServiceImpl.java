@@ -1,7 +1,15 @@
 package at.fhv.backend.application.services.impl.travel;
 
 import at.fhv.backend.application.dtos.mapper.TravelResponseMapper;
+import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.application.services.port.PortQueryService;
+import at.fhv.backend.domain.model.cargo.CargoStatus;
+import at.fhv.backend.domain.model.cargo.SessionCargo;
+import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
+import at.fhv.backend.domain.model.cargo.exception.CargoCapacityExceededException;
+import at.fhv.backend.domain.model.cargo.exception.CargoNotAvailableException;
+import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
+import at.fhv.backend.rest.CargoWebSocketController;
 import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
 import at.fhv.backend.rest.dtos.ship.response.TravelDTO;
@@ -40,6 +48,8 @@ public class StartTravelServiceImpl implements StartTravelService {
     private final TravelResponseMapper travelResponseMapper;
     private final GameSessionRepository gameSessionRepository;
     private final GameTickScheduler gameTickScheduler;
+    private final SessionCargoRepository sessionCargoRepository;
+    private final CargoWebSocketController cargoWebSocketController;
 
     public StartTravelServiceImpl(PlayerShipRepository playerShipRepository,
                                   ShipRepository shipRepository,
@@ -49,7 +59,9 @@ public class StartTravelServiceImpl implements StartTravelService {
                                   TravelRepository travelRepository,
                                   TravelResponseMapper travelResponseMapper,
                                   GameSessionRepository gameSessionRepository,
-                                  GameTickScheduler gameTickScheduler) {
+                                  GameTickScheduler gameTickScheduler,
+                                  SessionCargoRepository sessionCargoRepository,
+                                  CargoWebSocketController cargoWebSocketController) {
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
         this.portQueryService = portQueryService;
@@ -59,6 +71,8 @@ public class StartTravelServiceImpl implements StartTravelService {
         this.travelResponseMapper = travelResponseMapper;
         this.gameSessionRepository = gameSessionRepository;
         this.gameTickScheduler = gameTickScheduler;
+        this.sessionCargoRepository = sessionCargoRepository;
+        this.cargoWebSocketController = cargoWebSocketController;
     }
 
     @Override
@@ -75,6 +89,28 @@ public class StartTravelServiceImpl implements StartTravelService {
             UUID originPortId = playerShip.getCurrentPortId();
             UUID destinationPortId = request.getDestinationPortId();
 
+            SessionCargo cargo = sessionCargoRepository
+                    .findByIdForUpdate(request.getSessionCargoId())
+                    .orElseThrow(() -> new CargoNotFoundException(request.getSessionCargoId()));
+
+            GameSession session = gameSessionRepository.findById(sessionId)
+                    .orElseThrow(() -> new SessionNotFoundException(sessionId));
+            int currentTick = session.getCurrentTick();
+
+            if (cargo.getCargoStatus() != CargoStatus.AVAILABLE || !cargo.isVisibleAt(currentTick)) {
+                throw new CargoNotAvailableException(cargo.getId());
+            }
+            if (ship.getMaxCargoCapacity() < cargo.getCapacity()) {
+                throw new CargoCapacityExceededException(cargo.getCapacity(), ship.getMaxCargoCapacity());
+            }
+            if (!destinationPortId.equals(cargo.getDestinationPortId())) {
+                throw new CargoNotAvailableException(cargo.getId());
+            }
+
+            int cooldownTicks = CargoSessionInitializer.cooldownTicksFor(cargo.getCargoType());
+            cargo.assign(playerId, playerShip.getId(), cooldownTicks, currentTick);
+            sessionCargoRepository.save(cargo);
+
             PortResponseDTO originPort = portQueryService.findById(originPortId);
             PortResponseDTO destinationPort = portQueryService.findById(destinationPortId);
             double dx = originPort.x() - destinationPort.x();
@@ -88,10 +124,6 @@ public class StartTravelServiceImpl implements StartTravelService {
 
             double riskFactor = calculateRiskFactor(playerShip, ship);
             BigDecimal baseReward = calculateBaseReward(distance);
-
-            GameSession session = gameSessionRepository.findById(sessionId)
-                    .orElseThrow(() -> new SessionNotFoundException(sessionId));
-            int currentTick = session.getCurrentTick();
 
             Travel travel = Travel.start(
                     playerShip.getId(), playerId, sessionId,
@@ -107,6 +139,7 @@ public class StartTravelServiceImpl implements StartTravelService {
             Travel saved = travelRepository.save(travel);
 
             gameTickScheduler.triggerImmediateBroadcast(sessionId);
+            cargoWebSocketController.broadcastMarketUpdate(sessionId);
 
             return travelResponseMapper.toResponse(saved);
         } catch (Exception e) {
