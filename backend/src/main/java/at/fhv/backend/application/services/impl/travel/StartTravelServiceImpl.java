@@ -2,6 +2,7 @@ package at.fhv.backend.application.services.impl.travel;
 
 import at.fhv.backend.application.dtos.mapper.TravelResponseMapper;
 import at.fhv.backend.application.init.CargoSessionInitializer;
+import at.fhv.backend.application.services.cargo.PortDistanceForCargoService;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
@@ -50,6 +51,7 @@ public class StartTravelServiceImpl implements StartTravelService {
     private final GameTickScheduler gameTickScheduler;
     private final SessionCargoRepository sessionCargoRepository;
     private final CargoWebSocketController cargoWebSocketController;
+    private final PortDistanceForCargoService portDistanceForCargoService;
 
     public StartTravelServiceImpl(PlayerShipRepository playerShipRepository,
                                   ShipRepository shipRepository,
@@ -61,7 +63,9 @@ public class StartTravelServiceImpl implements StartTravelService {
                                   GameSessionRepository gameSessionRepository,
                                   GameTickScheduler gameTickScheduler,
                                   SessionCargoRepository sessionCargoRepository,
-                                  CargoWebSocketController cargoWebSocketController) {
+                                  CargoWebSocketController cargoWebSocketController,
+                                  PortDistanceForCargoService portDistanceForCargoService
+                                  ) {
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
         this.portQueryService = portQueryService;
@@ -73,6 +77,7 @@ public class StartTravelServiceImpl implements StartTravelService {
         this.gameTickScheduler = gameTickScheduler;
         this.sessionCargoRepository = sessionCargoRepository;
         this.cargoWebSocketController = cargoWebSocketController;
+        this.portDistanceForCargoService = portDistanceForCargoService;
     }
 
     @Override
@@ -104,7 +109,7 @@ public class StartTravelServiceImpl implements StartTravelService {
             if (ship.getMaxCargoCapacity() < cargo.getCapacity()) {
                 throw new CargoCapacityExceededException(cargo.getCapacity(), ship.getMaxCargoCapacity());
             }
-            // Zieldestination muss zur Cargo-Destination passen
+
             if (!destinationPortId.equals(cargo.getDestinationPortId())) {
                 throw new CargoNotAvailableException(cargo.getId());
             }
@@ -114,11 +119,7 @@ public class StartTravelServiceImpl implements StartTravelService {
             sessionCargoRepository.save(cargo);
             // ─────────────────────────────────────────────────────────────────
 
-            PortResponseDTO originPort = portQueryService.findById(originPortId);
-            PortResponseDTO destinationPort = portQueryService.findById(destinationPortId);
-            double dx = originPort.x() - destinationPort.x();
-            double dy = originPort.y() - destinationPort.y();
-            double distance = Math.sqrt(dx * dx + dy * dy);
+            double distance = portDistanceForCargoService.distanceBetween(originPortId, destinationPortId);
 
             // speedSetting: 0.5 = langsam (75% Fuel-Verbrauch), 1.0 = voll (150% Fuel-Verbrauch)
             // Formel: multiplier = 0.5 + speedSetting  → range [1.0, 1.5]

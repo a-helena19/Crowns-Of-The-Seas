@@ -4,14 +4,16 @@ import java.util.List;
 
 public class FuelEstimateDTO {
     private double currentFuelPercent;
+    private double currentFuelAbsolute;
     private double maxFuel;
     private double distance;
     private List<SpeedOption> speedOptions;
 
     public FuelEstimateDTO() {}
 
-    public FuelEstimateDTO(double currentFuelPercent, double maxFuel, double distance, List<SpeedOption> speedOptions) {
+    public FuelEstimateDTO(double currentFuelPercent, double currentFuelAbsolute, double maxFuel, double distance, List<SpeedOption> speedOptions) {
         this.currentFuelPercent = currentFuelPercent;
+        this.currentFuelAbsolute = currentFuelAbsolute;
         this.maxFuel = maxFuel;
         this.distance = distance;
         this.speedOptions = speedOptions;
@@ -23,6 +25,14 @@ public class FuelEstimateDTO {
 
     public void setCurrentFuelPercent(double currentFuelPercent) {
         this.currentFuelPercent = currentFuelPercent;
+    }
+
+    public double getCurrentFuelAbsolute() {
+        return currentFuelAbsolute;
+    }
+
+    public void setCurrentFuelAbsolute(double currentFuelAbsolute) {
+        this.currentFuelAbsolute = currentFuelAbsolute;
     }
 
     public double getMaxFuel() {
@@ -52,15 +62,21 @@ public class FuelEstimateDTO {
     public static class SpeedOption {
         private double speedSetting;
         private String label;
+        private double fuelRequiredAbsolute;
         private double fuelRequiredPercent;
         private boolean canAfford;
+        private boolean isPossible;
 
         public SpeedOption() {}
-        public SpeedOption(double speedSetting, String label, double fuelRequiredPercent, boolean canAfford) {
+        public SpeedOption(double speedSetting, String label,
+                           double fuelRequiredAbsolute, double fuelRequiredPercent,
+                           boolean canAfford, boolean isPossible) {
             this.speedSetting = speedSetting;
             this.label = label;
+            this.fuelRequiredAbsolute = fuelRequiredAbsolute;
             this.fuelRequiredPercent = fuelRequiredPercent;
             this.canAfford = canAfford;
+            this.isPossible = isPossible;
         }
 
         public double getSpeedSetting() {
@@ -85,6 +101,23 @@ public class FuelEstimateDTO {
         public void setFuelRequiredPercent(double fuelRequiredPercent) {
             this.fuelRequiredPercent = fuelRequiredPercent;
         }
+
+        public double getFuelRequiredAbsolute() {
+            return fuelRequiredAbsolute;
+        }
+
+        public void setFuelRequiredAbsolute(double fuelRequiredAbsolute) {
+            this.fuelRequiredAbsolute = fuelRequiredAbsolute;
+        }
+
+        public boolean isPossible() {
+            return isPossible;
+        }
+
+        public void setPossible(boolean isPossible) {
+            this.isPossible = isPossible;
+        }
+
 
         public boolean isCanAfford() {
             return canAfford;

@@ -22,12 +22,15 @@ interface SessionCargoDTO {
 interface SpeedOption {
     speedSetting: number;
     label: string;
+    fuelRequiredAbsolute: number;
     fuelRequiredPercent: number;
     canAfford: boolean;
+    isPossible: boolean;
 }
 
 interface FuelEstimate {
     currentFuelPercent: number;
+    currentFuelAbsolute: number;
     maxFuel: number;
     distance: number;
     speedOptions: SpeedOption[];
@@ -281,7 +284,7 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
 
                                     {!playerShipId && (
                                         <div className="cargo-speed-hint">
-                                            Schiff noch nicht ausgewählt – Fuel-Vorschau nach Schiffauswahl verfügbar.
+                                            Wähle zuerst ein Schiff aus, um den Treibstoffverbrauch zu sehen.
                                         </div>
                                     )}
 
@@ -292,43 +295,65 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
                                     {playerShipId && fuelEstimate && (
                                         <>
                                             <div className="cargo-fuel-row">
-                                                <span>Treibstoff</span>
+                                                <span>Tank</span>
                                                 <span className="cargo-fuel-value">
-                                                    {fuelEstimate.currentFuelPercent.toFixed(0)}%
+                    {fuelEstimate.currentFuelAbsolute.toFixed(0)} / {fuelEstimate.maxFuel.toFixed(0)}
                                                     {currentSpeedOpt && (
-                                                        <span style={{ color: canAfford ? "#7a6a4a" : "#c04040", marginLeft: 8 }}>
-                                                            (−{currentSpeedOpt.fuelRequiredPercent.toFixed(1)}%)
-                                                        </span>
+                                                        <span style={{
+                                                            color: currentSpeedOpt.canAfford ? "#4a8a4a" : "#c04040",
+                                                            marginLeft: 10,
+                                                            fontWeight: "bold"
+                                                        }}>
+                            {currentSpeedOpt.canAfford ? "" : "⚠ "}
+                                                            −{currentSpeedOpt.fuelRequiredAbsolute.toFixed(0)}
+                                                            {" = "}
+                                                            {(fuelEstimate.currentFuelAbsolute - currentSpeedOpt.fuelRequiredAbsolute).toFixed(0)}
+                        </span>
                                                     )}
-                                                </span>
+                </span>
                                             </div>
                                             <div className="cargo-fuel-track">
-                                                <div className="cargo-fuel-fill" style={{ width: `${Math.min(100, fuelEstimate.currentFuelPercent)}%` }} />
+                                                <div
+                                                    className="cargo-fuel-fill"
+                                                    style={{ width: `${Math.min(100, (fuelEstimate.currentFuelAbsolute / fuelEstimate.maxFuel) * 100)}%` }}
+                                                />
                                             </div>
 
                                             <div className="cargo-speed-options">
-                                                {fuelEstimate.speedOptions.map((opt, idx) => (
-                                                    <button
-                                                        key={idx}
-                                                        type="button"
-                                                        className={`cargo-speed-btn${speedIndex === idx ? " active" : ""}${!opt.canAfford ? " unaffordable" : ""}`}
-                                                        onClick={() => { if (opt.canAfford) { setSpeedIndex(idx); setFuelError(null); } }}
-                                                        disabled={!opt.canAfford}
-                                                        title={opt.canAfford
-                                                            ? `Benötigt ${opt.fuelRequiredPercent.toFixed(1)}%`
-                                                            : `Zu wenig Treibstoff (benötigt ${opt.fuelRequiredPercent.toFixed(1)}%)`}
-                                                    >
-                                                        <span className="cargo-speed-label">{opt.label}</span>
-                                                        <span className={`cargo-speed-fuel${!opt.canAfford ? " no-fuel" : ""}`}>
-                                                            {opt.fuelRequiredPercent.toFixed(1)}%
-                                                        </span>
-                                                    </button>
-                                                ))}
+                                                {fuelEstimate.speedOptions.map((opt, idx) => {
+                                                    const disabled = !opt.isPossible || !opt.canAfford;
+                                                    const tooltip = !opt.isPossible
+                                                        ? `Nicht machbar – Tank zu klein (${opt.fuelRequiredAbsolute.toFixed(0)} benötigt, Tank max ${fuelEstimate.maxFuel.toFixed(0)})`
+                                                        : !opt.canAfford
+                                                            ? `Nicht genug Treibstoff (${opt.fuelRequiredAbsolute.toFixed(0)} benötigt, verfügbar ${fuelEstimate.currentFuelAbsolute.toFixed(0)})`
+                                                            : `Verbraucht ${opt.fuelRequiredAbsolute.toFixed(0)} Einheiten`;
+
+                                                    return (
+                                                        <button
+                                                            key={idx}
+                                                            type="button"
+                                                            className={`cargo-speed-btn${speedIndex === idx ? " active" : ""}${!opt.isPossible ? " impossible" : !opt.canAfford ? " unaffordable" : ""}`}
+                                                            onClick={() => { if (!disabled) { setSpeedIndex(idx); setFuelError(null); } }}
+                                                            disabled={disabled}
+                                                            title={tooltip}
+                                                        >
+                                                            <span className="cargo-speed-label">{opt.label}</span>
+                                                            <span className="cargo-speed-fuel">
+                                −{opt.fuelRequiredAbsolute.toFixed(0)}
+                            </span>
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
 
-                                            {hasNoAffordableOption && (
+                                            {hasNoAffordableOption && !fuelEstimate.speedOptions.every(o => !o.isPossible) && (
                                                 <div className="cargo-speed-warn">
-                                                    Nicht genug Treibstoff für diese Strecke.
+                                                    Nicht genug Treibstoff. Tank muss aufgefüllt werden.
+                                                </div>
+                                            )}
+                                            {fuelEstimate.speedOptions.every(o => !o.isPossible) && (
+                                                <div className="cargo-speed-warn">
+                                                    Strecke zu lang für dieses Schiff, selbst mit vollem Tank nicht machbar.
                                                 </div>
                                             )}
                                         </>

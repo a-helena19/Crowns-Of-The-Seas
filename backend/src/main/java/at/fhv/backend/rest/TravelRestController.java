@@ -1,18 +1,11 @@
 package at.fhv.backend.rest;
 
-import at.fhv.backend.application.services.port.PortQueryService;
-import at.fhv.backend.application.services.travel.CalculateFuelConsumptionService;
-import at.fhv.backend.domain.model.cargo.SessionCargo;
-import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
+import at.fhv.backend.application.services.travel.FuelEstimateService;
 import at.fhv.backend.domain.model.cargo.exception.CargoCapacityExceededException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotAvailableException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
 import at.fhv.backend.domain.model.exception.InsufficientFuelException;
-import at.fhv.backend.domain.model.ship.PlayerShip;
-import at.fhv.backend.domain.model.ship.PlayerShipRepository;
-import at.fhv.backend.domain.model.ship.Ship;
-import at.fhv.backend.domain.model.ship.ShipRepository;
-import at.fhv.backend.rest.dtos.port.PortResponseDTO;
+import at.fhv.backend.domain.model.exception.ShipNotFoundException;
 import at.fhv.backend.rest.dtos.ship.request.FuelEstimateRequest;
 import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
 import at.fhv.backend.rest.dtos.ship.response.FuelEstimateDTO;
@@ -26,70 +19,34 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
 @RestController
 @RequestMapping("/api/travels")
 public class TravelRestController {
     private final StartTravelService startTravelService;
-    private final PlayerShipRepository playerShipRepository;
-    private final ShipRepository shipRepository;
-    private final SessionCargoRepository sessionCargoRepository;
-    private final PortQueryService portQueryService;
-    private final CalculateFuelConsumptionService calculateFuelConsumptionService;
-
-    private static final double[] SPEED_SETTINGS = {0.5, 0.625, 0.75, 0.875, 1.0};
-    private static final String[] SPEED_LABELS   = {"Langsam", "Gemütlich", "Normal", "Schnell", "Volldampf"};
+    private final FuelEstimateService fuelEstimateService;
 
     public TravelRestController(StartTravelService startTravelService,
-                                PlayerShipRepository playerShipRepository,
-                                ShipRepository shipRepository,
-                                SessionCargoRepository sessionCargoRepository,
-                                PortQueryService portQueryService,
-                                CalculateFuelConsumptionService calculateFuelConsumptionService) {
+                                FuelEstimateService fuelEstimateService) {
         this.startTravelService = startTravelService;
-        this.playerShipRepository = playerShipRepository;
-        this.shipRepository = shipRepository;
-        this.sessionCargoRepository = sessionCargoRepository;
-        this.portQueryService = portQueryService;
-        this.calculateFuelConsumptionService = calculateFuelConsumptionService;
+        this.fuelEstimateService = fuelEstimateService;
     }
 
     @PostMapping("/fuel-estimate")
     public ResponseEntity<?> getFuelEstimate(
             @RequestParam UUID playerId,
             @RequestParam UUID sessionId,
-            @jakarta.validation.Valid @RequestBody FuelEstimateRequest req) {
+            @Valid @RequestBody FuelEstimateRequest req) {
         try {
-            PlayerShip playerShip = playerShipRepository
-                    .findByIdAndPlayerIdAndSessionId(req.getPlayerShipId(), playerId, sessionId)
-                    .orElseThrow(() -> new RuntimeException("Ship not found"));
-            Ship ship = shipRepository.findById(playerShip.getShipId())
-                    .orElseThrow(() -> new RuntimeException("Ship not found"));
-            SessionCargo cargo = sessionCargoRepository.findById(req.getSessionCargoId())
-                    .orElseThrow(() -> new CargoNotFoundException(req.getSessionCargoId()));
-
-            PortResponseDTO origin = portQueryService.findById(playerShip.getCurrentPortId());
-            PortResponseDTO dest   = portQueryService.findById(cargo.getDestinationPortId());
-            double dx = origin.x() - dest.x();
-            double dy = origin.y() - dest.y();
-            double distance = Math.sqrt(dx * dx + dy * dy);
-
-            double maxFuel = ship.getMaxFuel().doubleValue();
-            double baseFuelAbsolute = calculateFuelConsumptionService.calculateFuelConsumption(ship, distance);
-            double availableFuelAbsolute = (playerShip.getFuel() / 100.0) * maxFuel;
-
-            List<FuelEstimateDTO.SpeedOption> options = new java.util.ArrayList<>();
-            for (int i = 0; i < SPEED_SETTINGS.length; i++) {
-                double ss = SPEED_SETTINGS[i];
-                double multiplier = 0.5 + ss;
-                double requiredAbsolute = baseFuelAbsolute * multiplier;
-                double requiredPercent  = (requiredAbsolute / maxFuel) * 100.0;
-                options.add(new FuelEstimateDTO.SpeedOption(ss, SPEED_LABELS[i], requiredPercent, availableFuelAbsolute >= requiredAbsolute));
-            }
-
-            return ResponseEntity.ok(new FuelEstimateDTO(playerShip.getFuel(), maxFuel, distance, options));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", e.getMessage()));
+            FuelEstimateDTO result = fuelEstimateService.estimate(
+                    playerId, sessionId, req.getPlayerShipId(), req.getSessionCargoId()
+            );
+            return ResponseEntity.ok(result);
+        } catch (ShipNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "SHIP_NOT_FOUND", "message", e.getMessage()));
+        } catch (CargoNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "CARGO_NOT_FOUND", "message", e.getMessage()));
         }
     }
 

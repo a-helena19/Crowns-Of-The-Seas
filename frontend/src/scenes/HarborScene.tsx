@@ -54,9 +54,6 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [currentPortId, setCurrentPortId] = useState<string | null>(null);
-    // für CargoScreen: wir brauchen irgendein Schiff am Port damit Fuel-Preview rechnen kann.
-    // Das ist separat von der expliziten Auswahl durch den User.
-    const [previewShipId, setPreviewShipId] = useState<string | null>(null);
 
     const userData = localStorage.getItem("crowns_user");
     const playerId: string | null = userData ? JSON.parse(userData).id : null;
@@ -64,7 +61,6 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
     const sessionId: string | null = sessionData ? JSON.parse(sessionData).id : null;
     const token = localStorage.getItem("auth_token") ?? "";
 
-    // Aktuellen Port ermitteln (für Cargo-Filter) und preview ship setzen
     useEffect(() => {
         if (!playerId || !sessionId) return;
         fetch(`/api/ships/player/${playerId}?sessionId=${sessionId}`, {
@@ -73,14 +69,12 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
             .then((r) => r.json() as Promise<ShipResponse[]>)
             .then((ships) => {
                 const atPort = ships.find((s) => s.status === "AT_PORT" && s.currentPortId);
-                if (atPort) {
-                    setCurrentPortId(atPort.currentPortId ?? null);
-                    setPreviewShipId(atPort.id);
+                if (atPort?.currentPortId) {
+                    setCurrentPortId(atPort.currentPortId);
                 }
             })
             .catch(console.error);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [playerId, sessionId]);
+    }, [playerId, sessionId, token]);
 
     async function handleStartTravel() {
         if (!playerId || !sessionId) { setError("Session oder Spieler nicht gefunden."); return; }
@@ -156,7 +150,6 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
 
     // Fallback-Schiff für das Info-Panel wenn noch nichts explizit ausgewählt wurde
     // (Cargo ist oft früher gewählt als Ship)
-    const shipForCargoScreen = selectedShip?.id ?? previewShipId;
 
     return (
         <div className="scene">
@@ -192,7 +185,7 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
             {view === "cargo" && (
                 <CargoScreen
                     currentPortId={currentPortId}
-                    playerShipId={shipForCargoScreen}
+                    playerShipId={selectedShip?.id ?? null}
                     onSelect={handleCargoSelect}
                 />
             )}
