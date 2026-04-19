@@ -110,7 +110,6 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
             .catch(() => setLoading(false));
     }, [sessionId, currentPortId, token, filterByPort]);
 
-    // WebSocket Live-Updates
     useEffect(() => {
         if (!sessionId) return;
         const wsUrl = window.location.hostname === "localhost" ? "http://localhost:8080/ws" : "/ws";
@@ -135,7 +134,6 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
         return () => { if (client.connected) client.disconnect(() => {}); };
     }, [sessionId, token, filterByPort]);
 
-    // Fuel-Estimate: reagiert nur auf ID-Änderungen und hat Cancel-Flag
     useEffect(() => {
         if (!selected || !playerShipId || !playerId || !sessionId) {
             setFuelEstimate(null);
@@ -208,7 +206,6 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
                 </div>
 
                 <div className="cargo-layout">
-                    {/* ── Liste ── */}
                     <div className="cargo-list">
                         <div className="cargo-list-header">Verfügbare Frachten ({cargos.length})</div>
                         {cargos.length === 0 && (
@@ -237,7 +234,6 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
                         ))}
                     </div>
 
-                    {/* ── Detail ── */}
                     <div className="cargo-detail">
                         {selected ? (
                             <>

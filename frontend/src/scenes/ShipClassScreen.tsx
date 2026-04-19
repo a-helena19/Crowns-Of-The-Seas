@@ -139,7 +139,6 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
                 </div>
             </div>
 
-            {/* STATUS */}
             {loading && <p className="shipclass-status">Lade Schiffe…</p>}
             {error && <p className="shipclass-status">{error}</p>}
 
@@ -147,7 +146,6 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
                 <p className="shipclass-status">Keine Schiffe verfügbar.</p>
             )}
 
-            {/* GRID */}
             <div className="ship-grid-wrapper">
                 <div className="ship-grid">
                     {ships.map(ship => {
@@ -211,7 +209,6 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
     );
 }
 
-/* HELPER */
 function StatRow({ label, value }: { label: string; value: string }) {
     return (
         <div className="stat-row">

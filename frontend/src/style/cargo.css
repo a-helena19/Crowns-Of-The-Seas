@@ -244,7 +244,6 @@
     font-size: 24px;
     margin-bottom: 6px;
 }
-/* ── Speed & Fuel Section (in Cargo Detail) ─────────────────────────────── */
 .cargo-speed-section {
     margin-top: 28px;
     padding-top: 20px;
@@ -402,7 +401,6 @@
     box-shadow: none;
 }
 
-/* ── Layout-Fixes: Detail darf scrollen, nichts darf abgeschnitten werden ── */
 .cargo-screen {
     margin-top: 30px;
     position: absolute;
@@ -459,7 +457,6 @@
     pointer-events: none;
 }
 
-/* ── Speed & Fuel Section ── */
 .cargo-speed-section {
     margin-top: 24px;
     padding-top: 18px;

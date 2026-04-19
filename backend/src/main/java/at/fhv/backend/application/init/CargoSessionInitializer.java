@@ -17,7 +17,6 @@ import java.util.*;
  * HAZARDOUS         8           12              1.6x               30%
  * LUXURY_GOODS      20          18              2.5x               10%
  *
- *
  */
 
 @Component
@@ -63,11 +62,11 @@ public class CargoSessionInitializer {
             portOffers.addAll(pickOffers(byType, CargoType.FRAGILE,          rng.nextBoolean() ? 1 : 0, origin, destinations, sessionId, rng));
             portOffers.addAll(pickOffers(byType, CargoType.ELECTRONICS,      rng.nextBoolean() ? 1 : 0, origin, destinations, sessionId, rng));
 
-            if (rng.nextInt(3) == 0) {  // 33% chance
+            if (rng.nextInt(3) == 0) {
                 portOffers.addAll(pickOffers(byType, CargoType.HAZARDOUS, 1, origin, destinations, sessionId, rng));
             }
 
-            if (rng.nextInt(4) == 0) {  // 25% chance
+            if (rng.nextInt(4) == 0) {
                 portOffers.addAll(pickOffers(byType, CargoType.LUXURY_GOODS, 1, origin, destinations, sessionId, rng));
             }
 

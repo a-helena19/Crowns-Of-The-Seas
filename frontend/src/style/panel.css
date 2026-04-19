@@ -12,7 +12,6 @@
     box-shadow: inset -4px -4px 0 #7a4f10, inset 4px 4px 0 #836e3d;
 }
 
-/* ── InfoPanel ──────────────────────────────────────────────────── */
 .info-panel {
     position: absolute;
     right: 24px;

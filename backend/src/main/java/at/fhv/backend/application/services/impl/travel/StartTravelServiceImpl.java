@@ -94,7 +94,6 @@ public class StartTravelServiceImpl implements StartTravelService {
             UUID originPortId = playerShip.getCurrentPortId();
             UUID destinationPortId = request.getDestinationPortId();
 
-            // ── Cargo atomar annehmen (pessimistic lock) ──────────────────────
             SessionCargo cargo = sessionCargoRepository
                     .findByIdForUpdate(request.getSessionCargoId())
                     .orElseThrow(() -> new CargoNotFoundException(request.getSessionCargoId()));
@@ -117,30 +116,23 @@ public class StartTravelServiceImpl implements StartTravelService {
             int cooldownTicks = CargoSessionInitializer.cooldownTicksFor(cargo.getCargoType());
             cargo.assign(playerId, playerShip.getId(), cooldownTicks, currentTick);
             sessionCargoRepository.save(cargo);
-            // ─────────────────────────────────────────────────────────────────
 
             double distance = portDistanceForCargoService.distanceBetween(originPortId, destinationPortId);
 
-            // speedSetting: 0.5 = langsam (75% Fuel-Verbrauch), 1.0 = voll (150% Fuel-Verbrauch)
-            // Formel: multiplier = 0.5 + speedSetting  → range [1.0, 1.5]
             double speedSetting = Math.max(0.5, Math.min(1.0, request.getSpeedSetting()));
             double speedMultiplier = 0.5 + speedSetting;
 
-            // Absoluter Fuel-Verbrauch (gleiche Einheit wie ship.maxFuel)
             double baseFuelAbsolute = calculateFuelConsumptionService.calculateFuelConsumption(ship, distance);
             double requiredFuelAbsolute = baseFuelAbsolute * speedMultiplier;
 
-            // Validation mit absoluten Werten
             validateTravelService.validateTravelStart(playerShip, ship, playerId,
                     originPortId, destinationPortId, requiredFuelAbsolute);
 
-            // consumeFuel erwartet Prozentwert (0-100)
             double requiredFuelPercent = (requiredFuelAbsolute / ship.getMaxFuel().doubleValue()) * 100.0;
 
             double riskFactor = calculateRiskFactor(playerShip, ship);
             BigDecimal baseReward = cargo.getReward();
 
-            // Effektive Geschwindigkeit: speedSetting skaliert zwischen 50% und 100% der maxSpeed
             double effectiveSpeed = ship.getMaxSpeed() * (0.5 + (speedSetting * 0.5));
 
             Travel travel = Travel.start(

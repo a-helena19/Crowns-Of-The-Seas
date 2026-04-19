@@ -145,11 +145,7 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
         setView("main");
     }
 
-    // Reise starten nur wenn Cargo UND Schiff explizit gewählt wurden
     const canStart = !!selectedShip && !!selectedCargo && !loading;
-
-    // Fallback-Schiff für das Info-Panel wenn noch nichts explizit ausgewählt wurde
-    // (Cargo ist oft früher gewählt als Ship)
 
     return (
         <div className="scene">
