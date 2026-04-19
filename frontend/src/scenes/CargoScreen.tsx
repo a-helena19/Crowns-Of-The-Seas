@@ -25,7 +25,7 @@ interface SpeedOption {
     fuelRequiredAbsolute: number;
     fuelRequiredPercent: number;
     canAfford: boolean;
-    isPossible: boolean;
+    possible: boolean;
 }
 
 interface FuelEstimate {
@@ -321,8 +321,8 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
 
                                             <div className="cargo-speed-options">
                                                 {fuelEstimate.speedOptions.map((opt, idx) => {
-                                                    const disabled = !opt.isPossible || !opt.canAfford;
-                                                    const tooltip = !opt.isPossible
+                                                    const disabled = !opt.possible || !opt.canAfford;
+                                                    const tooltip = !opt.possible
                                                         ? `Nicht machbar – Tank zu klein (${opt.fuelRequiredAbsolute.toFixed(0)} benötigt, Tank max ${fuelEstimate.maxFuel.toFixed(0)})`
                                                         : !opt.canAfford
                                                             ? `Nicht genug Treibstoff (${opt.fuelRequiredAbsolute.toFixed(0)} benötigt, verfügbar ${fuelEstimate.currentFuelAbsolute.toFixed(0)})`
@@ -332,7 +332,7 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
                                                         <button
                                                             key={idx}
                                                             type="button"
-                                                            className={`cargo-speed-btn${speedIndex === idx ? " active" : ""}${!opt.isPossible ? " impossible" : !opt.canAfford ? " unaffordable" : ""}`}
+                                                            className={`cargo-speed-btn${speedIndex === idx ? " active" : ""}${!opt.possible ? " impossible" : !opt.canAfford ? " unaffordable" : ""}`}
                                                             onClick={() => { if (!disabled) { setSpeedIndex(idx); setFuelError(null); } }}
                                                             disabled={disabled}
                                                             title={tooltip}
@@ -346,12 +346,12 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
                                                 })}
                                             </div>
 
-                                            {hasNoAffordableOption && !fuelEstimate.speedOptions.every(o => !o.isPossible) && (
+                                            {hasNoAffordableOption && !fuelEstimate.speedOptions.every(o => !o.possible) && (
                                                 <div className="cargo-speed-warn">
                                                     Nicht genug Treibstoff. Tank muss aufgefüllt werden.
                                                 </div>
                                             )}
-                                            {fuelEstimate.speedOptions.every(o => !o.isPossible) && (
+                                            {fuelEstimate.speedOptions.every(o => !o.possible) && (
                                                 <div className="cargo-speed-warn">
                                                     Strecke zu lang für dieses Schiff, selbst mit vollem Tank nicht machbar.
                                                 </div>
