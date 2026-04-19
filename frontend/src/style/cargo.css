@@ -5,46 +5,24 @@
     display: flex;
     gap: 40px;
     padding: 50px;
-    background: linear-gradient(160deg, #e8e1c4 0%, #f2ebd3 50%, #dcd4b0 100%);
+
+    background:
+            linear-gradient(160deg, #e8e1c4 0%, #f2ebd3 50%, #dcd4b0 100%);
+
     font-family: "Georgia", serif;
     color: #2b2418;
 }
 
-.cargo-container {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    width: 100%;
-    height: 100%;
-}
-
-.cargo-header {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
+.cargo-list {
+    width: 320px;
 }
 
 .cargo-title {
     text-align: center;
     font-size: 30px;
-    margin: 0;
 }
 
-.cargo-layout {
-    display: flex;
-    gap: 40px;
-    flex: 1;
-    min-height: 0;
-}
-
-.cargo-list {
-    width: 320px;
-    flex-shrink: 0;
-    overflow-y: auto;
-}
-
-.cargo-list-header {
+.cargo-list-title {
     font-size: 13px;
     letter-spacing: 3px;
     margin-bottom: 20px;
@@ -54,8 +32,8 @@
 
 .cargo-item {
     border: 1px solid rgba(120,90,40,0.25);
-    padding: 14px 16px;
-    margin-bottom: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
     background: #efe7cd;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -72,41 +50,23 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
-.cargo-item-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 8px;
-}
-
-.cargo-item-name {
+.cargo-item-title {
     font-weight: bold;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.cargo-type-icon {
-    font-size: 13px;
-    font-style: normal;
-}
-
-.cargo-item-profit {
-    font-weight: bold;
-    color: #7a5020;
-    white-space: nowrap;
-    font-size: 14px;
+    font-size: 15px;
 }
 
 .cargo-item-sub {
-    display: flex;
-    align-items: center;
-    gap: 8px;
     font-size: 11px;
     color: #7a6a4a;
     margin-top: 6px;
     letter-spacing: 1px;
+}
+
+.cargo-item-right {
+    float: right;
+    text-align: right;
+    font-weight: bold;
+    color: #8c6a3a;
 }
 
 .cargo-detail {
@@ -114,8 +74,10 @@
     background: #f4ecd2;
     border: 1px solid rgba(120,90,40,0.3);
     padding: 30px;
-    overflow-y: auto;
+    max-height: 400px;
+    max-width: 900px;
     position: relative;
+
 }
 
 .cargo-detail::before {
@@ -126,17 +88,28 @@
     pointer-events: none;
 }
 
+.cargo-detail-header {
+    margin-bottom: 20px;
+}
+
+.cargo-detail-sub {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: #8c6a3a;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+
 .cargo-detail-title {
     font-size: 24px;
     font-weight: bold;
-    margin-bottom: 8px;
 }
 
 .cargo-route {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin: 24px 0;
+    margin: 30px 0;
 }
 
 .cargo-port {
@@ -144,19 +117,25 @@
 }
 
 .cargo-port-icon {
-    font-size: 24px;
-    margin-bottom: 6px;
+    width: 50px;
+    height: 50px;
+    border: 1px solid rgba(140,106,58,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px;
+    background: rgba(255,255,255,0.2);
 }
 
 .cargo-port-name {
     font-weight: bold;
-    font-size: 14px;
 }
 
 .cargo-route-line {
     flex: 1;
     height: 2px;
     margin: 0 20px;
+
     background: repeating-linear-gradient(
             90deg,
             #b89b5e,
@@ -169,125 +148,455 @@
 .cargo-stats {
     display: flex;
     border: 1px solid rgba(120,90,40,0.2);
-    margin-top: 16px;
+    margin-top: 30px;
     background: rgba(255,255,255,0.15);
 }
 
 .cargo-stat {
     flex: 1;
-    padding: 16px;
+    padding: 20px;
     text-align: center;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
 }
 
 .cargo-stat:not(:last-child) {
     border-right: 1px solid rgba(120,90,40,0.2);
 }
 
-.cargo-stat span {
+.cargo-stat svg {
+    margin-bottom: 8px;
+    color: #8c6a3a;
+}
+
+.cargo-stat-label {
     font-size: 11px;
     color: #7a6a4a;
+    margin-bottom: 6px;
     letter-spacing: 1px;
-    text-transform: uppercase;
 }
 
-.cargo-stat strong {
-    font-size: 16px;
-}
-
-.cargo-speed-section {
-    margin-top: 24px;
-    background: rgba(255,255,255,0.25);
-    border: 1px solid rgba(120,90,40,0.2);
-    padding: 18px 20px 14px;
-}
-
-.cargo-speed-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 10px;
-    font-size: 13px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: #6b5a3a;
-}
-
-.cargo-speed-value {
+.cargo-stat-value {
+    font-size: 18px;
     font-weight: bold;
-    font-size: 13px;
-    color: #3a2a14;
-}
-
-.cargo-speed-slider {
-    width: 100%;
-    -webkit-appearance: none;
-    appearance: none;
-    height: 6px;
-    border-radius: 3px;
-    background: linear-gradient(90deg, #c8b060 0%, #a04020 100%);
-    outline: none;
-    cursor: pointer;
-}
-
-.cargo-speed-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: #8c6a3a;
-    border: 2px solid #f4ecd2;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
-    cursor: pointer;
-}
-
-.cargo-speed-slider::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: #8c6a3a;
-    border: 2px solid #f4ecd2;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
-    cursor: pointer;
-}
-
-.cargo-speed-labels {
-    display: flex;
-    justify-content: space-between;
-    font-size: 11px;
-    color: #9a8a6a;
-    margin-top: 4px;
-    letter-spacing: 1px;
-}
-
-.cargo-speed-info {
-    margin-top: 12px;
-    display: flex;
-    gap: 20px;
-}
-
-.cargo-speed-row {
-    flex: 1;
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    color: #6b5a3a;
-    padding: 6px 0;
-    border-top: 1px solid rgba(120,90,40,0.15);
-}
-
-.cargo-speed-row strong {
-    font-size: 13px;
 }
 
 .cargo-btn {
-    display: block;
-    width: 100%;
-    margin-top: 24px;
-    padding: 14px;
+    margin-top: 40px;
     text-align: center;
+    padding: 14px;
+
+    background: #a37c45;
+    color: white;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+
+    border: 2px solid #8c6a3a;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.cargo-btn:hover {
+    background: #b88d52;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.cargo-container {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    width: 100%;
+    height: 100%;
+}
+
+.cargo-list {
+    width: 320px;
+    flex-shrink: 0;
+}
+
+.cargo-detail {
+    flex: 1;
+    min-width: 0;
+}
+
+.cargo-layout {
+    display: flex;
+    gap: 40px;
+    flex: 1;
+}
+
+.risk-low     { color: #4caf50; }
+.risk-medium  { color: #ff9800; }
+.risk-high    { color: #f44336; }
+.risk-extreme { color: #9c27b0; }
+
+.cargo-message {
+    text-align: center;
+    color: #4caf50;
+    font-size: 13px;
+    letter-spacing: 1px;
+    padding: 8px;
+    background: rgba(76,175,80,0.1);
+    border: 1px solid rgba(76,175,80,0.3);
+}
+
+.cargo-port-icon {
+    font-size: 24px;
+    margin-bottom: 6px;
+}
+/* ── Speed & Fuel Section (in Cargo Detail) ─────────────────────────────── */
+.cargo-speed-section {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(120,90,40,0.2);
+}
+
+.cargo-speed-title {
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #6b5a3a;
+    margin-bottom: 12px;
+}
+
+.cargo-speed-hint {
+    font-size: 12px;
+    color: #9a8a6a;
+    font-style: italic;
+    margin-bottom: 8px;
+}
+
+.cargo-fuel-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #7a6a4a;
+    margin-bottom: 5px;
+}
+
+.cargo-fuel-value {
+    font-weight: bold;
+    color: #3a2c1a;
+}
+
+.cargo-fuel-track {
+    position: relative;
+    height: 8px;
+    background: #d9cbb0;
+    border: 1px solid #b09050;
+    border-radius: 4px;
+    overflow: visible;
+    margin-bottom: 14px;
+}
+
+.cargo-fuel-fill {
+    height: 100%;
+    background: #4a9fd4;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.cargo-fuel-marker {
+    position: absolute;
+    top: -3px;
+    width: 3px;
+    height: 14px;
+    border-radius: 2px;
+    transition: left 0.2s ease, background 0.2s ease;
+    z-index: 2;
+}
+
+.cargo-speed-options {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.cargo-speed-btn {
+    flex: 1;
+    min-width: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 8px 6px;
+    background: #f0e8d0;
+    border: 1px solid #b09050;
+    cursor: pointer;
+    font-family: "Georgia", serif;
+    transition: all 0.1s;
+    border-radius: 3px;
+}
+
+.cargo-speed-btn:hover:not(.unaffordable) {
+    background: #fdf4e0;
+    border-color: #c0a060;
+    transform: translateY(-1px);
+}
+
+.cargo-speed-btn.active {
+    background: #b89b5e;
+    border-color: #7a6030;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.cargo-speed-btn.unaffordable {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-style: dashed;
+}
+
+.cargo-speed-label {
+    font-size: 11px;
+    font-weight: bold;
+    color: #3a2c1a;
+}
+
+.cargo-speed-btn.active .cargo-speed-label { color: #fff; }
+
+.cargo-speed-fuel {
+    font-size: 10px;
+    color: #7a6a4a;
+}
+
+.cargo-speed-btn.active .cargo-speed-fuel { color: #ffe8a0; }
+
+.cargo-speed-fuel.no-fuel { color: #c04040; }
+
+.cargo-speed-warn {
+    font-size: 12px;
+    color: #c04040;
+    background: rgba(192,64,64,0.08);
+    border: 1px solid rgba(192,64,64,0.2);
+    padding: 6px 10px;
+    border-radius: 3px;
+    margin-bottom: 8px;
+}
+
+.cargo-error {
+    font-size: 12px;
+    color: #c04040;
+    background: rgba(192,64,64,0.08);
+    border: 1px solid rgba(192,64,64,0.2);
+    padding: 8px 12px;
+    border-radius: 3px;
+    margin-top: 10px;
+    margin-bottom: 4px;
+}
+
+.cargo-btn:disabled,
+.cargo-btn.cargo-btn-disabled {
+    background: #b0a080;
+    border-color: #8a7860;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.cargo-btn:disabled:hover,
+.cargo-btn.cargo-btn-disabled:hover {
+    background: #b0a080;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ── Layout-Fixes: Detail darf scrollen, nichts darf abgeschnitten werden ── */
+.cargo-screen {
+    margin-top: 30px;
+    position: absolute;
+    inset: 0;
+    padding: 30px 50px 50px;
+    background: linear-gradient(160deg, #e8e1c4 0%, #f2ebd3 50%, #dcd4b0 100%);
+    font-family: "Georgia", serif;
+    color: #2b2418;
+    overflow: hidden;
+}
+
+.cargo-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+}
+
+.cargo-layout {
+    display: flex;
+    gap: 40px;
+    flex: 1;
+    min-height: 0;
+}
+
+.cargo-list {
+    width: 320px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.cargo-detail {
+    flex: 1;
+    min-width: 0;
+    max-height: none;
+    max-width: none;
+    background: #f4ecd2;
+    border: 1px solid rgba(120,90,40,0.3);
+    padding: 30px;
+    position: relative;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.cargo-detail::before {
+    content: "";
+    position: absolute;
+    inset: 10px;
+    border: 1px solid rgba(120,90,40,0.2);
+    pointer-events: none;
+}
+
+/* ── Speed & Fuel Section ── */
+.cargo-speed-section {
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(120,90,40,0.2);
+}
+
+.cargo-speed-title {
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #6b5a3a;
+    margin-bottom: 12px;
+}
+
+.cargo-speed-hint {
+    font-size: 12px;
+    color: #9a8a6a;
+    font-style: italic;
+    margin-bottom: 8px;
+}
+
+.cargo-fuel-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #7a6a4a;
+    margin-bottom: 5px;
+}
+
+.cargo-fuel-value {
+    font-weight: bold;
+    color: #3a2c1a;
+}
+
+.cargo-fuel-track {
+    position: relative;
+    height: 10px;
+    background: #d9cbb0;
+    border: 1px solid #b09050;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 14px;
+}
+
+.cargo-fuel-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4a9fd4 0%, #6ab4de 100%);
+    transition: width 0.3s ease;
+}
+
+.cargo-speed-options {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.cargo-speed-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 6px;
+    background: #f0e8d0;
+    border: 1px solid #b09050;
+    cursor: pointer;
+    font-family: "Georgia", serif;
+    transition: all 0.12s ease;
+    border-radius: 3px;
+    min-height: 52px;
+    justify-content: center;
+}
+
+.cargo-speed-btn:hover:not(.unaffordable):not(:disabled) {
+    background: #fdf4e0;
+    border-color: #c0a060;
+    transform: translateY(-1px);
+}
+
+.cargo-speed-btn.active {
+    background: #b89b5e;
+    border-color: #7a6030;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.cargo-speed-btn.unaffordable {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-style: dashed;
+    background: #e8e0c4;
+}
+
+.cargo-speed-label {
+    font-size: 11px;
+    font-weight: bold;
+    color: #3a2c1a;
+    letter-spacing: 0.5px;
+}
+
+.cargo-speed-btn.active .cargo-speed-label { color: #fff; }
+.cargo-speed-btn.unaffordable .cargo-speed-label { color: #8a7555; }
+
+.cargo-speed-fuel {
+    font-size: 11px;
+    color: #7a6a4a;
+}
+
+.cargo-speed-btn.active .cargo-speed-fuel { color: #ffe8a0; }
+.cargo-speed-fuel.no-fuel { color: #c04040; }
+
+.cargo-speed-warn {
+    font-size: 12px;
+    color: #c04040;
+    background: rgba(192,64,64,0.08);
+    border: 1px solid rgba(192,64,64,0.25);
+    padding: 8px 12px;
+    border-radius: 3px;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.cargo-error {
+    font-size: 12px;
+    color: #c04040;
+    background: rgba(192,64,64,0.08);
+    border: 1px solid rgba(192,64,64,0.25);
+    padding: 8px 12px;
+    border-radius: 3px;
+    margin-top: 10px;
+}
+
+.cargo-btn {
+    margin-top: 20px;
+    text-align: center;
+    padding: 14px;
     background: #a37c45;
     color: white;
     font-weight: bold;
@@ -298,27 +607,19 @@
     transition: all 0.15s ease;
     font-family: "Georgia", serif;
     font-size: 14px;
+    width: 100%;
 }
 
-.cargo-btn:hover {
+.cargo-btn:hover:not(:disabled) {
     background: #b88d52;
     transform: translateY(-1px);
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
-.cargo-btn:active {
-    transform: translateY(1px);
+.cargo-btn:disabled,
+.cargo-btn.cargo-btn-disabled {
+    background: #b0a080;
+    border-color: #8a7860;
+    cursor: not-allowed;
+    opacity: 0.6;
 }
-
-.cargo-message {
-    text-align: center;
-    font-size: 13px;
-    letter-spacing: 1px;
-    padding: 8px 16px;
-    border: 1px solid;
-}
-
-.risk-low     { color: #4caf50; }
-.risk-medium  { color: #ff9800; }
-.risk-high    { color: #f44336; }
-.risk-extreme { color: #9c27b0; }

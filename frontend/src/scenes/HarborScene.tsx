@@ -2,6 +2,7 @@ import Sailor from "../components/Sailor";
 import DialogBubble from "../components/DialogBubble";
 import InfoPanel from "../components/InfoPanel";
 import CargoScreen from "./CargoScreen";
+import type { CargoSelection } from "./CargoScreen";
 import ShipScreen from "./ShipScreen";
 import backIcon from "../assets/goback.png";
 import background from "../assets/background.jpg";
@@ -30,33 +31,55 @@ interface SelectedShip {
     currentPortId?: string;
 }
 
+interface ShipResponse {
+    id: string;
+    name: string;
+    fuel: number;
+    condition: number;
+    status: string;
+    maxCargoCapacity?: number;
+    currentPortId?: string;
+}
+
+interface ApiErrorResponse {
+    error?: string;
+    message?: string;
+}
+
 export default function HarborScene({ onClose }: { onClose: () => void }) {
     const [selectedCargo, setSelectedCargo] = useState<SelectedCargo | null>(null);
     const [selectedShip, setSelectedShip] = useState<SelectedShip | null>(null);
+    const [speedSetting, setSpeedSetting] = useState<number>(0.75);
     const [view, setView] = useState<"main" | "cargo" | "ship">("main");
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [currentPortId, setCurrentPortId] = useState<string | null>(null);
+    // für CargoScreen: wir brauchen irgendein Schiff am Port damit Fuel-Preview rechnen kann.
+    // Das ist separat von der expliziten Auswahl durch den User.
+    const [previewShipId, setPreviewShipId] = useState<string | null>(null);
 
     const userData = localStorage.getItem("crowns_user");
-    const playerId = userData ? JSON.parse(userData).id : null;
+    const playerId: string | null = userData ? JSON.parse(userData).id : null;
     const sessionData = sessionStorage.getItem("currentSession");
-    const sessionId = sessionData ? JSON.parse(sessionData).id : null;
+    const sessionId: string | null = sessionData ? JSON.parse(sessionData).id : null;
+    const token = localStorage.getItem("auth_token") ?? "";
 
-    // Ermittle aktuellen Port des Spielers anhand seiner Schiffe
+    // Aktuellen Port ermitteln (für Cargo-Filter) und preview ship setzen
     useEffect(() => {
         if (!playerId || !sessionId) return;
         fetch(`/api/ships/player/${playerId}?sessionId=${sessionId}`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem("auth_token") ?? ""}` },
+            headers: { Authorization: `Bearer ${token}` },
         })
-            .then((r) => r.json())
-            .then((ships: any[]) => {
+            .then((r) => r.json() as Promise<ShipResponse[]>)
+            .then((ships) => {
                 const atPort = ships.find((s) => s.status === "AT_PORT" && s.currentPortId);
-                if (atPort?.currentPortId) {
-                    setCurrentPortId(atPort.currentPortId);
+                if (atPort) {
+                    setCurrentPortId(atPort.currentPortId ?? null);
+                    setPreviewShipId(atPort.id);
                 }
             })
             .catch(console.error);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [playerId, sessionId]);
 
     async function handleStartTravel() {
@@ -70,35 +93,34 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
         try {
             const response = await fetch(`/api/travels/start/${playerId}?sessionId=${sessionId}`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("auth_token") ?? ""}`,
-                },
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                 body: JSON.stringify({
                     playerShipId: selectedShip.id,
                     destinationPortId: selectedCargo.destinationPortId,
                     sessionCargoId: selectedCargo.id,
-                    speedSetting: 1.0,
+                    speedSetting,
                 }),
             });
 
-            let data: any = null;
+            let data: ApiErrorResponse | null = null;
             const text = await response.text();
-            try { data = text ? JSON.parse(text) : null; } catch { data = null; }
+            try { data = text ? (JSON.parse(text) as ApiErrorResponse) : null; } catch { data = null; }
 
             if (!response.ok) {
                 const err = data?.error ?? "";
                 if (err === "CARGO_TAKEN") {
-                    setError("⚡ Diese Fracht wurde gerade von einem anderen Kapitän übernommen!");
+                    setSelectedCargo(null);
+                    setError("Diese Fracht wurde soeben von einem anderen Kapitän übernommen. Wähle eine neue Fracht.");
                 } else if (err === "CAPACITY_EXCEEDED") {
-                    setError("⛵ Dein Schiff ist zu klein für diese Fracht.");
+                    setError("Dein Schiff ist zu klein für diese Fracht.");
+                } else if (err === "INSUFFICIENT_FUEL") {
+                    setError(data?.message ?? "Nicht genug Treibstoff.");
                 } else {
                     setError(data?.message ?? "Reise konnte nicht gestartet werden.");
                 }
                 return;
             }
 
-            // Erfolg → zurück zur Map
             onClose();
         } catch {
             setError("Verbindungsfehler.");
@@ -111,6 +133,30 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
         if (view === "cargo" || view === "ship") setView("main");
         else onClose();
     }
+
+    function handleCargoSelect(selection: CargoSelection) {
+        setSelectedCargo({
+            id: selection.cargo.id,
+            name: selection.cargo.name,
+            originPortName: selection.cargo.originPortName,
+            destinationPortId: selection.cargo.destinationPortId,
+            destinationPortName: selection.cargo.destinationPortName,
+            reward: selection.cargo.reward,
+            capacity: selection.cargo.capacity,
+            cargoType: selection.cargo.cargoType,
+            risk: selection.cargo.risk,
+        });
+        setSpeedSetting(selection.speedSetting);
+        setError(null);
+        setView("main");
+    }
+
+    // Reise starten nur wenn Cargo UND Schiff explizit gewählt wurden
+    const canStart = !!selectedShip && !!selectedCargo && !loading;
+
+    // Fallback-Schiff für das Info-Panel wenn noch nichts explizit ausgewählt wurde
+    // (Cargo ist oft früher gewählt als Ship)
+    const shipForCargoScreen = selectedShip?.id ?? previewShipId;
 
     return (
         <div className="scene">
@@ -127,60 +173,27 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
                         onOpenCargo={() => setView("cargo")}
                         onOpenShip={() => setView("ship")}
                         onStartTravel={handleStartTravel}
-                        canStart={!!selectedShip && !!selectedCargo && !loading}
+                        canStart={canStart}
                     />
 
-                    {/* Cargo + Schiff rechts im InfoPanel anzeigen */}
                     {(selectedCargo || selectedShip) && (
-                        <InfoPanel cargo={selectedCargo} ship={selectedShip} />
+                        <InfoPanel
+                            cargo={selectedCargo}
+                            ship={selectedShip}
+                            speedSetting={selectedCargo ? speedSetting : undefined}
+                        />
                     )}
 
-                    {error && (
-                        <div style={{
-                            position: "absolute",
-                            bottom: "20px",
-                            left: "50%",
-                            transform: "translateX(-50%)",
-                            background: "rgba(200,50,50,0.92)",
-                            color: "white",
-                            padding: "12px 24px",
-                            borderRadius: "6px",
-                            fontSize: "14px",
-                            maxWidth: "420px",
-                            textAlign: "center",
-                            zIndex: 200,
-                        }}>
-                            {error}
-                        </div>
-                    )}
-
-                    {loading && (
-                        <div style={{
-                            position: "absolute",
-                            inset: 0,
-                            background: "rgba(0,0,0,0.4)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            zIndex: 300,
-                            color: "#e8d9b0",
-                            fontSize: 18,
-                            fontFamily: "Georgia, serif",
-                        }}>
-                            Reise wird gestartet…
-                        </div>
-                    )}
+                    {error && <div className="harbor-error-toast">{error}</div>}
+                    {loading && <div className="harbor-loading-overlay">Reise wird gestartet…</div>}
                 </>
             )}
 
             {view === "cargo" && (
                 <CargoScreen
                     currentPortId={currentPortId}
-                    onSelect={(cargo) => {
-                        setSelectedCargo(cargo as SelectedCargo);
-                        setError(null);
-                        setView("main");
-                    }}
+                    playerShipId={shipForCargoScreen}
+                    onSelect={handleCargoSelect}
                 />
             )}
 

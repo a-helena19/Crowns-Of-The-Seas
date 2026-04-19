@@ -89,6 +89,7 @@ public class StartTravelServiceImpl implements StartTravelService {
             UUID originPortId = playerShip.getCurrentPortId();
             UUID destinationPortId = request.getDestinationPortId();
 
+            // ── Cargo atomar annehmen (pessimistic lock) ──────────────────────
             SessionCargo cargo = sessionCargoRepository
                     .findByIdForUpdate(request.getSessionCargoId())
                     .orElseThrow(() -> new CargoNotFoundException(request.getSessionCargoId()));
@@ -103,6 +104,7 @@ public class StartTravelServiceImpl implements StartTravelService {
             if (ship.getMaxCargoCapacity() < cargo.getCapacity()) {
                 throw new CargoCapacityExceededException(cargo.getCapacity(), ship.getMaxCargoCapacity());
             }
+            // Zieldestination muss zur Cargo-Destination passen
             if (!destinationPortId.equals(cargo.getDestinationPortId())) {
                 throw new CargoNotAvailableException(cargo.getId());
             }
@@ -110,6 +112,7 @@ public class StartTravelServiceImpl implements StartTravelService {
             int cooldownTicks = CargoSessionInitializer.cooldownTicksFor(cargo.getCargoType());
             cargo.assign(playerId, playerShip.getId(), cooldownTicks, currentTick);
             sessionCargoRepository.save(cargo);
+            // ─────────────────────────────────────────────────────────────────
 
             PortResponseDTO originPort = portQueryService.findById(originPortId);
             PortResponseDTO destinationPort = portQueryService.findById(destinationPortId);
@@ -117,18 +120,32 @@ public class StartTravelServiceImpl implements StartTravelService {
             double dy = originPort.y() - destinationPort.y();
             double distance = Math.sqrt(dx * dx + dy * dy);
 
-            double speedMultiplier = 1.0 + Math.pow(request.getSpeedSetting() / ship.getMaxSpeed() - 0.5, 2);
-            double requiredFuelPercent = calculateFuelConsumptionService.calculateFuelConsumption(ship, distance) * speedMultiplier;
+            // speedSetting: 0.5 = langsam (75% Fuel-Verbrauch), 1.0 = voll (150% Fuel-Verbrauch)
+            // Formel: multiplier = 0.5 + speedSetting  → range [1.0, 1.5]
+            double speedSetting = Math.max(0.5, Math.min(1.0, request.getSpeedSetting()));
+            double speedMultiplier = 0.5 + speedSetting;
 
-            validateTravelService.validateTravelStart(playerShip, playerId, originPortId, destinationPortId, requiredFuelPercent);
+            // Absoluter Fuel-Verbrauch (gleiche Einheit wie ship.maxFuel)
+            double baseFuelAbsolute = calculateFuelConsumptionService.calculateFuelConsumption(ship, distance);
+            double requiredFuelAbsolute = baseFuelAbsolute * speedMultiplier;
+
+            // Validation mit absoluten Werten
+            validateTravelService.validateTravelStart(playerShip, ship, playerId,
+                    originPortId, destinationPortId, requiredFuelAbsolute);
+
+            // consumeFuel erwartet Prozentwert (0-100)
+            double requiredFuelPercent = (requiredFuelAbsolute / ship.getMaxFuel().doubleValue()) * 100.0;
 
             double riskFactor = calculateRiskFactor(playerShip, ship);
-            BigDecimal baseReward = calculateBaseReward(distance);
+            BigDecimal baseReward = cargo.getReward();
+
+            // Effektive Geschwindigkeit: speedSetting skaliert zwischen 50% und 100% der maxSpeed
+            double effectiveSpeed = ship.getMaxSpeed() * (0.5 + (speedSetting * 0.5));
 
             Travel travel = Travel.start(
                     playerShip.getId(), playerId, sessionId,
                     originPortId, destinationPortId,
-                    distance, request.getSpeedSetting(),
+                    distance, effectiveSpeed,
                     riskFactor, baseReward,
                     currentTick
             );
@@ -173,9 +190,5 @@ public class StartTravelServiceImpl implements StartTravelService {
     private double calculateRiskFactor(PlayerShip playerShip, Ship ship) {
         double effectiveReliability = (playerShip.getCondition() / 100.0) * ship.getBaseReliability();
         return 1.0 - effectiveReliability;
-    }
-
-    private BigDecimal calculateBaseReward(double distance) {
-        return BigDecimal.valueOf(Math.round(distance * 100));
     }
 }

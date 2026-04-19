@@ -20,24 +20,59 @@ const TYPE_COLORS: Record<string, string> = {
     LUXURY_GOODS: "#a07030",
 };
 
-export default function InfoPanel({ cargo, ship }: { cargo?: any; ship?: any }) {
+const SPEED_LABELS: Record<string, string> = {
+    "0.500": "Langsam",
+    "0.625": "Gemütlich",
+    "0.750": "Normal",
+    "0.875": "Schnell",
+    "1.000": "Volldampf",
+};
+
+function speedLabel(s: number): string {
+    const key = s.toFixed(3);
+    return SPEED_LABELS[key] ?? `${(s * 100).toFixed(0)}%`;
+}
+
+export interface InfoPanelCargo {
+    name: string;
+    originPortName: string;
+    destinationPortName: string;
+    reward: number;
+    capacity: number;
+    cargoType?: string;
+}
+
+export interface InfoPanelShip {
+    name: string;
+    fuel: number;
+    condition: number;
+    maxCargoCapacity?: number;
+}
+
+interface InfoPanelProps {
+    cargo?: InfoPanelCargo | null;
+    ship?: InfoPanelShip | null;
+    speedSetting?: number;
+}
+
+export default function InfoPanel({ cargo, ship, speedSetting }: InfoPanelProps) {
     if (!cargo && !ship) return null;
 
     return (
         <div className="info-panel">
             {ship && (
                 <div className="info-section">
-                    <div className="info-section-title">🚢 Ausgewähltes Schiff</div>
+                    <div className="info-section-title">Ausgewähltes Schiff</div>
                     <div className="info-row"><span>Name</span><strong>{ship.name}</strong></div>
                     <div className="info-row">
                         <span>Treibstoff</span>
-                        <strong>{typeof ship.fuel === "number" ? ship.fuel.toFixed(0) : ship.fuel}%</strong>
+                        <strong>{ship.fuel.toFixed(0)}%</strong>
                     </div>
                     <div className="info-row">
                         <span>Zustand</span>
-                        <strong>{typeof ship.condition === "number" ? ship.condition.toFixed(0) : ship.condition}%</strong>
+                        <strong>{ship.condition.toFixed(0)}%</strong>
                     </div>
-                    {ship.maxCargoCapacity && (
+                    {ship.maxCargoCapacity !== undefined && (
                         <div className="info-row"><span>Kapazität</span><strong>{ship.maxCargoCapacity} t</strong></div>
                     )}
                 </div>
@@ -45,7 +80,7 @@ export default function InfoPanel({ cargo, ship }: { cargo?: any; ship?: any }) 
 
             {cargo && (
                 <div className="info-section">
-                    <div className="info-section-title">📦 Ausgewählte Fracht</div>
+                    <div className="info-section-title">Ausgewählte Fracht</div>
                     <div className="info-row"><span>Name</span><strong>{cargo.name}</strong></div>
                     <div className="info-row"><span>Von</span><strong>{cargo.originPortName}</strong></div>
                     <div className="info-row"><span>Nach</span><strong>{cargo.destinationPortName}</strong></div>
@@ -60,6 +95,12 @@ export default function InfoPanel({ cargo, ship }: { cargo?: any; ship?: any }) 
                             <strong style={{ color: TYPE_COLORS[cargo.cargoType] }}>
                                 {TYPE_LABELS[cargo.cargoType] ?? cargo.cargoType}
                             </strong>
+                        </div>
+                    )}
+                    {speedSetting !== undefined && (
+                        <div className="info-row">
+                            <span>Tempo</span>
+                            <strong style={{ color: "#8a9fd4" }}>{speedLabel(speedSetting)}</strong>
                         </div>
                     )}
                 </div>
