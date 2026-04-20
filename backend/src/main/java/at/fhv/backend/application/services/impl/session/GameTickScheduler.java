@@ -2,6 +2,7 @@ package at.fhv.backend.application.services.impl.session;
 
 import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
+import at.fhv.backend.domain.model.cargo.CargoType;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
 import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
 import at.fhv.backend.domain.model.session.GameSession;
@@ -22,10 +23,7 @@ import at.fhv.backend.rest.dtos.websocket.TickUpdateEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -47,6 +45,9 @@ public class GameTickScheduler {
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
     private final Map<UUID, ScheduledFuture<?>> runningTasks = new ConcurrentHashMap<>();
+    private static final int MAX_ACTIVE_CARGOS_PER_PORT = 7;
+    private final Random rng = new Random();
+
 
     public GameTickScheduler(GameSessionRepository gameSessionRepository,
                              TravelRepository travelRepository,
@@ -151,7 +152,6 @@ public class GameTickScheduler {
             playerShipRepository.save(ship);
         }
 
-        // Deliver cargo assigned to this ship and start its respawn cooldown
         List<SessionCargo> assignedCargos = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
         for (SessionCargo cargo : assignedCargos) {
             if (cargo.getAssignedPlayerShipId() != null
@@ -159,7 +159,7 @@ public class GameTickScheduler {
                     && cargo.getDestinationPortId().equals(travel.getDestinationPortId())
                     && cargo.getCargoStatus() == CargoStatus.ASSIGNED) {
                 cargo.deliver();
-                int cooldown = CargoSessionInitializer.cooldownTicksFor(cargo.getCargoType());
+                int cooldown = CargoSessionInitializer.randomizedCooldownFor(cargo.getCargoType(), rng);
                 cargo.startCooldown(travel.getArrivalTick() + cooldown);
                 sessionCargoRepository.save(cargo);
             }
@@ -209,7 +209,6 @@ public class GameTickScheduler {
             Travel travel = travelByShipId.get(playerShip.getId());
 
             if (travel != null) {
-                // Schiff ist unterwegs — Position interpolieren
                 PortResponseDTO origin = portMap.get(travel.getOriginPortId());
                 PortResponseDTO dest = portMap.get(travel.getDestinationPortId());
 
@@ -229,7 +228,6 @@ public class GameTickScheduler {
                     ));
                 }
             } else if (playerShip.getCurrentPortId() != null) {
-                // Schiff ist im Hafen
                 PortResponseDTO port = portMap.get(playerShip.getCurrentPortId());
                 if (port != null) {
                     positions.add(new ShipPositionsUpdateEvent.ShipPosition(
@@ -255,13 +253,10 @@ public class GameTickScheduler {
         List<SessionCargo> all = sessionCargoRepository.findAllBySessionId(sessionId);
         boolean changed = false;
 
-        // Gruppiere alle Cargos nach originPortId
         Map<UUID, List<SessionCargo>> byPort = new java.util.HashMap<>();
         for (SessionCargo sc : all) {
             byPort.computeIfAbsent(sc.getOriginPortId(), k -> new ArrayList<>()).add(sc);
         }
-
-        java.util.Random rng = new java.util.Random();
 
         for (Map.Entry<UUID, List<SessionCargo>> entry : byPort.entrySet()) {
             List<SessionCargo> portCargos = entry.getValue();
@@ -270,21 +265,14 @@ public class GameTickScheduler {
                     .filter(sc -> sc.getCargoStatus() == CargoStatus.AVAILABLE)
                     .count();
 
-            // Maximal 3 gleichzeitig aktive Cargos pro Port
-            int maxActive = 3;
-
             for (SessionCargo sc : portCargos) {
-                // Initial-Spawn: spawnTick erreicht, noch nie aktiviert (cooldownUntilTick == -1)
                 boolean isInitialSpawn = sc.getCargoStatus() == CargoStatus.INACTIVE
                         && sc.getSpawnTick() <= currentTick
                         && sc.getCooldownUntilTick() < 0;
 
-                // Respawn nach Cooldown
                 boolean isRespawn = sc.shouldRespawnAt(currentTick);
 
-                if ((isInitialSpawn || isRespawn) && activeCount < maxActive) {
-                    // Zufällige Erscheinungswahrscheinlichkeit pro Tick (ca. 20-30% pro Tick)
-                    // GENERAL_GOODS / FOOD erscheinen häufiger, LUXURY seltener
+                if ((isInitialSpawn || isRespawn) && activeCount < MAX_ACTIVE_CARGOS_PER_PORT) {
                     double spawnChance = spawnChanceFor(sc.getCargoType());
                     if (rng.nextDouble() < spawnChance) {
                         sc.activate();
@@ -301,15 +289,16 @@ public class GameTickScheduler {
         }
     }
 
-    private double spawnChanceFor(at.fhv.backend.domain.model.cargo.CargoType type) {
+
+    private double spawnChanceFor(CargoType type) {
         return switch (type) {
-            case GENERAL_GOODS    -> 0.35;
-            case FOOD             -> 0.30;
+            case GENERAL_GOODS -> 0.35;
+            case FOOD -> 0.30;
             case INDUSTRIAL_GOODS -> 0.25;
-            case FRAGILE          -> 0.20;
-            case ELECTRONICS      -> 0.15;
-            case HAZARDOUS        -> 0.12;
-            case LUXURY_GOODS     -> 0.08;
+            case FRAGILE -> 0.20;
+            case ELECTRONICS -> 0.15;
+            case HAZARDOUS -> 0.12;
+            case LUXURY_GOODS -> 0.08;
         };
     }
 }

@@ -40,9 +40,9 @@ interface CargoMarketEvent {
     availableCargos?: SessionCargoDTO[];
 }
 
-export interface CargoSelection {
-    cargo: SessionCargoDTO;
-    speedSetting: number;
+interface ApiErrorResponse {
+    error?: string;
+    message?: string;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -67,12 +67,12 @@ const TYPE_COLORS: Record<string, string> = {
 const SPEED_SETTINGS = [0.5, 0.625, 0.75, 0.875, 1.0];
 
 interface Props {
-    onSelect: (selection: CargoSelection) => void;
+    onTravelStarted: () => void;
     currentPortId: string | null;
     playerShipId: string | null;
 }
 
-export default function CargoScreen({ onSelect, currentPortId, playerShipId }: Props) {
+export default function CargoScreen({ onTravelStarted, currentPortId, playerShipId }: Props) {
     const [cargos, setCargos] = useState<SessionCargoDTO[]>([]);
     const [selected, setSelected] = useState<SessionCargoDTO | null>(null);
     const [loading, setLoading] = useState(true);
@@ -82,6 +82,9 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
     const [fuelEstimate, setFuelEstimate] = useState<FuelEstimate | null>(null);
     const [estimateLoading, setEstimateLoading] = useState(false);
     const [fuelError, setFuelError] = useState<string | null>(null);
+
+    const [starting, setStarting] = useState(false);
+    const [startError, setStartError] = useState<string | null>(null);
 
     const sessionData = sessionStorage.getItem("currentSession");
     const sessionId = sessionData ? (JSON.parse(sessionData) as { id: string }).id : null;
@@ -110,6 +113,7 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
             .catch(() => setLoading(false));
     }, [sessionId, currentPortId, token, filterByPort]);
 
+    // Live-Updates der Frachtbörse
     useEffect(() => {
         if (!sessionId) return;
         const wsUrl = window.location.hostname === "localhost" ? "http://localhost:8080/ws" : "/ws";
@@ -124,9 +128,11 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
                 const all: SessionCargoDTO[] = event.availableCargos ?? [];
                 const filtered = filterByPort(all);
                 setCargos(filtered);
-                // Nur neu auswählen wenn die aktuelle Auswahl nicht mehr verfügbar ist
                 setSelected((prev) => {
                     if (prev && filtered.some((c) => c.id === prev.id)) return prev;
+                    if (prev) {
+                        setStartError("Diese Fracht wurde gerade von einem anderen Kapitän übernommen.");
+                    }
                     return filtered[0] ?? null;
                 });
             });
@@ -134,6 +140,7 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
         return () => { if (client.connected) client.disconnect(() => {}); };
     }, [sessionId, token, filterByPort]);
 
+    // Treibstoff-Schätzung
     useEffect(() => {
         if (!selected || !playerShipId || !playerId || !sessionId) {
             setFuelEstimate(null);
@@ -173,10 +180,14 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
     const canAfford = !fuelEstimate || (currentSpeedOpt?.canAfford ?? false);
     const hasNoAffordableOption = fuelEstimate != null && fuelEstimate.speedOptions.every((o) => !o.canAfford);
 
-    function handleConfirm() {
+    async function handleStartTravel() {
         if (!selected) return;
         if (!playerShipId) {
-            setFuelError("Bitte zuerst ein Schiff auswählen.");
+            setStartError("Bitte zuerst ein Schiff auswählen.");
+            return;
+        }
+        if (!playerId || !sessionId) {
+            setStartError("Session oder Spieler nicht gefunden.");
             return;
         }
         if (hasNoAffordableOption) {
@@ -187,8 +198,49 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
             setFuelError("Nicht genug Treibstoff für dieses Speed-Setting.");
             return;
         }
+
         const speedSetting = SPEED_SETTINGS[speedIndex];
-        onSelect({ cargo: selected, speedSetting });
+        setStarting(true);
+        setStartError(null);
+        setFuelError(null);
+
+        try {
+            const response = await fetch(`/api/travels/start/${playerId}?sessionId=${sessionId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                    playerShipId,
+                    destinationPortId: selected.destinationPortId,
+                    sessionCargoId: selected.id,
+                    speedSetting,
+                }),
+            });
+
+            let data: ApiErrorResponse | null = null;
+            const text = await response.text();
+            try { data = text ? (JSON.parse(text) as ApiErrorResponse) : null; } catch { data = null; }
+
+            if (!response.ok) {
+                const err = data?.error ?? "";
+                if (err === "CARGO_TAKEN") {
+                    setSelected(null);
+                    setStartError("Diese Fracht wurde soeben von einem anderen Kapitän übernommen. Wähle eine neue Fracht.");
+                } else if (err === "CAPACITY_EXCEEDED") {
+                    setStartError("Dein Schiff ist zu klein für diese Fracht.");
+                } else if (err === "INSUFFICIENT_FUEL") {
+                    setStartError(data?.message ?? "Nicht genug Treibstoff.");
+                } else {
+                    setStartError(data?.message ?? "Reise konnte nicht gestartet werden.");
+                }
+                return;
+            }
+
+            onTravelStarted();
+        } catch {
+            setStartError("Verbindungsfehler.");
+        } finally {
+            setStarting(false);
+        }
     }
 
     const riskLabel = (r: number) => r < 0.1 ? "Niedrig" : r < 0.25 ? "Mittel" : r < 0.4 ? "Hoch" : "Extrem";
@@ -197,6 +249,8 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
     if (loading) {
         return <div className="cargo-screen"><p style={{ color: "#aaa", textAlign: "center", marginTop: 80 }}>Lade Frachtbörse…</p></div>;
     }
+
+    const startBtnDisabled = !selected || !playerShipId || !canAfford || hasNoAffordableOption || starting;
 
     return (
         <div className="cargo-screen">
@@ -217,7 +271,7 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
                         {cargos.map((c) => (
                             <div
                                 key={c.id}
-                                onClick={() => { setSelected(c); setFuelError(null); }}
+                                onClick={() => { setSelected(c); setFuelError(null); setStartError(null); }}
                                 className={`cargo-item ${selected?.id === c.id ? "active" : ""}`}
                             >
                                 <div className="cargo-item-row">
@@ -275,96 +329,99 @@ export default function CargoScreen({ onSelect, currentPortId, playerShipId }: P
                                     </div>
                                 </div>
 
-                                <div className="cargo-speed-section">
-                                    <div className="cargo-speed-title">Reisegeschwindigkeit</div>
+                                {!playerShipId && (
+                                    <div className="cargo-speed-hint" style={{ marginTop: 20, marginBottom: 16 }}>
+                                        Wähle zuerst ein Schiff aus, um eine Reise zu starten.
+                                    </div>
+                                )}
 
-                                    {!playerShipId && (
-                                        <div className="cargo-speed-hint">
-                                            Wähle zuerst ein Schiff aus, um den Treibstoffverbrauch zu sehen.
-                                        </div>
-                                    )}
+                                {playerShipId && (
+                                    <div className="cargo-speed-section">
+                                        <div className="cargo-speed-title">Reisegeschwindigkeit</div>
 
-                                    {playerShipId && estimateLoading && !fuelEstimate && (
-                                        <div className="cargo-speed-hint">Berechne Treibstoffverbrauch…</div>
-                                    )}
+                                        {estimateLoading && !fuelEstimate && (
+                                            <div className="cargo-speed-hint">Berechne Treibstoffverbrauch…</div>
+                                        )}
 
-                                    {playerShipId && fuelEstimate && (
-                                        <>
-                                            <div className="cargo-fuel-row">
-                                                <span>Tank</span>
-                                                <span className="cargo-fuel-value">
-                    {fuelEstimate.currentFuelAbsolute.toFixed(0)} / {fuelEstimate.maxFuel.toFixed(0)}
-                                                    {currentSpeedOpt && (
-                                                        <span style={{
-                                                            color: currentSpeedOpt.canAfford ? "#4a8a4a" : "#c04040",
-                                                            marginLeft: 10,
-                                                            fontWeight: "bold"
-                                                        }}>
-                            {currentSpeedOpt.canAfford ? "" : "⚠ "}
-                                                            −{currentSpeedOpt.fuelRequiredAbsolute.toFixed(0)}
-                                                            {" = "}
-                                                            {(fuelEstimate.currentFuelAbsolute - currentSpeedOpt.fuelRequiredAbsolute).toFixed(0)}
-                        </span>
-                                                    )}
-                </span>
-                                            </div>
-                                            <div className="cargo-fuel-track">
-                                                <div
-                                                    className="cargo-fuel-fill"
-                                                    style={{ width: `${Math.min(100, (fuelEstimate.currentFuelAbsolute / fuelEstimate.maxFuel) * 100)}%` }}
-                                                />
-                                            </div>
-
-                                            <div className="cargo-speed-options">
-                                                {fuelEstimate.speedOptions.map((opt, idx) => {
-                                                    const disabled = !opt.possible || !opt.canAfford;
-                                                    const tooltip = !opt.possible
-                                                        ? `Nicht machbar – Tank zu klein (${opt.fuelRequiredAbsolute.toFixed(0)} benötigt, Tank max ${fuelEstimate.maxFuel.toFixed(0)})`
-                                                        : !opt.canAfford
-                                                            ? `Nicht genug Treibstoff (${opt.fuelRequiredAbsolute.toFixed(0)} benötigt, verfügbar ${fuelEstimate.currentFuelAbsolute.toFixed(0)})`
-                                                            : `Verbraucht ${opt.fuelRequiredAbsolute.toFixed(0)} Einheiten`;
-
-                                                    return (
-                                                        <button
-                                                            key={idx}
-                                                            type="button"
-                                                            className={`cargo-speed-btn${speedIndex === idx ? " active" : ""}${!opt.possible ? " impossible" : !opt.canAfford ? " unaffordable" : ""}`}
-                                                            onClick={() => { if (!disabled) { setSpeedIndex(idx); setFuelError(null); } }}
-                                                            disabled={disabled}
-                                                            title={tooltip}
-                                                        >
-                                                            <span className="cargo-speed-label">{opt.label}</span>
-                                                            <span className="cargo-speed-fuel">
-                                −{opt.fuelRequiredAbsolute.toFixed(0)}
-                            </span>
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-
-                                            {hasNoAffordableOption && !fuelEstimate.speedOptions.every(o => !o.possible) && (
-                                                <div className="cargo-speed-warn">
-                                                    Nicht genug Treibstoff. Tank muss aufgefüllt werden.
+                                        {fuelEstimate && (
+                                            <>
+                                                <div className="cargo-fuel-row">
+                                                    <span>Tank</span>
+                                                    <span className="cargo-fuel-value">
+                                                        {fuelEstimate.currentFuelAbsolute.toFixed(0)} / {fuelEstimate.maxFuel.toFixed(0)}
+                                                        {currentSpeedOpt && (
+                                                            <span style={{
+                                                                color: currentSpeedOpt.canAfford ? "#4a8a4a" : "#c04040",
+                                                                marginLeft: 10,
+                                                                fontWeight: "bold"
+                                                            }}>
+                                                                {currentSpeedOpt.canAfford ? "" : "⚠ "}
+                                                                −{currentSpeedOpt.fuelRequiredAbsolute.toFixed(0)}
+                                                                {" = "}
+                                                                {(fuelEstimate.currentFuelAbsolute - currentSpeedOpt.fuelRequiredAbsolute).toFixed(0)}
+                                                            </span>
+                                                        )}
+                                                    </span>
                                                 </div>
-                                            )}
-                                            {fuelEstimate.speedOptions.every(o => !o.possible) && (
-                                                <div className="cargo-speed-warn">
-                                                    Strecke zu lang für dieses Schiff, selbst mit vollem Tank nicht machbar.
+                                                <div className="cargo-fuel-track">
+                                                    <div
+                                                        className="cargo-fuel-fill"
+                                                        style={{ width: `${Math.min(100, (fuelEstimate.currentFuelAbsolute / fuelEstimate.maxFuel) * 100)}%` }}
+                                                    />
                                                 </div>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
+
+                                                <div className="cargo-speed-options">
+                                                    {fuelEstimate.speedOptions.map((opt, idx) => {
+                                                        const disabled = !opt.possible || !opt.canAfford;
+                                                        const tooltip = !opt.possible
+                                                            ? `Nicht machbar – Tank zu klein (${opt.fuelRequiredAbsolute.toFixed(0)} benötigt, Tank max ${fuelEstimate.maxFuel.toFixed(0)})`
+                                                            : !opt.canAfford
+                                                                ? `Nicht genug Treibstoff (${opt.fuelRequiredAbsolute.toFixed(0)} benötigt, verfügbar ${fuelEstimate.currentFuelAbsolute.toFixed(0)})`
+                                                                : `Verbraucht ${opt.fuelRequiredAbsolute.toFixed(0)} Einheiten`;
+
+                                                        return (
+                                                            <button
+                                                                key={idx}
+                                                                type="button"
+                                                                className={`cargo-speed-btn${speedIndex === idx ? " active" : ""}${!opt.possible ? " impossible" : !opt.canAfford ? " unaffordable" : ""}`}
+                                                                onClick={() => { if (!disabled) { setSpeedIndex(idx); setFuelError(null); } }}
+                                                                disabled={disabled}
+                                                                title={tooltip}
+                                                            >
+                                                                <span className="cargo-speed-label">{opt.label}</span>
+                                                                <span className="cargo-speed-fuel">
+                                                                    −{opt.fuelRequiredAbsolute.toFixed(0)}
+                                                                </span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+
+                                                {hasNoAffordableOption && !fuelEstimate.speedOptions.every(o => !o.possible) && (
+                                                    <div className="cargo-speed-warn">
+                                                        Nicht genug Treibstoff. Tank muss aufgefüllt werden.
+                                                    </div>
+                                                )}
+                                                {fuelEstimate.speedOptions.every(o => !o.possible) && (
+                                                    <div className="cargo-speed-warn">
+                                                        Strecke zu lang für dieses Schiff, selbst mit vollem Tank nicht machbar.
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                )}
 
                                 {fuelError && <div className="cargo-error">{fuelError}</div>}
+                                {startError && <div className="cargo-error">{startError}</div>}
 
                                 <button
                                     type="button"
                                     className="cargo-btn"
-                                    onClick={handleConfirm}
-                                    disabled={!canAfford || hasNoAffordableOption}
+                                    onClick={handleStartTravel}
+                                    disabled={startBtnDisabled}
                                 >
-                                    Fracht auswählen
+                                    {starting ? "Reise wird gestartet…" : "Reise starten"}
                                 </button>
                             </>
                         ) : (

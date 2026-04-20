@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.*;
+
 /**
  * Type           spawnTick   cooldownTicks   rewardMultiplier   containsIllegal chance
  * GENERAL_GOODS     0           5               1.0x               0%
@@ -17,8 +18,8 @@ import java.util.*;
  * HAZARDOUS         8           12              1.6x               30%
  * LUXURY_GOODS      20          18              2.5x               10%
  *
+ * Cooldown-Varianz: ±30% beim Respawn (siehe randomizedCooldownFor)
  */
-
 @Component
 public class CargoSessionInitializer {
 
@@ -26,7 +27,8 @@ public class CargoSessionInitializer {
     private final SessionCargoRepository sessionCargoRepository;
     private final PortRepository portRepository;
 
-    private static final int CARGOS_PER_PORT = 7;
+    private static final int MAX_CARGOS_PER_PORT = 6;
+    private static final int GENERAL_FILL_TARGET = 4;
 
     public CargoSessionInitializer(CargoRepository cargoRepository, SessionCargoRepository sessionCargoRepository, PortRepository portRepository) {
         this.cargoRepository = cargoRepository;
@@ -41,6 +43,7 @@ public class CargoSessionInitializer {
         List<Cargo> templates = cargoRepository.findAll();
         List<Port> ports = portRepository.findAll();
         if (templates.isEmpty() || ports.size() < 2) return;
+
         Map<CargoType, List<Cargo>> byType = new EnumMap<>(CargoType.class);
         for (Cargo c : templates) {
             byType.computeIfAbsent(c.getCargoType(), k -> new ArrayList<>()).add(c);
@@ -55,25 +58,28 @@ public class CargoSessionInitializer {
             Collections.shuffle(destinations, rng);
 
             List<SessionCargo> portOffers = new ArrayList<>();
-            portOffers.addAll(pickOffers(byType, CargoType.GENERAL_GOODS, 2, origin, destinations, sessionId, rng));
+
+            portOffers.addAll(pickOffers(byType, CargoType.GENERAL_GOODS, 1, origin, destinations, sessionId, rng));
             portOffers.addAll(pickOffers(byType, CargoType.FOOD,          1, origin, destinations, sessionId, rng));
 
-            portOffers.addAll(pickOffers(byType, CargoType.INDUSTRIAL_GOODS, rng.nextInt(2), origin, destinations, sessionId, rng));
+            portOffers.addAll(pickOffers(byType, CargoType.INDUSTRIAL_GOODS, rng.nextBoolean() ? 1 : 0, origin, destinations, sessionId, rng));
             portOffers.addAll(pickOffers(byType, CargoType.FRAGILE,          rng.nextBoolean() ? 1 : 0, origin, destinations, sessionId, rng));
             portOffers.addAll(pickOffers(byType, CargoType.ELECTRONICS,      rng.nextBoolean() ? 1 : 0, origin, destinations, sessionId, rng));
 
-            if (rng.nextInt(3) == 0) {
+            if (rng.nextInt(4) == 0) {
                 portOffers.addAll(pickOffers(byType, CargoType.HAZARDOUS, 1, origin, destinations, sessionId, rng));
             }
-
-            if (rng.nextInt(4) == 0) {
+            if (rng.nextInt(6) == 0) {
                 portOffers.addAll(pickOffers(byType, CargoType.LUXURY_GOODS, 1, origin, destinations, sessionId, rng));
             }
 
-            while (portOffers.size() < CARGOS_PER_PORT) {
-                portOffers.addAll(pickOffers(byType, CargoType.GENERAL_GOODS, 1, origin, destinations, sessionId, rng));
+            while (portOffers.size() < GENERAL_FILL_TARGET) {
+                List<SessionCargo> picked = pickOffers(byType, CargoType.GENERAL_GOODS, 1, origin, destinations, sessionId, rng);
+                if (picked.isEmpty()) break;
+                portOffers.addAll(picked);
             }
-            offers.addAll(portOffers.subList(0, Math.min(portOffers.size(), CARGOS_PER_PORT + 1)));
+
+            offers.addAll(portOffers.subList(0, Math.min(portOffers.size(), MAX_CARGOS_PER_PORT)));
         }
 
         offers.forEach(sessionCargoRepository::save);
@@ -101,8 +107,7 @@ public class CargoSessionInitializer {
 
             boolean illegal = false;
 
-            // Zufälliger Versatz beim initialen spawnTick, damit Cargos gestaffelt erscheinen
-            int randomOffset = rng.nextInt(8); // 0-7 Ticks Versatz
+            int randomOffset = rng.nextInt(11);
             int finalSpawnTick = cfg.spawnTick + randomOffset;
 
             SessionCargo sc = SessionCargo.create(
@@ -148,10 +153,18 @@ public class CargoSessionInitializer {
             };
         }
         int cooldownTicks() {
-            return cooldownTicks; }
+            return cooldownTicks;
+        }
     }
 
     public static int cooldownTicksFor(CargoType type) {
         return CargoSpawnConfig.of(type).cooldownTicks();
+    }
+
+    public static int randomizedCooldownFor(CargoType type, Random rng) {
+        int base = CargoSpawnConfig.of(type).cooldownTicks();
+        double variance = 0.70 + rng.nextDouble() * 0.60; // 0.70 bis 1.30
+        int result = (int) Math.round(base * variance);
+        return Math.max(1, result);
     }
 }
