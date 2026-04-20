@@ -45,7 +45,7 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
         const sessionId = sessionData ? JSON.parse(sessionData).id : null;
         if (!sessionId || !playerId) return;
 
-        fetch(`http://localhost:8080/api/ships/player/${playerId}/balance?sessionId=${sessionId}`, {
+        fetch(`/api/ships/player/${playerId}/balance?sessionId=${sessionId}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token') ?? ''}` }
         })
             .then(res => res.json())
@@ -57,7 +57,7 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
         setLoading(true);
         setError(null);
 
-        fetch(`http://localhost:8080/api/ships?shipClass=${shipClass}`, {
+        fetch(`/api/ships?shipClass=${shipClass}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token') ?? ''}` }
         })
             .then(res => {
@@ -90,7 +90,7 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
 
         try {
             const res = await fetch(
-                `http://localhost:8080/api/ships/buy/${playerId}?sessionId=${sessionId}`,
+                `/api/ships/buy/${playerId}?sessionId=${sessionId}`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json",
@@ -139,7 +139,6 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
                 </div>
             </div>
 
-            {/* STATUS */}
             {loading && <p className="shipclass-status">Lade Schiffe…</p>}
             {error && <p className="shipclass-status">{error}</p>}
 
@@ -147,7 +146,6 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
                 <p className="shipclass-status">Keine Schiffe verfügbar.</p>
             )}
 
-            {/* GRID */}
             <div className="ship-grid-wrapper">
                 <div className="ship-grid">
                     {ships.map(ship => {
@@ -211,7 +209,6 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
     );
 }
 
-/* HELPER */
 function StatRow({ label, value }: { label: string; value: string }) {
     return (
         <div className="stat-row">

@@ -25,7 +25,10 @@ export default function useGameWebSocket(): UseGameWebSocketResult {
         const sessionData = sessionStorage.getItem('currentSession');
         const sessionId = sessionData ? JSON.parse(sessionData).id : null;
 
-        const socket = new SockJS('http://localhost:8080/ws');
+        const wsUrl = window.location.hostname === 'localhost'
+            ? 'http://localhost:8080/ws'
+            : '/ws';
+        const socket = new SockJS(wsUrl);
         const client = Stomp.over(socket);
 
         const headers: Record<string, string> = {};

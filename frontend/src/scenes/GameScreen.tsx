@@ -29,7 +29,7 @@ export default function GameScreen() {
 
     useEffect(() => {
         const token = localStorage.getItem('auth_token');
-        fetch('http://localhost:8080/api/ports', {
+        fetch('/api/ports', {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         })
             .then(res => res.json())

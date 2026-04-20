@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"@CrossOrigin\" \"D:\\\\Crowns Of The Seas/backend/src/main/java/at/fhv/backend/rest/\"*.java)"
+    ]
+  }
+}

@@ -190,7 +190,7 @@ export function useGameSessionWebSocket({
 
     return {
         isConnected,
-        disconnect
+        disconnect, stompClient: stompClientRef.current
     };
 }
 

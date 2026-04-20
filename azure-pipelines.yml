@@ -1,31 +1,71 @@
 trigger:
-  - master
+  branches:
+    include:
+      - master
+  tags:
+    include:
+      - 'v*'
 
-pr:
-  - master
+pr: none
 
 pool:
-  vmImage: 'ubuntu-latest'
+  name: 'EA-Projekt-Server-Agent'
 
-steps:
-  # Backend (Gradle)
-  - task: Gradle@2
-    displayName: "Build Backend"
-    inputs:
-      workingDirectory: 'backend'
-      gradleWrapperFile: 'backend/gradlew'
-      tasks: 'test build'
-      publishJUnitResults: false
-      testResultsFiles: '**/TEST-*.xml'
+variables:
+  backendImage: 'eateam6-backend'
+  frontendImage: 'eateam6-frontend'
+  ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tags/') }}:
+    tag: ${{ replace(variables['Build.SourceBranch'], 'refs/tags/', '') }}
+  ${{ else }}:
+    tag: '$(Build.BuildId)'
 
-  # Frontend (React + Vite)
-  - task: NodeTool@0
-    displayName: "Install Node"
-    inputs:
-      versionSpec: '24.x'
+stages:
+  - stage: Test
+    displayName: 'Test'
+    jobs:
+      - job: TestBackend
+        displayName: 'Backend Tests'
+        steps:
+          - script: |
+              docker run --rm -v "$(Build.SourcesDirectory)/backend":/app -w /app eclipse-temurin:17-jdk bash -c "rm -rf .gradle build"
+            displayName: 'Cleanup old root files'
 
-  - script: |
-      cd frontend
-      npm install
-      npm run build
-    displayName: "Build Frontend"
+          - script: |
+              docker run --rm -v "$(Build.SourcesDirectory)/backend":/app -w /app eclipse-temurin:17-jdk bash -c "chmod +x ./gradlew && ./gradlew test --project-cache-dir /tmp/.gradle && rm -rf build .gradle"
+            displayName: 'Run Backend Tests'
+
+      - job: TestFrontend
+        displayName: 'Frontend Build Check'
+        steps:
+          - script: |
+              docker run --rm -v "$(Build.SourcesDirectory)/frontend":/app -w /app node:24-alpine sh -c "npm install && npm run build && rm -rf node_modules dist"
+            displayName: 'Build Frontend'
+
+  - stage: Build
+    displayName: 'Build Docker Images'
+    dependsOn: Test
+    condition: succeeded()
+    jobs:
+      - job: BuildImages
+        displayName: 'Build Images'
+        steps:
+          - script: |
+              docker build -t $(backendImage):$(tag) -t $(backendImage):latest ./backend
+            displayName: 'Build Backend Image'
+
+          - script: |
+              docker build -t $(frontendImage):$(tag) -t $(frontendImage):latest ./frontend
+            displayName: 'Build Frontend Image'
+
+  - stage: Deploy
+    displayName: 'Deploy Application'
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+      - job: DeployApp
+        displayName: 'Deploy with Docker Compose'
+        steps:
+          - script: |
+              docker-compose down
+              docker-compose up -d
+            displayName: 'Deploy with Docker Compose'

@@ -1,168 +1,436 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import SockJS from "sockjs-client";
+import Stomp, { Client } from "stompjs";
 import "../style/cargo.css";
 
-interface Cargo {
-    from: string;
-    to: string;
-    profit: string;
-    duration: string;
-    risk: string;
-    destinationPortId: string;
-}
-
-interface Port {
+interface SessionCargoDTO {
     id: string;
     name: string;
-    x: number;
-    y: number;
+    description: string;
+    originPortId: string;
+    originPortName: string;
+    destinationPortId: string;
+    destinationPortName: string;
+    reward: number;
+    capacity: number;
+    cargoType: string;
+    risk: number;
+    cargoStatus: string;
+    containsIllegal: boolean;
 }
 
-const RISK_LEVELS = ["Niedrig", "Mittel", "Hoch"];
-
-function buildCargoFromPorts(ports: Port[]): Cargo[] {
-    if (ports.length < 2) return [];
-    // Erste Port = Starthafen, generiere Routen zu allen anderen
-    const origin = ports[0];
-    return ports.slice(1).map((dest, i) => {
-        const dx = dest.x - origin.x;
-        const dy = dest.y - origin.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const profit = Math.round(dist * 150);
-        const days = Math.ceil(dist / 5);
-        return {
-            from: origin.name,
-            to: dest.name,
-            profit: profit.toLocaleString("de-DE"),
-            duration: `${days} Tage`,
-            risk: RISK_LEVELS[i % 3],
-            destinationPortId: dest.id,
-        };
-    });
+interface SpeedOption {
+    speedSetting: number;
+    label: string;
+    fuelRequiredAbsolute: number;
+    fuelRequiredPercent: number;
+    canAfford: boolean;
+    possible: boolean;
 }
 
-const ScaleIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <path d="M12 3v18M6 7h12M6 7l-3 5h6l-3-5ZM18 7l-3 5h6l-3-5Z" stroke="currentColor" strokeWidth="1.5"/>
-    </svg>
-);
+interface FuelEstimate {
+    currentFuelPercent: number;
+    currentFuelAbsolute: number;
+    maxFuel: number;
+    distance: number;
+    speedOptions: SpeedOption[];
+}
 
-const ClockIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5"/>
-        <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="1.5"/>
-    </svg>
-);
+interface CargoMarketEvent {
+    availableCargos?: SessionCargoDTO[];
+}
 
-const WarningIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <path d="M12 4l9 16H3L12 4Z" stroke="currentColor" strokeWidth="1.5"/>
-        <path d="M12 9v4M12 17h.01" stroke="currentColor" strokeWidth="1.5"/>
-    </svg>
-);
+interface ApiErrorResponse {
+    error?: string;
+    message?: string;
+}
 
-export default function CargoScreen({ onSelect }: { onSelect: (cargo: Cargo) => void }) {
+const TYPE_LABELS: Record<string, string> = {
+    GENERAL_GOODS: "General",
+    FOOD: "Food",
+    INDUSTRIAL_GOODS: "Industrial",
+    ELECTRONICS: "Electronics",
+    FRAGILE: "Fragile",
+    HAZARDOUS: "Hazardous",
+    LUXURY_GOODS: "Luxury",
+};
+const TYPE_COLORS: Record<string, string> = {
+    GENERAL_GOODS: "#7a9b6a",
+    FOOD: "#c0874a",
+    INDUSTRIAL_GOODS: "#6a7fa0",
+    ELECTRONICS: "#6a5fb0",
+    FRAGILE: "#b08060",
+    HAZARDOUS: "#b04040",
+    LUXURY_GOODS: "#a07030",
+};
 
-    const [cargoData, setCargoData] = useState<Cargo[]>([]);
-    const [selectedCargo, setSelectedCargo] = useState<Cargo | null>(null);
+const SPEED_SETTINGS = [0.5, 0.625, 0.75, 0.875, 1.0];
 
+interface Props {
+    onTravelStarted: () => void;
+    currentPortId: string | null;
+    playerShipId: string | null;
+}
+
+export default function CargoScreen({ onTravelStarted, currentPortId, playerShipId }: Props) {
+    const [cargos, setCargos] = useState<SessionCargoDTO[]>([]);
+    const [selected, setSelected] = useState<SessionCargoDTO | null>(null);
+    const [loading, setLoading] = useState(true);
+    const stompRef = useRef<Client | null>(null);
+
+    const [speedIndex, setSpeedIndex] = useState(2);
+    const [fuelEstimate, setFuelEstimate] = useState<FuelEstimate | null>(null);
+    const [estimateLoading, setEstimateLoading] = useState(false);
+    const [fuelError, setFuelError] = useState<string | null>(null);
+
+    const [starting, setStarting] = useState(false);
+    const [startError, setStartError] = useState<string | null>(null);
+
+    const sessionData = sessionStorage.getItem("currentSession");
+    const sessionId = sessionData ? (JSON.parse(sessionData) as { id: string }).id : null;
+    const userData = localStorage.getItem("crowns_user");
+    const playerId = userData ? (JSON.parse(userData) as { id: string }).id : null;
+    const token = localStorage.getItem("auth_token") ?? "";
+
+    const filterByPort = useCallback((list: SessionCargoDTO[]) => {
+        if (!currentPortId) return list;
+        return list.filter((c) => c.originPortId === currentPortId);
+    }, [currentPortId]);
+
+    // Initialer Fetch
     useEffect(() => {
-        const ports: Port[] = window.__latestPorts ?? [];
-        const data = buildCargoFromPorts(ports);
-        setCargoData(data);
-        if (data.length > 0) setSelectedCargo(data[0]);
-    }, []);
+        if (!sessionId || !currentPortId) { setLoading(false); return; }
+        fetch(`/api/cargo/${sessionId}/available?portId=${currentPortId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+            .then((r) => r.json() as Promise<SessionCargoDTO[]>)
+            .then((data) => {
+                const filtered = filterByPort(data);
+                setCargos(filtered);
+                if (filtered.length > 0) setSelected((prev) => prev ?? filtered[0]);
+                setLoading(false);
+            })
+            .catch(() => setLoading(false));
+    }, [sessionId, currentPortId, token, filterByPort]);
+
+    // Live-Updates der Frachtbörse
+    useEffect(() => {
+        if (!sessionId) return;
+        const wsUrl = window.location.hostname === "localhost" ? "http://localhost:8080/ws" : "/ws";
+        const client = Stomp.over(new SockJS(wsUrl));
+        client.debug = () => {};
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        client.connect(headers, () => {
+            stompRef.current = client;
+            client.subscribe(`/topic/session/${sessionId}/cargo`, (msg) => {
+                const event = JSON.parse(msg.body) as CargoMarketEvent;
+                const all: SessionCargoDTO[] = event.availableCargos ?? [];
+                const filtered = filterByPort(all);
+                setCargos(filtered);
+                setSelected((prev) => {
+                    if (prev && filtered.some((c) => c.id === prev.id)) return prev;
+                    if (prev) {
+                        setStartError("Diese Fracht wurde gerade von einem anderen Kapitän übernommen.");
+                    }
+                    return filtered[0] ?? null;
+                });
+            });
+        }, () => {});
+        return () => { if (client.connected) client.disconnect(() => {}); };
+    }, [sessionId, token, filterByPort]);
+
+    // Treibstoff-Schätzung
+    useEffect(() => {
+        if (!selected || !playerShipId || !playerId || !sessionId) {
+            setFuelEstimate(null);
+            return;
+        }
+
+        let cancelled = false;
+        setEstimateLoading(true);
+        setFuelError(null);
+
+        fetch(`/api/travels/fuel-estimate?playerId=${playerId}&sessionId=${sessionId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ playerShipId, sessionCargoId: selected.id }),
+        })
+            .then((res) => res.ok ? (res.json() as Promise<FuelEstimate>) : Promise.reject())
+            .then((data) => {
+                if (cancelled) return;
+                setFuelEstimate(data);
+                const affordable = data.speedOptions.filter((o) => o.canAfford);
+                if (affordable.length > 0) {
+                    const last = affordable[affordable.length - 1];
+                    const bestIdx = SPEED_SETTINGS.indexOf(last.speedSetting);
+                    setSpeedIndex(bestIdx >= 0 ? bestIdx : 2);
+                } else {
+                    setSpeedIndex(0);
+                }
+            })
+            .catch(() => { if (!cancelled) setFuelEstimate(null); })
+            .finally(() => { if (!cancelled) setEstimateLoading(false); });
+
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selected?.id, playerShipId, playerId, sessionId, token]);
+
+    const currentSpeedOpt = fuelEstimate?.speedOptions[speedIndex] ?? null;
+    const canAfford = !fuelEstimate || (currentSpeedOpt?.canAfford ?? false);
+    const hasNoAffordableOption = fuelEstimate != null && fuelEstimate.speedOptions.every((o) => !o.canAfford);
+
+    async function handleStartTravel() {
+        if (!selected) return;
+        if (!playerShipId) {
+            setStartError("Bitte zuerst ein Schiff auswählen.");
+            return;
+        }
+        if (!playerId || !sessionId) {
+            setStartError("Session oder Spieler nicht gefunden.");
+            return;
+        }
+        if (hasNoAffordableOption) {
+            setFuelError("Nicht genug Treibstoff für diese Fracht.");
+            return;
+        }
+        if (!canAfford) {
+            setFuelError("Nicht genug Treibstoff für dieses Speed-Setting.");
+            return;
+        }
+
+        const speedSetting = SPEED_SETTINGS[speedIndex];
+        setStarting(true);
+        setStartError(null);
+        setFuelError(null);
+
+        try {
+            const response = await fetch(`/api/travels/start/${playerId}?sessionId=${sessionId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                    playerShipId,
+                    destinationPortId: selected.destinationPortId,
+                    sessionCargoId: selected.id,
+                    speedSetting,
+                }),
+            });
+
+            let data: ApiErrorResponse | null = null;
+            const text = await response.text();
+            try { data = text ? (JSON.parse(text) as ApiErrorResponse) : null; } catch { data = null; }
+
+            if (!response.ok) {
+                const err = data?.error ?? "";
+                if (err === "CARGO_TAKEN") {
+                    setSelected(null);
+                    setStartError("Diese Fracht wurde soeben von einem anderen Kapitän übernommen. Wähle eine neue Fracht.");
+                } else if (err === "CAPACITY_EXCEEDED") {
+                    setStartError("Dein Schiff ist zu klein für diese Fracht.");
+                } else if (err === "INSUFFICIENT_FUEL") {
+                    setStartError(data?.message ?? "Nicht genug Treibstoff.");
+                } else {
+                    setStartError(data?.message ?? "Reise konnte nicht gestartet werden.");
+                }
+                return;
+            }
+
+            onTravelStarted();
+        } catch {
+            setStartError("Verbindungsfehler.");
+        } finally {
+            setStarting(false);
+        }
+    }
+
+    const riskLabel = (r: number) => r < 0.1 ? "Niedrig" : r < 0.25 ? "Mittel" : r < 0.4 ? "Hoch" : "Extrem";
+    const riskClass = (r: number) => r < 0.1 ? "risk-low" : r < 0.25 ? "risk-medium" : r < 0.4 ? "risk-high" : "risk-extreme";
+
+    if (loading) {
+        return <div className="cargo-screen"><p style={{ color: "#aaa", textAlign: "center", marginTop: 80 }}>Lade Frachtbörse…</p></div>;
+    }
+
+    const startBtnDisabled = !selected || !playerShipId || !canAfford || hasNoAffordableOption || starting;
 
     return (
         <div className="cargo-screen">
             <div className="cargo-container">
+                <div className="cargo-header">
+                    <h2 className="cargo-title">Frachtbörse</h2>
+                </div>
 
-            <div className="cargo-header">
-                <h2 className="cargo-title">The Cargo Market</h2>
-
-            </div>
-
-            <div className="cargo-layout">
-                <div className="cargo-list">
-
-                    <div className="cargo-list-header">
-                        Available Charters
-                    </div>
-
-                    {cargoData.map((c) => {
-                        const active = selectedCargo?.destinationPortId === c.destinationPortId;
-
-                        return (
+                <div className="cargo-layout">
+                    <div className="cargo-list">
+                        <div className="cargo-list-header">Verfügbare Frachten ({cargos.length})</div>
+                        {cargos.length === 0 && (
+                            <div style={{ color: "#aaa", padding: 20, textAlign: "center", fontSize: 13 }}>
+                                Momentan keine Fracht verfügbar.<br />
+                                <span style={{ fontSize: 11, opacity: 0.6 }}>Neue Angebote erscheinen mit der Zeit.</span>
+                            </div>
+                        )}
+                        {cargos.map((c) => (
                             <div
-                                key={c.destinationPortId}
-                                onClick={() => setSelectedCargo(c)}
-                                className={`cargo-item ${active ? "active" : ""}`}
+                                key={c.id}
+                                onClick={() => { setSelected(c); setFuelError(null); setStartError(null); }}
+                                className={`cargo-item ${selected?.id === c.id ? "active" : ""}`}
                             >
                                 <div className="cargo-item-row">
-                                    <span className="cargo-item-name">
-                                        {c.from} → {c.to}
-                                    </span>
-                                    <span className="cargo-item-profit">
-                                        {c.profit} G
-                                    </span>
+                                    <span className="cargo-item-name">{c.name}</span>
+                                    <span className="cargo-item-profit">{Number(c.reward).toLocaleString("de-DE")} G</span>
                                 </div>
-
                                 <div className="cargo-item-sub">
-                                    <span>To {c.to}</span>
-                                    <span className={`risk-${c.risk.toLowerCase()}`}>
-                                        {c.risk} Risk
+                                    <span style={{ background: TYPE_COLORS[c.cargoType] + "22", color: TYPE_COLORS[c.cargoType], padding: "1px 6px", borderRadius: 3, fontSize: 10, fontWeight: "bold", letterSpacing: 1 }}>
+                                        {TYPE_LABELS[c.cargoType] ?? c.cargoType}
                                     </span>
+                                    <span>{c.originPortName} → {c.destinationPortName}</span>
                                 </div>
                             </div>
-                        );
-                    })}
+                        ))}
+                    </div>
 
+                    <div className="cargo-detail">
+                        {selected ? (
+                            <>
+                                <div className="cargo-detail-title">{selected.name}</div>
+                                <div style={{ color: "#7a6a4a", fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
+                                    {selected.description}
+                                </div>
+
+                                <div className="cargo-route">
+                                    <div className="cargo-port">
+                                        <div className="cargo-port-name">{selected.originPortName}</div>
+                                        <div style={{ fontSize: 10, color: "#999" }}>ABFAHRT</div>
+                                    </div>
+                                    <div className="cargo-route-line" />
+                                    <div className="cargo-port">
+                                        <div className="cargo-port-name">{selected.destinationPortName}</div>
+                                        <div style={{ fontSize: 10, color: "#999" }}>ZIEL</div>
+                                    </div>
+                                </div>
+
+                                <div className="cargo-stats">
+                                    <div className="cargo-stat">
+                                        <div className="cargo-stat-label">Belohnung</div>
+                                        <strong>{Number(selected.reward).toLocaleString("de-DE")} G</strong>
+                                    </div>
+                                    <div className="cargo-stat">
+                                        <div className="cargo-stat-label">Kapazität</div>
+                                        <strong>{selected.capacity} t</strong>
+                                    </div>
+                                    <div className="cargo-stat">
+                                        <div className="cargo-stat-label">Risiko</div>
+                                        <strong className={riskClass(selected.risk)}>{riskLabel(selected.risk)}</strong>
+                                    </div>
+                                    <div className="cargo-stat">
+                                        <div className="cargo-stat-label">Typ</div>
+                                        <strong style={{ color: TYPE_COLORS[selected.cargoType] }}>
+                                            {TYPE_LABELS[selected.cargoType]}
+                                        </strong>
+                                    </div>
+                                </div>
+
+                                {!playerShipId && (
+                                    <div className="cargo-speed-hint" style={{ marginTop: 20, marginBottom: 16 }}>
+                                        Wähle zuerst ein Schiff aus, um eine Reise zu starten.
+                                    </div>
+                                )}
+
+                                {playerShipId && (
+                                    <div className="cargo-speed-section">
+                                        <div className="cargo-speed-title">Reisegeschwindigkeit</div>
+
+                                        {estimateLoading && !fuelEstimate && (
+                                            <div className="cargo-speed-hint">Berechne Treibstoffverbrauch…</div>
+                                        )}
+
+                                        {fuelEstimate && (
+                                            <>
+                                                <div className="cargo-fuel-row">
+                                                    <span>Tank</span>
+                                                    <span className="cargo-fuel-value">
+                                                        {fuelEstimate.currentFuelAbsolute.toFixed(0)} / {fuelEstimate.maxFuel.toFixed(0)}
+                                                        {currentSpeedOpt && (
+                                                            <span style={{
+                                                                color: currentSpeedOpt.canAfford ? "#4a8a4a" : "#c04040",
+                                                                marginLeft: 10,
+                                                                fontWeight: "bold"
+                                                            }}>
+                                                                {currentSpeedOpt.canAfford ? "" : "⚠ "}
+                                                                −{currentSpeedOpt.fuelRequiredAbsolute.toFixed(0)}
+                                                                {" = "}
+                                                                {(fuelEstimate.currentFuelAbsolute - currentSpeedOpt.fuelRequiredAbsolute).toFixed(0)}
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                </div>
+                                                <div className="cargo-fuel-track">
+                                                    <div
+                                                        className="cargo-fuel-fill"
+                                                        style={{ width: `${Math.min(100, (fuelEstimate.currentFuelAbsolute / fuelEstimate.maxFuel) * 100)}%` }}
+                                                    />
+                                                </div>
+
+                                                <div className="cargo-speed-options">
+                                                    {fuelEstimate.speedOptions.map((opt, idx) => {
+                                                        const disabled = !opt.possible || !opt.canAfford;
+                                                        const tooltip = !opt.possible
+                                                            ? `Nicht machbar – Tank zu klein (${opt.fuelRequiredAbsolute.toFixed(0)} benötigt, Tank max ${fuelEstimate.maxFuel.toFixed(0)})`
+                                                            : !opt.canAfford
+                                                                ? `Nicht genug Treibstoff (${opt.fuelRequiredAbsolute.toFixed(0)} benötigt, verfügbar ${fuelEstimate.currentFuelAbsolute.toFixed(0)})`
+                                                                : `Verbraucht ${opt.fuelRequiredAbsolute.toFixed(0)} Einheiten`;
+
+                                                        return (
+                                                            <button
+                                                                key={idx}
+                                                                type="button"
+                                                                className={`cargo-speed-btn${speedIndex === idx ? " active" : ""}${!opt.possible ? " impossible" : !opt.canAfford ? " unaffordable" : ""}`}
+                                                                onClick={() => { if (!disabled) { setSpeedIndex(idx); setFuelError(null); } }}
+                                                                disabled={disabled}
+                                                                title={tooltip}
+                                                            >
+                                                                <span className="cargo-speed-label">{opt.label}</span>
+                                                                <span className="cargo-speed-fuel">
+                                                                    −{opt.fuelRequiredAbsolute.toFixed(0)}
+                                                                </span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+
+                                                {hasNoAffordableOption && !fuelEstimate.speedOptions.every(o => !o.possible) && (
+                                                    <div className="cargo-speed-warn">
+                                                        Nicht genug Treibstoff. Tank muss aufgefüllt werden.
+                                                    </div>
+                                                )}
+                                                {fuelEstimate.speedOptions.every(o => !o.possible) && (
+                                                    <div className="cargo-speed-warn">
+                                                        Strecke zu lang für dieses Schiff, selbst mit vollem Tank nicht machbar.
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+
+                                {fuelError && <div className="cargo-error">{fuelError}</div>}
+                                {startError && <div className="cargo-error">{startError}</div>}
+
+                                <button
+                                    type="button"
+                                    className="cargo-btn"
+                                    onClick={handleStartTravel}
+                                    disabled={startBtnDisabled}
+                                >
+                                    {starting ? "Reise wird gestartet…" : "Reise starten"}
+                                </button>
+                            </>
+                        ) : (
+                            <div style={{ color: "#aaa", textAlign: "center", padding: 40 }}>
+                                Wähle ein Frachtangebot aus.
+                            </div>
+                        )}
+                    </div>
                 </div>
-                <div className="cargo-detail">
-                    {selectedCargo ? (
-                        <>
-                            <div className="cargo-detail-title">
-                                {selectedCargo.from} → {selectedCargo.to}
-                            </div>
-
-                            <div className="cargo-route">
-                                <div className="cargo-port">{selectedCargo.from}</div>
-                                <div className="cargo-route-line" />
-                                <div className="cargo-port">{selectedCargo.to}</div>
-                            </div>
-
-                            <div className="cargo-stats">
-                                <div className="cargo-stat">
-                                    <ScaleIcon />
-                                    <span>Profit</span>
-                                    <strong>{selectedCargo.profit} G</strong>
-                                </div>
-                                <div className="cargo-stat">
-                                    <ClockIcon />
-                                    <span>Duration</span>
-                                    <strong>{selectedCargo.duration}</strong>
-                                </div>
-                                <div className="cargo-stat">
-                                    <WarningIcon />
-                                    <span>Risk</span>
-                                    <strong>{selectedCargo.risk}</strong>
-                                </div>
-                            </div>
-
-                            <button
-                                className="cargo-btn"
-                                onClick={() => onSelect(selectedCargo)}
-                            >
-                                Sign Contract
-                            </button>
-                        </>
-                    ) : (
-                        <div style={{ color: "#aaa", textAlign: "center", padding: "20px" }}>
-                            Keine Häfen geladen.
-                        </div>
-                    )}
-                </div>
-
-            </div>
             </div>
         </div>
     );

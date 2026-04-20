@@ -1,6 +1,7 @@
 package at.fhv.backend.application.services.impl.session;
 
 import at.fhv.backend.application.dtos.mapper.session.SessionDTOMapper;
+import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.application.services.session.GameSessionService;
 import at.fhv.backend.domain.model.player.BaseSessionPlayer;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
@@ -28,17 +29,20 @@ public class GameSessionServiceImpl implements GameSessionService {
     private final GameSessionWebSocketController webSocketController;
     private final PortQueryService portQueryService;
     private final GameTickScheduler gameTickScheduler;
+    private final CargoSessionInitializer cargoSessionInitializer;
 
     public GameSessionServiceImpl(GameSessionRepository gameSessionRepository,
-                                SessionDTOMapper sessionDTOMapper,
-                                GameSessionWebSocketController webSocketController,
-                                PortQueryService portQueryService,
-                                GameTickScheduler gameTickScheduler) {
+                                  SessionDTOMapper sessionDTOMapper,
+                                  GameSessionWebSocketController webSocketController,
+                                  PortQueryService portQueryService,
+                                  GameTickScheduler gameTickScheduler,
+                                  CargoSessionInitializer cargoSessionInitializer) {
         this.sessionDTOMapper = sessionDTOMapper;
         this.gameSessionRepository = gameSessionRepository;
         this.webSocketController = webSocketController;
         this.portQueryService = portQueryService;
         this.gameTickScheduler = gameTickScheduler;
+        this.cargoSessionInitializer = cargoSessionInitializer;
     }
 
     @Override
@@ -67,11 +71,11 @@ public class GameSessionServiceImpl implements GameSessionService {
                 session.getPlayers().size(),
                 session.getMaxPlayers(),
                 session.getPlayers().stream()
-                    .map(p -> new SessionUpdateEvent.PlayerInfo(
-                        p.getUserId(),
-                        p.getPlayerName(),
-                        p.isHost()))
-                    .collect(Collectors.toList()),
+                        .map(p -> new SessionUpdateEvent.PlayerInfo(
+                                p.getUserId(),
+                                p.getPlayerName(),
+                                p.isHost()))
+                        .collect(Collectors.toList()),
                 "PLAYER_JOINED"
         );
         // Use sessionId (UUID) not gameCode for WebSocket topic!
@@ -95,15 +99,16 @@ public class GameSessionServiceImpl implements GameSessionService {
                 session.getPlayers().size(),
                 session.getMaxPlayers(),
                 session.getPlayers().stream()
-                    .map(p -> new SessionUpdateEvent.PlayerInfo(
-                        p.getUserId(),
-                        p.getPlayerName(),
-                        p.isHost()))
-                    .collect(Collectors.toList()),
+                        .map(p -> new SessionUpdateEvent.PlayerInfo(
+                                p.getUserId(),
+                                p.getPlayerName(),
+                                p.isHost()))
+                        .collect(Collectors.toList()),
                 "GAME_STARTED"
         );
         webSocketController.broadcastSessionUpdate(session.getId().toString(), event);
 
+        cargoSessionInitializer.initializeForSession(sessionId);
         gameTickScheduler.startForSession(session.getId(), session.getTickRateSeconds());
 
         List<PortResponseDTO> ports = portQueryService.findAll();
