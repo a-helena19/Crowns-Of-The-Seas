@@ -12,7 +12,8 @@ public interface GameSessionService {
     SessionDTO startGame(UUID sessionId, UUID hostUserId);
     SessionDTO changeTickRate(UUID sessionId, UUID hostUserId, int tickRateSeconds);
     List<SessionDTO> getActiveSessionsForUser(UUID userId);
+    SessionDTO leaveSession(UUID sessionId, UUID userId);
 
-    // TODO: Implement leaveSession and assignFaction methods in the future
+    // TODO: Implement assignFaction methods in the future
     // SessionDTO assignFaction(UUID sessionId, UUID userId, PlayerFaction faction)
 }

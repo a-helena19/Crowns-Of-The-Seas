@@ -139,6 +139,52 @@ public class GameSessionServiceImpl implements GameSessionService {
                 .toList();
     }
 
+    @Override
+    public SessionDTO leaveSession(UUID sessionId, UUID userId) {
+        GameSession session = gameSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new SessionNotFoundException(sessionId));
+
+        // Check if leaving player is host
+        boolean wasHost = session.getPlayers().stream()
+                .anyMatch(p -> p.getUserId().equals(userId) && p.isHost());
+
+        session.removePlayer(userId);
+
+        // If session is now empty, delete it
+        if (session.getPlayers().isEmpty()) {
+            gameSessionRepository.deleteById(session.getId());
+            return null; // or throw exception
+        }
+
+        // If host left and other players remain, transfer host to next player
+        if (wasHost && !session.getPlayers().isEmpty()) {
+            ISessionPlayer newHost = session.getPlayers().get(0);
+            // Need to add method: session.makePlayerHost(newHost.getUserId());
+            session.makePlayerHost(newHost.getUserId());
+        }
+
+        SessionDTO savedSession = sessionDTOMapper.sessionToDTO(gameSessionRepository.save(session));
+
+        // Broadcast update
+        SessionUpdateEvent event = new SessionUpdateEvent(
+                session.getId(),
+                session.getGameCode(),
+                session.getStatus().toString(),
+                session.getPlayers().size(),
+                session.getMaxPlayers(),
+                session.getPlayers().stream()
+                        .map(p -> new SessionUpdateEvent.PlayerInfo(
+                                p.getUserId(),
+                                p.getPlayerName(),
+                                p.isHost()))
+                        .collect(Collectors.toList()),
+                "PLAYER_LEFT"
+        );
+        webSocketController.broadcastSessionUpdate(session.getId().toString(), event);
+
+        return savedSession;
+    }
+
     /*
     // TODO: remove this commented out code once faction is needed in sprint2
     @Override

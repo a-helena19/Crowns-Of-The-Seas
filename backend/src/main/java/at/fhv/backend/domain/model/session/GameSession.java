@@ -15,7 +15,7 @@ public class GameSession {
 
     private final UUID id;
     private SessionStatus status;
-    private final UUID hostUserId;
+    private UUID hostUserId;
     private final int maxPlayers;
     private int currentTick;
     private int tickRateSeconds;
@@ -99,6 +99,24 @@ public class GameSession {
         if (tickRateSeconds < 1 || tickRateSeconds > 60)
             throw new InvalidTickRateException(tickRateSeconds);
         this.tickRateSeconds = tickRateSeconds;
+    }
+
+    public void removePlayer(UUID userId) {
+        if (status != SessionStatus.LOBBY)
+            throw new SessionNotInLobbyException(id);
+        boolean removed = players.removeIf(p -> p.getUserId().equals(userId));
+        if (!removed)
+            throw new PlayerNotFoundException(userId);
+        playerFactions.remove(userId);
+    }
+
+    public void makePlayerHost(UUID userId) {
+        for (ISessionPlayer player : this.players) {
+            if (player.getUserId().equals(userId)) {
+                this.hostUserId = userId;
+                return;
+            }
+        }
     }
 
     // TODO: assignPlayerFaction in sprint2

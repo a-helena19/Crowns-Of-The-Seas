@@ -77,6 +77,22 @@ export default function SessionWaitingScreen() {
                     playerName: p.playerName,
                     isHost: p.isHost
                 })));
+
+                // Check if current user is now the host
+                const currentPlayerName = sessionStorage.getItem('playerName');
+                const isNowHost = event.players.some(p => p.playerName === currentPlayerName && p.isHost);
+                if (isNowHost) {
+                    console.log('User is now the host!');
+                    setUserRole('host');
+                }
+            }
+
+            if (event.playerCount === 0) {
+                console.log('Session is now empty, navigating back to lobby');
+                sessionStorage.removeItem('currentSession');
+                sessionStorage.removeItem('userRole');
+                sessionStorage.removeItem('playerName');
+                navigate('/lobby');
             }
 
             // Update session with new data
@@ -142,7 +158,25 @@ export default function SessionWaitingScreen() {
         navigate('/login');
     };
 
-    const handleBackToLobby = () => {
+    const handleBackToLobby = async () => {
+        const sessionData = sessionStorage.getItem('currentSession');
+
+        if (sessionData) {
+            try {
+                const session = JSON.parse(sessionData);
+                const { sessionApi } = await import('../api/sessionApi');
+                const result = await sessionApi.leaveSession(session.id);
+                console.log('Session after leaving:', result);
+
+                // If session is deleted (result is null or empty), just navigate
+                if (!result) {
+                    console.log('Session was deleted');
+                }
+            } catch (error) {
+                console.error('Error leaving session:', error);
+            }
+        }
+
         sessionStorage.removeItem('currentSession');
         sessionStorage.removeItem('userRole');
         sessionStorage.removeItem('playerName');

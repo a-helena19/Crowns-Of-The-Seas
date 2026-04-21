@@ -79,6 +79,14 @@ public class GameSessionRestController {
                 gameSessionService.changeTickRate(id, hostUserId, req.tickRateSeconds()));
     }
 
+    @PostMapping("/{id}/leave")
+    public ResponseEntity<SessionDTO> leave(
+            HttpServletRequest request,
+            @PathVariable UUID id) {
+        UUID userId = (UUID) request.getAttribute("userId");
+        return ResponseEntity.ok(gameSessionService.leaveSession(id, userId));
+    }
+
     /* TODO: remove the comment when it is needed in sprint2
     @PatchMapping("/{id}/faction")
     public ResponseEntity<SessionDTO> assignFaction(
