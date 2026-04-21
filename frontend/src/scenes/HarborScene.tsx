@@ -3,6 +3,7 @@ import DialogBubble from "../components/DialogBubble";
 import InfoPanel from "../components/InfoPanel";
 import CargoScreen from "./CargoScreen";
 import ShipScreen from "./ShipScreen";
+import LoadingScreen from "./LoadingScreen";
 import backIcon from "../assets/goback.png";
 
 import background from "../assets/background.jpg";
@@ -15,6 +16,8 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
     const [view, setView] = useState<"main" | "cargo" | "ship">("main");
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [isLoadingShip, setIsLoadingShip] = useState(false);
+    const [loadingDone, setLoadingDone] = useState(false);
 
     const userData = localStorage.getItem('crowns_user');
     const playerId = userData ? JSON.parse(userData).id : null;
@@ -92,6 +95,18 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
         }
     }
 
+    function handleShipSelect(ship: any) {
+        setSelectedShip(ship);
+        setError(null);
+        setLoadingDone(false);
+        setView("main");
+        const cargoWeight = selectedCargo?.weight ?? 0;
+        const shipCap = ship.maxCargoCapacity ?? Infinity;
+        if (selectedCargo && cargoWeight <= shipCap) {
+            setIsLoadingShip(true);
+        }
+    }
+
     function handleBack() {
         if (view === "cargo" || view === "ship") {
             setView("main");
@@ -99,6 +114,11 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
             onClose();
         }
     }
+
+    const overCapacity = !!(selectedShip && selectedCargo &&
+        selectedCargo.weight > (selectedShip.maxCargoCapacity ?? Infinity));
+
+    const canStart = !!selectedShip && !!selectedCargo && !loading && !isLoadingShip && !overCapacity;
 
     return (
         <div className="scene">
@@ -115,10 +135,37 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
                         onOpenCargo={() => setView("cargo")}
                         onOpenShip={() => setView("ship")}
                         onStartTravel={handleStartTravel}
-                        canStart={!!selectedShip && !!selectedCargo && !loading}
+                        canStart={canStart}
                     />
-                    {(selectedCargo || selectedShip) && (
-                        <InfoPanel cargo={selectedCargo} ship={selectedShip} />
+                    <div className="right-side-panels">
+                        {(selectedCargo || selectedShip) && (
+                            <InfoPanel cargo={selectedCargo} ship={selectedShip} />
+                        )}
+                        {(isLoadingShip || loadingDone) && selectedShip && selectedCargo && (
+                            <LoadingScreen
+                                ship={selectedShip}
+                                cargo={{ from: selectedCargo.from, to: selectedCargo.to, weight: selectedCargo.weight }}
+                                done={loadingDone}
+                                onComplete={() => { setIsLoadingShip(false); setLoadingDone(true); }}
+                            />
+                        )}
+                    </div>
+                    {overCapacity && selectedShip && selectedCargo && (
+                        <div style={{
+                            position: "absolute",
+                            bottom: "20px",
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            background: "rgba(180,30,30,0.93)",
+                            color: "white",
+                            padding: "10px 20px",
+                            borderRadius: "8px",
+                            fontSize: "14px",
+                            border: "2px solid #f44336",
+                            whiteSpace: "nowrap",
+                        }}>
+                            Fracht ({selectedCargo.weight}t) übersteigt die Kapazität des Schiffs ({selectedShip.maxCargoCapacity}t)!
+                        </div>
                     )}
                     {error && (
                         <div style={{
@@ -149,10 +196,7 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
 
             {view === "ship" && (
                 <ShipScreen
-                    onSelect={(ship) => {
-                        setSelectedShip(ship);
-                        setView("main");
-                    }}
+                    onSelect={handleShipSelect}
                 />
             )}
         </div>

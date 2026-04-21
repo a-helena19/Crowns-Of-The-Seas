@@ -8,6 +8,7 @@ interface Cargo {
     duration: string;
     risk: string;
     destinationPortId: string;
+    weight: number;
 }
 
 interface Port {
@@ -29,6 +30,7 @@ function buildCargoFromPorts(ports: Port[]): Cargo[] {
         const dist = Math.sqrt(dx * dx + dy * dy);
         const profit = Math.round(dist * 150);
         const days = Math.ceil(dist / 5);
+        const weight = Math.max(10, Math.round(dist * 3));
         return {
             from: origin.name,
             to: dest.name,
@@ -36,6 +38,7 @@ function buildCargoFromPorts(ports: Port[]): Cargo[] {
             duration: `${days} Tage`,
             risk: RISK_LEVELS[i % 3],
             destinationPortId: dest.id,
+            weight,
         };
     });
 }
@@ -57,6 +60,13 @@ const WarningIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
         <path d="M12 4l9 16H3L12 4Z" stroke="currentColor" strokeWidth="1.5"/>
         <path d="M12 9v4M12 17h.01" stroke="currentColor" strokeWidth="1.5"/>
+    </svg>
+);
+
+const WeightIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="7" r="3" stroke="currentColor" strokeWidth="1.5"/>
+        <path d="M6.5 20h11l-2-9H8.5l-2 9Z" stroke="currentColor" strokeWidth="1.5"/>
     </svg>
 );
 
@@ -145,6 +155,11 @@ export default function CargoScreen({ onSelect }: { onSelect: (cargo: Cargo) => 
                                     <WarningIcon />
                                     <span>Risk</span>
                                     <strong>{selectedCargo.risk}</strong>
+                                </div>
+                                <div className="cargo-stat">
+                                    <WeightIcon />
+                                    <span>Gewicht</span>
+                                    <strong>{selectedCargo.weight} t</strong>
                                 </div>
                             </div>
 
