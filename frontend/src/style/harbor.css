@@ -168,6 +168,15 @@
     z-index: 10;
 }
 
+.right-side-panels .info-panel {
+    position: relative;
+    right: auto;
+    top: auto;
+    width: 100%;
+    max-height: none;
+    z-index: auto;
+}
+
 .info-panel {
     font-family: var(--font-body);
     width: 100%;
