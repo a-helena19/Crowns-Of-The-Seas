@@ -88,12 +88,6 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
     const [estimateLoading, setEstimateLoading] = useState(false);
     const [fuelError, setFuelError] = useState<string | null>(null);
 
-const WarningIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <path d="M12 4l9 16H3L12 4Z" stroke="currentColor" strokeWidth="1.5"/>
-        <path d="M12 9v4M12 17h.01" stroke="currentColor" strokeWidth="1.5"/>
-    </svg>
-);
 
 const WeightIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -148,7 +142,7 @@ const WeightIcon = () => (
                 setSelected((prev) => {
                     if (prev && filtered.some((c) => c.id === prev.id)) return prev;
                     if (prev) {
-                        setStartError("Diese Fracht wurde gerade von einem anderen Kapitän übernommen.");
+                        setAcceptError("Diese Fracht wurde gerade von einem anderen Kapitän übernommen.");
                     }
                     return filtered[0] ?? null;
                 });
@@ -242,7 +236,7 @@ const WeightIcon = () => (
                         {cargos.map((c) => (
                             <div
                                 key={c.id}
-                                onClick={() => { setSelected(c); setFuelError(null); setStartError(null); }}
+                                onClick={() => { setSelected(c); setFuelError(null); setAcceptError(null); }}
                                 className={`cargo-item ${selected?.id === c.id ? "active" : ""}`}
                             >
                                 <div className="cargo-item-row">

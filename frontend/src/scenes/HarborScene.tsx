@@ -131,7 +131,6 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
     const overCapacity = !!(selectedShip && selectedCargo &&
         selectedCargo.weight > (selectedShip.maxCargoCapacity ?? Infinity));
 
-    const canStart = !!selectedShip && !!selectedCargo && !isLoadingShip && !overCapacity;
 
     return (
         <div className="scene">
