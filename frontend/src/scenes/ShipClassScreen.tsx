@@ -5,6 +5,14 @@ import "../style/shipbroker.css";
 import "../style/shipclass.css"
 import backIcon from "../assets/goback.png";
 
+interface PurchasedShipResponse {
+    id: string;
+    playerId: string;
+    iconUrl: string;
+    currentPortId: string;
+    status: string;
+}
+
 interface Ship {
     id: string;
     name: string;
@@ -104,14 +112,41 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
 
             if (!res.ok) throw new Error();
 
-            const data = await res.json();
+            const data = await res.json() as PurchasedShipResponse;
 
             setBoughtIds(prev => new Set(prev).add(ship.id));
             setBalance(prev => prev !== null ? prev - ship.price : null);
-            window.dispatchEvent(new CustomEvent('player-balance-updated')); // ← neu
+            window.dispatchEvent(new CustomEvent('player-balance-updated'));
             showToast(`${ship.name} gekauft!`);
 
-            console.log("Gekauft:", data);
+            // Sofort die Schiffsposition am Heimathafen anzeigen — kein Warten auf WebSocket-Tick.
+            // Funktioniert auch für zukünftige Heimathäfen: einfach currentPortId aus dem Response nutzen.
+            const homePort = (window.__latestPorts ?? []).find(p => p.id === data.currentPortId);
+            if (homePort) {
+                const userData = localStorage.getItem('crowns_user');
+                const playerName = userData ? (JSON.parse(userData).username ?? JSON.parse(userData).name ?? 'Spieler') : 'Spieler';
+                const syntheticShip = {
+                    playerShipId: data.id,
+                    playerId: data.playerId ?? playerId,
+                    playerName,
+                    iconUrl: data.iconUrl ?? '/ship.png',
+                    x: homePort.x,
+                    y: homePort.y,
+                    status: 'AT_PORT' as const,
+                    arrivalTick: null, originX: null, originY: null,
+                    destX: null, destY: null, startTick: null,
+                };
+                const updated = [
+                    ...(window.__latestShips ?? []).filter(s => s.playerShipId !== data.id),
+                    syntheticShip,
+                ];
+                window.__latestShips = updated;
+                const currentTick = window.__latestShipPositionsTick ?? window.__latestTick?.currentTick ?? 0;
+                window.__latestShipPositionsTick = currentTick;
+                window.dispatchEvent(new CustomEvent('backend-ship-positions', {
+                    detail: { currentTick, ships: updated }
+                }));
+            }
         } catch {
             showToast("Kauf fehlgeschlagen.");
         } finally {

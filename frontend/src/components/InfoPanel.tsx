@@ -21,10 +21,10 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 const SPEED_LABELS: Record<string, string> = {
-    "0.500": "Langsam",
-    "0.625": "Gemütlich",
-    "0.750": "Normal",
-    "0.875": "Schnell",
+    "0.250": "Langsam",
+    "0.400": "Gemütlich",
+    "0.600": "Normal",
+    "0.800": "Schnell",
     "1.000": "Volldampf",
 };
 

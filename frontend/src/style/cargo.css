@@ -569,6 +569,14 @@
 .cargo-speed-btn.active .cargo-speed-fuel { color: #ffe8a0; }
 .cargo-speed-fuel.no-fuel { color: #c04040; }
 
+.cargo-speed-days {
+    font-size: 10px;
+    color: #5a7a5a;
+    margin-top: 1px;
+}
+
+.cargo-speed-btn.active .cargo-speed-days { color: #90d090; }
+
 .cargo-speed-warn {
     font-size: 12px;
     color: #c04040;

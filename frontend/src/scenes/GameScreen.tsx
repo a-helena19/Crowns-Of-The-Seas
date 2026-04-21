@@ -1,5 +1,4 @@
-import useGameWebSocket from "../hooks/useWebSocket.ts";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import TopBar from "../components/TopBar.tsx";
 import Game from "../Game.tsx";
 import BottomBar from "../components/BottomBar.tsx";
@@ -12,17 +11,22 @@ export const TOP_BAR_HEIGHT = '8vh';
 export const BOTTOM_BAR_HEIGHT = '25vh';
 
 export default function GameScreen() {
-    const { connected, gameState, send } = useGameWebSocket();
     const [view, setView] = useState<"map" | "harbor" | "broker">("map");
 
     const sessionData = sessionStorage.getItem('currentSession');
     const sessionId = sessionData ? JSON.parse(sessionData).id : null;
     const tickRateSeconds: number = sessionData ? (JSON.parse(sessionData).tickRateSeconds ?? 30) : 30;
-    window.__tickRateMs = tickRateSeconds * 1000;
+
+    useEffect(() => {
+        // Initialize fallback once; live tick measurement can refine this value later.
+        if (typeof window.__tickRateMs !== 'number' || !Number.isFinite(window.__tickRateMs) || window.__tickRateMs <= 0) {
+            window.__tickRateMs = tickRateSeconds * 1000;
+        }
+    }, [tickRateSeconds]);
 
     const handleSessionUpdate = useCallback(() => {}, []);
 
-    useGameSessionWebSocket({
+    const { isConnected, stompClient } = useGameSessionWebSocket({
         sessionId,
         onSessionUpdate: handleSessionUpdate,
     });
@@ -40,19 +44,10 @@ export default function GameScreen() {
             .catch(err => console.error('Failed to load ports:', err));
     }, []);
 
-    useEffect(() => {
-        if (gameState?.ship) {
-            window.__latestShip = gameState.ship;
-            window.dispatchEvent(new CustomEvent('backend-ship-position', {
-                detail: {
-                    x: gameState.ship.x,
-                    y: gameState.ship.y,
-                    status: gameState.ship.status,
-                    tickRateMs: gameState.tickRateMs
-                },
-            }));
-        }
-    }, [gameState]);
+    const send = useCallback((message: object) => {
+        if (!stompClient?.connected) return;
+        stompClient.send('/app/game', {}, JSON.stringify(message));
+    }, [stompClient]);
 
     return (
         <div className={`app-layout ${view}`}>
@@ -73,7 +68,7 @@ export default function GameScreen() {
             )}
             {view === "map" && (
                 <div className="bottom">
-                    <BottomBar send={send} connected={connected} />
+                    <BottomBar send={send} connected={isConnected} />
                 </div>
             )}
         </div>
