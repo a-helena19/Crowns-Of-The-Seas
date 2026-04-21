@@ -332,7 +332,6 @@
     transform: scale(0.98);
 }
 
-/* Responsive Design */
 @media (max-width: 768px) {
     .lobby-content {
         grid-template-columns: 1fr;

@@ -1,5 +1,10 @@
 package at.fhv.backend.application.services.impl.session;
 
+import at.fhv.backend.application.init.CargoSessionInitializer;
+import at.fhv.backend.domain.model.cargo.CargoStatus;
+import at.fhv.backend.domain.model.cargo.CargoType;
+import at.fhv.backend.domain.model.cargo.SessionCargo;
+import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.ship.PlayerShip;
@@ -10,6 +15,7 @@ import at.fhv.backend.domain.model.ship.ShipStatus;
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.application.services.port.PortQueryService;
+import at.fhv.backend.rest.CargoWebSocketController;
 import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.GameSessionWebSocketController;
 import at.fhv.backend.rest.dtos.websocket.ShipPositionsUpdateEvent;
@@ -17,10 +23,7 @@ import at.fhv.backend.rest.dtos.websocket.TickUpdateEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -36,22 +39,31 @@ public class GameTickScheduler {
     private final PlayerShipRepository playerShipRepository;
     private final ShipRepository shipRepository;
     private final PortQueryService portQueryService;
+    private final SessionCargoRepository sessionCargoRepository;
+    private final CargoWebSocketController cargoWebSocketController;
     private final GameSessionWebSocketController webSocketController;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
     private final Map<UUID, ScheduledFuture<?>> runningTasks = new ConcurrentHashMap<>();
+    private static final int MAX_ACTIVE_CARGOS_PER_PORT = 7;
+    private final Random rng = new Random();
+
 
     public GameTickScheduler(GameSessionRepository gameSessionRepository,
                              TravelRepository travelRepository,
                              PlayerShipRepository playerShipRepository,
                              ShipRepository shipRepository,
                              PortQueryService portQueryService,
+                             SessionCargoRepository sessionCargoRepository,
+                             CargoWebSocketController cargoWebSocketController,
                              GameSessionWebSocketController webSocketController) {
         this.gameSessionRepository = gameSessionRepository;
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
         this.portQueryService = portQueryService;
+        this.sessionCargoRepository = sessionCargoRepository;
+        this.cargoWebSocketController = cargoWebSocketController;
         this.webSocketController = webSocketController;
     }
 
@@ -122,6 +134,7 @@ public class GameTickScheduler {
                 }
             }
 
+            processCargoLifecycle(sessionId, currentTick);
             broadcastShipPositions(sessionId, currentTick, session);
         } catch (Exception e) {
             System.err.println("Ship update error for session " + sessionId + ": " + e.getMessage());
@@ -137,6 +150,19 @@ public class GameTickScheduler {
         if (ship != null) {
             ship.arriveAtPort(travel.getDestinationPortId());
             playerShipRepository.save(ship);
+        }
+
+        List<SessionCargo> assignedCargos = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
+        for (SessionCargo cargo : assignedCargos) {
+            if (cargo.getAssignedPlayerShipId() != null
+                    && cargo.getAssignedPlayerShipId().equals(travel.getPlayerShipId())
+                    && cargo.getDestinationPortId().equals(travel.getDestinationPortId())
+                    && cargo.getCargoStatus() == CargoStatus.ASSIGNED) {
+                cargo.deliver();
+                int cooldown = CargoSessionInitializer.randomizedCooldownFor(cargo.getCargoType(), rng);
+                cargo.startCooldown(travel.getArrivalTick() + cooldown);
+                sessionCargoRepository.save(cargo);
+            }
         }
     }
 
@@ -183,7 +209,6 @@ public class GameTickScheduler {
             Travel travel = travelByShipId.get(playerShip.getId());
 
             if (travel != null) {
-                // Schiff ist unterwegs — Position interpolieren
                 PortResponseDTO origin = portMap.get(travel.getOriginPortId());
                 PortResponseDTO dest = portMap.get(travel.getDestinationPortId());
 
@@ -203,7 +228,6 @@ public class GameTickScheduler {
                     ));
                 }
             } else if (playerShip.getCurrentPortId() != null) {
-                // Schiff ist im Hafen
                 PortResponseDTO port = portMap.get(playerShip.getCurrentPortId());
                 if (port != null) {
                     positions.add(new ShipPositionsUpdateEvent.ShipPosition(
@@ -223,5 +247,58 @@ public class GameTickScheduler {
                     new ShipPositionsUpdateEvent(positions)
             );
         }
+    }
+
+    private void processCargoLifecycle(UUID sessionId, int currentTick) {
+        List<SessionCargo> all = sessionCargoRepository.findAllBySessionId(sessionId);
+        boolean changed = false;
+
+        Map<UUID, List<SessionCargo>> byPort = new java.util.HashMap<>();
+        for (SessionCargo sc : all) {
+            byPort.computeIfAbsent(sc.getOriginPortId(), k -> new ArrayList<>()).add(sc);
+        }
+
+        for (Map.Entry<UUID, List<SessionCargo>> entry : byPort.entrySet()) {
+            List<SessionCargo> portCargos = entry.getValue();
+
+            long activeCount = portCargos.stream()
+                    .filter(sc -> sc.getCargoStatus() == CargoStatus.AVAILABLE)
+                    .count();
+
+            for (SessionCargo sc : portCargos) {
+                boolean isInitialSpawn = sc.getCargoStatus() == CargoStatus.INACTIVE
+                        && sc.getSpawnTick() <= currentTick
+                        && sc.getCooldownUntilTick() < 0;
+
+                boolean isRespawn = sc.shouldRespawnAt(currentTick);
+
+                if ((isInitialSpawn || isRespawn) && activeCount < MAX_ACTIVE_CARGOS_PER_PORT) {
+                    double spawnChance = spawnChanceFor(sc.getCargoType());
+                    if (rng.nextDouble() < spawnChance) {
+                        sc.activate();
+                        sessionCargoRepository.save(sc);
+                        activeCount++;
+                        changed = true;
+                    }
+                }
+            }
+        }
+
+        if (changed) {
+            cargoWebSocketController.broadcastMarketUpdate(sessionId);
+        }
+    }
+
+
+    private double spawnChanceFor(CargoType type) {
+        return switch (type) {
+            case GENERAL_GOODS -> 0.35;
+            case FOOD -> 0.30;
+            case INDUSTRIAL_GOODS -> 0.25;
+            case FRAGILE -> 0.20;
+            case ELECTRONICS -> 0.15;
+            case HAZARDOUS -> 0.12;
+            case LUXURY_GOODS -> 0.08;
+        };
     }
 }

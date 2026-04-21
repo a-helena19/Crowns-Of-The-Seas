@@ -8,7 +8,10 @@ import org.springframework.stereotype.Service;
 public class CalculateFuelConsumptionServiceImpl implements CalculateFuelConsumptionService {
     @Override
     public double calculateFuelConsumption(Ship ship, double distance) {
-        double absoluteConsumption = distance * ship.getFuelConsumption();
-        return (absoluteConsumption / ship.getMaxFuel().doubleValue()) * 100.0;
+        return distance * ship.getFuelConsumption();
+    }
+
+    public static double toFuelPercent(double absoluteFuel, double maxFuel) {
+        return (absoluteFuel / maxFuel) * 100.0;
     }
 }
