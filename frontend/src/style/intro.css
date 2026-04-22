@@ -103,9 +103,9 @@
     bottom: 0;
     width: 200%; /* Doppelte Breite für die Endlosschleife */
     height: 120px;
-    background-image: url('../assets/intro/waves_tile_pixel.png');
+    background-image: url('../assets/intro/waves_pixel.png');
     background-repeat: repeat-x;
-    background-size: 50% 100%;
+    background-size: 40% 100%;
     image-rendering: pixelated;
 }
 
