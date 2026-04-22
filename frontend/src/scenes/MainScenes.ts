@@ -59,7 +59,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.image('map', '/World_Map2.png');
+        this.load.image('map', '/World_Map3.PNG');
         this.load.image('ship', '/ship.png');
         this.load.image('harbor', '/harborpingred.png');
     }
