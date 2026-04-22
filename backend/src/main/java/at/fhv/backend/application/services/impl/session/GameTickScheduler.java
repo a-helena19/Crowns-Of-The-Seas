@@ -22,6 +22,7 @@ import at.fhv.backend.rest.dtos.websocket.ShipPositionsUpdateEvent;
 import at.fhv.backend.rest.dtos.websocket.TickUpdateEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.annotation.PreDestroy;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,6 +30,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,6 +47,8 @@ public class GameTickScheduler {
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
     private final Map<UUID, ScheduledFuture<?>> runningTasks = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> lastTickProcessedAtMs = new ConcurrentHashMap<>();
+    private final Map<UUID, ReentrantLock> tickLocks = new ConcurrentHashMap<>();
     private static final int MAX_ACTIVE_CARGOS_PER_PORT = 7;
     private final Random rng = new Random();
 
@@ -68,24 +72,48 @@ public class GameTickScheduler {
     }
 
     public void startForSession(UUID sessionId, int tickRateSeconds) {
-        if (runningTasks.containsKey(sessionId)) return;
-
-        ScheduledFuture<?> task = executor.scheduleAtFixedRate(
-                () -> processTick(sessionId),
-                tickRateSeconds,
-                tickRateSeconds,
-                TimeUnit.SECONDS
+        runningTasks.computeIfAbsent(sessionId, ignored ->
+                executor.scheduleAtFixedRate(
+                        () -> processTick(sessionId),
+                        tickRateSeconds,
+                        tickRateSeconds,
+                        TimeUnit.SECONDS
+                )
         );
-        runningTasks.put(sessionId, task);
     }
 
     public void stopForSession(UUID sessionId) {
         ScheduledFuture<?> task = runningTasks.remove(sessionId);
         if (task != null) task.cancel(false);
+        lastTickProcessedAtMs.remove(sessionId);
+        tickLocks.remove(sessionId);
     }
 
     @Transactional
     public void processTick(UUID sessionId) {
+        ReentrantLock lock = tickLocks.computeIfAbsent(sessionId, ignored -> new ReentrantLock());
+        if (!lock.tryLock()) {
+            return;
+        }
+
+        try {
+            GameSession session = gameSessionRepository.findById(sessionId).orElse(null);
+            if (session == null) {
+                stopForSession(sessionId);
+                return;
+            }
+            long now = System.currentTimeMillis();
+            long minIntervalMs = Math.max(200L, session.getTickRateSeconds() * 1000L - 200L);
+            Long lastAt = lastTickProcessedAtMs.get(sessionId);
+            if (lastAt != null && (now - lastAt) < minIntervalMs) {
+                return;
+            }
+            lastTickProcessedAtMs.put(sessionId, now);
+        } catch (Exception e) {
+            System.err.println("Tick pre-check error for session " + sessionId + ": " + e.getMessage());
+            return;
+        }
+
         try {
             GameSession session = gameSessionRepository.findById(sessionId).orElse(null);
             if (session == null) {
@@ -139,7 +167,20 @@ public class GameTickScheduler {
         } catch (Exception e) {
             System.err.println("Ship update error for session " + sessionId + ": " + e.getMessage());
             e.printStackTrace();
+        } finally {
+            lock.unlock();
         }
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        for (ScheduledFuture<?> task : runningTasks.values()) {
+            task.cancel(false);
+        }
+        runningTasks.clear();
+        lastTickProcessedAtMs.clear();
+        tickLocks.clear();
+        executor.shutdownNow();
     }
 
     private void handleArrival(Travel travel) {
@@ -244,7 +285,7 @@ public class GameTickScheduler {
         if (!positions.isEmpty()) {
             webSocketController.broadcastShipPositions(
                     sessionId.toString(),
-                    new ShipPositionsUpdateEvent(positions)
+                    new ShipPositionsUpdateEvent(currentTick, positions)
             );
         }
     }

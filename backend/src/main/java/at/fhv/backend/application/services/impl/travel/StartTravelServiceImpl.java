@@ -40,6 +40,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class StartTravelServiceImpl implements StartTravelService {
+    private static final double GLOBAL_TRAVEL_SPEED_FACTOR = 0.75; // < 1.0 => longer travel time
+
     private final PlayerShipRepository playerShipRepository;
     private final ShipRepository shipRepository;
     private final PortQueryService portQueryService;
@@ -119,7 +121,7 @@ public class StartTravelServiceImpl implements StartTravelService {
 
             double distance = portDistanceForCargoService.distanceBetween(originPortId, destinationPortId);
 
-            double speedSetting = Math.max(0.5, Math.min(1.0, request.getSpeedSetting()));
+            double speedSetting = Math.max(0.25, Math.min(1.0, request.getSpeedSetting()));
             double speedMultiplier = 0.5 + speedSetting;
 
             double baseFuelAbsolute = calculateFuelConsumptionService.calculateFuelConsumption(ship, distance);
@@ -133,7 +135,7 @@ public class StartTravelServiceImpl implements StartTravelService {
             double riskFactor = calculateRiskFactor(playerShip, ship);
             BigDecimal baseReward = cargo.getReward();
 
-            double effectiveSpeed = ship.getMaxSpeed() * (0.5 + (speedSetting * 0.5));
+            double effectiveSpeed = ship.getMaxSpeed() * speedSetting * GLOBAL_TRAVEL_SPEED_FACTOR;
 
             Travel travel = Travel.start(
                     playerShip.getId(), playerId, sessionId,

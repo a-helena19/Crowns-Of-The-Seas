@@ -3,6 +3,7 @@ package at.fhv.backend.application.services.impl.ship;
 import at.fhv.backend.application.dtos.mapper.PlayerShipResponseMapper;
 import at.fhv.backend.application.dtos.mapper.ShipResponseMapper;
 import at.fhv.backend.application.services.port.PortQueryService;
+import at.fhv.backend.application.services.impl.session.GameTickScheduler;
 import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.dtos.ship.request.BuyShipDTO;
 import at.fhv.backend.rest.dtos.ship.response.PlayerShipDTO;
@@ -31,6 +32,7 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
     private final ShipResponseMapper shipResponseMapper;
     private final PortQueryService portQueryService;
     private final SessionPlayerRepository sessionPlayerRepository;
+    private final GameTickScheduler gameTickScheduler;
 
     public PurchaseShipServiceImpl(ValidateShipService validateShipService,
                                    ShipRepository shipRepository,
@@ -38,7 +40,8 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
                                    PlayerShipResponseMapper playerShipResponseMapper,
                                    ShipResponseMapper shipResponseMapper,
                                    PortQueryService portQueryService,
-                                   SessionPlayerRepository sessionPlayerRepository) {
+                                   SessionPlayerRepository sessionPlayerRepository,
+                                   GameTickScheduler gameTickScheduler) {
         this.validateShipService = validateShipService;
         this.shipRepository = shipRepository;
         this.playerShipRepository = playerShipRepository;
@@ -46,6 +49,7 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
         this.shipResponseMapper = shipResponseMapper;
         this.portQueryService = portQueryService;
         this.sessionPlayerRepository = sessionPlayerRepository;
+        this.gameTickScheduler = gameTickScheduler;
     }
 
     @Override
@@ -68,6 +72,7 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
         PlayerShip playerShip = PlayerShip.createFromPurchase(ship.getId(), playerId, sessionId, startPortId);
         playerShip.completeRegistration();
         PlayerShip saved = playerShipRepository.save(playerShip);
+        gameTickScheduler.triggerImmediateBroadcast(sessionId);
         return toPlayerShipResponse(saved);
     }
 

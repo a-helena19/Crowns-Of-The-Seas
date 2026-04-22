@@ -1,15 +1,18 @@
 package at.fhv.backend.rest;
 
 import at.fhv.backend.application.services.travel.FuelEstimateService;
+import at.fhv.backend.application.services.travel.TravelDurationEstimateService;
 import at.fhv.backend.domain.model.cargo.exception.CargoCapacityExceededException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotAvailableException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
 import at.fhv.backend.domain.model.exception.InsufficientFuelException;
+import at.fhv.backend.domain.model.exception.InvalidTravelDataException;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
 import at.fhv.backend.rest.dtos.ship.request.FuelEstimateRequest;
 import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
 import at.fhv.backend.rest.dtos.ship.response.FuelEstimateDTO;
 import at.fhv.backend.rest.dtos.ship.response.TravelDTO;
+import at.fhv.backend.rest.dtos.ship.response.TravelDurationEstimateDTO;
 import at.fhv.backend.application.services.travel.StartTravelService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -19,16 +22,20 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/travels")
 public class TravelRestController {
     private final StartTravelService startTravelService;
     private final FuelEstimateService fuelEstimateService;
+    private final TravelDurationEstimateService travelDurationEstimateService;
 
     public TravelRestController(StartTravelService startTravelService,
-                                FuelEstimateService fuelEstimateService) {
+                                FuelEstimateService fuelEstimateService,
+                                TravelDurationEstimateService travelDurationEstimateService) {
         this.startTravelService = startTravelService;
         this.fuelEstimateService = fuelEstimateService;
+        this.travelDurationEstimateService = travelDurationEstimateService;
     }
 
     @PostMapping("/fuel-estimate")
@@ -47,6 +54,31 @@ public class TravelRestController {
         } catch (CargoNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "CARGO_NOT_FOUND", "message", e.getMessage()));
+        } catch (InvalidTravelDataException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "TRAVEL_INVALID_DATA", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/duration-estimate")
+    public ResponseEntity<?> getDurationEstimate(
+            @RequestParam UUID playerId,
+            @RequestParam UUID sessionId,
+            @Valid @RequestBody FuelEstimateRequest req) {
+        try {
+            TravelDurationEstimateDTO result = travelDurationEstimateService.estimate(
+                    playerId, sessionId, req.getPlayerShipId(), req.getSessionCargoId()
+            );
+            return ResponseEntity.ok(result);
+        } catch (ShipNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "SHIP_NOT_FOUND", "message", e.getMessage()));
+        } catch (CargoNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "CARGO_NOT_FOUND", "message", e.getMessage()));
+        } catch (InvalidTravelDataException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "TRAVEL_INVALID_DATA", "message", e.getMessage()));
         }
     }
 

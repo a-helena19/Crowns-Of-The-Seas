@@ -23,12 +23,18 @@ interface ShipPositionData {
     startTick: number | null;
 }
 
+interface ShipPositionsPayload {
+    currentTick: number;
+    ships: ShipPositionData[];
+}
+
 interface ShipEntry {
     sprite: Phaser.GameObjects.Sprite;
     controller: Ship;
     tooltip: Phaser.GameObjects.Text;
     lastStatus: 'EN_ROUTE' | 'AT_PORT' | null;
     lastStartTick: number | null;
+    lastShipData: ShipPositionData;
 }
 
 export default class MainScene extends Phaser.Scene {
@@ -41,15 +47,15 @@ export default class MainScene extends Phaser.Scene {
     private dragStartX: number = 0;
     private dragStartY: number = 0;
     private harborSprites: Phaser.GameObjects.Image[] = [];
-    private tooltip!: Phaser.GameObjects.Text;
 
     private onShipPosition!: (e: Event) => void;
     private onPorts!: (e: Event) => void;
     private onShipPositions!: (e: Event) => void;
+    private lastSceneWidth: number = 0;
+    private lastSceneHeight: number = 0;
 
     constructor() {
         super({ key: 'MainScene' });
-        console.log(this.tooltip);
     }
 
     preload() {
@@ -61,13 +67,8 @@ export default class MainScene extends Phaser.Scene {
     create() {
         this.add.image(0, 0, 'map').setOrigin(0, 0)
             .setDisplaySize(this.scale.width, this.scale.height);
-
-        this.tooltip = this.add.text(0, 0, '', {
-            fontSize: '14px',
-            color: '#ffffff',
-            backgroundColor: '#000000cc',
-            padding: { x: 6, y: 4 },
-        }).setDepth(10).setVisible(false);
+        this.lastSceneWidth = this.scale.width;
+        this.lastSceneHeight = this.scale.height;
 
         const latestShip = window.__latestShip;
         const shipStartX = latestShip ? (latestShip.x / 100) * this.scale.width : this.scale.width * 0.5;
@@ -94,13 +95,14 @@ export default class MainScene extends Phaser.Scene {
         };
 
         this.onShipPositions = (e: Event) => {
-            const ships = (e as CustomEvent<ShipPositionData[]>).detail;
-            this.updateShipSprites(ships);
+            const payload = (e as CustomEvent<ShipPositionsPayload>).detail;
+            this.updateShipSprites(payload.ships, payload.currentTick);
         };
 
         window.addEventListener('backend-ship-position', this.onShipPosition);
         window.addEventListener('backend-ports', this.onPorts);
         window.addEventListener('backend-ship-positions', this.onShipPositions);
+        this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this);
 
         const latestPorts = window.__latestPorts;
         if (latestPorts && this.harborSprites.length === 0) {
@@ -108,7 +110,10 @@ export default class MainScene extends Phaser.Scene {
         }
 
         if (window.__latestShips) {
-            this.updateShipSprites(window.__latestShips);
+            this.updateShipSprites(
+                window.__latestShips,
+                window.__latestShipPositionsTick ?? window.__latestTick?.currentTick ?? 0,
+            );
         }
 
         this.cameras.main.setBounds(0, 0, this.scale.width, this.scale.height);
@@ -136,7 +141,7 @@ export default class MainScene extends Phaser.Scene {
         });
     }
 
-    private updateShipSprites(ships: ShipPositionData[]) {
+    private updateShipSprites(ships: ShipPositionData[], currentTick: number) {
         const activeIds = new Set(ships.map(s => s.playerShipId));
 
         for (const [id, entry] of this.shipSprites.entries()) {
@@ -153,46 +158,62 @@ export default class MainScene extends Phaser.Scene {
             const px = (shipData.x / 100) * this.scale.width;
             const py = (shipData.y / 100) * this.scale.height;
             const textureKey = this.resolveTextureKey(shipData.iconUrl);
+            const hasRouteData = this.hasRouteData(shipData);
 
             if (this.shipSprites.has(shipData.playerShipId)) {
                 const entry = this.shipSprites.get(shipData.playerShipId)!;
+                if (this.isSameSnapshot(entry.lastShipData, shipData)) {
+                    continue;
+                }
 
                 if (shipData.status === 'EN_ROUTE') {
                     const isSameTravel = entry.lastStatus === 'EN_ROUTE'
                         && shipData.startTick != null
                         && entry.lastStartTick === shipData.startTick;
 
-                    if (!isSameTravel
-                        && shipData.originX != null && shipData.originY != null
-                        && shipData.destX != null && shipData.destY != null
-                        && shipData.startTick != null && shipData.arrivalTick != null) {
-
-                        const currentTick = window.__latestTick?.currentTick ?? 0;
-                        const elapsedTicks = Math.max(0, currentTick - shipData.startTick);
+                    if (hasRouteData && !isSameTravel) {
                         const totalTicks = Math.max(1, shipData.arrivalTick - shipData.startTick);
-                        const elapsedMs = elapsedTicks * tickRateMs;
+                        const elapsedTicks = Math.max(0, currentTick - shipData.startTick);
                         const totalMs = totalTicks * tickRateMs;
-
+                        const originPx = (shipData.originX / 100) * this.scale.width;
+                        const originPy = (shipData.originY / 100) * this.scale.height;
+                        const destPx = (shipData.destX / 100) * this.scale.width;
+                        const destPy = (shipData.destY / 100) * this.scale.height;
                         entry.controller.setRoute(
-                            (shipData.originX / 100) * this.scale.width,
-                            (shipData.originY / 100) * this.scale.height,
-                            (shipData.destX / 100) * this.scale.width,
-                            (shipData.destY / 100) * this.scale.height,
-                            elapsedMs, totalMs,
+                            originPx,
+                            originPy,
+                            destPx,
+                            destPy,
+                            elapsedTicks * tickRateMs,
+                            totalMs,
+                            true,
                         );
                         entry.lastStartTick = shipData.startTick;
+                    } else if (!hasRouteData) {
+                        entry.controller.moveTo(px, py, tickRateMs);
+                        entry.lastStartTick = null;
                     }
-                    // same travel → animation runs freely, no reset
                     entry.lastStatus = 'EN_ROUTE';
                 } else {
-                    entry.controller.teleport(px, py);
+                    if (entry.lastStatus === 'EN_ROUTE') {
+                        const distance = Math.hypot(px - entry.sprite.x, py - entry.sprite.y);
+                        const currentSpeed = entry.controller.getSpeedPxPerMs();
+                        if (currentSpeed > 1e-6 && distance > 0.5) {
+                            entry.controller.moveTo(px, py, distance / currentSpeed);
+                        } else {
+                            entry.controller.teleport(px, py);
+                        }
+                    } else {
+                        entry.controller.teleport(px, py);
+                    }
                     entry.lastStatus = 'AT_PORT';
                     entry.lastStartTick = null;
                 }
+                entry.lastShipData = shipData;
             } else {
                 this.createShipSprite(
                     shipData.playerShipId, shipData.playerName, textureKey,
-                    shipData.status, shipData, tickRateMs,
+                    shipData.status, shipData, tickRateMs, currentTick,
                 );
             }
         }
@@ -207,77 +228,132 @@ export default class MainScene extends Phaser.Scene {
         status: 'EN_ROUTE' | 'AT_PORT',
         shipData: ShipPositionData,
         tickRateMs: number,
+        currentTick: number,
     ) {
-        const loadAndCreate = () => {
-            // Verhindert doppeltes Erstellen bei parallelen Lade-Events
-            if (this.shipSprites.has(id)) return;
+        if (this.shipSprites.has(id)) return;
 
-            // Startposition: Ursprungshafen (bei EN_ROUTE) oder aktueller Hafen
-            const spawnX = status === 'EN_ROUTE' && shipData.originX != null
-                ? (shipData.originX / 100) * this.scale.width
-                : (shipData.x / 100) * this.scale.width;
-            const spawnY = status === 'EN_ROUTE' && shipData.originY != null
-                ? (shipData.originY / 100) * this.scale.height
-                : (shipData.y / 100) * this.scale.height;
+        const spawnX = (shipData.x / 100) * this.scale.width;
+        const spawnY = (shipData.y / 100) * this.scale.height;
 
-            const sprite = this.add.sprite(spawnX, spawnY, textureKey)
-                .setScale(0.065).setInteractive().setDepth(5);
-            const shipTooltip = this.add.text(spawnX + 12, spawnY - 20, playerName, {
-                fontSize: '12px',
-                color: '#ffffff',
-                backgroundColor: '#000000cc',
-                padding: { x: 4, y: 2 },
-            }).setDepth(11).setVisible(false);
+        // Sprite sofort mit gecachter oder Fallback-Textur erstellen — kein Delay
+        const initialTexture = this.textures.exists(textureKey) ? textureKey : 'ship';
+        const sprite = this.add.sprite(spawnX, spawnY, initialTexture)
+            .setScale(0.065).setInteractive().setDepth(5);
 
-            sprite.on('pointerover', () => {
-                shipTooltip.setPosition(sprite.x + 12, sprite.y - 20).setVisible(true);
-            });
-            sprite.on('pointermove', () => {
-                shipTooltip.setPosition(sprite.x + 12, sprite.y - 20);
-            });
-            sprite.on('pointerout', () => shipTooltip.setVisible(false));
+        const shipTooltip = this.add.text(spawnX + 12, spawnY - 20, playerName, {
+            fontSize: '12px',
+            color: '#ffffff',
+            backgroundColor: '#000000cc',
+            padding: { x: 4, y: 2 },
+        }).setDepth(11).setVisible(false);
 
-            const controller = new Ship(this, sprite);
-            let lastStartTick: number | null = null;
+        sprite.on('pointerover', () => {
+            shipTooltip.setPosition(sprite.x + 12, sprite.y - 20).setVisible(true);
+        });
+        sprite.on('pointermove', () => {
+            shipTooltip.setPosition(sprite.x + 12, sprite.y - 20);
+        });
+        sprite.on('pointerout', () => shipTooltip.setVisible(false));
 
-            if (status === 'EN_ROUTE'
-                && shipData.originX != null && shipData.originY != null
-                && shipData.destX != null && shipData.destY != null
-                && shipData.startTick != null && shipData.arrivalTick != null) {
+        const controller = new Ship(this, sprite);
+        let lastStartTick: number | null = null;
 
-                const currentTick = window.__latestTick?.currentTick ?? 0;
-                const elapsedTicks = Math.max(0, currentTick - shipData.startTick);
-                const totalTicks = Math.max(1, shipData.arrivalTick - shipData.startTick);
+        if (status === 'EN_ROUTE' && this.hasRouteData(shipData)) {
+            const totalTicks = Math.max(1, shipData.arrivalTick - shipData.startTick);
+            const elapsedTicks = Math.max(0, currentTick - shipData.startTick);
+            const totalMs = totalTicks * tickRateMs;
+            const originPx = (shipData.originX / 100) * this.scale.width;
+            const originPy = (shipData.originY / 100) * this.scale.height;
+            const destPx = (shipData.destX / 100) * this.scale.width;
+            const destPy = (shipData.destY / 100) * this.scale.height;
+            controller.setRoute(
+                originPx,
+                originPy,
+                destPx,
+                destPy,
+                elapsedTicks * tickRateMs,
+                totalMs,
+                true,
+            );
+            lastStartTick = shipData.startTick;
+        }
 
-                controller.setRoute(
-                    (shipData.originX / 100) * this.scale.width,
-                    (shipData.originY / 100) * this.scale.height,
-                    (shipData.destX / 100) * this.scale.width,
-                    (shipData.destY / 100) * this.scale.height,
-                    elapsedTicks * tickRateMs,
-                    totalTicks * tickRateMs,
-                );
-                lastStartTick = shipData.startTick;
-            }
+        this.shipSprites.set(id, {
+            sprite, controller, tooltip: shipTooltip,
+            lastStatus: status, lastStartTick, lastShipData: shipData,
+        });
 
-            this.shipSprites.set(id, {
-                sprite, controller, tooltip: shipTooltip,
-                lastStatus: status, lastStartTick,
-            });
-        };
-
-        if (this.textures.exists(textureKey)) {
-            loadAndCreate();
-        } else {
+        // Echte Textur im Hintergrund nachladen und auf den bereits sichtbaren Sprite anwenden
+        if (initialTexture === 'ship' && textureKey !== 'ship') {
             this.load.image(textureKey, textureKey);
-            this.load.once('complete', loadAndCreate);
+            this.load.once('complete', () => {
+                if (sprite.active) sprite.setTexture(textureKey);
+            });
             this.load.start();
         }
+    }
+
+    private handleResize() {
+        const prevWidth = this.lastSceneWidth || this.scale.width;
+        const prevHeight = this.lastSceneHeight || this.scale.height;
+        const scaleX = this.scale.width / prevWidth;
+        const scaleY = this.scale.height / prevHeight;
+
+        if (!Number.isFinite(scaleX) || !Number.isFinite(scaleY) || scaleX <= 0 || scaleY <= 0) {
+            this.lastSceneWidth = this.scale.width;
+            this.lastSceneHeight = this.scale.height;
+            return;
+        }
+
+        const currentTick = window.__latestShipPositionsTick ?? window.__latestTick?.currentTick ?? 0;
+        for (const entry of this.shipSprites.values()) {
+            const shipData = entry.lastShipData;
+            if (entry.lastStatus === 'EN_ROUTE' && currentTick >= 0) {
+                entry.controller.rescale(scaleX, scaleY);
+            } else {
+                entry.controller.teleport(
+                    (shipData.x / 100) * this.scale.width,
+                    (shipData.y / 100) * this.scale.height,
+                );
+            }
+            entry.tooltip.setPosition(entry.sprite.x + 12, entry.sprite.y - 20);
+        }
+        this.shipController.rescale(scaleX, scaleY);
+        this.lastSceneWidth = this.scale.width;
+        this.lastSceneHeight = this.scale.height;
     }
 
     private resolveTextureKey(iconUrl: string): string {
         if (!iconUrl || iconUrl.trim() === '') return 'ship';
         return iconUrl;
+    }
+
+    private hasRouteData(shipData: ShipPositionData): shipData is ShipPositionData & {
+        originX: number;
+        originY: number;
+        destX: number;
+        destY: number;
+        startTick: number;
+        arrivalTick: number;
+    } {
+        return shipData.originX != null
+            && shipData.originY != null
+            && shipData.destX != null
+            && shipData.destY != null
+            && shipData.startTick != null
+            && shipData.arrivalTick != null;
+    }
+
+    private isSameSnapshot(a: ShipPositionData, b: ShipPositionData) {
+        return a.status === b.status
+            && a.arrivalTick === b.arrivalTick
+            && a.startTick === b.startTick
+            && a.originX === b.originX
+            && a.originY === b.originY
+            && a.destX === b.destX
+            && a.destY === b.destY
+            && Math.abs(a.x - b.x) < 1e-9
+            && Math.abs(a.y - b.y) < 1e-9;
     }
 
     private renderHarbors(ports: PortData[]) {
@@ -309,5 +385,6 @@ export default class MainScene extends Phaser.Scene {
         window.removeEventListener('backend-ship-position', this.onShipPosition);
         window.removeEventListener('backend-ports', this.onPorts);
         window.removeEventListener('backend-ship-positions', this.onShipPositions);
+        this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this);
     }
 }
