@@ -49,11 +49,6 @@ interface ShipPositionEventPayload {
     }>;
 }
 
-interface ApiErrorResponse {
-    error?: string;
-    message?: string;
-}
-
 const TYPE_LABELS: Record<string, string> = {
     GENERAL_GOODS: "General",
     FOOD: "Food",
@@ -101,8 +96,7 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
     const [estimateLoading, setEstimateLoading] = useState(false);
     const [fuelError, setFuelError] = useState<string | null>(null);
 
-    const [starting, setStarting] = useState(false);
-    const [startError, setStartError] = useState<string | null>(null);
+    const starting = false;
     const [shipInTransit, setShipInTransit] = useState(false);
 
 const WeightIcon = () => (
