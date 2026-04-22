@@ -1,0 +1,206 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
+
+:root {
+    --deep-ocean: #000814;
+    --gold: #c89b3c;
+    --text-parchment: #fdf0d5;
+}
+
+.intro-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    /* Hintergrund: Dein generierter Pixel-Himmel */
+    background-image: url('../assets/intro/sky_bg_pixel.png');
+    background-color: var(--deep-ocean);
+    background-size: cover;
+    background-position: center;
+    image-rendering: pixelated;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Cinzel', serif;
+    color: var(--text-parchment);
+}
+
+/* Der Pixel-Mond */
+.moon {
+    position: absolute;
+    top: 6%;
+    right: 10%;
+    width: 160px;
+    height: 160px;
+    background-image: url('../assets/intro/moon_pixel.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 0 20px rgba(253, 240, 213, 0.4));
+    z-index: 1;
+}
+
+/* Sterne (Behalten wir als kleine Akzente bei) */
+.star {
+    position: absolute;
+    background: white;
+    width: 2px;
+    height: 2px;
+    animation: twinkle 2s infinite ease-in-out;
+    z-index: 2;
+}
+
+@keyframes twinkle {
+    0%, 100% { opacity: 0.2; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.1); }
+}
+
+/* Story Text Animation */
+.intro-story {
+    z-index: 15;
+    text-align: center;
+    padding: 0 20px;
+}
+
+.story-text {
+    font-size: 2.2rem;
+    margin: 1.2rem 0;
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUp 6s forwards;
+    /* Scharfer Pixelschatten statt Weichzeichner */
+    text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.8);
+}
+
+.story-line-1 { animation-delay: 0.2s; }
+.story-line-2 { animation-delay: 1.5s; }
+.story-line-3 {
+    animation-delay: 3s;
+    font-weight: bold;
+    color: var(--gold);
+    font-size: 2.8rem;
+}
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Ozean Bereich */
+.intro-ocean {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 180px;
+    z-index: 5;
+}
+
+/* Die Pixel-Wellen */
+.waves {
+    position: absolute;
+    bottom: 0;
+    width: 200%; /* Doppelte Breite für die Endlosschleife */
+    height: 120px;
+    background-image: url('../assets/intro/waves_tile_pixel.png');
+    background-repeat: repeat-x;
+    background-size: 50% 100%;
+    image-rendering: pixelated;
+}
+
+.wave-1 {
+    z-index: 12;
+    opacity: 1;
+    bottom: -10px;
+    animation: waveMove 10s linear infinite;
+}
+
+.wave-2 {
+    z-index: 6;
+    opacity: 0.7;
+    bottom: 20px;
+    filter: brightness(0.6);
+    animation: waveMove 16s linear infinite reverse;
+}
+
+@keyframes waveMove {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+
+/* Das Pixel-Schiff */
+.ship-container {
+    position: absolute;
+    bottom: 95px;
+    left: -200px;
+    width: 140px;
+    height: 140px;
+    z-index: 10;
+    animation: sailAcross 7s linear forwards;
+}
+
+.ship-hull {
+    width: 100%;
+    height: 100%;
+    background-image: url('../assets/intro/ship_side_pixel.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    animation: rocking 4s ease-in-out infinite;
+}
+
+@keyframes sailAcross {
+    to { left: 110%; }
+}
+
+@keyframes rocking {
+    0%, 100% { transform: rotate(-3deg) translateY(0); }
+    50% { transform: rotate(3deg) translateY(-8px); }
+}
+
+/* Skip Button */
+.skip-button {
+    position: absolute;
+    bottom: 30px;
+    right: 30px;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: transform 0.2s;
+    z-index: 30;
+}
+
+.skip-button img {
+    width: 64px;
+    height: 64px;
+    display: block;
+    image-rendering: pixelated;
+}
+
+.skip-button:hover {
+    transform: scale(1.1);
+}
+
+/* Loading Bar am unteren Rand */
+.loading-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    background: rgba(200, 155, 60, 0.2);
+    z-index: 40;
+}
+
+.loading-progress {
+    height: 100%;
+    background: var(--gold);
+    width: 0%;
+    animation: loadProgress 6s linear forwards;
+}
+
+@keyframes loadProgress {
+    to { width: 100%; }
+}

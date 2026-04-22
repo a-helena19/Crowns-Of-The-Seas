@@ -107,10 +107,10 @@ export default function SessionWaitingScreen() {
                 setSession(updatedSession);
                 sessionStorage.setItem('currentSession', JSON.stringify(updatedSession));
 
-                // Wenn Spiel gestartet wird, navigiere zur Spiel-Seite
+                // Wenn Spiel gestartet wird, navigiere zur Intro-Animation
                 if (event.status === 'RUNNING') {
                     setTimeout(() => {
-                        navigate('/game');
+                        navigate('/intro');
                     }, 500);
                 }
             }
@@ -139,10 +139,6 @@ export default function SessionWaitingScreen() {
                 setSession(updatedSession);
                 sessionStorage.setItem('currentSession', JSON.stringify(updatedSession));
 
-                // Navigate to game
-                setTimeout(() => {
-                    navigate('/game');
-                }, 500);
             } catch (error) {
                 console.error('Error starting game:', error);
                 setErrorMessage('Fehler beim Starten des Spiels. Bitte versuchen Sie es später erneut.');

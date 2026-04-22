@@ -11,7 +11,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
         return <Navigate to="/login" replace />;
     }
 
-    if (location.pathname === '/game') {
+    if (location.pathname === '/game' || location.pathname === '/intro') {
         const sessionData = sessionStorage.getItem('currentSession');
         if (!sessionData) {
             return <Navigate to="/lobby" replace />;
