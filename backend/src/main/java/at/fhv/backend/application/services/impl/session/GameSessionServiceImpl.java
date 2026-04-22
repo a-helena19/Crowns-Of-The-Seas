@@ -159,7 +159,6 @@ public class GameSessionServiceImpl implements GameSessionService {
         // If host left and other players remain, transfer host to next player
         if (wasHost && !session.getPlayers().isEmpty()) {
             ISessionPlayer newHost = session.getPlayers().get(0);
-            // Need to add method: session.makePlayerHost(newHost.getUserId());
             session.makePlayerHost(newHost.getUserId());
         }
 

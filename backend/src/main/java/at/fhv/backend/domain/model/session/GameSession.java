@@ -112,8 +112,12 @@ public class GameSession {
 
     public void makePlayerHost(UUID userId) {
         for (ISessionPlayer player : this.players) {
+            player.setHost(true);
+        }
+        for (ISessionPlayer player : this.players) {
             if (player.getUserId().equals(userId)) {
                 this.hostUserId = userId;
+                player.setHost(true);
                 return;
             }
         }
