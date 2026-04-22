@@ -1,25 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../style/intro.css';
 import skipIcon from "../assets/intro/skip.png";
-
-// browser policy blockiert das gerade
-const playIntroMusic = () => {
-
-    try {
-        const audio = new Audio('/assets/audio/intro-music.mp3');
-        audio.volume = 0.5; // 50% Lautstärke
-        audio.play().catch(() => {
-            console.log('Audio-Autoplay wurde blockiert (Browser-Policy)'); });
-        }
-    catch (error) {
-        console.log('Audio nicht verfügbar' + error);
-    }
-};
+import introMusic from "../assets/audio/intro-music.mp3";
 
 export default function IntroAnimation() {
     const navigate = useNavigate();
     const [showSkip, setShowSkip] = useState(false);
+    const [audioStarted, setAudioStarted] = useState(false);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
     const [starPositions] = useState(() =>
         [...Array(20)].map(() => ({
             left: Math.random() * 100,
@@ -28,10 +17,41 @@ export default function IntroAnimation() {
         }))
     );
 
-    useEffect(() => {
-        // Play intro music
-        playIntroMusic();
+    const handleUnmute = () => {
+        try {
+            if (!audioRef.current) {
+                audioRef.current = new Audio(introMusic);
+                audioRef.current.volume = 0.5;
+                audioRef.current.loop = false;
+            }
 
+            // Stelle sicher, dass die Wiedergabe von vorne startet
+            audioRef.current.currentTime = 0;
+            const playPromise = audioRef.current.play();
+
+            if (playPromise !== undefined) {
+                playPromise
+                    .then(() => {
+                        console.log('Audio erfolgreich abgespielt');
+                        setAudioStarted(true);
+                    })
+                    .catch(error => {
+                        console.log('Audio-Fehler:', error);
+                    });
+            }
+        } catch (error) {
+            console.log('Audio nicht verfügbar:', error);
+        }
+    };
+
+    const handleMute = () => {
+        if (audioRef.current) {
+            audioRef.current.pause();
+            setAudioStarted(false);
+        }
+    };
+
+    useEffect(() => {
         // Show skip button after 1 second
         const skipTimer = setTimeout(() => {
             setShowSkip(true);
@@ -45,6 +65,11 @@ export default function IntroAnimation() {
         return () => {
             clearTimeout(skipTimer);
             clearTimeout(redirectTimer);
+            // Stoppe die Audio-Wiedergabe
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.currentTime = 0;
+            }
         };
     }, [navigate]);
 
@@ -54,6 +79,20 @@ export default function IntroAnimation() {
 
     return (
         <div className="intro-container">
+            {/* Unmute button */}
+            {!audioStarted && (
+                <div className="unmute-button" onClick={handleUnmute} title="Sound einschalten">
+                    🔇
+                </div>
+            )}
+
+            {/* Muted indicator */}
+            {audioStarted && (
+                <div className="mute-button" onClick={handleMute} title="Sound stumm schalten">
+                    🔊
+                </div>
+            )}
+
             {/* Moon & Sky background (via CSS) */}
             <div className="moon" />
 
