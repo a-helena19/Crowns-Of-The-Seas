@@ -55,4 +55,11 @@ public class GameSessionRepositoryImpl implements GameSessionRepository {
                 .map(mapper::toDomain)
                 .toList();
     }
+
+    @Override
+    public void deleteById(UUID id) {
+        jpaRepository.deleteById(id);
+    }
+
+
 }

@@ -8,6 +8,7 @@ import GameLobby from './pages/GameLobby';
 import SessionWaitingScreen from './pages/SessionWaitingScreen';
 import JoinSessionPage from './pages/JoinSessionPage';
 import GameScreen from './scenes/GameScreen';
+import IntroAnimation from './pages/IntroAnimation.tsx';
 import './App.css';
 
 function App() {
@@ -24,6 +25,9 @@ function App() {
                         } />
                         <Route path="/session-waiting" element={
                             <ProtectedRoute><SessionWaitingScreen /></ProtectedRoute>
+                        } />
+                        <Route path="/intro" element={
+                            <ProtectedRoute><IntroAnimation /></ProtectedRoute>
                         } />
                         <Route path="/game" element={
                             <ProtectedRoute><GameScreen /></ProtectedRoute>

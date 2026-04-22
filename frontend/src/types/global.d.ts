@@ -2,6 +2,7 @@ interface Window {
     __latestShip?: { x: number; y: number; status: string };
     __latestPorts?: Array<{ id: string; name: string; x: number; y: number }>;
     __latestTick?: { currentTick: number; totalTicks: number };
+    __latestShipPositionsTick?: number;
     __tickRateMs?: number;
     __latestShips?: Array<{
         playerShipId: string;
@@ -19,4 +20,3 @@ interface Window {
         startTick: number | null;
     }>;
 }
-

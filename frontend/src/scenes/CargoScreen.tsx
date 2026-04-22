@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import SockJS from "sockjs-client";
 import Stomp, { Client } from "stompjs";
 import "../style/cargo.css";
+import { useTravelDuration } from "./TravelDurationInfo";
 
 interface SessionCargoDTO {
     id: string;
@@ -40,6 +41,18 @@ interface CargoMarketEvent {
     availableCargos?: SessionCargoDTO[];
 }
 
+interface ShipPositionEventPayload {
+    currentTick: number;
+    ships: Array<{
+        playerShipId: string;
+        status: "EN_ROUTE" | "AT_PORT";
+    }>;
+}
+
+interface ApiErrorResponse {
+    error?: string;
+    message?: string;
+}
 
 const TYPE_LABELS: Record<string, string> = {
     GENERAL_GOODS: "General",
@@ -88,6 +101,9 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
     const [estimateLoading, setEstimateLoading] = useState(false);
     const [fuelError, setFuelError] = useState<string | null>(null);
 
+    const [starting, setStarting] = useState(false);
+    const [startError, setStartError] = useState<string | null>(null);
+    const [shipInTransit, setShipInTransit] = useState(false);
 
 const WeightIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -102,6 +118,29 @@ const WeightIcon = () => (
     const userData = localStorage.getItem("crowns_user");
     const playerId = userData ? (JSON.parse(userData) as { id: string }).id : null;
     const token = localStorage.getItem("auth_token") ?? "";
+
+    useEffect(() => {
+        if (!playerShipId) {
+            setShipInTransit(false);
+            return;
+        }
+
+        const readTransitState = (ships: Array<{ playerShipId: string; status: "EN_ROUTE" | "AT_PORT" }>) => {
+            const me = ships.find((s) => s.playerShipId === playerShipId);
+            setShipInTransit(me?.status === "EN_ROUTE");
+        };
+
+        if (window.__latestShips) {
+            readTransitState(window.__latestShips.map((s) => ({ playerShipId: s.playerShipId, status: s.status })));
+        }
+
+        const onShipPositions = (evt: Event) => {
+            const payload = (evt as CustomEvent<ShipPositionEventPayload>).detail;
+            readTransitState(payload.ships);
+        };
+        window.addEventListener("backend-ship-positions", onShipPositions);
+        return () => window.removeEventListener("backend-ship-positions", onShipPositions);
+    }, [playerShipId]);
 
     const filterByPort = useCallback((list: SessionCargoDTO[]) => {
         if (!currentPortId) return list;
@@ -153,7 +192,7 @@ const WeightIcon = () => (
 
     // Treibstoff-Schätzung
     useEffect(() => {
-        if (!selected || !playerShipId || !playerId || !sessionId) {
+        if (!selected || !playerShipId || !playerId || !sessionId || !currentPortId || shipInTransit) {
             setFuelEstimate(null);
             return;
         }
@@ -185,7 +224,16 @@ const WeightIcon = () => (
 
         return () => { cancelled = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selected?.id, playerShipId, playerId, sessionId, token]);
+    }, [selected?.id, playerShipId, playerId, sessionId, token, currentPortId, shipInTransit]);
+
+    const durationOptions = useTravelDuration({
+        playerShipId: currentPortId && !shipInTransit ? playerShipId : null,
+        sessionCargoId: selected?.id ?? null,
+        playerId,
+        sessionId,
+        token,
+    });
+    const durationBySpeed = Object.fromEntries(durationOptions.map((o) => [o.speedSetting, o.durationTicks]));
 
     const currentSpeedOpt = fuelEstimate?.speedOptions[speedIndex] ?? null;
     const canAfford = !fuelEstimate || (currentSpeedOpt?.canAfford ?? false);
@@ -215,7 +263,7 @@ const WeightIcon = () => (
         return <div className="cargo-screen"><p style={{ color: "#aaa", textAlign: "center", marginTop: 80 }}>Lade Frachtbörse…</p></div>;
     }
 
-    const startBtnDisabled = !selected || !playerShipId || !canAfford || hasNoAffordableOption;
+    const startBtnDisabled = !selected || !playerShipId || !currentPortId || shipInTransit || !canAfford || hasNoAffordableOption || starting;
 
     return (
         <div className="cargo-screen">
@@ -305,7 +353,13 @@ const WeightIcon = () => (
                                     </div>
                                 )}
 
-                                {playerShipId && (
+                                {playerShipId && (!currentPortId || shipInTransit) && (
+                                    <div className="cargo-speed-hint" style={{ marginTop: 20, marginBottom: 16 }}>
+                                        Dieses Schiff ist aktuell unterwegs. Treibstoff- und Dauerwerte sind erst wieder im Hafen verfügbar.
+                                    </div>
+                                )}
+
+                                {playerShipId && currentPortId && !shipInTransit && (
                                     <div className="cargo-speed-section">
                                         <div className="cargo-speed-title">Reisegeschwindigkeit</div>
 
@@ -349,6 +403,7 @@ const WeightIcon = () => (
                                                                 ? `Nicht genug Treibstoff (${opt.fuelRequiredAbsolute.toFixed(0)} benötigt, verfügbar ${fuelEstimate.currentFuelAbsolute.toFixed(0)})`
                                                                 : `Verbraucht ${opt.fuelRequiredAbsolute.toFixed(0)} Einheiten`;
 
+                                                        const ticks = durationBySpeed[opt.speedSetting];
                                                         return (
                                                             <button
                                                                 key={idx}
@@ -362,6 +417,11 @@ const WeightIcon = () => (
                                                                 <span className="cargo-speed-fuel">
                                                                     −{opt.fuelRequiredAbsolute.toFixed(0)}
                                                                 </span>
+                                                                {ticks != null && (
+                                                                    <span className="cargo-speed-days">
+                                                                        {ticks} {ticks === 1 ? "Tag" : "Tage"}
+                                                                    </span>
+                                                                )}
                                                             </button>
                                                         );
                                                     })}

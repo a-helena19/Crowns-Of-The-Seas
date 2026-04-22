@@ -5,10 +5,11 @@ import java.util.UUID;
 
 public record ShipPositionsUpdateEvent(
         String eventType,
+        int currentTick,
         List<ShipPosition> ships
 ) {
-    public ShipPositionsUpdateEvent(List<ShipPosition> ships) {
-        this("SHIP_POSITIONS_UPDATE", ships);
+    public ShipPositionsUpdateEvent(int currentTick, List<ShipPosition> ships) {
+        this("SHIP_POSITIONS_UPDATE", currentTick, ships);
     }
 
     public record ShipPosition(

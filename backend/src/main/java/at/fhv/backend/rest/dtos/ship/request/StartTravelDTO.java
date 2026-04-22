@@ -16,7 +16,7 @@ public class StartTravelDTO {
     @NotNull(message = "sessionCargoId cannot be null.")
     private UUID sessionCargoId;
 
-    @DecimalMin(value = "0.5", message = "speedSetting must be over 0.5.")
+    @DecimalMin(value = "0.25", message = "speedSetting must be over 0.25.")
     @DecimalMax(value = "1.0", message = "speedSetting must be max 1.0.")
     private double speedSetting = 1.0;
 

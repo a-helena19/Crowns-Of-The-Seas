@@ -8,6 +8,11 @@ export interface Session {
     hostName: string;
     players: number;
     maxPlayers: number;
+    playersList?: Array<{
+        userId: string;
+        playerName: string;
+        isHost: boolean;
+    }>;
 }
 
 interface SessionContextType {
@@ -44,7 +49,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                 status: response.status as 'LOBBY' | 'RUNNING' | 'FINISHED',
                 hostName,
                 players: response.players.length,
-                maxPlayers
+                maxPlayers,
+                playersList: response.players
             };
 
             setSessions(prev => [...prev, newSession]);
@@ -79,7 +85,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                 status: response.status as 'LOBBY' | 'RUNNING' | 'FINISHED',
                 hostName,
                 players: response.players.length,
-                maxPlayers: response.maxPlayers
+                maxPlayers: response.maxPlayers,
+                playersList: response.players
             };
 
             console.log('Creating session object:', updatedSession);

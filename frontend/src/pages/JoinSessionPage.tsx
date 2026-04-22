@@ -61,17 +61,23 @@ export default function JoinSessionPage() {
 
                 const axiosError = error as { response?: { data?: { code?: string; message?: string }; status?: number } };
 
+                console.log('Error details:', {
+                    status: axiosError.response?.status,
+                    code: axiosError.response?.data?.code,
+                    message: axiosError.response?.data?.message
+                });
+
                 // Spezifische Fehlermeldungen basierend auf API-Antwort
                 if (axiosError.response?.data?.code === 'PLAYER_ALREADY_IN_SESSION') {
                     setError('Du bist bereits dieser Session beigetreten! Bitte wechsle den Tab nicht zweimal bei.');
-                } else if (axiosError.response?.data?.code === 'SESSION_FULL') {
+                } else if (axiosError.response?.data?.code === 'SESSION_FULL' || axiosError.response?.status === 409) {
                     setError('Die Session ist voll.');
+                } else if (axiosError.response?.status === 401) {
+                    setError('Authentifizierung fehlgeschlagen. Bitte melde dich erneut an.');
                 } else if (axiosError.response?.data?.code === 'SESSION_NOT_FOUND') {
                     setError('Session mit diesem Code nicht gefunden.');
                 } else if (axiosError.response?.status === 404) {
                     setError('Session mit diesem Code nicht gefunden.');
-                } else if (axiosError.response?.status === 409) {
-                    setError('Konflikt beim Beitritt - versuche es später erneut.');
                 } else if (axiosError.response?.data?.message) {
                     setError(axiosError.response.data.message);
                 } else {

@@ -52,6 +52,7 @@ export interface ShipPosition {
 
 interface ShipPositionsUpdateEvent {
     eventType: 'SHIP_POSITIONS_UPDATE';
+    currentTick: number;
     ships: ShipPosition[];
 }
 
@@ -69,6 +70,11 @@ export function useGameSessionWebSocket({
     const stompClientRef = useRef<Client | null>(null);
     const [isConnected, setIsConnected] = useState(false);
     const connectAttemptedRef = useRef(false);
+    const lastTickSignatureRef = useRef<string | null>(null);
+    const lastShipsSignatureRef = useRef<string | null>(null);
+    const lastTickNumberRef = useRef<number | null>(null);
+    const lastTickAtMsRef = useRef<number | null>(null);
+    const smoothedTickMsRef = useRef<number | null>(null);
 
     const connect = useCallback(() => {
         if (!sessionId) {
@@ -128,6 +134,27 @@ export function useGameSessionWebSocket({
                     client.subscribe(`/topic/session/${sessionId}/tick`, (message) => {
                         try {
                             const event = JSON.parse(message.body) as TickUpdateEvent;
+                            const tickSignature = `${event.currentTick}:${event.totalTicks}`;
+                            if (lastTickSignatureRef.current === tickSignature) return;
+                            lastTickSignatureRef.current = tickSignature;
+
+                            const nowMs = performance.now();
+                            const prevTick = lastTickNumberRef.current;
+                            const prevAtMs = lastTickAtMsRef.current;
+                            if (prevTick != null && prevAtMs != null && event.currentTick > prevTick) {
+                                const tickDiff = event.currentTick - prevTick;
+                                const elapsedMs = nowMs - prevAtMs;
+                                const measuredTickMs = elapsedMs / tickDiff;
+                                if (Number.isFinite(measuredTickMs) && measuredTickMs >= 50 && measuredTickMs <= 120_000) {
+                                    const previous = smoothedTickMsRef.current ?? measuredTickMs;
+                                    const next = previous * 0.75 + measuredTickMs * 0.25;
+                                    smoothedTickMsRef.current = next;
+                                    window.__tickRateMs = next;
+                                }
+                            }
+                            lastTickNumberRef.current = event.currentTick;
+                            lastTickAtMsRef.current = nowMs;
+
                             window.__latestTick = event;
                             window.dispatchEvent(new CustomEvent('backend-tick', { detail: event }));
                             if (onTickUpdate) onTickUpdate(event);
@@ -140,8 +167,12 @@ export function useGameSessionWebSocket({
                     client.subscribe(`/topic/session/${sessionId}/ships`, (message) => {
                         try {
                             const event = JSON.parse(message.body) as ShipPositionsUpdateEvent;
+                            const shipsSignature = `${event.currentTick}:${JSON.stringify(event.ships)}`;
+                            if (lastShipsSignatureRef.current === shipsSignature) return;
+                            lastShipsSignatureRef.current = shipsSignature;
                             window.__latestShips = event.ships;
-                            window.dispatchEvent(new CustomEvent('backend-ship-positions', { detail: event.ships }));
+                            window.__latestShipPositionsTick = event.currentTick;
+                            window.dispatchEvent(new CustomEvent('backend-ship-positions', { detail: event }));
                         } catch (error) {
                             console.error('Error parsing ship positions:', error);
                         }
@@ -169,6 +200,11 @@ export function useGameSessionWebSocket({
                 console.log('WebSocket disconnected');
                 setIsConnected(false);
                 connectAttemptedRef.current = false;
+                lastTickSignatureRef.current = null;
+                lastShipsSignatureRef.current = null;
+                lastTickNumberRef.current = null;
+                lastTickAtMsRef.current = null;
+                smoothedTickMsRef.current = null;
                 stompClientRef.current = null;
             });
         }
@@ -193,4 +229,3 @@ export function useGameSessionWebSocket({
         disconnect, stompClient: stompClientRef.current
     };
 }
-

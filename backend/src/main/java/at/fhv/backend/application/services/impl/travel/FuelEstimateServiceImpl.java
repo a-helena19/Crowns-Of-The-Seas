@@ -6,6 +6,7 @@ import at.fhv.backend.application.services.travel.FuelEstimateService;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
 import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
+import at.fhv.backend.domain.model.exception.InvalidTravelDataException;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
@@ -22,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class FuelEstimateServiceImpl implements FuelEstimateService {
-    private static final double[] SPEED_SETTINGS = {0.5, 0.625, 0.75, 0.875, 1.0};
+    private static final double[] SPEED_SETTINGS = {0.25, 0.4, 0.6, 0.8, 1.0};
     private static final String[] SPEED_LABELS   = {"Langsam", "Gemütlich", "Normal", "Schnell", "Volldampf"};
 
     private final PlayerShipRepository playerShipRepository;
@@ -55,6 +56,14 @@ public class FuelEstimateServiceImpl implements FuelEstimateService {
 
         SessionCargo cargo = sessionCargoRepository.findById(sessionCargoId)
                 .orElseThrow(() -> new CargoNotFoundException(sessionCargoId));
+
+        if (playerShip.getCurrentPortId() == null) {
+            throw new InvalidTravelDataException(
+                    "Schiff ist aktuell nicht im Hafen. Treibstoff-/Dauer-Schätzung nur für Schiffe am Hafen möglich.",
+                    "currentPortId",
+                    playerShip.getId()
+            );
+        }
 
         double distance = portDistanceService.distanceBetween(
                 playerShip.getCurrentPortId(),
