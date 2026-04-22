@@ -12,7 +12,7 @@ public class BaseSessionPlayer implements ISessionPlayer {
     private final UUID userId;
     private final UUID sessionId;
     private final String playerName;
-    private final boolean isHost;
+    private boolean isHost;
     private BigDecimal balance;
 
     public BaseSessionPlayer(UUID userId, UUID sessionId,
@@ -68,6 +68,11 @@ public class BaseSessionPlayer implements ISessionPlayer {
     @Override
     public BigDecimal getBalance() {
         return balance;
+    }
+
+    @Override
+    public void setHost(boolean host) {
+        this.isHost = host;
     }
 
     @Override

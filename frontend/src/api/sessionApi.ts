@@ -73,6 +73,11 @@ export const sessionApi = {
             tickRateSeconds
         });
         return response.data;
+    },
+
+    async leaveSession(sessionId: string): Promise<SessionDTO> {
+        const response = await apiClient.post<SessionDTO>(`/${sessionId}/leave`, {});
+        return response.data;
     }
 };
 
