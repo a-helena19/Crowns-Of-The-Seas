@@ -357,12 +357,21 @@ export default class MainScene extends Phaser.Scene {
     }
 
     private renderHarbors(ports: PortData[]) {
+        const LABEL_OFFSETS: Record<string, { dx: number; dy: number }> = {
+            'Rotterdam': { dx: -80, dy: 10 },
+        };
+
         ports.forEach(port => {
             const px = (port.x / 100) * this.scale.width;
             const py = (port.y / 100) * this.scale.height;
             const img = this.add.image(px, py, 'harbor').setScale(0.01).setInteractive();
 
-            this.add.text(px + 10, py - 10, port.name, {
+            img.on('pointerdown', () => {
+                window.dispatchEvent(new CustomEvent('port-clicked', { detail: port }));
+            });
+
+            const offset = LABEL_OFFSETS[port.name] ?? { dx: 10, dy: -10 };
+            this.add.text(px + offset.dx, py + offset.dy, port.name, {
                 fontSize: '14px',
                 color: '#ffffff',
                 backgroundColor: '#000000cc',

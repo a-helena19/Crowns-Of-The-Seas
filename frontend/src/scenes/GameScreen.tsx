@@ -5,13 +5,15 @@ import BottomBar from "../components/BottomBar.tsx";
 import SideBar from "../components/SideBar";
 import HarborScene from "../scenes/HarborScene.tsx";
 import ShipBrokerScene from "../scenes/ShipBrokerScene.tsx";
+import PortProfileScreen from "../scenes/PortProfileScreen.tsx";
 import { useGameSessionWebSocket } from "../hooks/useGameSessionWebSocket.ts";
 
 export const TOP_BAR_HEIGHT = '8vh';
 export const BOTTOM_BAR_HEIGHT = '25vh';
 
 export default function GameScreen() {
-    const [view, setView] = useState<"map" | "harbor" | "broker">("map");
+    const [view, setView] = useState<"map" | "harbor" | "broker" | "portProfile">("map");
+    const [selectedPort, setSelectedPort] = useState<{ id: string; name: string; x: number; y: number } | null>(null);
 
     const sessionData = sessionStorage.getItem('currentSession');
     const sessionId = sessionData ? JSON.parse(sessionData).id : null;
@@ -23,6 +25,16 @@ export default function GameScreen() {
             window.__tickRateMs = tickRateSeconds * 1000;
         }
     }, [tickRateSeconds]);
+
+    useEffect(() => {
+        const onPortClicked = (e: Event) => {
+            const port = (e as CustomEvent).detail;
+            setSelectedPort(port);
+            setView("portProfile");
+        };
+        window.addEventListener('port-clicked', onPortClicked);
+        return () => window.removeEventListener('port-clicked', onPortClicked);
+    }, []);
 
     const handleSessionUpdate = useCallback(() => {}, []);
 
@@ -53,11 +65,14 @@ export default function GameScreen() {
         <div className={`app-layout ${view}`}>
             <div className="top"><TopBar /></div>
             <div className="game"><Game view={view} /></div>
-            <div className={`fullscreen-overlay ${view !== "map" ? "open" : "closed"}`}>
+            <div className={`fullscreen-overlay ${(view === "harbor" || view === "broker") ? "open" : "closed"}`}>
                 {view === "harbor" && <HarborScene onClose={() => setView("map")} />}
                 {view === "broker" && <ShipBrokerScene onClose={() => setView("map")} />}
             </div>
-            {view === "map" && (
+            {view === "portProfile" && selectedPort && (
+                <PortProfileScreen port={selectedPort} onClose={() => setView("map")} />
+            )}
+            {(view === "map" || view === "portProfile") && (
                 <div className="sidebar">
                     <SideBar
                         currentView={view}
@@ -66,7 +81,7 @@ export default function GameScreen() {
                     />
                 </div>
             )}
-            {view === "map" && (
+            {(view === "map" || view === "portProfile") && (
                 <div className="bottom">
                     <BottomBar send={send} connected={isConnected} />
                 </div>
