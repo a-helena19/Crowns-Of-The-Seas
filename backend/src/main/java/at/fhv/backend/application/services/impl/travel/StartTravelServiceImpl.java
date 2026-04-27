@@ -45,6 +45,10 @@ import java.util.stream.Collectors;
 public class StartTravelServiceImpl implements StartTravelService {
     private static final double GLOBAL_TRAVEL_SPEED_FACTOR = 0.75; // < 1.0 => longer travel time
     private static final BigDecimal PILOTAGE_COST = new BigDecimal("600");
+    /** Wall duration of harbor departure overlay; must match frontend `DEPARTURE_ANIMATION_DURATION_MS`. */
+    private static final int DEPARTURE_ANIMATION_MS = 3000;
+    /** Extra game ticks before route progress begins after the overlay duration. */
+    private static final int DEPARTURE_START_BUFFER_TICKS = 0;
 
     private final PlayerShipRepository playerShipRepository;
     private final ShipRepository shipRepository;
@@ -143,12 +147,21 @@ public class StartTravelServiceImpl implements StartTravelService {
 
             double effectiveSpeed = ship.getMaxSpeed() * speedSetting * GLOBAL_TRAVEL_SPEED_FACTOR;
 
+            int startTickDelay = 0;
+            if (request.isPilotageService()) {
+                int tickRateSeconds = Math.max(1, session.getTickRateSeconds());
+                double wallSeconds = DEPARTURE_ANIMATION_MS / 1000.0;
+                int delayForOverlay = (int) Math.ceil(wallSeconds / tickRateSeconds);
+                startTickDelay = delayForOverlay + DEPARTURE_START_BUFFER_TICKS;
+            }
+
             Travel travel = Travel.start(
                     playerShip.getId(), playerId, sessionId,
                     originPortId, destinationPortId,
                     distance, effectiveSpeed,
                     riskFactor, baseReward,
-                    currentTick
+                    currentTick,
+                    startTickDelay
             );
 
             playerShip.departForVoyage(destinationPortId);

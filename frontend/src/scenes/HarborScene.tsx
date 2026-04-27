@@ -1,3 +1,4 @@
+import DepartureAnimation from "./DepartureAnimation";
 import Sailor from "../components/Sailor";
 import DialogBubble from "../components/DialogBubble";
 import InfoPanel from "../components/InfoPanel";
@@ -115,7 +116,6 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
             if (response.ok) {
                 window.dispatchEvent(new CustomEvent('player-balance-updated'));
                 setShowDeparture(true);
-                setTimeout(onClose, 1450);
             } else {
                 const text = await response.text();
                 let msg = "Reise konnte nicht gestartet werden.";
@@ -197,15 +197,10 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
                     )}
 
                     {showDeparture && selectedShip && (
-                        <div className="departure-overlay">
-                            <img
-                                src={selectedShip.iconUrl ?? "/fallback-ship.png"}
-                                alt={selectedShip.name}
-                                className="departure-ship"
-                                onError={e => { (e.target as HTMLImageElement).src = "/fallback-ship.png"; }}
-                            />
-                            <div className="departure-text">Leinen los!</div>
-                        </div>
+                        <DepartureAnimation
+                            shipIconUrl={selectedShip.iconUrl ?? "/fallback-ship.png"}
+                            onComplete={onClose}
+                        />
                     )}
                 </>
             )}
