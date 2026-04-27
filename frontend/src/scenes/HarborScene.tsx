@@ -113,9 +113,7 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
                 }),
             });
             if (response.ok) {
-                window.dispatchEvent(new CustomEvent('player-balance-updated', {
-                    detail: pilotageSelected ? { deduct: 600 } : {},
-                }));
+                window.dispatchEvent(new CustomEvent('player-balance-updated'));
                 setShowDeparture(true);
                 setTimeout(onClose, 1450);
             } else {
@@ -126,6 +124,7 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
                     if (data.error === "CARGO_TAKEN") msg = "Fracht wurde bereits vergeben.";
                     else if (data.error === "CAPACITY_EXCEEDED") msg = "Schiff zu klein für diese Fracht.";
                     else if (data.error === "INSUFFICIENT_FUEL") msg = data.message ?? "Nicht genug Treibstoff.";
+                    else if (data.error === "INSUFFICIENT_BALANCE") msg = data.message ?? "Nicht genug Taler für den Lotsendienst.";
                     else msg = data.message ?? msg;
                 } catch { /* noop */ }
                 setStartError(msg);

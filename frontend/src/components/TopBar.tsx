@@ -34,17 +34,8 @@ export default function TopBar() {
 
         fetchPlayerData();
 
-        const handleBalanceUpdate = (e: Event) => {
-            const detail = (e as CustomEvent<{ deduct?: number }>).detail;
-            if (detail?.deduct) {
-                setBalance(prev => prev !== null ? prev - detail.deduct! : null);
-            } else {
-                fetchPlayerData();
-            }
-        };
-
-        window.addEventListener('player-balance-updated', handleBalanceUpdate);
-        return () => window.removeEventListener('player-balance-updated', handleBalanceUpdate);
+        window.addEventListener('player-balance-updated', fetchPlayerData);
+        return () => window.removeEventListener('player-balance-updated', fetchPlayerData);
     }, [playerId, sessionId, token]);
 
     useEffect(() => {
