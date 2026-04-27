@@ -3,6 +3,7 @@ package at.fhv.backend.application.services.impl.cargo;
 
 import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.application.services.cargo.AcceptCargoService;
+import at.fhv.backend.application.services.cargo.PortDistanceForCargoService;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.domain.model.cargo.CargoRepository;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
@@ -28,21 +29,29 @@ import java.util.UUID;
 
 @Service
 public class AcceptCargoServiceImpl implements AcceptCargoService {
+    private static final double GLOBAL_TRAVEL_SPEED_FACTOR = 0.75;
+    private static final double FASTEST_SPEED_SETTING = 1.0;
+    private static final double EXPIRY_BUFFER_FACTOR = 3.0;
+    private static final int MIN_EXPIRY_TICKS = 20;
+
     private final SessionCargoRepository sessionCargoRepository;
     private final CargoRepository cargoRepository;
     private final PlayerShipRepository playerShipRepository;
     private final ShipRepository shipRepository;
     private final GameSessionRepository gameSessionRepository;
     private final PortQueryService portQueryService;
+    private final PortDistanceForCargoService portDistanceForCargoService;
 
     public AcceptCargoServiceImpl(SessionCargoRepository sessionCargoRepository, CargoRepository cargoRepository, PlayerShipRepository playerShipRepository,
-                                  ShipRepository shipRepository, GameSessionRepository gameSessionRepository, PortQueryService portQueryService) {
+                                  ShipRepository shipRepository, GameSessionRepository gameSessionRepository, PortQueryService portQueryService,
+                                  PortDistanceForCargoService portDistanceForCargoService) {
         this.sessionCargoRepository = sessionCargoRepository;
         this.cargoRepository = cargoRepository;
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
         this.gameSessionRepository = gameSessionRepository;
         this.portQueryService = portQueryService;
+        this.portDistanceForCargoService = portDistanceForCargoService;
     }
 
     @Override
@@ -64,10 +73,23 @@ public class AcceptCargoServiceImpl implements AcceptCargoService {
             throw new CargoCapacityExceededException(cargo.getCapacity(), ship.getMaxCargoCapacity());
         }
 
-        int cooldownTicks = CargoSessionInitializer.cooldownTicksFor(cargo.getCargoType());
-        cargo.assign(playerId, playerShip.getId(), cooldownTicks, currentTick);
+        int expiresAtTick = computeExpiresAtTick(ship, cargo, currentTick);
+        cargo.assign(playerId, playerShip.getId(), expiresAtTick);
         sessionCargoRepository.save(cargo);
         return buildDto(cargo);
+    }
+
+    private int computeExpiresAtTick(Ship ship, SessionCargo cargo, int currentTick) {
+        try {
+            double distance = portDistanceForCargoService.distanceBetween(
+                    cargo.getOriginPortId(), cargo.getDestinationPortId());
+            double effectiveSpeed = ship.getMaxSpeed() * FASTEST_SPEED_SETTING * GLOBAL_TRAVEL_SPEED_FACTOR;
+            int fastestTravelTicks = (int) Math.ceil(distance / Math.max(effectiveSpeed, 0.01));
+            int deadline = (int) Math.ceil(fastestTravelTicks * EXPIRY_BUFFER_FACTOR);
+            return currentTick + Math.max(deadline, MIN_EXPIRY_TICKS);
+        } catch (Exception e) {
+            return currentTick + 100;
+        }
     }
 
     private SessionCargoDTO buildDto(SessionCargo sc) {
@@ -84,6 +106,7 @@ public class AcceptCargoServiceImpl implements AcceptCargoService {
         dto.setRisk(sc.getRisk());
         dto.setCargoStatus(sc.getCargoStatus());
         dto.setSpawnTick(sc.getSpawnTick());
+        dto.setExpiresAtTick(sc.getExpiresAtTick());
 
         try {
             PortResponseDTO origin = portQueryService.findById(sc.getOriginPortId());

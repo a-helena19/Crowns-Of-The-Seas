@@ -1,0 +1,186 @@
+.port-profile-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    font-family: "Georgia", serif;
+    z-index: 200;
+}
+
+.port-profile-panel {
+    position: relative;
+    background: linear-gradient(160deg, #e8e1c4 0%, #f2ebd3 50%, #dcd4b0 100%);
+    border: 4px solid #5a3a0a;
+    box-shadow: inset -4px -4px 0 #3c1603, inset 4px 4px 0 #4a2c10, 0 8px 40px rgba(0,0,0,0.5);
+    padding: 36px 40px 32px;
+    width: 560px;
+    max-width: 92vw;
+    max-height: 80vh;
+    overflow-y: auto;
+    color: #2b2418;
+}
+
+.port-profile-close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #6b5a3a;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 6px;
+    transition: color 0.15s;
+}
+
+.port-profile-close:hover {
+    color: #2b2418;
+}
+
+.port-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #c8a85e;
+    padding-bottom: 16px;
+}
+
+.port-profile-icon {
+    font-size: 42px;
+    line-height: 1;
+}
+
+.port-profile-name {
+    margin: 0 0 4px;
+    font-size: 28px;
+    color: #2b1a05;
+    font-family: "Georgia", serif;
+}
+
+.port-profile-country {
+    font-size: 16px;
+    color: #6b5a3a;
+    letter-spacing: 0.5px;
+}
+
+.port-profile-facts {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 24px;
+    background: #ede5c8;
+    border: 2px solid #c8a85e;
+    padding: 12px 16px;
+}
+
+.port-profile-fact {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #4a3a22;
+}
+
+.port-profile-fact-icon {
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.port-profile-section-title {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #6b5a3a;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.port-profile-cargo-count {
+    font-size: 12px;
+    color: #9a8060;
+    letter-spacing: 0;
+}
+
+.port-profile-empty {
+    color: #9a8060;
+    font-size: 13px;
+    text-align: center;
+    padding: 28px 0;
+    line-height: 1.8;
+}
+
+.port-profile-cargo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.port-profile-cargo-item {
+    background: #f5efdd;
+    border: 1px solid #c8a85e;
+    padding: 10px 14px;
+}
+
+.port-profile-cargo-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 5px;
+}
+
+.port-profile-cargo-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #2b1a05;
+}
+
+.port-profile-cargo-reward {
+    font-size: 14px;
+    font-weight: bold;
+    color: #7a5010;
+}
+
+.port-profile-cargo-sub {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: #6b5a3a;
+}
+
+.port-profile-cargo-type {
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.port-profile-cargo-route {
+    color: #6b5a3a;
+}
+
+.port-profile-cargo-risk {
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.port-profile-cargo-desc {
+    margin-top: 5px;
+    font-size: 12px;
+    color: #7a6a4a;
+    line-height: 1.5;
+}
+
+.risk-low    { color: #4a8a4a; }
+.risk-medium { color: #c09040; }
+.risk-high   { color: #c05020; }
+.risk-extreme{ color: #c03030; }

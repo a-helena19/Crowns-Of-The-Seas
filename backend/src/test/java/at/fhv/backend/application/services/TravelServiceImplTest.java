@@ -1,6 +1,7 @@
 package at.fhv.backend.application.services;
 
 import at.fhv.backend.application.dtos.mapper.TravelResponseMapper;
+import at.fhv.backend.application.services.cargo.PortDistanceForCargoService;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.rest.CargoWebSocketController;
 import at.fhv.backend.rest.dtos.port.PortResponseDTO;
@@ -41,6 +42,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
 import at.fhv.backend.domain.model.cargo.CargoType;
@@ -59,6 +62,12 @@ class TravelServiceImplTest {
             validateTravelService = new ValidateTravelServiceImpl();
         }
 
+        private Ship buildShip() {
+            return Ship.create("Speeder", "fast", ShipClass.PREMIUM,
+                    BigDecimal.valueOf(5000), 200, 20.0, 3.0,
+                    BigDecimal.valueOf(600), BigDecimal.valueOf(300), 0.95, "icon.png");
+        }
+
         private PlayerShip buildAtPortShip(UUID playerId) {
             PlayerShip ps = PlayerShip.createFromPurchase(UUID.randomUUID(), playerId, UUID.randomUUID(), UUID.randomUUID());
             ps.completeRegistration();
@@ -72,9 +81,10 @@ class TravelServiceImplTest {
             UUID destinationPort = UUID.randomUUID();
             PlayerShip playerShip = buildAtPortShip(playerId);
             playerShip.consumeFuel(80.0);
+            Ship ship = buildShip();
 
             assertThatNoException().isThrownBy(() ->
-                    validateTravelService.validateTravelStart(playerShip, playerId, originPort, destinationPort, 20.0)
+                    validateTravelService.validateTravelStart(playerShip, ship, playerId, originPort, destinationPort, 20.0)
             );
         }
 
@@ -83,9 +93,10 @@ class TravelServiceImplTest {
             UUID realOwner = UUID.randomUUID();
             UUID otherPlayer = UUID.randomUUID();
             PlayerShip playerShip = buildAtPortShip(realOwner);
+            Ship ship = buildShip();
 
             assertThatThrownBy(() ->
-                    validateTravelService.validateTravelStart(playerShip, otherPlayer, UUID.randomUUID(), UUID.randomUUID(), 10.0)
+                    validateTravelService.validateTravelStart(playerShip, ship, otherPlayer, UUID.randomUUID(), UUID.randomUUID(), 10.0)
             ).isInstanceOf(ShipNotOwnedException.class);
         }
 
@@ -94,9 +105,10 @@ class TravelServiceImplTest {
             UUID playerId = UUID.randomUUID();
             PlayerShip playerShip = PlayerShip.createFromPurchase(UUID.randomUUID(), playerId, UUID.randomUUID(), UUID.randomUUID());
             // still IN_REGISTRATION
+            Ship ship = buildShip();
 
             assertThatThrownBy(() ->
-                    validateTravelService.validateTravelStart(playerShip, playerId, UUID.randomUUID(), UUID.randomUUID(), 10.0)
+                    validateTravelService.validateTravelStart(playerShip, ship, playerId, UUID.randomUUID(), UUID.randomUUID(), 10.0)
             ).isInstanceOf(InvalidShipStatusTransition.class);
         }
 
@@ -105,9 +117,10 @@ class TravelServiceImplTest {
             UUID playerId = UUID.randomUUID();
             UUID port = UUID.randomUUID();
             PlayerShip playerShip = buildAtPortShip(playerId);
+            Ship ship = buildShip();
 
             assertThatThrownBy(() ->
-                    validateTravelService.validateTravelStart(playerShip, playerId, port, port, 10.0)
+                    validateTravelService.validateTravelStart(playerShip, ship, playerId, port, port, 10.0)
             ).isInstanceOf(SamePortException.class);
         }
 
@@ -116,9 +129,10 @@ class TravelServiceImplTest {
             UUID playerId = UUID.randomUUID();
             UUID destinationPort = UUID.randomUUID();
             PlayerShip playerShip = buildAtPortShip(playerId);
+            Ship ship = buildShip();
 
             assertThatNoException().isThrownBy(() ->
-                    validateTravelService.validateTravelStart(playerShip, playerId, null, destinationPort, 10.0)
+                    validateTravelService.validateTravelStart(playerShip, ship, playerId, null, destinationPort, 10.0)
             );
         }
 
@@ -127,9 +141,10 @@ class TravelServiceImplTest {
             UUID playerId = UUID.randomUUID();
             PlayerShip playerShip = buildAtPortShip(playerId);
             playerShip.consumeFuel(95.0);
+            Ship ship = buildShip();
 
             assertThatThrownBy(() ->
-                    validateTravelService.validateTravelStart(playerShip, playerId, UUID.randomUUID(), UUID.randomUUID(), 50.0)
+                    validateTravelService.validateTravelStart(playerShip, ship, playerId, UUID.randomUUID(), UUID.randomUUID(), 50.0)
             ).isInstanceOf(at.fhv.backend.domain.model.exception.InsufficientFuelException.class);
         }
     }
@@ -147,6 +162,7 @@ class TravelServiceImplTest {
         @Mock private GameTickScheduler gameTickScheduler;
         @Mock private SessionCargoRepository sessionCargoRepository;
         @Mock private CargoWebSocketController cargoWebSocketController;
+        @Mock private PortDistanceForCargoService portDistanceForCargoService;
 
         private StartTravelServiceImpl service;
 
@@ -157,7 +173,8 @@ class TravelServiceImplTest {
                     calculateFuelConsumptionService, validateTravelService,
                     travelRepository, travelResponseMapper,
                     gameSessionRepository, gameTickScheduler,
-                    sessionCargoRepository, cargoWebSocketController
+                    sessionCargoRepository, cargoWebSocketController,
+                    portDistanceForCargoService
             );
         }
 
@@ -201,21 +218,12 @@ class TravelServiceImplTest {
 
         private SessionCargo buildAvailableCargo(UUID sessionCargoId, UUID destinationPortId, UUID sessionId, int capacity) {
             return SessionCargo.reconstruct(
-                    sessionCargoId,
-                    UUID.randomUUID(),
-                    sessionId,
-                    UUID.randomUUID(),
-                    destinationPortId,
-                    BigDecimal.valueOf(1000),
-                    false,
-                    capacity,
-                    CargoType.GENERAL_GOODS,
-                    0.1,
-                    CargoStatus.AVAILABLE,
-                    null,
-                    null,
-                    0,
-                    -1
+                    sessionCargoId, UUID.randomUUID(), sessionId,
+                    UUID.randomUUID(), destinationPortId,
+                    BigDecimal.valueOf(1000), false, capacity,
+                    CargoType.GENERAL_GOODS, 0.1,
+                    CargoStatus.AVAILABLE, null, null,
+                    0, -1, -1
             );
         }
 
@@ -234,9 +242,10 @@ class TravelServiceImplTest {
             when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId)).thenReturn(Optional.of(playerShip));
             when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
             when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
+            when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
             stubPortQueryService(playerShip.getCurrentPortId(), destinationPortId);
             when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(10.0);
-            doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), anyDouble());
+            doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
             when(playerShipRepository.save(any())).thenReturn(playerShip);
             when(travelRepository.save(any(Travel.class))).thenReturn(travel);
             when(travelResponseMapper.toResponse(travel)).thenReturn(new TravelDTO());
@@ -261,9 +270,10 @@ class TravelServiceImplTest {
             when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId)).thenReturn(Optional.of(playerShip));
             when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
             when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
+            when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
             stubPortQueryService(playerShip.getCurrentPortId(), destinationPortId);
             when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(10.0);
-            doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), anyDouble());
+            doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
             when(playerShipRepository.save(any())).thenReturn(playerShip);
             when(travelRepository.save(any())).thenReturn(travel);
             when(travelResponseMapper.toResponse(any())).thenReturn(new TravelDTO());
@@ -289,9 +299,10 @@ class TravelServiceImplTest {
             when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId)).thenReturn(Optional.of(playerShip));
             when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
             when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
+            when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
             stubPortQueryService(playerShip.getCurrentPortId(), destinationPortId);
             when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(15.0);
-            doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), anyDouble());
+            doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
             when(playerShipRepository.save(any())).thenReturn(playerShip);
             when(travelRepository.save(any())).thenReturn(travel);
             when(travelResponseMapper.toResponse(any())).thenReturn(new TravelDTO());
@@ -330,7 +341,7 @@ class TravelServiceImplTest {
                     UUID.randomUUID(), destinationPortId,
                     BigDecimal.valueOf(1000), false, 50,
                     CargoType.GENERAL_GOODS, 0.1,
-                    CargoStatus.ASSIGNED, UUID.randomUUID(), UUID.randomUUID(), 0, 5
+                    CargoStatus.ASSIGNED, UUID.randomUUID(), UUID.randomUUID(), 0, 5, -1
             );
 
             when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId))
@@ -360,9 +371,10 @@ class TravelServiceImplTest {
             when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId)).thenReturn(Optional.of(playerShip));
             when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
             when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
+            when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
             stubPortQueryService(playerShip.getCurrentPortId(), destinationPortId);
             when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(10.0);
-            doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), anyDouble());
+            doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
             when(playerShipRepository.save(any())).thenReturn(playerShip);
             when(travelRepository.save(any())).thenReturn(travel);
             when(travelResponseMapper.toResponse(any())).thenReturn(new TravelDTO());
@@ -388,9 +400,10 @@ class TravelServiceImplTest {
             when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId)).thenReturn(Optional.of(playerShip));
             when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
             when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
+            when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
             stubPortQueryService(playerShip.getCurrentPortId(), destinationPortId);
             when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(10.0);
-            doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), anyDouble());
+            doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
             when(playerShipRepository.save(any())).thenReturn(playerShip);
             when(travelRepository.save(any())).thenReturn(travel);
             when(travelResponseMapper.toResponse(travel)).thenReturn(expectedDto);

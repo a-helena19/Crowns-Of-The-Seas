@@ -103,6 +103,7 @@ public class CargoQueryServiceImpl implements CargoQueryService {
         dto.setRisk(sc.getRisk());
         dto.setCargoStatus(sc.getCargoStatus());
         dto.setSpawnTick(sc.getSpawnTick());
+        dto.setExpiresAtTick(sc.getExpiresAtTick());
         return dto;
     }
 }

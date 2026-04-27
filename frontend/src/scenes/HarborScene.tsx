@@ -1,3 +1,4 @@
+import DepartureAnimation from "./DepartureAnimation";
 import Sailor from "../components/Sailor";
 import DialogBubble from "../components/DialogBubble";
 import InfoPanel from "../components/InfoPanel";
@@ -17,6 +18,7 @@ interface SelectedShip {
     status: string;
     maxCargoCapacity?: number;
     currentPortId?: string;
+    iconUrl?: string;
 }
 
 interface ShipResponse {
@@ -45,6 +47,8 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
     const [loadingDone, setLoadingDone] = useState(false);
     const [starting, setStarting] = useState(false);
     const [startError, setStartError] = useState<string | null>(null);
+    const [pilotageSelected, setPilotageSelected] = useState(false);
+    const [showDeparture, setShowDeparture] = useState(false);
 
     const [view, setView] = useState<"main" | "cargo" | "ship">("main");
     const [currentPortId, setCurrentPortId] = useState<string | null>(null);
@@ -74,6 +78,7 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
     function handleShipSelect(ship: any) {
         setSelectedShip(ship);
         setLoadingDone(false);
+        setPilotageSelected(false);
         setView("main");
         const cargoWeight = selectedCargo?.weight ?? 0;
         const shipCap = ship.maxCargoCapacity ?? Infinity;
@@ -105,10 +110,12 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
                     destinationPortId: selectedCargo.destinationPortId,
                     sessionCargoId: selectedCargo.id,
                     speedSetting: selectedCargo.speedSetting,
+                    pilotageService: pilotageSelected,
                 }),
             });
             if (response.ok) {
-                onClose();
+                window.dispatchEvent(new CustomEvent('player-balance-updated'));
+                setShowDeparture(true);
             } else {
                 const text = await response.text();
                 let msg = "Reise konnte nicht gestartet werden.";
@@ -117,6 +124,7 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
                     if (data.error === "CARGO_TAKEN") msg = "Fracht wurde bereits vergeben.";
                     else if (data.error === "CAPACITY_EXCEEDED") msg = "Schiff zu klein für diese Fracht.";
                     else if (data.error === "INSUFFICIENT_FUEL") msg = data.message ?? "Nicht genug Treibstoff.";
+                    else if (data.error === "INSUFFICIENT_BALANCE") msg = data.message ?? "Nicht genug Taler für den Lotsendienst.";
                     else msg = data.message ?? msg;
                 } catch { /* noop */ }
                 setStartError(msg);
@@ -146,8 +154,10 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
                     <DialogBubble
                         onOpenCargo={handleOpenCargo}
                         onOpenShip={() => setView("ship")}
-                        onStartTravel={loadingDone && !overCapacity ? handleStartTravel : undefined}
+                        onStartTravel={loadingDone && !overCapacity && pilotageSelected ? handleStartTravel : undefined}
                         startTravelDisabled={starting}
+                        pilotageSelected={pilotageSelected}
+                        onTogglePilotage={(isLoadingShip || loadingDone) ? () => setPilotageSelected(v => !v) : undefined}
                     />
 
                     <div className="right-side-panels">
@@ -185,6 +195,13 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
                     {(infoHint || startError) && (
                         <div className="harbor-error-toast">{startError ?? infoHint}</div>
                     )}
+
+                    {showDeparture && selectedShip && (
+                        <DepartureAnimation
+                            shipIconUrl={selectedShip.iconUrl ?? "/fallback-ship.png"}
+                            onComplete={onClose}
+                        />
+                    )}
                 </>
             )}
 
@@ -195,6 +212,7 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
                     onCargoAccepted={(c) => {
                         setSelectedCargo(c);
                         setLoadingDone(false);
+                        setPilotageSelected(false);
                         const shipCap = selectedShip?.maxCargoCapacity ?? Infinity;
                         if (selectedShip && c.weight <= shipCap) {
                             setIsLoadingShip(true);

@@ -12,10 +12,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface SessionCargoJpaRepository extends JpaRepository<SessionCargoEntity, UUID> {
-    @Query("SELECT s FROM SessionCargoEntity s WHERE s.sessionId = :sessionId AND s.cargoStatus = 'AVAILABLE' AND s.spawnTick <= :currentTick")
+    @Query("SELECT s FROM SessionCargoEntity s WHERE s.sessionId = :sessionId AND s.cargoStatus = 'AVAILABLE' AND s.spawnTick <= :currentTick AND (s.expiresAtTick = -1 OR s.expiresAtTick > :currentTick)")
     List<SessionCargoEntity> findAvailableBySessionId(@Param("sessionId") UUID sessionId, @Param("currentTick") int currentTick);
 
-    @Query("SELECT s FROM SessionCargoEntity s WHERE s.sessionId = :sessionId AND s.originPortId = :portId AND s.cargoStatus = 'AVAILABLE' AND s.spawnTick <= :currentTick")
+    @Query("SELECT s FROM SessionCargoEntity s WHERE s.sessionId = :sessionId AND s.originPortId = :portId AND s.cargoStatus = 'AVAILABLE' AND s.spawnTick <= :currentTick AND (s.expiresAtTick = -1 OR s.expiresAtTick > :currentTick)")
     List<SessionCargoEntity> findAvailableBySessionIdAndPort(@Param("sessionId") UUID sessionId, @Param("portId") UUID portId, @Param("currentTick") int currentTick);
 
     @Query("SELECT s FROM SessionCargoEntity s WHERE s.sessionId = :sessionId AND s.originPortId = :portId")

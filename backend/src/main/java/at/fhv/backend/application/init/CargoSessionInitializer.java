@@ -8,18 +8,7 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.util.*;
 
-/**
- * Type           spawnTick   cooldownTicks   rewardMultiplier   containsIllegal chance
- * GENERAL_GOODS     0           5               1.0x               0%
- * FOOD              0           4               0.9x               0%
- * INDUSTRIAL_GOODS  0           8               1.2x               0%
- * ELECTRONICS       5           10              1.5x               5%
- * FRAGILE           3           8               1.3x               0%
- * HAZARDOUS         8           12              1.6x               30%
- * LUXURY_GOODS      20          18              2.5x               10%
- *
- * Cooldown-Varianz: ±30% beim Respawn (siehe randomizedCooldownFor)
- */
+
 @Component
 public class CargoSessionInitializer {
 
@@ -115,7 +104,8 @@ public class CargoSessionInitializer {
                     origin.getId().getValue(), dest.getId().getValue(),
                     reward, illegal,
                     template.getCapacity(), type, template.getRisk(),
-                    finalSpawnTick
+                    finalSpawnTick,
+                    cfg.lifetimeTicks
             );
             result.add(sc);
         }
@@ -123,22 +113,24 @@ public class CargoSessionInitializer {
     }
 
     private enum CargoSpawnConfig {
-        GENERAL_GOODS   (0,  5,  1.00),
-        FOOD            (0,  4,  0.90),
-        INDUSTRIAL_GOODS(0,  8,  1.20),
-        ELECTRONICS     (5,  10, 1.50),
-        FRAGILE         (3,  8,  1.30),
-        HAZARDOUS       (8,  12, 1.60),
-        LUXURY_GOODS    (20, 18, 2.50);
+        GENERAL_GOODS   (0,  5,  1.00, 12),
+        FOOD            (0,  4,  0.90, 10),
+        INDUSTRIAL_GOODS(0,  8,  1.20, 14),
+        ELECTRONICS     (5,  10, 1.50, 16),
+        FRAGILE         (3,  8,  1.30, 14),
+        HAZARDOUS       (8,  12, 1.60, 18),
+        LUXURY_GOODS    (20, 18, 2.50, 22);
 
         final int spawnTick;
         final int cooldownTicks;
         final double rewardMultiplier;
+        final int lifetimeTicks;
 
-        CargoSpawnConfig(int spawnTick, int cooldownTicks, double rewardMultiplier) {
+        CargoSpawnConfig(int spawnTick, int cooldownTicks, double rewardMultiplier, int lifetimeTicks) {
             this.spawnTick = spawnTick;
             this.cooldownTicks = cooldownTicks;
             this.rewardMultiplier = rewardMultiplier;
+            this.lifetimeTicks = lifetimeTicks;
         }
 
         static CargoSpawnConfig of(CargoType type) {
@@ -155,10 +147,17 @@ public class CargoSessionInitializer {
         int cooldownTicks() {
             return cooldownTicks;
         }
+        int lifetimeTicks() {
+            return lifetimeTicks;
+        }
     }
 
     public static int cooldownTicksFor(CargoType type) {
         return CargoSpawnConfig.of(type).cooldownTicks();
+    }
+
+    public static int lifetimeTicksFor(CargoType type) {
+        return CargoSpawnConfig.of(type).lifetimeTicks();
     }
 
     public static int randomizedCooldownFor(CargoType type, Random rng) {

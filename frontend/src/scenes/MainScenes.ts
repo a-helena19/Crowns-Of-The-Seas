@@ -152,7 +152,7 @@ export default class MainScene extends Phaser.Scene {
             }
         }
 
-        const tickRateMs = window.__tickRateMs ?? 30_000;
+        const tickRateMs = this.resolveTickRateMs();
 
         for (const shipData of ships) {
             const px = (shipData.x / 100) * this.scale.width;
@@ -172,9 +172,7 @@ export default class MainScene extends Phaser.Scene {
                         && entry.lastStartTick === shipData.startTick;
 
                     if (hasRouteData && !isSameTravel) {
-                        const totalTicks = Math.max(1, shipData.arrivalTick - shipData.startTick);
-                        const elapsedTicks = Math.max(0, currentTick - shipData.startTick);
-                        const totalMs = totalTicks * tickRateMs;
+                        const routeTiming = this.getRouteTiming(shipData, currentTick, tickRateMs);
                         const originPx = (shipData.originX / 100) * this.scale.width;
                         const originPy = (shipData.originY / 100) * this.scale.height;
                         const destPx = (shipData.destX / 100) * this.scale.width;
@@ -184,9 +182,10 @@ export default class MainScene extends Phaser.Scene {
                             originPy,
                             destPx,
                             destPy,
-                            elapsedTicks * tickRateMs,
-                            totalMs,
+                            routeTiming.elapsedMs,
+                            routeTiming.totalMs,
                             true,
+                            routeTiming.startDelayMs,
                         );
                         entry.lastStartTick = shipData.startTick;
                     } else if (!hasRouteData) {
@@ -259,9 +258,7 @@ export default class MainScene extends Phaser.Scene {
         let lastStartTick: number | null = null;
 
         if (status === 'EN_ROUTE' && this.hasRouteData(shipData)) {
-            const totalTicks = Math.max(1, shipData.arrivalTick - shipData.startTick);
-            const elapsedTicks = Math.max(0, currentTick - shipData.startTick);
-            const totalMs = totalTicks * tickRateMs;
+            const routeTiming = this.getRouteTiming(shipData, currentTick, tickRateMs);
             const originPx = (shipData.originX / 100) * this.scale.width;
             const originPy = (shipData.originY / 100) * this.scale.height;
             const destPx = (shipData.destX / 100) * this.scale.width;
@@ -271,9 +268,10 @@ export default class MainScene extends Phaser.Scene {
                 originPy,
                 destPx,
                 destPy,
-                elapsedTicks * tickRateMs,
-                totalMs,
+                routeTiming.elapsedMs,
+                routeTiming.totalMs,
                 true,
+                routeTiming.startDelayMs,
             );
             lastStartTick = shipData.startTick;
         }
@@ -323,6 +321,29 @@ export default class MainScene extends Phaser.Scene {
         this.lastSceneHeight = this.scale.height;
     }
 
+    /**
+     * Smoothed WS measurement when sane; otherwise session tick interval.
+     * Avoids 30_000 default which inflates elapsedMs along EN_ROUTE and jumps the ship ahead.
+     */
+    private resolveTickRateMs(): number {
+        const smoothed = window.__tickRateMs;
+        if (typeof smoothed === 'number' && Number.isFinite(smoothed) && smoothed >= 250 && smoothed <= 120_000) {
+            return smoothed;
+        }
+        try {
+            const raw = sessionStorage.getItem('currentSession');
+            if (raw) {
+                const sec = JSON.parse(raw).tickRateSeconds as unknown;
+                if (typeof sec === 'number' && sec >= 1 && sec <= 120) {
+                    return sec * 1000;
+                }
+            }
+        } catch {
+            /* ignore */
+        }
+        return 5000;
+    }
+
     private resolveTextureKey(iconUrl: string): string {
         if (!iconUrl || iconUrl.trim() === '') return 'ship';
         return iconUrl;
@@ -344,6 +365,25 @@ export default class MainScene extends Phaser.Scene {
             && shipData.arrivalTick != null;
     }
 
+    private getRouteTiming(
+        shipData: ShipPositionData & { startTick: number; arrivalTick: number },
+        currentTick: number,
+        tickRateMs: number,
+    ) {
+        const totalTicks = Math.max(1, shipData.arrivalTick - shipData.startTick);
+        const elapsedTicks = Math.min(
+            Math.max(0, currentTick - shipData.startTick),
+            totalTicks,
+        );
+        const delayTicks = Math.max(0, shipData.startTick - currentTick);
+
+        return {
+            elapsedMs: elapsedTicks * tickRateMs,
+            totalMs: totalTicks * tickRateMs,
+            startDelayMs: delayTicks * tickRateMs,
+        };
+    }
+
     private isSameSnapshot(a: ShipPositionData, b: ShipPositionData) {
         return a.status === b.status
             && a.arrivalTick === b.arrivalTick
@@ -357,12 +397,24 @@ export default class MainScene extends Phaser.Scene {
     }
 
     private renderHarbors(ports: PortData[]) {
+        const LABEL_OFFSETS: Record<string, { dx: number; dy: number }> = {
+            'Rotterdam': { dx: -80, dy: 10 },
+        };
+
         ports.forEach(port => {
             const px = (port.x / 100) * this.scale.width;
             const py = (port.y / 100) * this.scale.height;
-            const img = this.add.image(px, py, 'harbor').setScale(0.01).setInteractive();
+            const img = this.add.image(px, py, 'harbor')
+                .setScale(0.01)
+                .setInteractive(new Phaser.Geom.Circle(0, 0, 2000), Phaser.Geom.Circle.Contains)
+                .setDepth(6);
 
-            this.add.text(px + 10, py - 10, port.name, {
+            img.on('pointerdown', () => {
+                window.dispatchEvent(new CustomEvent('port-clicked', { detail: port }));
+            });
+
+            const offset = LABEL_OFFSETS[port.name] ?? { dx: 10, dy: -10 };
+            this.add.text(px + offset.dx, py + offset.dy, port.name, {
                 fontSize: '14px',
                 color: '#ffffff',
                 backgroundColor: '#000000cc',

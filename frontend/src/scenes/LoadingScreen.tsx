@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import "../style/loading.css";
 
 interface PlayerShip {
@@ -22,10 +22,20 @@ interface LoadingScreenProps {
 }
 
 export default function LoadingScreen({ ship, cargo, done, onComplete }: LoadingScreenProps) {
+    const progressRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
         if (done) return;
-        const timer = setTimeout(onComplete, 10000);
-        return () => clearTimeout(timer);
+        const el = progressRef.current;
+        if (!el) return;
+        const onEnd = () => onComplete();
+        el.addEventListener('animationend', onEnd, { once: true });
+        // Fallback in case animationend doesn't fire
+        const fallback = setTimeout(onComplete, 10500);
+        return () => {
+            el.removeEventListener('animationend', onEnd);
+            clearTimeout(fallback);
+        };
     }, [done, onComplete]);
 
     const maxCap = ship.maxCargoCapacity ?? 0;
@@ -88,7 +98,7 @@ export default function LoadingScreen({ ship, cargo, done, onComplete }: Loading
                 <div className="progress-track">
                     {done
                         ? <div className="progress-fill-done" />
-                        : <div className="progress-fill" />
+                        : <div className="progress-fill" ref={progressRef} />
                     }
                 </div>
             </div>
