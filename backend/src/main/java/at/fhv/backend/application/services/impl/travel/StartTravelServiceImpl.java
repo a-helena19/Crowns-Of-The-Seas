@@ -19,6 +19,9 @@ import at.fhv.backend.application.services.travel.StartTravelService;
 import at.fhv.backend.application.services.travel.ValidateTravelService;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
 import at.fhv.backend.domain.model.exception.TravelNotFoundException;
+import at.fhv.backend.domain.model.player.ISessionPlayer;
+import at.fhv.backend.domain.model.player.SessionPlayerRepository;
+import at.fhv.backend.domain.model.player.exception.PlayerNotFoundException;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.session.exception.SessionNotFoundException;
@@ -40,6 +43,11 @@ import java.util.stream.Collectors;
 @Service
 public class StartTravelServiceImpl implements StartTravelService {
     private static final double GLOBAL_TRAVEL_SPEED_FACTOR = 0.75; // < 1.0 => longer travel time
+    private static final BigDecimal PILOTAGE_COST = new BigDecimal("600");
+    /** Wall duration of harbor departure overlay; must match frontend `DEPARTURE_ANIMATION_DURATION_MS`. */
+    private static final int DEPARTURE_ANIMATION_MS = 3000;
+    /** Extra game ticks before route progress begins after the overlay duration. */
+    private static final int DEPARTURE_START_BUFFER_TICKS = 0;
 
     private final PlayerShipRepository playerShipRepository;
     private final ShipRepository shipRepository;
@@ -53,6 +61,7 @@ public class StartTravelServiceImpl implements StartTravelService {
     private final SessionCargoRepository sessionCargoRepository;
     private final CargoWebSocketController cargoWebSocketController;
     private final PortDistanceForCargoService portDistanceForCargoService;
+    private final SessionPlayerRepository sessionPlayerRepository;
 
     public StartTravelServiceImpl(PlayerShipRepository playerShipRepository,
                                   ShipRepository shipRepository,
@@ -65,8 +74,8 @@ public class StartTravelServiceImpl implements StartTravelService {
                                   GameTickScheduler gameTickScheduler,
                                   SessionCargoRepository sessionCargoRepository,
                                   CargoWebSocketController cargoWebSocketController,
-                                  PortDistanceForCargoService portDistanceForCargoService
-    ) {
+                                  PortDistanceForCargoService portDistanceForCargoService,
+                                  SessionPlayerRepository sessionPlayerRepository) {
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
         this.portQueryService = portQueryService;
@@ -79,6 +88,7 @@ public class StartTravelServiceImpl implements StartTravelService {
         this.sessionCargoRepository = sessionCargoRepository;
         this.cargoWebSocketController = cargoWebSocketController;
         this.portDistanceForCargoService = portDistanceForCargoService;
+        this.sessionPlayerRepository = sessionPlayerRepository;
     }
 
     @Override
@@ -140,18 +150,34 @@ public class StartTravelServiceImpl implements StartTravelService {
 
             double effectiveSpeed = ship.getMaxSpeed() * speedSetting * GLOBAL_TRAVEL_SPEED_FACTOR;
 
+            int startTickDelay = 0;
+            if (request.isPilotageService()) {
+                int tickRateSeconds = Math.max(1, session.getTickRateSeconds());
+                double wallSeconds = DEPARTURE_ANIMATION_MS / 1000.0;
+                int delayForOverlay = (int) Math.ceil(wallSeconds / tickRateSeconds);
+                startTickDelay = delayForOverlay + DEPARTURE_START_BUFFER_TICKS;
+            }
+
             Travel travel = Travel.start(
                     playerShip.getId(), playerId, sessionId,
                     originPortId, destinationPortId,
                     distance, effectiveSpeed,
                     riskFactor, baseReward,
-                    currentTick
+                    currentTick,
+                    startTickDelay
             );
 
             playerShip.departForVoyage(destinationPortId);
             playerShip.consumeFuel(requiredFuelPercent);
             playerShipRepository.save(playerShip);
             Travel saved = travelRepository.save(travel);
+
+            if (request.isPilotageService()) {
+                ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
+                        .orElseThrow(() -> new PlayerNotFoundException(playerId));
+                player.subtractBalance(PILOTAGE_COST);
+                sessionPlayerRepository.save(player);
+            }
 
             gameTickScheduler.triggerImmediateBroadcast(sessionId);
             cargoWebSocketController.broadcastMarketUpdate(sessionId);

@@ -27,9 +27,11 @@ export default class Ship {
         elapsedMs: number,
         totalMs: number,
         alignStart: boolean = false,
+        startDelayMs: number = 0,
     ) {
         const safeTotalMs = Math.max(1, totalMs);
         const safeElapsedMs = Math.max(0, Math.min(safeTotalMs, elapsedMs));
+        const safeStartDelayMs = Math.max(0, startDelayMs);
 
         this.routeActive = true;
         this.routeOriginX = originX;
@@ -37,7 +39,7 @@ export default class Ship {
         this.routeDestX = destX;
         this.routeDestY = destY;
         this.routeTotalMs = safeTotalMs;
-        this.routeStartAtMs = performance.now() - safeElapsedMs;
+        this.routeStartAtMs = performance.now() + safeStartDelayMs - safeElapsedMs;
 
         this.velX = 0;
         this.velY = 0;

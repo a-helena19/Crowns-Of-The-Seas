@@ -54,6 +54,18 @@ public class Travel {
                                double distance, double speedSetting,
                                double riskFactor, BigDecimal baseReward,
                                int currentTick) {
+        return start(playerShipId, playerId, sessionId, originPortId, destinationPortId,
+                distance, speedSetting, riskFactor, baseReward, currentTick, 0);
+    }
+
+    /**
+     * @param startTickDelay extra ticks before {@code startTick}; progress stays at 0 until then.
+     */
+    public static Travel start(UUID playerShipId, UUID playerId, UUID sessionId,
+                               UUID originPortId, UUID destinationPortId,
+                               double distance, double speedSetting,
+                               double riskFactor, BigDecimal baseReward,
+                               int currentTick, int startTickDelay) {
         if (originPortId.equals(destinationPortId)) {
             throw new SamePortException("Same port", originPortId);
         }
@@ -62,7 +74,8 @@ public class Travel {
         }
 
         int durationTicks = (int) Math.ceil(distance / Math.max(speedSetting, 0.01));
-        int arrivalTick = currentTick + durationTicks;
+        int effectiveStartTick = currentTick + Math.max(0, startTickDelay);
+        int arrivalTick = effectiveStartTick + durationTicks;
 
         return new Travel(
                 UUID.randomUUID(),
@@ -71,7 +84,7 @@ public class Travel {
                 distance, speedSetting, riskFactor, baseReward,
                 TravelStatus.IN_PROGRESS,
                 Instant.now(), null, 0.0,
-                currentTick, arrivalTick
+                effectiveStartTick, arrivalTick
         );
     }
 
@@ -170,6 +183,7 @@ public class Travel {
 
     public double getProgress(int currentTick) {
         if (arrivalTick <= startTick) return 1.0;
-        return Math.min(1.0, (double)(currentTick - startTick) / (arrivalTick - startTick));
+        double raw = (double) (currentTick - startTick) / (arrivalTick - startTick);
+        return Math.max(0.0, Math.min(1.0, raw));
     }
 }

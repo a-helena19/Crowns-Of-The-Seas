@@ -51,11 +51,6 @@ interface ShipPositionEventPayload {
     }>;
 }
 
-interface ApiErrorResponse {
-    error?: string;
-    message?: string;
-}
-
 const TYPE_LABELS: Record<string, string> = {
     GENERAL_GOODS: "General",
     FOOD: "Food",
@@ -75,15 +70,24 @@ const TYPE_COLORS: Record<string, string> = {
     LUXURY_GOODS: "#a07030",
 };
 
-const SPEED_SETTINGS = [0.25, 0.4, 0.6, 0.8, 1.0];
+const SPEED_SETTINGS = [0.5, 0.625, 0.75, 0.875, 1.0];
+
+interface AcceptedCargo {
+    id: string;
+    from: string;
+    to: string;
+    weight: number;
+    destinationPortId: string;
+    speedSetting: number;
+}
 
 interface Props {
-    onTravelStarted: () => void;
+    onCargoAccepted: (cargo: AcceptedCargo) => void;
     currentPortId: string | null;
     playerShipId: string | null;
 }
 
-export default function CargoScreen({ onTravelStarted, currentPortId, playerShipId }: Props) {
+export default function CargoScreen({ onCargoAccepted, currentPortId, playerShipId }: Props) {
     const [cargos, setCargos] = useState<SessionCargoDTO[]>([]);
     const [selected, setSelected] = useState<SessionCargoDTO | null>(null);
     const [loading, setLoading] = useState(true);
@@ -94,8 +98,7 @@ export default function CargoScreen({ onTravelStarted, currentPortId, playerShip
     const [estimateLoading, setEstimateLoading] = useState(false);
     const [fuelError, setFuelError] = useState<string | null>(null);
 
-    const [starting, setStarting] = useState(false);
-    const [startError, setStartError] = useState<string | null>(null);
+    const starting = false;
     const [shipInTransit, setShipInTransit] = useState(false);
 
     // Aktueller Tick fuer die Expiry-Anzeige der Cargos.
@@ -110,6 +113,14 @@ export default function CargoScreen({ onTravelStarted, currentPortId, playerShip
         window.addEventListener("backend-tick", onTick);
         return () => window.removeEventListener("backend-tick", onTick);
     }, []);
+
+const WeightIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="7" r="3" stroke="currentColor" strokeWidth="1.5"/>
+        <path d="M6.5 20h11l-2-9H8.5l-2 9Z" stroke="currentColor" strokeWidth="1.5"/>
+    </svg>
+);
+    const [acceptError, setAcceptError] = useState<string | null>(null);
 
     const sessionData = sessionStorage.getItem("currentSession");
     const sessionId = sessionData ? (JSON.parse(sessionData) as { id: string }).id : null;
@@ -179,7 +190,7 @@ export default function CargoScreen({ onTravelStarted, currentPortId, playerShip
                 setSelected((prev) => {
                     if (prev && filtered.some((c) => c.id === prev.id)) return prev;
                     if (prev) {
-                        setStartError("Diese Fracht wurde gerade von einem anderen Kapitän übernommen.");
+                        setAcceptError("Diese Fracht wurde gerade von einem anderen Kapitän übernommen.");
                     }
                     return filtered[0] ?? null;
                 });
@@ -237,67 +248,21 @@ export default function CargoScreen({ onTravelStarted, currentPortId, playerShip
     const canAfford = !fuelEstimate || (currentSpeedOpt?.canAfford ?? false);
     const hasNoAffordableOption = fuelEstimate != null && fuelEstimate.speedOptions.every((o) => !o.canAfford);
 
-    async function handleStartTravel() {
+    function handleAcceptCargo() {
         if (!selected) return;
-        if (!playerShipId) {
-            setStartError("Bitte zuerst ein Schiff auswählen.");
-            return;
-        }
-        if (!playerId || !sessionId) {
-            setStartError("Session oder Spieler nicht gefunden.");
-            return;
-        }
-        if (hasNoAffordableOption) {
-            setFuelError("Nicht genug Treibstoff für diese Fracht.");
-            return;
-        }
-        if (!canAfford) {
-            setFuelError("Nicht genug Treibstoff für dieses Speed-Setting.");
-            return;
-        }
-
-        const speedSetting = SPEED_SETTINGS[speedIndex];
-        setStarting(true);
-        setStartError(null);
+        if (!playerShipId) { setAcceptError("Bitte zuerst ein Schiff auswählen."); return; }
+        if (hasNoAffordableOption) { setFuelError("Nicht genug Treibstoff für diese Fracht."); return; }
+        if (!canAfford) { setFuelError("Nicht genug Treibstoff für dieses Speed-Setting."); return; }
         setFuelError(null);
-
-        try {
-            const response = await fetch(`/api/travels/start/${playerId}?sessionId=${sessionId}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({
-                    playerShipId,
-                    destinationPortId: selected.destinationPortId,
-                    sessionCargoId: selected.id,
-                    speedSetting,
-                }),
-            });
-
-            let data: ApiErrorResponse | null = null;
-            const text = await response.text();
-            try { data = text ? (JSON.parse(text) as ApiErrorResponse) : null; } catch { data = null; }
-
-            if (!response.ok) {
-                const err = data?.error ?? "";
-                if (err === "CARGO_TAKEN") {
-                    setSelected(null);
-                    setStartError("Diese Fracht wurde soeben von einem anderen Kapitän übernommen. Wähle eine neue Fracht.");
-                } else if (err === "CAPACITY_EXCEEDED") {
-                    setStartError("Dein Schiff ist zu klein für diese Fracht.");
-                } else if (err === "INSUFFICIENT_FUEL") {
-                    setStartError(data?.message ?? "Nicht genug Treibstoff.");
-                } else {
-                    setStartError(data?.message ?? "Reise konnte nicht gestartet werden.");
-                }
-                return;
-            }
-
-            onTravelStarted();
-        } catch {
-            setStartError("Verbindungsfehler.");
-        } finally {
-            setStarting(false);
-        }
+        setAcceptError(null);
+        onCargoAccepted({
+            id: selected.id,
+            from: selected.originPortName,
+            to: selected.destinationPortName,
+            weight: selected.capacity,
+            destinationPortId: selected.destinationPortId,
+            speedSetting: SPEED_SETTINGS[speedIndex],
+        });
     }
 
     const riskLabel = (r: number) => r < 0.1 ? "Niedrig" : r < 0.25 ? "Mittel" : r < 0.4 ? "Hoch" : "Extrem";
@@ -365,7 +330,7 @@ export default function CargoScreen({ onTravelStarted, currentPortId, playerShip
                             return (
                                 <div
                                     key={c.id}
-                                    onClick={() => { setSelected(c); setFuelError(null); setStartError(null); }}
+                                    onClick={() => { setSelected(c); setFuelError(null); setAcceptError(null); }}
                                     className={`cargo-item ${selected?.id === c.id ? "active" : ""}`}
                                 >
                                     <div className="cargo-item-row">
@@ -426,6 +391,11 @@ export default function CargoScreen({ onTravelStarted, currentPortId, playerShip
                                     <div className="cargo-stat">
                                         <div className="cargo-stat-label">Risiko</div>
                                         <strong className={riskClass(selected.risk)}>{riskLabel(selected.risk)}</strong>
+                                    </div>
+                                    <div className="cargo-stat">
+                                        <WeightIcon />
+                                        <div className="cargo-stat-label">Gewicht</div>
+                                        <strong>{selected.capacity} t</strong>
                                     </div>
                                     <div className="cargo-stat">
                                         <div className="cargo-stat-label">Typ</div>
@@ -554,15 +524,15 @@ export default function CargoScreen({ onTravelStarted, currentPortId, playerShip
                                 )}
 
                                 {fuelError && <div className="cargo-error">{fuelError}</div>}
-                                {startError && <div className="cargo-error">{startError}</div>}
+                                {acceptError && <div className="cargo-error">{acceptError}</div>}
 
                                 <button
                                     type="button"
                                     className="cargo-btn"
-                                    onClick={handleStartTravel}
+                                    onClick={handleAcceptCargo}
                                     disabled={startBtnDisabled}
                                 >
-                                    {starting ? "Reise wird gestartet…" : "Reise starten"}
+                                    Fracht annehmen
                                 </button>
                             </>
                         ) : (
