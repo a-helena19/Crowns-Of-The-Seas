@@ -21,6 +21,7 @@ public class SessionCargoDTO {
     private double risk;
     private CargoStatus cargoStatus;
     private int spawnTick;
+    private int expiresAtTick;
     private String name;
     private String description;
 
@@ -136,6 +137,14 @@ public class SessionCargoDTO {
 
     public void setSpawnTick(int spawnTick) {
         this.spawnTick = spawnTick;
+    }
+
+    public int getExpiresAtTick() {
+        return expiresAtTick;
+    }
+
+    public void setExpiresAtTick(int expiresAtTick) {
+        this.expiresAtTick = expiresAtTick;
     }
 
     public String getName() {
