@@ -330,7 +330,7 @@ const WeightIcon = () => (
                             return (
                                 <div
                                     key={c.id}
-                                    onClick={() => { setSelected(c); setFuelError(null); setStartError(null); }}
+                                    onClick={() => { setSelected(c); setFuelError(null); setAcceptError(null); }}
                                     className={`cargo-item ${selected?.id === c.id ? "active" : ""}`}
                                 >
                                     <div className="cargo-item-row">
