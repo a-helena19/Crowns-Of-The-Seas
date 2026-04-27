@@ -4,5 +4,6 @@ public enum CargoStatus {
     AVAILABLE,
     ASSIGNED,
     DELIVERED,
+    EXPIRED,
     INACTIVE
 }

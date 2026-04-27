@@ -57,6 +57,9 @@ public class SessionCargoEntity {
     @Column(name = "cooldown_until_tick", nullable = false)
     private int cooldownUntilTick;
 
+    @Column(name = "expires_at_tick", nullable = false)
+    private int expiresAtTick;
+
     public SessionCargoEntity() {}
 
     public UUID getId() {
@@ -177,5 +180,13 @@ public class SessionCargoEntity {
 
     public void setCooldownUntilTick(int cooldownUntilTick) {
         this.cooldownUntilTick = cooldownUntilTick;
+    }
+
+    public int getExpiresAtTick() {
+        return expiresAtTick;
+    }
+
+    public void setExpiresAtTick(int expiresAtTick) {
+        this.expiresAtTick = expiresAtTick;
     }
 }

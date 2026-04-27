@@ -294,6 +294,20 @@ public class GameTickScheduler {
         List<SessionCargo> all = sessionCargoRepository.findAllBySessionId(sessionId);
         boolean changed = false;
 
+        for (SessionCargo sc : all) {
+            if (sc.isExpiredAt(currentTick)) {
+                int cooldown = CargoSessionInitializer.randomizedCooldownFor(sc.getCargoType(), rng);
+                sc.expire(currentTick + cooldown);
+                sessionCargoRepository.save(sc);
+                changed = true;
+                System.out.println("[CargoExpiry] Cargo " + sc.getId() + " expired at tick " + currentTick);
+            }
+        }
+
+        if (changed) {
+            all = sessionCargoRepository.findAllBySessionId(sessionId);
+        }
+
         Map<UUID, List<SessionCargo>> byPort = new java.util.HashMap<>();
         for (SessionCargo sc : all) {
             byPort.computeIfAbsent(sc.getOriginPortId(), k -> new ArrayList<>()).add(sc);

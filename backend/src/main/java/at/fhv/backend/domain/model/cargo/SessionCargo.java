@@ -22,9 +22,10 @@ public class SessionCargo {
     private UUID assignedPlayerShipId;
     private final int spawnTick;
     private int cooldownUntilTick;
+    private int expiresAtTick;
 
     public SessionCargo(UUID id, UUID cargoId, UUID sessionId, UUID originPortId, UUID destinationPortId, BigDecimal reward, boolean containsIllegal,
-                        int capacity, CargoType cargoType, double risk, CargoStatus cargoStatus, UUID assignedPlayerId, UUID assignedPlayerShipId, int spawnTick, int cooldownUntilTick) {
+                        int capacity, CargoType cargoType, double risk, CargoStatus cargoStatus, UUID assignedPlayerId, UUID assignedPlayerShipId, int spawnTick, int cooldownUntilTick, int expiresAtTick) {
         this.id = id;
         this.cargoId = cargoId;
         this.sessionId = sessionId;
@@ -40,10 +41,22 @@ public class SessionCargo {
         this.assignedPlayerShipId = assignedPlayerShipId;
         this.spawnTick = spawnTick;
         this.cooldownUntilTick = cooldownUntilTick;
+        this.expiresAtTick = expiresAtTick;
     }
 
-    public static SessionCargo create(UUID cargoId, UUID sessionId, UUID originPortId, UUID destinationPortId, BigDecimal reward,
-                                      boolean containsIllegal, int capacity, CargoType cargoType, double risk, int spawnTick) {
+    public static SessionCargo create(
+            UUID cargoId,
+            UUID sessionId,
+            UUID originPortId,
+            UUID destinationPortId,
+            BigDecimal reward,
+            boolean containsIllegal,
+            int capacity,
+            CargoType cargoType,
+            double risk,
+            int spawnTick,
+            int lifetimeTicks
+    ) {
         return new SessionCargo(
                 UUID.randomUUID(),
                 cargoId,
@@ -59,12 +72,13 @@ public class SessionCargo {
                 null,
                 null,
                 spawnTick,
-                -1
+                -1,
+                spawnTick + lifetimeTicks
         );
     }
 
     public static SessionCargo reconstruct(UUID id, UUID cargoId, UUID sessionId, UUID originPortId, UUID destinationPortId, BigDecimal reward, boolean containsIllegal,
-                                           int capacity, CargoType cargoType, double risk, CargoStatus cargoStatus, UUID assignedPlayerId, UUID assignedPlayerShipId, int spawnTick, int cooldownUntilTick) {
+                                           int capacity, CargoType cargoType, double risk, CargoStatus cargoStatus, UUID assignedPlayerId, UUID assignedPlayerShipId, int spawnTick, int cooldownUntilTick, int expiresAtTick) {
         return new SessionCargo(
                 id,
                 cargoId,
@@ -80,7 +94,8 @@ public class SessionCargo {
                 assignedPlayerId,
                 assignedPlayerShipId,
                 spawnTick,
-                cooldownUntilTick);
+                cooldownUntilTick,
+                expiresAtTick);
     }
 
     public void activate() {
@@ -90,14 +105,22 @@ public class SessionCargo {
         }
     }
 
-    public void assign(UUID playerId, UUID playerShipId, int cooldownTicks, int currentTick) {
+    public void assign(UUID playerId, UUID playerShipId, int expiresAtTick) {
         if (cargoStatus != CargoStatus.AVAILABLE) {
             throw new CargoNotAvailableException(id);
         }
         this.cargoStatus = CargoStatus.ASSIGNED;
         this.assignedPlayerId = playerId;
         this.assignedPlayerShipId = playerShipId;
-        this.cooldownUntilTick = currentTick + cooldownTicks;
+        this.expiresAtTick = expiresAtTick;
+    }
+
+    public void expire(int cooldownUntilTick) {
+        this.cargoStatus = CargoStatus.EXPIRED;
+        this.assignedPlayerId = null;
+        this.assignedPlayerShipId = null;
+        this.expiresAtTick = -1;
+        this.cooldownUntilTick = cooldownUntilTick;
     }
 
     public void deliver() {
@@ -119,7 +142,12 @@ public class SessionCargo {
     }
 
     public boolean shouldRespawnAt(int currentTick) {
-        return cargoStatus == CargoStatus.INACTIVE && cooldownUntilTick >= 0 && currentTick >= cooldownUntilTick;
+        return (cargoStatus == CargoStatus.INACTIVE || cargoStatus == CargoStatus.EXPIRED)
+                && cooldownUntilTick >= 0 && currentTick >= cooldownUntilTick;
+    }
+
+    public boolean isExpiredAt(int currentTick) {
+        return cargoStatus == CargoStatus.ASSIGNED && expiresAtTick >= 0 && currentTick > expiresAtTick;
     }
 
     public UUID getId() {
@@ -180,5 +208,9 @@ public class SessionCargo {
 
     public int getCooldownUntilTick() {
         return cooldownUntilTick;
+    }
+
+    public int getExpiresAtTick() {
+        return expiresAtTick;
     }
 }

@@ -18,6 +18,8 @@ interface SessionCargoDTO {
     risk: number;
     cargoStatus: string;
     containsIllegal: boolean;
+    expiresAtTick: number;
+    lifetimeTicks: number;
 }
 
 interface SpeedOption {
@@ -98,6 +100,19 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
 
     const starting = false;
     const [shipInTransit, setShipInTransit] = useState(false);
+
+    // Aktueller Tick fuer die Expiry-Anzeige der Cargos.
+    // Liest initial den letzten Tick aus dem Window-Cache und reagiert auf neue Ticks
+    // (siehe useGameSessionWebSocket -> 'backend-tick' Event).
+    const [currentTick, setCurrentTick] = useState<number>(window.__latestTick?.currentTick ?? 0);
+    useEffect(() => {
+        const onTick = (e: Event) => {
+            const detail = (e as CustomEvent<{ currentTick: number }>).detail;
+            setCurrentTick(detail.currentTick);
+        };
+        window.addEventListener("backend-tick", onTick);
+        return () => window.removeEventListener("backend-tick", onTick);
+    }, []);
 
 const WeightIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -253,6 +268,41 @@ const WeightIcon = () => (
     const riskLabel = (r: number) => r < 0.1 ? "Niedrig" : r < 0.25 ? "Mittel" : r < 0.4 ? "Hoch" : "Extrem";
     const riskClass = (r: number) => r < 0.1 ? "risk-low" : r < 0.25 ? "risk-medium" : r < 0.4 ? "risk-high" : "risk-extreme";
 
+    /**
+     * Berechnet wie viele Ticks/Tage noch uebrig sind bis ein Cargo expired.
+     * - null  => Cargo laeuft nicht ab (lifetimeTicks <= 0)
+     * - <= 0  => Cargo ist gerade abgelaufen
+     */
+    const ticksUntilExpiry = (c: SessionCargoDTO): number | null => {
+        if (!c.expiresAtTick || c.expiresAtTick < 0) return null;
+        return c.expiresAtTick - currentTick;
+    };
+
+    const expiryClass = (ticksLeft: number | null): string => {
+        if (ticksLeft == null) return "";
+        if (ticksLeft <= 2) return "cargo-expiry-critical";
+        if (ticksLeft <= 5) return "cargo-expiry-warn";
+        return "cargo-expiry-ok";
+    };
+
+    // Lokal abgelaufene Cargos rausfiltern (das Backend macht das auch beim naechsten Tick,
+    // aber wir wollen nicht warten bis der naechste WebSocket-Push kommt).
+    useEffect(() => {
+        setCargos((prev) => {
+            const filtered = prev.filter((c) => {
+                const left = ticksUntilExpiry(c);
+                return left == null || left > 0;
+            });
+            return filtered.length === prev.length ? prev : filtered;
+        });
+        // selected ggf. abwaehlen wenn er gerade abgelaufen ist
+        if (selected) {
+            const left = ticksUntilExpiry(selected);
+            if (left != null && left <= 0) setSelected(null);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentTick]);
+
     if (loading) {
         return <div className="cargo-screen"><p style={{ color: "#aaa", textAlign: "center", marginTop: 80 }}>Lade Frachtbörse…</p></div>;
     }
@@ -275,24 +325,38 @@ const WeightIcon = () => (
                                 <span style={{ fontSize: 11, opacity: 0.6 }}>Neue Angebote erscheinen mit der Zeit.</span>
                             </div>
                         )}
-                        {cargos.map((c) => (
-                            <div
-                                key={c.id}
-                                onClick={() => { setSelected(c); setFuelError(null); setAcceptError(null); }}
-                                className={`cargo-item ${selected?.id === c.id ? "active" : ""}`}
-                            >
-                                <div className="cargo-item-row">
-                                    <span className="cargo-item-name">{c.name}</span>
-                                    <span className="cargo-item-profit">{Number(c.reward).toLocaleString("de-DE")} G</span>
-                                </div>
-                                <div className="cargo-item-sub">
+                        {cargos.map((c) => {
+                            const ticksLeft = ticksUntilExpiry(c);
+                            return (
+                                <div
+                                    key={c.id}
+                                    onClick={() => { setSelected(c); setFuelError(null); setStartError(null); }}
+                                    className={`cargo-item ${selected?.id === c.id ? "active" : ""}`}
+                                >
+                                    <div className="cargo-item-row">
+                                        <span className="cargo-item-name">{c.name}</span>
+                                        <span className="cargo-item-profit">{Number(c.reward).toLocaleString("de-DE")} G</span>
+                                    </div>
+                                    <div className="cargo-item-sub">
                                     <span style={{ background: TYPE_COLORS[c.cargoType] + "22", color: TYPE_COLORS[c.cargoType], padding: "1px 6px", borderRadius: 3, fontSize: 10, fontWeight: "bold", letterSpacing: 1 }}>
                                         {TYPE_LABELS[c.cargoType] ?? c.cargoType}
                                     </span>
-                                    <span>{c.originPortName} → {c.destinationPortName}</span>
+                                        <span>{c.originPortName} → {c.destinationPortName}</span>
+                                        {ticksLeft != null && (
+                                            <span className={expiryClass(ticksLeft)} style={{ marginLeft: "auto", fontSize: 10, fontWeight: "bold", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M5 22h14" />
+                                                <path d="M5 2h14" />
+                                                <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" />
+                                                <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" />
+                                            </svg>
+                                                {ticksLeft} {ticksLeft === 1 ? "Tag" : "Tage"}
+                                        </span>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     <div className="cargo-detail">
@@ -340,6 +404,29 @@ const WeightIcon = () => (
                                         </strong>
                                     </div>
                                 </div>
+
+                                {(() => {
+                                    const ticksLeft = ticksUntilExpiry(selected);
+                                    if (ticksLeft == null) return null;
+                                    return (
+                                        <div className={`cargo-expiry-box ${expiryClass(ticksLeft)}`}>
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <line x1="10" y1="2" x2="14" y2="2" />
+                                                <line x1="12" y1="14" x2="15" y2="11" />
+                                                <circle cx="12" cy="14" r="8" />
+                                            </svg>
+                                            <div>
+                                                <div style={{ fontSize: 10, opacity: 0.7, letterSpacing: 1 }}>VERFÜGBAR NOCH</div>
+                                                <strong>{ticksLeft} {ticksLeft === 1 ? "Tag" : "Tage"}</strong>
+                                            </div>
+                                            {ticksLeft <= 2 && (
+                                                <span style={{ marginLeft: "auto", fontSize: 11, fontStyle: "italic" }}>
+                                                    läuft bald aus
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
 
                                 {!playerShipId && (
                                     <div className="cargo-speed-hint" style={{ marginTop: 20, marginBottom: 16 }}>
