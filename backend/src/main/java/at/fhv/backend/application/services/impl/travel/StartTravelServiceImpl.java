@@ -1,7 +1,6 @@
 package at.fhv.backend.application.services.impl.travel;
 
 import at.fhv.backend.application.dtos.mapper.TravelResponseMapper;
-import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.application.services.cargo.PortDistanceForCargoService;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
@@ -67,7 +66,7 @@ public class StartTravelServiceImpl implements StartTravelService {
                                   SessionCargoRepository sessionCargoRepository,
                                   CargoWebSocketController cargoWebSocketController,
                                   PortDistanceForCargoService portDistanceForCargoService
-                                  ) {
+    ) {
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
         this.portQueryService = portQueryService;
@@ -115,8 +114,12 @@ public class StartTravelServiceImpl implements StartTravelService {
                 throw new CargoNotAvailableException(cargo.getId());
             }
 
-            int cooldownTicks = CargoSessionInitializer.cooldownTicksFor(cargo.getCargoType());
-            cargo.assign(playerId, playerShip.getId(), cooldownTicks, currentTick);
+            double distanceForExpiry = portDistanceForCargoService.distanceBetween(originPortId, destinationPortId);
+            double fastestSpeed = ship.getMaxSpeed() * 1.0 * 0.75;
+            int fastestTravelTicks = (int) Math.ceil(distanceForExpiry / Math.max(fastestSpeed, 0.01));
+            int expiresAtTick = currentTick + Math.max((int) Math.ceil(fastestTravelTicks * 3.0), 20);
+
+            cargo.assign(playerId, playerShip.getId(), expiresAtTick);
             sessionCargoRepository.save(cargo);
 
             double distance = portDistanceForCargoService.distanceBetween(originPortId, destinationPortId);

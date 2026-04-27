@@ -640,3 +640,49 @@
     color: #999;
     text-decoration: line-through;
 }
+
+
+.cargo-expiry-ok {
+    color: #7a6a4a;
+}
+
+.cargo-expiry-warn {
+    color: #b8801a;
+}
+
+.cargo-expiry-critical {
+    color: #c04040;
+    animation: cargo-expiry-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes cargo-expiry-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+}
+
+.cargo-expiry-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    margin: 16px 0;
+    border-radius: 4px;
+    background: #f3ecd8;
+    border-left: 3px solid currentColor;
+    font-family: "Georgia", serif;
+}
+
+.cargo-expiry-box.cargo-expiry-ok {
+    background: #f3ecd8;
+    border-left-color: #67593f;
+}
+
+.cargo-expiry-box.cargo-expiry-warn {
+    background: #f7ecd0;
+    border-left-color: #ac9679;
+}
+
+.cargo-expiry-box.cargo-expiry-critical {
+    background: #f5d8d8;
+    border-left-color: #c04040;
+}
