@@ -1,6 +1,6 @@
 import "../style/Sidebar.css";
 
-type View = "map" | "harbor" | "broker";
+type View = "map" | "harbor" | "broker" | "portProfile";
 
 interface Props {
     currentView: View;

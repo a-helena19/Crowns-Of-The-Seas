@@ -364,7 +364,10 @@ export default class MainScene extends Phaser.Scene {
         ports.forEach(port => {
             const px = (port.x / 100) * this.scale.width;
             const py = (port.y / 100) * this.scale.height;
-            const img = this.add.image(px, py, 'harbor').setScale(0.01).setInteractive();
+            const img = this.add.image(px, py, 'harbor')
+                .setScale(0.01)
+                .setInteractive(new Phaser.Geom.Circle(0, 0, 2000), Phaser.Geom.Circle.Contains)
+                .setDepth(6);
 
             img.on('pointerdown', () => {
                 window.dispatchEvent(new CustomEvent('port-clicked', { detail: port }));
