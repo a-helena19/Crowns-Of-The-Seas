@@ -20,6 +20,8 @@ public class StartTravelDTO {
     @DecimalMax(value = "1.0", message = "speedSetting must be max 1.0.")
     private double speedSetting = 1.0;
 
+    private boolean pilotageService = false;
+
     public StartTravelDTO() {}
 
     public UUID getPlayerShipId() {
@@ -52,5 +54,13 @@ public class StartTravelDTO {
 
     public void setSpeedSetting(double speedSetting) {
         this.speedSetting = speedSetting;
+    }
+
+    public boolean isPilotageService() {
+        return pilotageService;
+    }
+
+    public void setPilotageService(boolean pilotageService) {
+        this.pilotageService = pilotageService;
     }
 }

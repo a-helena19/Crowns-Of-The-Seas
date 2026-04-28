@@ -6,6 +6,7 @@ import at.fhv.backend.domain.model.cargo.exception.CargoCapacityExceededExceptio
 import at.fhv.backend.domain.model.cargo.exception.CargoNotAvailableException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
 import at.fhv.backend.domain.model.exception.InsufficientFuelException;
+import at.fhv.backend.domain.model.player.exception.InsufficientBalanceException;
 import at.fhv.backend.domain.model.exception.InvalidTravelDataException;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
 import at.fhv.backend.rest.dtos.ship.request.FuelEstimateRequest;
@@ -104,6 +105,9 @@ public class TravelRestController {
         } catch (CargoNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "CARGO_NOT_FOUND", "message", "Frachtangebot nicht gefunden."));
+        } catch (InsufficientBalanceException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "INSUFFICIENT_BALANCE", "message", "Nicht genug Taler für den Lotsendienst (600 Taler)."));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
