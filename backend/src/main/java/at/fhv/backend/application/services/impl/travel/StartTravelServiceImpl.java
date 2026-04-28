@@ -42,11 +42,9 @@ import java.util.stream.Collectors;
 
 @Service
 public class StartTravelServiceImpl implements StartTravelService {
-    private static final double GLOBAL_TRAVEL_SPEED_FACTOR = 0.75; // < 1.0 => longer travel time
+    private static final double GLOBAL_TRAVEL_SPEED_FACTOR = 0.75;
     private static final BigDecimal PILOTAGE_COST = new BigDecimal("600");
-    /** Wall duration of harbor departure overlay; must match frontend `DEPARTURE_ANIMATION_DURATION_MS`. */
     private static final int DEPARTURE_ANIMATION_MS = 3000;
-    /** Extra game ticks before route progress begins after the overlay duration. */
     private static final int DEPARTURE_START_BUFFER_TICKS = 0;
 
     private final PlayerShipRepository playerShipRepository;
@@ -113,13 +111,22 @@ public class StartTravelServiceImpl implements StartTravelService {
                     .orElseThrow(() -> new SessionNotFoundException(sessionId));
             int currentTick = session.getCurrentTick();
 
+            ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
+                    .orElseThrow(() -> new PlayerNotFoundException(playerId));
+
+            int baseLoadingTicks = 10;
+            double capacityFactor = 1.0 + (cargo.getCapacity() / 100.0);
+            double playerModifier = player.getLoadingTimeModifier();
+            int loadingTicks = (int) Math.ceil(baseLoadingTicks * capacityFactor * playerModifier);
+            loadingTicks = Math.max(1, loadingTicks);
+            int loadingCompletedAtTick = currentTick + loadingTicks;
+
             if (cargo.getCargoStatus() != CargoStatus.AVAILABLE || !cargo.isVisibleAt(currentTick)) {
                 throw new CargoNotAvailableException(cargo.getId());
             }
             if (ship.getMaxCargoCapacity() < cargo.getCapacity()) {
                 throw new CargoCapacityExceededException(cargo.getCapacity(), ship.getMaxCargoCapacity());
             }
-
             if (!destinationPortId.equals(cargo.getDestinationPortId())) {
                 throw new CargoNotAvailableException(cargo.getId());
             }
@@ -129,14 +136,12 @@ public class StartTravelServiceImpl implements StartTravelService {
             int fastestTravelTicks = (int) Math.ceil(distanceForExpiry / Math.max(fastestSpeed, 0.01));
             int expiresAtTick = currentTick + Math.max((int) Math.ceil(fastestTravelTicks * 3.0), 20);
 
-            cargo.assign(playerId, playerShip.getId(), expiresAtTick);
+            cargo.assignWithLoading(playerId, playerShip.getId(), expiresAtTick, loadingCompletedAtTick);
             sessionCargoRepository.save(cargo);
 
             double distance = portDistanceForCargoService.distanceBetween(originPortId, destinationPortId);
-
             double speedSetting = Math.max(0.25, Math.min(1.0, request.getSpeedSetting()));
             double speedMultiplier = 0.5 + speedSetting;
-
             double baseFuelAbsolute = calculateFuelConsumptionService.calculateFuelConsumption(ship, distance);
             double requiredFuelAbsolute = baseFuelAbsolute * speedMultiplier;
 
@@ -145,9 +150,12 @@ public class StartTravelServiceImpl implements StartTravelService {
 
             double requiredFuelPercent = (requiredFuelAbsolute / ship.getMaxFuel().doubleValue()) * 100.0;
 
+            playerShip.startLoading(destinationPortId, loadingCompletedAtTick);
+            playerShip.consumeFuel(requiredFuelPercent);
+            playerShipRepository.save(playerShip);
+
             double riskFactor = calculateRiskFactor(playerShip, ship);
             BigDecimal baseReward = cargo.getReward();
-
             double effectiveSpeed = ship.getMaxSpeed() * speedSetting * GLOBAL_TRAVEL_SPEED_FACTOR;
 
             int startTickDelay = 0;
@@ -167,14 +175,9 @@ public class StartTravelServiceImpl implements StartTravelService {
                     startTickDelay
             );
 
-            playerShip.departForVoyage(destinationPortId);
-            playerShip.consumeFuel(requiredFuelPercent);
-            playerShipRepository.save(playerShip);
             Travel saved = travelRepository.save(travel);
 
             if (request.isPilotageService()) {
-                ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
-                        .orElseThrow(() -> new PlayerNotFoundException(playerId));
                 player.subtractBalance(PILOTAGE_COST);
                 sessionPlayerRepository.save(player);
             }

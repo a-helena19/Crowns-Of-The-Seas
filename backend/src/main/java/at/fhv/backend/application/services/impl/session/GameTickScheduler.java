@@ -94,6 +94,23 @@ public class GameTickScheduler {
         tickLocks.remove(sessionId);
     }
 
+    private void checkLoadingCompletion(UUID sessionId, int currentTick) {
+        List<PlayerShip> allShips = playerShipRepository.findAllBySessionId(sessionId);
+
+        for (PlayerShip ship : allShips) {
+            if (ship.getStatus() == ShipStatus.LOADING
+                    && ship.getLoadingCompletedAtTick() > 0
+                    && currentTick >= ship.getLoadingCompletedAtTick()) {
+
+                ship.completeLoadingAndDepart();
+                playerShipRepository.save(ship);
+
+                System.out.println("[GameTick] Ship " + ship.getId()
+                        + " loading completed at tick " + currentTick);
+            }
+        }
+    }
+
     @Transactional
     public void processTick(UUID sessionId) {
         ReentrantLock lock = tickLocks.computeIfAbsent(sessionId, ignored -> new ReentrantLock());
@@ -160,6 +177,8 @@ public class GameTickScheduler {
             if (session == null) return;
             int currentTick = session.getCurrentTick();
 
+            checkLoadingCompletion(sessionId, currentTick);
+
             List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
             for (Travel travel : activeTravels) {
                 if (currentTick >= travel.getArrivalTick()) {
@@ -187,30 +206,6 @@ public class GameTickScheduler {
         tickLocks.clear();
         executor.shutdownNow();
     }
-
-//    private void handleArrival(Travel travel) {
-//        travel.markAsArrived(0.0, travel.getTravelStatus());
-//        travelRepository.save(travel);
-//
-//        PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
-//        if (ship != null) {
-//            ship.arriveAtPort(travel.getDestinationPortId());
-//            playerShipRepository.save(ship);
-//        }
-//
-//        List<SessionCargo> assignedCargos = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
-//        for (SessionCargo cargo : assignedCargos) {
-//            if (cargo.getAssignedPlayerShipId() != null
-//                    && cargo.getAssignedPlayerShipId().equals(travel.getPlayerShipId())
-//                    && cargo.getDestinationPortId().equals(travel.getDestinationPortId())
-//                    && cargo.getCargoStatus() == CargoStatus.ASSIGNED) {
-//                cargo.deliver();
-//                int cooldown = CargoSessionInitializer.randomizedCooldownFor(cargo.getCargoType(), rng);
-//                cargo.startCooldown(travel.getArrivalTick() + cooldown);
-//                sessionCargoRepository.save(cargo);
-//            }
-//        }
-//    }
 
     public void triggerImmediateBroadcast(UUID sessionId) {
         try {
