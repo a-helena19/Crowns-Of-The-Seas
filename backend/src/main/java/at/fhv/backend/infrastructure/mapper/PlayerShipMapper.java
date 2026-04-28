@@ -19,6 +19,7 @@ public class PlayerShipMapper implements EntityMapper<PlayerShip, PlayerShipEnti
         entity.setCurrentPortId(playerShip.getCurrentPortId());
         entity.setTargetPortId(playerShip.getTargetPortId());
         entity.setLoadingCompletedAtTick(playerShip.getLoadingCompletedAtTick());
+        entity.setUnloadingCompletedAtTick(playerShip.getUnloadingCompletedAtTick());
         return entity;
     }
 
@@ -34,7 +35,8 @@ public class PlayerShipMapper implements EntityMapper<PlayerShip, PlayerShipEnti
                 entity.getFuel(),
                 entity.getCurrentPortId(),
                 entity.getTargetPortId(),
-                entity.getLoadingCompletedAtTick()
+                entity.getLoadingCompletedAtTick(),
+                entity.getUnloadingCompletedAtTick()
         );
     }
 }

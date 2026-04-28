@@ -1,25 +1,19 @@
 package at.fhv.backend.application.services.impl.travel;
 
-import at.fhv.backend.application.services.travel.CargoUnloadService;
-import at.fhv.backend.application.services.travel.RewardCalculationService;
+import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.TravelArrivalService;
-import at.fhv.backend.domain.model.cargo.*;
+import at.fhv.backend.domain.model.cargo.SessionCargo;
+import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
-import at.fhv.backend.domain.model.port.Port;
-import at.fhv.backend.domain.model.port.PortId;
-import at.fhv.backend.domain.model.port.PortRepository;
+import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.domain.model.travel.TravelRepository;
-import at.fhv.backend.rest.GameSessionWebSocketController;
-import at.fhv.backend.rest.dtos.websocket.CargoRewardBreakdown;
-import at.fhv.backend.rest.dtos.websocket.TravelCompleteEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,160 +21,97 @@ import java.util.UUID;
 public class TravelArrivalServiceImpl implements TravelArrivalService {
     private final TravelRepository travelRepository;
     private final PlayerShipRepository playerShipRepository;
-    private final GameSessionRepository gameSessionRepository;
-    private final CargoUnloadService cargoUnloadService;
-    private final RewardCalculationService rewardCalculationService;
-    private final GameSessionWebSocketController webSocketController;
     private final SessionCargoRepository sessionCargoRepository;
-    private final PortRepository portRepository;
-    private final CargoRepository cargoRepository;
+    private final CargoUnloadingPhaseService cargoUnloadingPhaseService;
+    private final GameSessionRepository gameSessionRepository;
 
-    public TravelArrivalServiceImpl(TravelRepository travelRepository,
-                                    PlayerShipRepository playerShipRepository,
-                                    GameSessionRepository gameSessionRepository,
-                                    CargoUnloadService cargoUnloadService,
-                                    RewardCalculationService rewardCalculationService,
-                                    GameSessionWebSocketController webSocketController,
-                                    SessionCargoRepository sessionCargoRepository,
-                                    PortRepository portRepository,
-                                    CargoRepository cargoRepository) {
+    private static final int BASE_UNLOADING_TICKS = 5;
+
+    public TravelArrivalServiceImpl(
+            TravelRepository travelRepository,
+            PlayerShipRepository playerShipRepository,
+            SessionCargoRepository sessionCargoRepository,
+            CargoUnloadingPhaseService cargoUnloadingPhaseService,
+            GameSessionRepository gameSessionRepository) {
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
-        this.gameSessionRepository = gameSessionRepository;
-        this.cargoUnloadService = cargoUnloadService;
-        this.rewardCalculationService = rewardCalculationService;
-        this.webSocketController = webSocketController;
         this.sessionCargoRepository = sessionCargoRepository;
-        this.portRepository = portRepository;
-        this.cargoRepository = cargoRepository;
+        this.cargoUnloadingPhaseService = cargoUnloadingPhaseService;
+        this.gameSessionRepository = gameSessionRepository;
     }
 
     @Override
     @Transactional
     public void handleArrival(Travel travel) {
-        List<SessionCargo> cargosForPlayer =
-                sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
-
         travel.markAsArrived(0.0, travel.getTravelStatus());
         travelRepository.save(travel);
 
         PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
+        List<SessionCargo> cargosForPlayer = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
+
         if (ship != null) {
-            ship.arriveAtPort(travel.getDestinationPortId());
+            int unloadingDuration = calculateUnloadingTime(travel, cargosForPlayer);
+            int unloadingCompletedAtTick = travel.getArrivalTick() + unloadingDuration;
+
+            ship.arriveAndStartUnloading(travel.getDestinationPortId(), unloadingCompletedAtTick);
             playerShipRepository.save(ship);
+
+            System.out.println("[TravelArrival] Ship " + ship.getId() + " arrived at port " + travel.getDestinationPortId());
+            System.out.println("[TravelArrival] Ship set to UNLOADING status for " + unloadingDuration + " ticks (until tick " + unloadingCompletedAtTick + ")");
         }
 
-        cargoUnloadService.unloadCargoForTravel(travel, cargosForPlayer);
-
-        UUID playerId = travel.getPlayerId();
-        BigDecimal totalReward = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
-        BigDecimal previousBalance = BigDecimal.ZERO;
-        BigDecimal newBalance = BigDecimal.ZERO;
-
-        if (totalReward.compareTo(BigDecimal.ZERO) > 0) {
-            var session = gameSessionRepository.findById(travel.getSessionId()).orElse(null);
-            if (session != null) {
-                ISessionPlayer player = session.getPlayers().stream()
-                        .filter(p -> p.getUserId().equals(playerId))
-                        .findFirst()
-                        .orElse(null);
-
-                if (player != null) {
-                    previousBalance = player.getBalance();
-                    player.addBalance(totalReward);
-                    newBalance = player.getBalance();
-                    gameSessionRepository.save(session);
-                }
-            }
-        } else {
-            var session = gameSessionRepository.findById(travel.getSessionId()).orElse(null);
-            if (session != null) {
-                ISessionPlayer player = session.getPlayers().stream()
-                        .filter(p -> p.getUserId().equals(playerId))
-                        .findFirst()
-                        .orElse(null);
-                if (player != null) {
-                    previousBalance = player.getBalance();
-                    newBalance = player.getBalance();
-                }
-            }
-        }
-
-        sendTravelCompleteEvent(travel, playerId, cargosForPlayer, previousBalance, newBalance);
+        System.out.println("[TravelArrival] Found " + cargosForPlayer.size() + " cargos for player " + travel.getPlayerId());
+        System.out.println("[TravelArrival] Cargo unloading will be triggered by scheduler when UNLOADING-phase complete");
     }
 
-    private void sendTravelCompleteEvent(Travel travel, UUID playerId,
-                                         List<SessionCargo> cargosForPlayer,
-                                         BigDecimal previousBalance, BigDecimal newBalance) {
+    public void triggerUnloadingIfComplete(Travel travel, int currentTick) {
+        PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
+
+        if (ship != null && !ship.isStillUnloading(currentTick)) {
+            List<SessionCargo> cargosForPlayer =
+                    sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
+
+            cargoUnloadingPhaseService.completeUnloadingPhase(travel, cargosForPlayer);
+
+            System.out.println("[TravelArrival] Unloading complete for ship " + ship.getId() + " at tick " + currentTick);
+        }
+    }
+
+    private int calculateUnloadingTime(Travel travel, List<SessionCargo> cargosForPlayer) {
         try {
-            PortId destinationPortId = PortId.of(travel.getDestinationPortId());
-            Port destinationPort = portRepository.findById(destinationPortId).orElse(null);
-            String destinationPortName = destinationPort != null ? destinationPort.getName() : "Unknown Port";
+            GameSession session = gameSessionRepository.findById(travel.getSessionId()).orElse(null);
+            if (session == null) {
+                return BASE_UNLOADING_TICKS;
+            }
 
-            List<CargoRewardBreakdown> cargoRewards = cargosForPlayer.stream()
-                    .filter(sessionCargo -> {
-                        boolean isForThisPort = sessionCargo.getDestinationPortId()
-                                .equals(travel.getDestinationPortId());
-                        boolean isDeliveredOrExpired =
-                                sessionCargo.getCargoStatus() == CargoStatus.DELIVERED
-                                        || sessionCargo.getCargoStatus() == CargoStatus.EXPIRED;
-                        return isForThisPort && isDeliveredOrExpired;
-                    })
-                    .map(sessionCargo -> {
-                        BigDecimal actualReward = rewardCalculationService.calculateCargoReward(sessionCargo);
-                        int percentage = sessionCargo.getCargoStatus() == CargoStatus.DELIVERED
-                                ? 100
-                                : calculateExpiredPercentage(sessionCargo.getCargoType());
+            ISessionPlayer player = session.getPlayers().stream()
+                    .filter(p -> p.getUserId().equals(travel.getPlayerId()))
+                    .findFirst()
+                    .orElse(null);
 
-                        Cargo cargo = cargoRepository.findById(sessionCargo.getCargoId()).orElse(null);
-                        String cargoName = cargo != null ? cargo.getName() : "Unknown Cargo";
+            if (player == null) {
+                return BASE_UNLOADING_TICKS;
+            }
 
-                        return new CargoRewardBreakdown(
-                                sessionCargo.getId().toString(),
-                                cargoName,
-                                destinationPortName,
-                                sessionCargo.getReward(),
-                                actualReward,
-                                percentage,
-                                sessionCargo.getCargoStatus().toString(),
-                                sessionCargo.getCargoType().toString()
-                        );
-                    })
-                    .toList();
+            int totalCapacity = cargosForPlayer.stream()
+                    .filter(cargo -> cargo.getDestinationPortId().equals(travel.getDestinationPortId()))
+                    .mapToInt(SessionCargo::getCapacity)
+                    .sum();
 
-            BigDecimal baseReward = travel.getBaseReward() != null ? travel.getBaseReward() : BigDecimal.ZERO;
-            BigDecimal totalReward = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
+            double capacityFactor = 1.0 + (totalCapacity / 100.0);
+            double playerModifier = player.getUnloadingTimeModifier();
+            int unloadingTicks = (int) Math.ceil(BASE_UNLOADING_TICKS * capacityFactor * playerModifier);
+            unloadingTicks = Math.max(1, unloadingTicks);
 
-            TravelCompleteEvent event = new TravelCompleteEvent(
-                    travel.getTravelId().toString(),
-                    playerId.toString(),
-                    cargoRewards,
-                    baseReward,
-                    totalReward,
-                    previousBalance,
-                    newBalance
-            );
+            System.out.println("[UnloadingTime] totalCapacity=" + totalCapacity
+                    + " capacityFactor=" + capacityFactor
+                    + " playerUnloadingModifier=" + playerModifier
+                    + " unloadingTicks=" + unloadingTicks);
 
-            webSocketController.broadcastTravelComplete(
-                    travel.getSessionId().toString(),
-                    event
-            );
+            return unloadingTicks;
         } catch (Exception e) {
-            System.err.println("Error sending travel complete event: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("[UnloadingTime] Error calculating unloading time: " + e.getMessage());
+            return BASE_UNLOADING_TICKS;
         }
-    }
-
-    private int calculateExpiredPercentage(Object cargoType) {
-        String type = cargoType.toString();
-        return switch (type) {
-            case "FOOD", "HAZARDOUS" -> 0;
-            case "FRAGILE" -> 10;
-            case "ELECTRONICS" -> 15;
-            case "LUXURY_GOODS" -> 20;
-            case "GENERAL_GOODS" -> 40;
-            case "INDUSTRIAL_GOODS" -> 50;
-            default -> 0;
-        };
     }
 }

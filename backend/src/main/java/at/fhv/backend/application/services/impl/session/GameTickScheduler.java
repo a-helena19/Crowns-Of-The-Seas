@@ -1,6 +1,7 @@
 package at.fhv.backend.application.services.impl.session;
 
 import at.fhv.backend.application.init.CargoSessionInitializer;
+import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.TravelArrivalService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
 import at.fhv.backend.domain.model.cargo.CargoType;
@@ -16,6 +17,7 @@ import at.fhv.backend.domain.model.ship.ShipStatus;
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.application.services.port.PortQueryService;
+import at.fhv.backend.domain.model.travel.TravelStatus;
 import at.fhv.backend.rest.CargoWebSocketController;
 import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.GameSessionWebSocketController;
@@ -25,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import jakarta.annotation.PreDestroy;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -46,6 +49,7 @@ public class GameTickScheduler {
     private final CargoWebSocketController cargoWebSocketController;
     private final GameSessionWebSocketController webSocketController;
     private final TravelArrivalService travelArrivalService;
+    private final CargoUnloadingPhaseService cargoUnloadingPhaseService;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
     private final Map<UUID, ScheduledFuture<?>> runningTasks = new ConcurrentHashMap<>();
@@ -63,7 +67,8 @@ public class GameTickScheduler {
                              SessionCargoRepository sessionCargoRepository,
                              CargoWebSocketController cargoWebSocketController,
                              GameSessionWebSocketController webSocketController,
-                             TravelArrivalService travelArrivalService) {
+                             TravelArrivalService travelArrivalService,
+                             CargoUnloadingPhaseService cargoUnloadingPhaseService) {
         this.gameSessionRepository = gameSessionRepository;
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
@@ -73,6 +78,7 @@ public class GameTickScheduler {
         this.cargoWebSocketController = cargoWebSocketController;
         this.webSocketController = webSocketController;
         this.travelArrivalService = travelArrivalService;
+        this.cargoUnloadingPhaseService = cargoUnloadingPhaseService;
     }
 
 
@@ -109,6 +115,31 @@ public class GameTickScheduler {
                         + " loading completed at tick " + currentTick);
             }
         }
+    }
+
+    @Transactional
+    public void handleUnloadingPhase(int currentTick) {
+        List<Travel> arrivedTravels = travelRepository.findByStatus(TravelStatus.ARRIVED);
+
+        for (Travel travel : arrivedTravels) {
+            PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
+
+            if (ship != null && ship.getStatus() == ShipStatus.UNLOADING) {
+                if (currentTick >= ship.getUnloadingCompletedAtTick()) {
+                    handleUnloadingComplete(travel, currentTick);
+                }
+            }
+        }
+    }
+
+    @Transactional
+    public void handleUnloadingComplete(Travel travel, int currentTick) {
+        List<SessionCargo> cargos = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
+
+        BigDecimal reward = cargoUnloadingPhaseService.completeUnloadingPhase(travel, cargos);
+
+        System.out.println("[GameTick] Unloading complete for travel " + travel.getTravelId());
+        System.out.println("[GameTick] Reward: " + reward);
     }
 
     @Transactional
@@ -178,6 +209,7 @@ public class GameTickScheduler {
             int currentTick = session.getCurrentTick();
 
             checkLoadingCompletion(sessionId, currentTick);
+            handleUnloadingPhase(currentTick);
 
             List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
             for (Travel travel : activeTravels) {

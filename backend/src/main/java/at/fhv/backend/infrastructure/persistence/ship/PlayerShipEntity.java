@@ -40,6 +40,9 @@ public class PlayerShipEntity {
     @Column(name = "loading_completed_at_tick")
     private int loadingCompletedAtTick = -1;
 
+    @Column(name = "unloading_completed_at_tick")
+    private int unloadingCompletedAtTick = -1;
+
     public PlayerShipEntity() {}
 
     public UUID getId() {
@@ -120,5 +123,13 @@ public class PlayerShipEntity {
 
     public void setLoadingCompletedAtTick(int loadingCompletedAtTick) {
         this.loadingCompletedAtTick = loadingCompletedAtTick;
+    }
+
+    public int getUnloadingCompletedAtTick() {
+        return unloadingCompletedAtTick;
+    }
+
+    public void setUnloadingCompletedAtTick(int unloadingCompletedAtTick) {
+        this.unloadingCompletedAtTick = unloadingCompletedAtTick;
     }
 }
