@@ -119,7 +119,7 @@ class CargoSessionIntegrationTest {
     private PlayerShip persistPlayerShip(UUID playerId, UUID sessionId, UUID shipId, UUID portId) {
         PlayerShip ps = PlayerShip.reconstruct(
                 UUID.randomUUID(), shipId, playerId, sessionId,
-                ShipStatus.AT_PORT, 100.0, 100.0, portId, null);
+                ShipStatus.AT_PORT, 100.0, 100.0, portId, null, -1);
         return playerShipRepository.save(ps);
     }
 

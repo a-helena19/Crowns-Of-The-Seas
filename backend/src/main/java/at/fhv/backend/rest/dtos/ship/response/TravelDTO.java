@@ -20,6 +20,7 @@ public class TravelDTO {
     private Instant startedAt;
     private Instant arrivedAt;
     private double fuelConsumed;
+    private double loadingDurationSeconds;
 
     public TravelDTO() {}
 
@@ -125,5 +126,13 @@ public class TravelDTO {
 
     public void setFuelConsumed(double fuelConsumed) {
         this.fuelConsumed = fuelConsumed;
+    }
+
+    public double getLoadingDurationSeconds() {
+        return loadingDurationSeconds;
+    }
+
+    public void setLoadingDurationSeconds(double loadingDurationSeconds) {
+        this.loadingDurationSeconds = loadingDurationSeconds;
     }
 }

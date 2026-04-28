@@ -25,6 +25,7 @@ public class Travel {
     private double fuelConsumed;
     private final int startTick;
     private final int arrivalTick;
+    private double loadingDurationSeconds;
 
     private Travel(UUID travelId, UUID playerShipId, UUID playerId, UUID sessionId,
                    UUID originPortId, UUID destinationPortId,
@@ -185,5 +186,13 @@ public class Travel {
         if (arrivalTick <= startTick) return 1.0;
         double raw = (double) (currentTick - startTick) / (arrivalTick - startTick);
         return Math.max(0.0, Math.min(1.0, raw));
+    }
+
+    public double getLoadingDurationSeconds() {
+        return loadingDurationSeconds;
+    }
+
+    public void setLoadingDurationSeconds(double loadingDurationSeconds) {
+        this.loadingDurationSeconds = loadingDurationSeconds;
     }
 }

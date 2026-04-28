@@ -195,3 +195,16 @@
     background: linear-gradient(90deg, #4caf50, #81c784);
     border-radius: 1px;
 }
+
+
+.progress-fill.duration-15 {
+    animation: progressFill 15s linear forwards, shimmer 1.5s linear infinite;
+}
+
+.progress-fill.duration-20 {
+    animation: progressFill 20s linear forwards, shimmer 1.5s linear infinite;
+}
+
+.progress-fill.duration-30 {
+    animation: progressFill 30s linear forwards, shimmer 1.5s linear infinite;
+}

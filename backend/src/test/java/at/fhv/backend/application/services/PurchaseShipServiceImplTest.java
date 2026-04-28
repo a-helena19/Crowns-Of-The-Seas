@@ -87,8 +87,6 @@ class PurchaseShipServiceImplTest {
         when(sessionPlayerRepository.save(player)).thenReturn(player);
         when(portQueryService.findAll())
                 .thenReturn(List.of(new PortResponseDTO(startPortId, "Hamburg", 49.5, 22.0)));
-        when(playerShipRepository.save(any(PlayerShip.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
         when(playerShipResponseMapper.toResponse(any(PlayerShip.class), eq(ship)))
                 .thenReturn(new PlayerShipDTO());
         return startPortId;

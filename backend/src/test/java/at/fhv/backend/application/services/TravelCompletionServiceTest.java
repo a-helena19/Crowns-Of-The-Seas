@@ -62,7 +62,7 @@ class TravelCompletionServiceTest {
                     UUID.randomUUID(), destinationPortId,
                     BigDecimal.valueOf(1000), false, 50,
                     CargoType.GENERAL_GOODS, 0.1,
-                    CargoStatus.ASSIGNED, UUID.randomUUID(), playerShipId, 0, 5, -1
+                    CargoStatus.ASSIGNED, UUID.randomUUID(), playerShipId, 0, 5, -1, -1
             );
         }
 
@@ -73,7 +73,7 @@ class TravelCompletionServiceTest {
                     UUID.randomUUID(), destinationPortId,
                     BigDecimal.valueOf(1000), false, 50,
                     CargoType.FOOD, 0.1,
-                    CargoStatus.EXPIRED, UUID.randomUUID(), playerShipId, 0, 3, 3
+                    CargoStatus.EXPIRED, UUID.randomUUID(), playerShipId, 0, 3, 3, -1
             );
         }
 
@@ -127,7 +127,7 @@ class TravelCompletionServiceTest {
                     UUID.randomUUID(), destinationPortId,
                     BigDecimal.valueOf(1000), false, 50,
                     CargoType.GENERAL_GOODS, 0.1,
-                    CargoStatus.ASSIGNED, UUID.randomUUID(), otherShipId, 0, 5, -1
+                    CargoStatus.ASSIGNED, UUID.randomUUID(), otherShipId, 0, 5, -1, -1
             );
 
             service.unloadCargoForTravel(travel, List.of(cargo));
@@ -180,7 +180,7 @@ class TravelCompletionServiceTest {
                     UUID.randomUUID(), destinationPortId,
                     reward, false, 50,
                     type, 0.1,
-                    CargoStatus.ASSIGNED, UUID.randomUUID(), UUID.randomUUID(), 0, 5, -1
+                    CargoStatus.ASSIGNED, UUID.randomUUID(), UUID.randomUUID(), 0, 5, -1, -1
             );
             cargo.deliver();
             return cargo;
@@ -193,7 +193,7 @@ class TravelCompletionServiceTest {
                     UUID.randomUUID(), destinationPortId,
                     reward, false, 50,
                     type, 0.1,
-                    CargoStatus.EXPIRED, UUID.randomUUID(), UUID.randomUUID(), 0, 3, 3
+                    CargoStatus.EXPIRED, UUID.randomUUID(), UUID.randomUUID(), 0, 3, 3, -1
             );
             return cargo;
         }
@@ -284,7 +284,7 @@ class TravelCompletionServiceTest {
                     UUID.randomUUID(), otherPortId,
                     BigDecimal.valueOf(1000), false, 50,
                     CargoType.GENERAL_GOODS, 0.1,
-                    CargoStatus.DELIVERED, UUID.randomUUID(), UUID.randomUUID(), 0, 5, -1
+                    CargoStatus.DELIVERED, UUID.randomUUID(), UUID.randomUUID(), 0, 5, -1, -1
             );
 
             BigDecimal reward = service.calculateTotalReward(travel, List.of(cargo));

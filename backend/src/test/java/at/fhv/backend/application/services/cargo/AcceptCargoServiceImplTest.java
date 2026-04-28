@@ -87,7 +87,7 @@ class AcceptCargoServiceImplTest {
         return PlayerShip.reconstruct(
                 UUID.randomUUID(), shipId, playerId, sessionId,
                 ShipStatus.AT_PORT, 100.0, 100.0,
-                UUID.randomUUID(), null
+                UUID.randomUUID(), null, -1
         );
     }
 

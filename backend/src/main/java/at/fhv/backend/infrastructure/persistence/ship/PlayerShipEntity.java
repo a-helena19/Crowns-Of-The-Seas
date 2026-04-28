@@ -37,6 +37,9 @@ public class PlayerShipEntity {
     @Column(name = "target_port_id")
     private UUID targetPortId;
 
+    @Column(name = "loading_completed_at_tick")
+    private int loadingCompletedAtTick = -1;
+
     public PlayerShipEntity() {}
 
     public UUID getId() {
@@ -109,5 +112,13 @@ public class PlayerShipEntity {
 
     public void setTargetPortId(UUID targetPortId) {
         this.targetPortId = targetPortId;
+    }
+
+    public int getLoadingCompletedAtTick() {
+        return loadingCompletedAtTick;
+    }
+
+    public void setLoadingCompletedAtTick(int loadingCompletedAtTick) {
+        this.loadingCompletedAtTick = loadingCompletedAtTick;
     }
 }

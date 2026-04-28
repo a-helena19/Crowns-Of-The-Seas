@@ -191,7 +191,7 @@ class PlayerShipTest {
         UUID portId     = UUID.randomUUID();
         UUID targetPort = UUID.randomUUID();
 
-        PlayerShip reconstructed = PlayerShip.reconstruct(id, shipId, playerId, sessionId, ShipStatus.EN_ROUTE, 75.0, 60.0, portId, targetPort);
+        PlayerShip reconstructed = PlayerShip.reconstruct(id, shipId, playerId, sessionId, ShipStatus.EN_ROUTE, 75.0, 60.0, portId, targetPort, -1);
         assertThat(reconstructed.getId()).isEqualTo(id);
         assertThat(reconstructed.getShipId()).isEqualTo(shipId);
         assertThat(reconstructed.getPlayerId()).isEqualTo(playerId);

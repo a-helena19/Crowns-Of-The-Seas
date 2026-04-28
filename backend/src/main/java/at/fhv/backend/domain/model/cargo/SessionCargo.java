@@ -239,4 +239,8 @@ public class SessionCargo {
     public int getExpiresAtTick() {
         return expiresAtTick;
     }
+
+    public int getLoadingCompletedAtTick() {
+        return loadingCompletedAtTick;
+    }
 }

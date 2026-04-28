@@ -121,6 +121,9 @@ public class StartTravelServiceImpl implements StartTravelService {
             loadingTicks = Math.max(1, loadingTicks);
             int loadingCompletedAtTick = currentTick + loadingTicks;
 
+            double loadingDurationSeconds = loadingTicks * session.getTickRateSeconds(); // for animation purposes
+
+
             if (cargo.getCargoStatus() != CargoStatus.AVAILABLE || !cargo.isVisibleAt(currentTick)) {
                 throw new CargoNotAvailableException(cargo.getId());
             }
@@ -174,6 +177,8 @@ public class StartTravelServiceImpl implements StartTravelService {
                     currentTick,
                     startTickDelay
             );
+
+            travel.setLoadingDurationSeconds(loadingDurationSeconds);
 
             Travel saved = travelRepository.save(travel);
 
