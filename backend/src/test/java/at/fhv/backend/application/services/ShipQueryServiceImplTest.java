@@ -48,7 +48,7 @@ class ShipQueryServiceImplTest {
     private Ship buildShip(ShipClass shipClass) {
         return Ship.create("Test Ship", "desc", shipClass,
                 BigDecimal.valueOf(1000), 100, 10.0, 2.0,
-                BigDecimal.valueOf(400), BigDecimal.valueOf(100), 0.85, "icon.png");
+                BigDecimal.valueOf(400), BigDecimal.valueOf(100), 0.85, "icon.png", 20);
     }
 
     private PlayerShip buildPlayerShip(UUID playerId, UUID sessionId, UUID shipId) {
@@ -65,7 +65,7 @@ class ShipQueryServiceImplTest {
         when(shipResponseMapper.toResponse(ship1)).thenReturn(new ShipDTO());
         when(shipResponseMapper.toResponse(ship2)).thenReturn(new ShipDTO());
 
-        List<ShipDTO> result = service.getMarketShips(null);
+        List<ShipDTO> result = service.getMarketShips(null, null);
         assertThat(result).hasSize(2);
     }
 
@@ -76,7 +76,7 @@ class ShipQueryServiceImplTest {
         when(shipRepository.findAllAvailableOnMarket()).thenReturn(List.of(budget, premium));
         when(shipResponseMapper.toResponse(budget)).thenReturn(new ShipDTO());
 
-        List<ShipDTO> result = service.getMarketShips("BUDGET");
+        List<ShipDTO> result = service.getMarketShips("BUDGET", null);
         assertThat(result).hasSize(1);
         verify(shipResponseMapper, times(1)).toResponse(budget);
         verify(shipResponseMapper, never()).toResponse(premium);
@@ -85,7 +85,7 @@ class ShipQueryServiceImplTest {
     @Test
     void givenNoShipsOnMarket_whenGetMarketShips_thenReturnsEmptyList() {
         when(shipRepository.findAllAvailableOnMarket()).thenReturn(List.of());
-        List<ShipDTO> result = service.getMarketShips(null);
+        List<ShipDTO> result = service.getMarketShips(null, null);
         assertThat(result).isEmpty();
     }
 
@@ -95,7 +95,7 @@ class ShipQueryServiceImplTest {
         when(shipRepository.findAllAvailableOnMarket()).thenReturn(List.of(standard));
         when(shipResponseMapper.toResponse(standard)).thenReturn(new ShipDTO());
 
-        List<ShipDTO> result = service.getMarketShips("standard");
+        List<ShipDTO> result = service.getMarketShips("standard", null);
         assertThat(result).hasSize(1);
     }
 

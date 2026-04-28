@@ -21,6 +21,7 @@ public class ShipMapper implements EntityMapper<Ship, ShipEntity> {
         entity.setOperatingCost(ship.getOperatingCost());
         entity.setBaseReliability(ship.getBaseReliability());
         entity.setIconUrl(ship.getIconUrl());
+        entity.setStock(ship.getStock());
         return entity;
     }
 
@@ -38,7 +39,8 @@ public class ShipMapper implements EntityMapper<Ship, ShipEntity> {
                 entity.getMaxFuel(),
                 entity.getOperatingCost(),
                 entity.getBaseReliability(),
-                entity.getIconUrl()
+                entity.getIconUrl(),
+                entity.getStock()
         );
     }
 

@@ -65,7 +65,7 @@ class TravelServiceImplTest {
         private Ship buildShip() {
             return Ship.create("Speeder", "fast", ShipClass.PREMIUM,
                     BigDecimal.valueOf(5000), 200, 20.0, 3.0,
-                    BigDecimal.valueOf(600), BigDecimal.valueOf(300), 0.95, "icon.png");
+                    BigDecimal.valueOf(600), BigDecimal.valueOf(300), 0.95, "icon.png", 20);
         }
 
         private PlayerShip buildAtPortShip(UUID playerId) {
@@ -181,7 +181,7 @@ class TravelServiceImplTest {
         private Ship buildShip() {
             return Ship.create("Speeder", "fast", ShipClass.PREMIUM,
                     BigDecimal.valueOf(5000), 200, 20.0, 3.0,
-                    BigDecimal.valueOf(600), BigDecimal.valueOf(300), 0.95, "icon.png");
+                    BigDecimal.valueOf(600), BigDecimal.valueOf(300), 0.95, "icon.png", 20);
         }
 
         private PlayerShip buildAtPortShip(UUID playerId, UUID sessionId, UUID shipId) {

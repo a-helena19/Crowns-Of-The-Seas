@@ -48,6 +48,9 @@ public class ShipEntity {
     @Column(name = "icon_url")
     private String iconUrl;
 
+    @Column(name = "stock", nullable = false, columnDefinition = "integer default 20")
+    private int stock = 20;
+
     public ShipEntity() {}
 
     public UUID getId() {
@@ -144,5 +147,13 @@ public class ShipEntity {
 
     public void setIconUrl(String iconUrl) {
         this.iconUrl = iconUrl;
+    }
+
+    public int getStock() {
+        return stock;
+    }
+
+    public void setStock(int stock) {
+        this.stock = stock;
     }
 }
