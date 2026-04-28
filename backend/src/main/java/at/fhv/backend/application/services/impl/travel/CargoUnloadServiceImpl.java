@@ -46,10 +46,12 @@ public class CargoUnloadServiceImpl implements CargoUnloadService {
     private void unloadCargo(SessionCargo cargo, Travel travel) {
         if (cargo.getCargoStatus() == CargoStatus.ASSIGNED) {
             cargo.deliver();
+            System.out.println("[CargoUnload] Cargo " + cargo.getId() + " delivered at port " + travel.getDestinationPortId());
         }
 
         int cooldown = CargoSessionInitializer.randomizedCooldownFor(cargo.getCargoType(), rng);
         cargo.startCooldown(travel.getArrivalTick() + cooldown);
+        System.out.println("[CargoUnload] Cargo " + cargo.getId() + " cooldown set until tick " + (travel.getArrivalTick() + cooldown));
 
         sessionCargoRepository.save(cargo);
     }

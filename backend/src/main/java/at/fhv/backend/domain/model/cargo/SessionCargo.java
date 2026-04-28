@@ -128,6 +128,7 @@ public class SessionCargo {
             throw new CargoNotAssignedException(id, cargoStatus.name());
         }
         this.cargoStatus = CargoStatus.DELIVERED;
+        this.expiresAtTick = -1;
     }
 
     public void startCooldown(int cooldownUntilTick) {
@@ -142,7 +143,7 @@ public class SessionCargo {
     }
 
     public boolean shouldRespawnAt(int currentTick) {
-        return (cargoStatus == CargoStatus.INACTIVE || cargoStatus == CargoStatus.EXPIRED)
+        return (cargoStatus == CargoStatus.INACTIVE || cargoStatus == CargoStatus.EXPIRED || cargoStatus == CargoStatus.DELIVERED)
                 && cooldownUntilTick >= 0 && currentTick >= cooldownUntilTick;
     }
 

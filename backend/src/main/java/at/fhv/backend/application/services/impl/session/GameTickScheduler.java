@@ -335,6 +335,9 @@ public class GameTickScheduler {
                 if ((isInitialSpawn || isRespawn) && activeCount < MAX_ACTIVE_CARGOS_PER_PORT) {
                     double spawnChance = spawnChanceFor(sc.getCargoType());
                     if (rng.nextDouble() < spawnChance) {
+                        System.out.println("[CargoRespawn] Cargo " + sc.getId() + " respawning at port " + entry.getKey()
+                            + " (status=" + sc.getCargoStatus() + ", cooldownUntil=" + sc.getCooldownUntilTick()
+                            + ", currentTick=" + currentTick + ")");
                         sc.activate();
                         sessionCargoRepository.save(sc);
                         activeCount++;
