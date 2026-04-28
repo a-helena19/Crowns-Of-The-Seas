@@ -4,6 +4,7 @@ import at.fhv.backend.application.dtos.mapper.PlayerShipResponseMapper;
 import at.fhv.backend.application.dtos.mapper.ShipResponseMapper;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.application.services.impl.session.GameTickScheduler;
+import at.fhv.backend.rest.ShipMarketWebSocketController;
 import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.dtos.ship.request.BuyShipDTO;
 import at.fhv.backend.rest.dtos.ship.response.PlayerShipDTO;
@@ -18,6 +19,7 @@ import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.ship.Ship;
 import at.fhv.backend.domain.model.ship.ShipRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -33,6 +35,7 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
     private final PortQueryService portQueryService;
     private final SessionPlayerRepository sessionPlayerRepository;
     private final GameTickScheduler gameTickScheduler;
+    private final ShipMarketWebSocketController shipMarketWebSocketController;
 
     public PurchaseShipServiceImpl(ValidateShipService validateShipService,
                                    ShipRepository shipRepository,
@@ -41,7 +44,8 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
                                    ShipResponseMapper shipResponseMapper,
                                    PortQueryService portQueryService,
                                    SessionPlayerRepository sessionPlayerRepository,
-                                   GameTickScheduler gameTickScheduler) {
+                                   GameTickScheduler gameTickScheduler,
+                                   ShipMarketWebSocketController shipMarketWebSocketController) {
         this.validateShipService = validateShipService;
         this.shipRepository = shipRepository;
         this.playerShipRepository = playerShipRepository;
@@ -50,12 +54,24 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
         this.portQueryService = portQueryService;
         this.sessionPlayerRepository = sessionPlayerRepository;
         this.gameTickScheduler = gameTickScheduler;
+        this.shipMarketWebSocketController = shipMarketWebSocketController;
     }
 
     @Override
+    @Transactional
     public PlayerShipDTO buyShip(UUID playerId, UUID sessionId, BuyShipDTO request) {
         Ship ship = shipRepository.findById(request.getShipId())
                 .orElseThrow(() -> new ShipNotFoundException("shipId", request.getShipId()));
+
+        long owned = playerShipRepository.countByShipIdAndSessionId(ship.getId(), sessionId);
+        if (owned >= ship.getStock()) {
+            throw new at.fhv.backend.domain.model.exception.ShipNotAvailableException(
+                    "Schiff ist in dieser Session ausverkauft (Stock " + ship.getStock() + " erreicht).",
+                    "shipId",
+                    ship.getId()
+            );
+        }
+
         ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
                 .orElseThrow(() -> new PlayerNotFoundException(playerId));
         BigDecimal playerBalance = player.getBalance();
@@ -73,6 +89,7 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
         playerShip.completeRegistration();
         PlayerShip saved = playerShipRepository.save(playerShip);
         gameTickScheduler.triggerImmediateBroadcast(sessionId);
+        shipMarketWebSocketController.broadcastStockUpdate(sessionId);
         return toPlayerShipResponse(saved);
     }
 

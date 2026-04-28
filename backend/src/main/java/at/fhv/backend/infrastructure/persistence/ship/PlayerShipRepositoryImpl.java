@@ -68,4 +68,9 @@ public class PlayerShipRepositoryImpl implements PlayerShipRepository {
                 .map(playerShipMapper::toDomainModel)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public long countByShipIdAndSessionId(UUID shipId, UUID sessionId) {
+        return playerShipJpaRepository.countByShipIdAndSessionId(shipId, sessionId);
+    }
 }

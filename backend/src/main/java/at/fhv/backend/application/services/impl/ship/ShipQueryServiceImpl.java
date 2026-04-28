@@ -31,18 +31,26 @@ public class ShipQueryServiceImpl implements ShipQueryService {
         this.playerShipResponseMapper = playerShipResponseMapper;
     }
 
-    public List<ShipDTO> getMarketShips(String shipClass) {
-        if (shipClass == null) {
-            return shipRepository.findAllAvailableOnMarket()
-                    .stream()
-                    .map(shipResponseMapper::toResponse)
-                    .toList();
-        }
-
-        return shipRepository.findAllAvailableOnMarket().stream()
+    public List<ShipDTO> getMarketShips(String shipClass, UUID sessionId) {
+        List<Ship> ships = (shipClass == null)
+                ? shipRepository.findAllAvailableOnMarket()
+                : shipRepository.findAllAvailableOnMarket().stream()
                 .filter(ship -> ship.getShipClass().name().equalsIgnoreCase(shipClass))
-                .map(shipResponseMapper::toResponse)
                 .toList();
+
+        return ships.stream()
+                .map(ship -> toMarketDto(ship, sessionId))
+                .toList();
+    }
+
+    private ShipDTO toMarketDto(Ship ship, UUID sessionId) {
+        ShipDTO dto = shipResponseMapper.toResponse(ship);
+        if (sessionId != null) {
+            long owned = playerShipRepository.countByShipIdAndSessionId(ship.getId(), sessionId);
+            int available = (int) Math.max(0, ship.getStock() - owned);
+            dto.setAvailableStock(available);
+        }
+        return dto;
     }
 
     @Override

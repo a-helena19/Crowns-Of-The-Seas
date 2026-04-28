@@ -45,6 +45,8 @@ class PurchaseShipServiceImplTest {
     @Mock private ShipResponseMapper shipResponseMapper;
     @Mock private PortQueryService portQueryService;
     @Mock private SessionPlayerRepository sessionPlayerRepository;
+    @Mock private at.fhv.backend.application.services.impl.session.GameTickScheduler gameTickScheduler;
+    @Mock private at.fhv.backend.rest.ShipMarketWebSocketController shipMarketWebSocketController;
 
     private PurchaseShipServiceImpl service;
 
@@ -53,14 +55,15 @@ class PurchaseShipServiceImplTest {
         service = new PurchaseShipServiceImpl(
                 validateShipService, shipRepository, playerShipRepository,
                 playerShipResponseMapper, shipResponseMapper,
-                portQueryService, sessionPlayerRepository
+                portQueryService, sessionPlayerRepository,
+                gameTickScheduler, shipMarketWebSocketController
         );
     }
 
     private Ship buildShip(BigDecimal price) {
         return Ship.create("Black Pearl", "A fast ship", ShipClass.STANDARD,
                 price, 100, 15.0, 2.5,
-                BigDecimal.valueOf(500), BigDecimal.valueOf(200), 0.9, "icon.png");
+                BigDecimal.valueOf(500), BigDecimal.valueOf(200), 0.9, "icon.png", 20);
     }
 
     private ISessionPlayer buildPlayer(UUID userId, UUID sessionId, BigDecimal balance) {

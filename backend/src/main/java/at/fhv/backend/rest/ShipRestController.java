@@ -40,8 +40,10 @@ public class ShipRestController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ShipDTO>> getShipsByClass(@RequestParam(required = false) String shipClass) {
-        return ResponseEntity.ok(shipQueryService.getMarketShips(shipClass));
+    public ResponseEntity<List<ShipDTO>> getShipsByClass(
+            @RequestParam(required = false) String shipClass,
+            @RequestParam(required = false) UUID sessionId) {
+        return ResponseEntity.ok(shipQueryService.getMarketShips(shipClass, sessionId));
     }
 
     @GetMapping("/player/{playerId}/balance")
