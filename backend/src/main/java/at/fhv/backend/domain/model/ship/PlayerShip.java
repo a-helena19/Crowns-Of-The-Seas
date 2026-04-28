@@ -88,7 +88,7 @@ public class PlayerShip {
         }
         this.status = ShipStatus.LOADING;
         this.targetPortId = destinationPortId;
-        this.currentPortId = null;
+        // Behalte currentPortId, da sie für den Reisestart benötigt wird
         this.loadingCompletedAtTick = loadingCompletedAtTick;
     }
 

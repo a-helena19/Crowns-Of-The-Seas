@@ -51,6 +51,12 @@ interface ShipPositionEventPayload {
     }>;
 }
 
+interface LoadingStartResponse {
+    cargoId: string;
+    loadingDurationSeconds: number;
+    loadingCompletedAtTick: number;
+}
+
 const TYPE_LABELS: Record<string, string> = {
     GENERAL_GOODS: "General",
     FOOD: "Food",
@@ -79,6 +85,7 @@ interface AcceptedCargo {
     weight: number;
     destinationPortId: string;
     speedSetting: number;
+    loadingDurationSeconds?: number;
 }
 
 // Hilfsfunktionen für Status
@@ -171,9 +178,9 @@ const WeightIcon = () => (
             return;
         }
 
-        const readTransitState = (ships: Array<{ playerShipId: string; status: "EN_ROUTE" | "AT_PORT" }>) => {
+        const readTransitState = (ships: Array<{ playerShipId: string; status: "EN_ROUTE" | "AT_PORT" | "LOADING" }>) => {
             const me = ships.find((s) => s.playerShipId === playerShipId);
-            setShipInTransit(me?.status === "EN_ROUTE");
+            setShipInTransit(me?.status === "EN_ROUTE" || me?.status === "LOADING");
         };
 
         if (window.__latestShips) {
@@ -285,31 +292,58 @@ const WeightIcon = () => (
     const canAfford = !fuelEstimate || (currentSpeedOpt?.canAfford ?? false);
     const hasNoAffordableOption = fuelEstimate != null && fuelEstimate.speedOptions.every((o) => !o.canAfford);
 
-    function handleAcceptCargo() {
+    async function handleAcceptCargo() {
         if (!selected) return;
         if (!playerShipId) { setAcceptError("Bitte zuerst ein Schiff auswählen."); return; }
         if (hasNoAffordableOption) { setFuelError("Nicht genug Treibstoff für diese Fracht."); return; }
         if (!canAfford) { setFuelError("Nicht genug Treibstoff für dieses Speed-Setting."); return; }
         setFuelError(null);
-        setAcceptError(null);
-        onCargoAccepted({
-            id: selected.id,
-            from: selected.originPortName,
-            to: selected.destinationPortName,
-            weight: selected.capacity,
-            destinationPortId: selected.destinationPortId,
-            speedSetting: SPEED_SETTINGS[speedIndex],
-        });
+
+        try {
+            const response = await fetch(
+                `/api/cargo/accept?playerId=${playerId}&sessionId=${sessionId}`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        playerShipId: playerShipId,
+                        sessionCargoId: selected.id,
+                        destinationPortId: selected.destinationPortId
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                setFuelError(errorData.message || "Fracht konnte nicht akzeptiert werden");
+                return;
+            }
+
+            const loadingResponse = await response.json() as LoadingStartResponse;
+
+            onCargoAccepted({
+                id: selected.id,
+                from: selected.originPortName,
+                to: selected.destinationPortName,
+                weight: selected.capacity,
+                destinationPortId: selected.destinationPortId,
+                speedSetting: SPEED_SETTINGS[speedIndex],
+                loadingDurationSeconds: loadingResponse.loadingDurationSeconds
+            });
+
+        } catch (error) {
+            setFuelError("Verbindungsfehler beim Akzeptieren der Fracht");
+            console.error(error);
+        }
     }
 
     const riskLabel = (r: number) => r < 0.1 ? "Niedrig" : r < 0.25 ? "Mittel" : r < 0.4 ? "Hoch" : "Extrem";
     const riskClass = (r: number) => r < 0.1 ? "risk-low" : r < 0.25 ? "risk-medium" : r < 0.4 ? "risk-high" : "risk-extreme";
 
-    /**
-     * Berechnet wie viele Ticks/Tage noch uebrig sind bis ein Cargo expired.
-     * - null  => Cargo laeuft nicht ab (lifetimeTicks <= 0)
-     * - <= 0  => Cargo ist gerade abgelaufen
-     */
+
     const ticksUntilExpiry = (c: SessionCargoDTO): number | null => {
         if (!c.expiresAtTick || c.expiresAtTick < 0) return null;
         return c.expiresAtTick - currentTick;

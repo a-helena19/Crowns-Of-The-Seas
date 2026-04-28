@@ -13,6 +13,9 @@ import at.fhv.backend.domain.model.cargo.exception.CargoCapacityExceededExceptio
 import at.fhv.backend.domain.model.cargo.exception.CargoNotAvailableException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
+import at.fhv.backend.domain.model.player.ISessionPlayer;
+import at.fhv.backend.domain.model.player.SessionPlayerRepository;
+import at.fhv.backend.domain.model.player.exception.PlayerNotFoundException;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.session.exception.SessionNotFoundException;
@@ -33,6 +36,7 @@ public class AcceptCargoServiceImpl implements AcceptCargoService {
     private static final double FASTEST_SPEED_SETTING = 1.0;
     private static final double EXPIRY_BUFFER_FACTOR = 3.0;
     private static final int MIN_EXPIRY_TICKS = 20;
+    private static final int BASE_LOADING_TICKS = 2;
 
     private final SessionCargoRepository sessionCargoRepository;
     private final CargoRepository cargoRepository;
@@ -41,10 +45,11 @@ public class AcceptCargoServiceImpl implements AcceptCargoService {
     private final GameSessionRepository gameSessionRepository;
     private final PortQueryService portQueryService;
     private final PortDistanceForCargoService portDistanceForCargoService;
+    private final SessionPlayerRepository sessionPlayerRepository;
 
     public AcceptCargoServiceImpl(SessionCargoRepository sessionCargoRepository, CargoRepository cargoRepository, PlayerShipRepository playerShipRepository,
                                   ShipRepository shipRepository, GameSessionRepository gameSessionRepository, PortQueryService portQueryService,
-                                  PortDistanceForCargoService portDistanceForCargoService) {
+                                  PortDistanceForCargoService portDistanceForCargoService, SessionPlayerRepository sessionPlayerRepository) {
         this.sessionCargoRepository = sessionCargoRepository;
         this.cargoRepository = cargoRepository;
         this.playerShipRepository = playerShipRepository;
@@ -52,6 +57,7 @@ public class AcceptCargoServiceImpl implements AcceptCargoService {
         this.gameSessionRepository = gameSessionRepository;
         this.portQueryService = portQueryService;
         this.portDistanceForCargoService = portDistanceForCargoService;
+        this.sessionPlayerRepository = sessionPlayerRepository;
     }
 
     @Override
@@ -74,8 +80,22 @@ public class AcceptCargoServiceImpl implements AcceptCargoService {
         }
 
         int expiresAtTick = computeExpiresAtTick(ship, cargo, currentTick);
+
+
+        ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
+                .orElseThrow(() -> new PlayerNotFoundException(playerId));
+
+        double capacityFactor = 1.0 + (cargo.getCapacity() / 100.0);
+        double playerModifier = player.getLoadingTimeModifier();
+        int loadingTicks = (int) Math.ceil(BASE_LOADING_TICKS * capacityFactor * playerModifier);
+        loadingTicks = Math.max(1, loadingTicks);
+        int loadingCompletedAtTick = currentTick + loadingTicks;
+
         cargo.assign(playerId, playerShip.getId(), expiresAtTick);
         sessionCargoRepository.save(cargo);
+
+        playerShip.startLoading(cargo.getDestinationPortId(), loadingCompletedAtTick);
+        playerShipRepository.save(playerShip);
         return buildDto(cargo);
     }
 

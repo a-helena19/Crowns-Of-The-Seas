@@ -9,6 +9,8 @@ import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
 import at.fhv.backend.domain.model.cargo.exception.CargoCapacityExceededException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotAvailableException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
+import at.fhv.backend.domain.model.exception.InvalidShipStatusTransition;
+import at.fhv.backend.domain.model.ship.*;
 import at.fhv.backend.rest.CargoWebSocketController;
 import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
@@ -25,10 +27,6 @@ import at.fhv.backend.domain.model.player.exception.PlayerNotFoundException;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.session.exception.SessionNotFoundException;
-import at.fhv.backend.domain.model.ship.PlayerShip;
-import at.fhv.backend.domain.model.ship.PlayerShipRepository;
-import at.fhv.backend.domain.model.ship.Ship;
-import at.fhv.backend.domain.model.ship.ShipRepository;
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.domain.model.travel.TravelStatus;
@@ -100,12 +98,24 @@ public class StartTravelServiceImpl implements StartTravelService {
             Ship ship = shipRepository.findById(playerShip.getShipId())
                     .orElseThrow(() -> new ShipNotFoundException("Ship", playerShip.getShipId()));
 
+            if (playerShip.getStatus() != ShipStatus.LOADING) {
+                throw new InvalidShipStatusTransition(
+                        "Ship must be in LOADING status to start travel",
+                        "shipId",
+                        playerShip.getId()
+                );
+            }
+
             UUID originPortId = playerShip.getCurrentPortId();
             UUID destinationPortId = request.getDestinationPortId();
 
             SessionCargo cargo = sessionCargoRepository
                     .findByIdForUpdate(request.getSessionCargoId())
                     .orElseThrow(() -> new CargoNotFoundException(request.getSessionCargoId()));
+
+            if (cargo.getCargoStatus() != CargoStatus.ASSIGNED) {
+                throw new CargoNotAvailableException(cargo.getId());
+            }
 
             GameSession session = gameSessionRepository.findById(sessionId)
                     .orElseThrow(() -> new SessionNotFoundException(sessionId));
@@ -114,33 +124,8 @@ public class StartTravelServiceImpl implements StartTravelService {
             ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
                     .orElseThrow(() -> new PlayerNotFoundException(playerId));
 
-            int baseLoadingTicks = 10;
-            double capacityFactor = 1.0 + (cargo.getCapacity() / 100.0);
-            double playerModifier = player.getLoadingTimeModifier();
-            int loadingTicks = (int) Math.ceil(baseLoadingTicks * capacityFactor * playerModifier);
-            loadingTicks = Math.max(1, loadingTicks);
-            int loadingCompletedAtTick = currentTick + loadingTicks;
-
-            double loadingDurationSeconds = loadingTicks * session.getTickRateSeconds(); // for animation purposes
-
-
-            if (cargo.getCargoStatus() != CargoStatus.AVAILABLE || !cargo.isVisibleAt(currentTick)) {
-                throw new CargoNotAvailableException(cargo.getId());
-            }
-            if (ship.getMaxCargoCapacity() < cargo.getCapacity()) {
-                throw new CargoCapacityExceededException(cargo.getCapacity(), ship.getMaxCargoCapacity());
-            }
-            if (!destinationPortId.equals(cargo.getDestinationPortId())) {
-                throw new CargoNotAvailableException(cargo.getId());
-            }
-
-            double distanceForExpiry = portDistanceForCargoService.distanceBetween(originPortId, destinationPortId);
-            double fastestSpeed = ship.getMaxSpeed() * 1.0 * 0.75;
-            int fastestTravelTicks = (int) Math.ceil(distanceForExpiry / Math.max(fastestSpeed, 0.01));
-            int expiresAtTick = currentTick + Math.max((int) Math.ceil(fastestTravelTicks * 3.0), 20);
-
-            cargo.assignWithLoading(playerId, playerShip.getId(), expiresAtTick, loadingCompletedAtTick);
-            sessionCargoRepository.save(cargo);
+            int loadingCompletedAtTick = playerShip.getLoadingCompletedAtTick();
+            double loadingDurationSeconds = (loadingCompletedAtTick - currentTick) * session.getTickRateSeconds();
 
             double distance = portDistanceForCargoService.distanceBetween(originPortId, destinationPortId);
             double speedSetting = Math.max(0.25, Math.min(1.0, request.getSpeedSetting()));
@@ -153,7 +138,6 @@ public class StartTravelServiceImpl implements StartTravelService {
 
             double requiredFuelPercent = (requiredFuelAbsolute / ship.getMaxFuel().doubleValue()) * 100.0;
 
-            playerShip.startLoading(destinationPortId, loadingCompletedAtTick);
             playerShip.consumeFuel(requiredFuelPercent);
             playerShipRepository.save(playerShip);
 

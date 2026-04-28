@@ -39,6 +39,7 @@ interface SelectedCargo {
     weight: number;
     destinationPortId: string;
     speedSetting: number;
+    loadingDurationSeconds?: number;
 }
 
 interface CargoRewardBreakdown {
@@ -72,6 +73,7 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
     const [pilotageSelected, setPilotageSelected] = useState(false);
     const [showDeparture, setShowDeparture] = useState(false);
     const [travelResult, setTravelResult] = useState<TravelCompleteEvent | null>(null);
+    const [loadingDurationSeconds, setLoadingDurationSeconds] = useState<number>(10);
 
     const [view, setView] = useState<"main" | "cargo" | "ship">("main");
     const [currentPortId, setCurrentPortId] = useState<string | null>(null);
@@ -203,6 +205,7 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
                                 cargo={selectedCargo}
                                 done={loadingDone}
                                 onComplete={() => { setIsLoadingShip(false); setLoadingDone(true); }}
+                                loadingDurationSeconds={loadingDurationSeconds}
                             />
                         )}
                     </div>
@@ -260,6 +263,7 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
                         setSelectedCargo(c);
                         setLoadingDone(false);
                         setPilotageSelected(false);
+                        setLoadingDurationSeconds(c.loadingDurationSeconds ?? 10);
                         const shipCap = selectedShip?.maxCargoCapacity ?? Infinity;
                         if (selectedShip && c.weight <= shipCap) {
                             setIsLoadingShip(true);

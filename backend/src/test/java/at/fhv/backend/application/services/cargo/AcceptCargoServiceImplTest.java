@@ -9,6 +9,7 @@ import at.fhv.backend.domain.model.cargo.exception.CargoCapacityExceededExceptio
 import at.fhv.backend.domain.model.cargo.exception.CargoNotAvailableException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
+import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.session.SessionStatus;
@@ -41,6 +42,7 @@ class AcceptCargoServiceImplTest {
     @Mock private GameSessionRepository gameSessionRepository;
     @Mock private PortQueryService portQueryService;
     @Mock private PortDistanceForCargoService portDistanceForCargoService;
+    @Mock private SessionPlayerRepository sessionPlayerRepository;
 
     private AcceptCargoServiceImpl service;
 
@@ -49,7 +51,7 @@ class AcceptCargoServiceImplTest {
         service = new AcceptCargoServiceImpl(
                 sessionCargoRepository, cargoRepository, playerShipRepository,
                 shipRepository, gameSessionRepository, portQueryService,
-                portDistanceForCargoService);
+                portDistanceForCargoService, sessionPlayerRepository);
     }
 
     private GameSession buildRunningSession(UUID sessionId, int currentTick) {
