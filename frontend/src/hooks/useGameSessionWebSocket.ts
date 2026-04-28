@@ -56,6 +56,27 @@ interface ShipPositionsUpdateEvent {
     ships: ShipPosition[];
 }
 
+interface CargoRewardBreakdown {
+    cargoId: string;
+    cargoName: string;
+    destinationPort: string;
+    baseReward: number;
+    actualReward: number;
+    percentage: number;
+    status: "DELIVERED" | "EXPIRED";
+    cargoType: string;
+}
+
+interface TravelCompleteEvent {
+    travelId: string;
+    playerId: string;
+    cargoRewards: CargoRewardBreakdown[];
+    baseReward: number;
+    totalReward: number;
+    previousBalance: number;
+    newBalance: number;
+}
+
 interface UseGameSessionWebSocketProps {
     sessionId: string | null;
     onSessionUpdate: (event: SessionUpdateEvent) => void;
@@ -175,6 +196,16 @@ export function useGameSessionWebSocket({
                             window.dispatchEvent(new CustomEvent('backend-ship-positions', { detail: event }));
                         } catch (error) {
                             console.error('Error parsing ship positions:', error);
+                        }
+                    });
+
+                    // Subscribe to travel complete
+                    client.subscribe(`/topic/session/${sessionId}/travel-complete`, (message) => {
+                        try {
+                            const event = JSON.parse(message.body) as TravelCompleteEvent;
+                            window.dispatchEvent(new CustomEvent('travel-complete', { detail: event }));
+                        } catch (error) {
+                            console.error('Error parsing travel-complete event:', error);
                         }
                     });
 

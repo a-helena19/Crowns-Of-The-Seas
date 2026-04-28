@@ -1,6 +1,7 @@
 package at.fhv.backend.application.services.impl.session;
 
 import at.fhv.backend.application.init.CargoSessionInitializer;
+import at.fhv.backend.application.services.travel.TravelArrivalService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
 import at.fhv.backend.domain.model.cargo.CargoType;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
@@ -44,6 +45,7 @@ public class GameTickScheduler {
     private final SessionCargoRepository sessionCargoRepository;
     private final CargoWebSocketController cargoWebSocketController;
     private final GameSessionWebSocketController webSocketController;
+    private final TravelArrivalService travelArrivalService;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
     private final Map<UUID, ScheduledFuture<?>> runningTasks = new ConcurrentHashMap<>();
@@ -60,7 +62,8 @@ public class GameTickScheduler {
                              PortQueryService portQueryService,
                              SessionCargoRepository sessionCargoRepository,
                              CargoWebSocketController cargoWebSocketController,
-                             GameSessionWebSocketController webSocketController) {
+                             GameSessionWebSocketController webSocketController,
+                             TravelArrivalService travelArrivalService) {
         this.gameSessionRepository = gameSessionRepository;
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
@@ -69,7 +72,9 @@ public class GameTickScheduler {
         this.sessionCargoRepository = sessionCargoRepository;
         this.cargoWebSocketController = cargoWebSocketController;
         this.webSocketController = webSocketController;
+        this.travelArrivalService = travelArrivalService;
     }
+
 
     public void startForSession(UUID sessionId, int tickRateSeconds) {
         runningTasks.computeIfAbsent(sessionId, ignored ->
@@ -158,7 +163,7 @@ public class GameTickScheduler {
             List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
             for (Travel travel : activeTravels) {
                 if (currentTick >= travel.getArrivalTick()) {
-                    handleArrival(travel);
+                    travelArrivalService.handleArrival(travel);
                 }
             }
 
@@ -183,29 +188,29 @@ public class GameTickScheduler {
         executor.shutdownNow();
     }
 
-    private void handleArrival(Travel travel) {
-        travel.markAsArrived(0.0, travel.getTravelStatus());
-        travelRepository.save(travel);
-
-        PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
-        if (ship != null) {
-            ship.arriveAtPort(travel.getDestinationPortId());
-            playerShipRepository.save(ship);
-        }
-
-        List<SessionCargo> assignedCargos = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
-        for (SessionCargo cargo : assignedCargos) {
-            if (cargo.getAssignedPlayerShipId() != null
-                    && cargo.getAssignedPlayerShipId().equals(travel.getPlayerShipId())
-                    && cargo.getDestinationPortId().equals(travel.getDestinationPortId())
-                    && cargo.getCargoStatus() == CargoStatus.ASSIGNED) {
-                cargo.deliver();
-                int cooldown = CargoSessionInitializer.randomizedCooldownFor(cargo.getCargoType(), rng);
-                cargo.startCooldown(travel.getArrivalTick() + cooldown);
-                sessionCargoRepository.save(cargo);
-            }
-        }
-    }
+//    private void handleArrival(Travel travel) {
+//        travel.markAsArrived(0.0, travel.getTravelStatus());
+//        travelRepository.save(travel);
+//
+//        PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
+//        if (ship != null) {
+//            ship.arriveAtPort(travel.getDestinationPortId());
+//            playerShipRepository.save(ship);
+//        }
+//
+//        List<SessionCargo> assignedCargos = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
+//        for (SessionCargo cargo : assignedCargos) {
+//            if (cargo.getAssignedPlayerShipId() != null
+//                    && cargo.getAssignedPlayerShipId().equals(travel.getPlayerShipId())
+//                    && cargo.getDestinationPortId().equals(travel.getDestinationPortId())
+//                    && cargo.getCargoStatus() == CargoStatus.ASSIGNED) {
+//                cargo.deliver();
+//                int cooldown = CargoSessionInitializer.randomizedCooldownFor(cargo.getCargoType(), rng);
+//                cargo.startCooldown(travel.getArrivalTick() + cooldown);
+//                sessionCargoRepository.save(cargo);
+//            }
+//        }
+//    }
 
     public void triggerImmediateBroadcast(UUID sessionId) {
         try {

@@ -42,7 +42,8 @@ public class TravelArrivalServiceImpl implements TravelArrivalService {
                                     RewardCalculationService rewardCalculationService,
                                     GameSessionWebSocketController webSocketController,
                                     SessionCargoRepository sessionCargoRepository,
-                                    PortRepository portRepository, CargoRepository cargoRepository) {
+                                    PortRepository portRepository,
+                                    CargoRepository cargoRepository) {
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
         this.gameSessionRepository = gameSessionRepository;
@@ -57,23 +58,22 @@ public class TravelArrivalServiceImpl implements TravelArrivalService {
     @Override
     @Transactional
     public void handleArrival(Travel travel) {
-        // 1. Mark travel as arrived
+        List<SessionCargo> cargosForPlayer =
+                sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
+
         travel.markAsArrived(0.0, travel.getTravelStatus());
         travelRepository.save(travel);
 
-        // 2. Update ship status
         PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
         if (ship != null) {
             ship.arriveAtPort(travel.getDestinationPortId());
             playerShipRepository.save(ship);
         }
 
-        // 3. Unload all cargo for this travel
-        cargoUnloadService.unloadCargoForTravel(travel);
+        cargoUnloadService.unloadCargoForTravel(travel, cargosForPlayer);
 
-        // 4. Calculate and distribute rewards
         UUID playerId = travel.getPlayerId();
-        BigDecimal totalReward = rewardCalculationService.calculateTotalReward(travel);
+        BigDecimal totalReward = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
         BigDecimal previousBalance = BigDecimal.ZERO;
         BigDecimal newBalance = BigDecimal.ZERO;
 
@@ -92,32 +92,39 @@ public class TravelArrivalServiceImpl implements TravelArrivalService {
                     gameSessionRepository.save(session);
                 }
             }
+        } else {
+            var session = gameSessionRepository.findById(travel.getSessionId()).orElse(null);
+            if (session != null) {
+                ISessionPlayer player = session.getPlayers().stream()
+                        .filter(p -> p.getUserId().equals(playerId))
+                        .findFirst()
+                        .orElse(null);
+                if (player != null) {
+                    previousBalance = player.getBalance();
+                    newBalance = player.getBalance();
+                }
+            }
         }
 
-        // 5. ← NEU! Sende Travel Complete Event über WebSocket
-        sendTravelCompleteEvent(travel, playerId, previousBalance, newBalance);
+        sendTravelCompleteEvent(travel, playerId, cargosForPlayer, previousBalance, newBalance);
     }
 
     private void sendTravelCompleteEvent(Travel travel, UUID playerId,
+                                         List<SessionCargo> cargosForPlayer,
                                          BigDecimal previousBalance, BigDecimal newBalance) {
         try {
-            // Get destination port name
             PortId destinationPortId = PortId.of(travel.getDestinationPortId());
             Port destinationPort = portRepository.findById(destinationPortId).orElse(null);
             String destinationPortName = destinationPort != null ? destinationPort.getName() : "Unknown Port";
 
-            // Get all cargo for this travel
-            List<SessionCargo> cargoList = sessionCargoRepository.findByAssignedPlayerId(playerId);
-
-            List<CargoRewardBreakdown> cargoRewards = cargoList.stream()
+            List<CargoRewardBreakdown> cargoRewards = cargosForPlayer.stream()
                     .filter(sessionCargo -> {
-                        // Filter: cargo für diese Reise (Destination Port + Ship)
-                        boolean isForThisTravel = sessionCargo.getDestinationPortId().equals(travel.getDestinationPortId())
-                                && sessionCargo.getAssignedPlayerShipId().equals(travel.getPlayerShipId());
-                        // Nur DELIVERED oder EXPIRED
-                        boolean isDeliveredOrExpired = sessionCargo.getCargoStatus() == CargoStatus.DELIVERED
-                                || sessionCargo.getCargoStatus() == CargoStatus.EXPIRED;
-                        return isForThisTravel && isDeliveredOrExpired;
+                        boolean isForThisPort = sessionCargo.getDestinationPortId()
+                                .equals(travel.getDestinationPortId());
+                        boolean isDeliveredOrExpired =
+                                sessionCargo.getCargoStatus() == CargoStatus.DELIVERED
+                                        || sessionCargo.getCargoStatus() == CargoStatus.EXPIRED;
+                        return isForThisPort && isDeliveredOrExpired;
                     })
                     .map(sessionCargo -> {
                         BigDecimal actualReward = rewardCalculationService.calculateCargoReward(sessionCargo);
@@ -141,11 +148,9 @@ public class TravelArrivalServiceImpl implements TravelArrivalService {
                     })
                     .toList();
 
-            // Get base travel reward
             BigDecimal baseReward = travel.getBaseReward() != null ? travel.getBaseReward() : BigDecimal.ZERO;
-            BigDecimal totalReward = rewardCalculationService.calculateTotalReward(travel);
+            BigDecimal totalReward = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
 
-            // Create and send event
             TravelCompleteEvent event = new TravelCompleteEvent(
                     travel.getTravelId().toString(),
                     playerId.toString(),
@@ -161,7 +166,6 @@ public class TravelArrivalServiceImpl implements TravelArrivalService {
                     event
             );
         } catch (Exception e) {
-            // Log error aber nicht crash
             System.err.println("Error sending travel complete event: " + e.getMessage());
             e.printStackTrace();
         }

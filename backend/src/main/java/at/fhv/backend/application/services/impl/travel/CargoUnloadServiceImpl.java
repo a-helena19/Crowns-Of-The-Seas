@@ -24,14 +24,9 @@ public class CargoUnloadServiceImpl implements CargoUnloadService {
 
     @Override
     @Transactional
-    public void unloadCargoForTravel(Travel travel) {
-        // Find all cargo assigned to the player
-        List<SessionCargo> assignedCargos = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
-
+    public void unloadCargoForTravel(Travel travel, List<SessionCargo> assignedCargos) {
         for (SessionCargo cargo : assignedCargos) {
-            // Check if cargo belongs to this ship and is destined for this port
             if (isCargoForThisTravel(cargo, travel)) {
-                // Unload the cargo
                 unloadCargo(cargo, travel);
             }
         }
@@ -53,7 +48,6 @@ public class CargoUnloadServiceImpl implements CargoUnloadService {
             cargo.deliver();
         }
 
-        // Calculate cooldown based on cargo type
         int cooldown = CargoSessionInitializer.randomizedCooldownFor(cargo.getCargoType(), rng);
         cargo.startCooldown(travel.getArrivalTick() + cooldown);
 
