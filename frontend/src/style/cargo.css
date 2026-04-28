@@ -686,3 +686,283 @@
     background: #f5d8d8;
     border-left-color: #c04040;
 }
+
+.cargo-status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: bold;
+    color: white;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Status Badge Colors */
+.cargo-status-badge.available {
+    background: #4CAF50;  /* Grün */
+}
+
+.cargo-status-badge.assigned {
+    background: #2196F3;  /* Blau */
+}
+
+.cargo-status-badge.delivered {
+    background: #8BC34A;  /* Hellgrün */
+}
+
+.cargo-status-badge.expired {
+    background: #FF5722;  /* Orange/Rot */
+}
+
+.cargo-status-badge.inactive {
+    background: #999;     /* Grau */
+}
+
+.cargo-item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.cargo-item-name {
+    font-weight: bold;
+    font-size: 13px;
+    flex-grow: 1;
+}
+
+.cargo-item-profit {
+    color: #8c6a3a;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.cargo-expiry-warning {
+    background: #FF5722;
+    color: white;
+    padding: 10px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: warning-pulse 2s ease-in-out infinite;
+}
+
+.cargo-expiry-warning span:first-child {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+@keyframes warning-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.cargo-perishable-warning {
+    background: #FF5722;
+    color: white;
+    padding: 10px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cargo-perishable-warning span:first-child {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.cargo-reward-percentage {
+    color: #FF5722;
+    font-size: 12px;
+    margin-left: 8px;
+    font-weight: bold;
+}
+
+.cargo-reward-percentage-zero {
+    color: #c04040;
+    font-weight: bold;
+}
+
+.cargo-reward-percentage-low {
+    color: #FF9800;
+    font-weight: bold;
+}
+
+.cargo-reward-percentage-medium {
+    color: #FFC107;
+    font-weight: bold;
+}
+
+.cargo-reward-percentage-high {
+    color: #8BC34A;
+    font-weight: bold;
+}
+
+.cargo-type-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+.cargo-type-general_goods {
+    background: rgba(122, 155, 106, 0.15);
+    color: #7a9b6a;
+}
+
+.cargo-type-food {
+    background: rgba(192, 135, 74, 0.15);
+    color: #c0874a;
+}
+
+.cargo-type-industrial_goods {
+    background: rgba(106, 127, 160, 0.15);
+    color: #6a7fa0;
+}
+
+.cargo-type-electronics {
+    background: rgba(106, 95, 176, 0.15);
+    color: #6a5fb0;
+}
+
+.cargo-type-fragile {
+    background: rgba(176, 128, 96, 0.15);
+    color: #b08060;
+}
+
+.cargo-type-hazardous {
+    background: rgba(176, 64, 64, 0.15);
+    color: #b04040;
+}
+
+.cargo-type-luxury_goods {
+    background: rgba(160, 112, 48, 0.15);
+    color: #a07030;
+}
+
+.cargo-stat {
+    flex: 1;
+    padding: 20px;
+    text-align: center;
+}
+
+.cargo-stat-label {
+    font-size: 11px;
+    color: #7a6a4a;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.cargo-stat strong {
+    font-size: 16px;
+    color: #2b2418;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.cargo-list-header {
+    font-size: 13px;
+    letter-spacing: 3px;
+    margin-bottom: 20px;
+    color: #6b5a3a;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.cargo-item.perishable {
+    border-left: 4px solid #FF5722;
+}
+
+.cargo-item.perishable .cargo-item-sub {
+    color: #c04040;
+    font-weight: 500;
+}
+
+.cargo-item.hazardous {
+    border-left: 4px solid #b04040;
+}
+
+.cargo-item.expired {
+    opacity: 0.7;
+    background: #f0e5cc;
+}
+
+.cargo-item.expired:hover {
+    background: #f5ebdc;
+}
+
+.cargo-item.expired .cargo-item-name {
+    text-decoration: line-through;
+    color: #999;
+}
+
+.cargo-reward-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: center;
+}
+
+.cargo-reward-base {
+    font-weight: bold;
+    color: #2b2418;
+}
+
+.cargo-reward-reduced {
+    font-size: 12px;
+    color: #FF5722;
+    font-style: italic;
+}
+
+@keyframes badge-glow {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255, 87, 34, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 0 4px rgba(255, 87, 34, 0);
+    }
+}
+
+.cargo-status-badge.expired {
+    animation: badge-glow 2s infinite;
+}
+
+@media (max-width: 1200px) {
+    .cargo-item-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .cargo-status-badge {
+        padding: 2px 6px;
+        font-size: 9px;
+    }
+}
+
+@media print {
+    .cargo-status-badge {
+        border: 1px solid #000;
+        background: transparent !important;
+        color: #000 !important;
+    }
+}

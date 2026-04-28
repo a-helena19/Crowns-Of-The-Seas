@@ -38,14 +38,20 @@ public class CargoUnloadServiceImpl implements CargoUnloadService {
     }
 
     private boolean isCargoForThisTravel(SessionCargo cargo, Travel travel) {
-        return cargo.getAssignedPlayerShipId() != null
+        boolean isForThisShipAndPort = cargo.getAssignedPlayerShipId() != null
                 && cargo.getAssignedPlayerShipId().equals(travel.getPlayerShipId())
-                && cargo.getDestinationPortId().equals(travel.getDestinationPortId())
-                && cargo.getCargoStatus() == CargoStatus.ASSIGNED;
+                && cargo.getDestinationPortId().equals(travel.getDestinationPortId());
+
+        boolean isAssignedOrExpired = cargo.getCargoStatus() == CargoStatus.ASSIGNED
+                || cargo.getCargoStatus() == CargoStatus.EXPIRED;
+
+        return isForThisShipAndPort && isAssignedOrExpired;
     }
 
     private void unloadCargo(SessionCargo cargo, Travel travel) {
-        cargo.deliver();
+        if (cargo.getCargoStatus() == CargoStatus.ASSIGNED) {
+            cargo.deliver();
+        }
 
         // Calculate cooldown based on cargo type
         int cooldown = CargoSessionInitializer.randomizedCooldownFor(cargo.getCargoType(), rng);

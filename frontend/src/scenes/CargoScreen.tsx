@@ -81,6 +81,43 @@ interface AcceptedCargo {
     speedSetting: number;
 }
 
+// Hilfsfunktionen für Status
+const getStatusLabel = (status: string): string => {
+    switch (status) {
+        case "AVAILABLE": return "📦 Verfügbar";
+        case "ASSIGNED": return "🚢 Zugeteilt";
+        case "DELIVERED": return "✅ Geliefert";
+        case "EXPIRED": return "❌ Abgelaufen";
+        case "INACTIVE": return "⊘ Inaktiv";
+        default: return status;
+    }
+};
+
+const getStatusColor = (status: string): string => {
+    switch (status) {
+        case "AVAILABLE": return "#4CAF50";  // Grün
+        case "ASSIGNED": return "#2196F3";   // Blau
+        case "DELIVERED": return "#8BC34A";  // Hellgrün
+        case "EXPIRED": return "#FF5722";    // Orange/Rot
+        case "INACTIVE": return "#999";      // Grau
+        default: return "#666";
+    }
+};
+
+// Berechnet die Belohnung für EXPIRED Cargo (typ-abhängig)
+const getExpiredRewardPercent = (cargoType: string): number => {
+    switch (cargoType) {
+        case "FOOD": return 0;
+        case "HAZARDOUS": return 0;
+        case "FRAGILE": return 10;
+        case "ELECTRONICS": return 15;
+        case "LUXURY_GOODS": return 20;
+        case "GENERAL_GOODS": return 40;
+        case "INDUSTRIAL_GOODS": return 50;
+        default: return 0;
+    }
+};
+
 interface Props {
     onCargoAccepted: (cargo: AcceptedCargo) => void;
     currentPortId: string | null;
@@ -335,7 +372,20 @@ const WeightIcon = () => (
                                 >
                                     <div className="cargo-item-row">
                                         <span className="cargo-item-name">{c.name}</span>
-                                        <span className="cargo-item-profit">{Number(c.reward).toLocaleString("de-DE")} G</span>
+                                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                            {/* Status Badge */}
+                                            <span className="cargo-status-badge" style={{
+                                                padding: "2px 6px",
+                                                borderRadius: 3,
+                                                fontSize: 10,
+                                                fontWeight: "bold",
+                                                backgroundColor: getStatusColor(c.cargoStatus),
+                                                color: "white"
+                                            }}>
+                                                {getStatusLabel(c.cargoStatus)}
+                                            </span>
+                                            <span className="cargo-item-profit">{Number(c.reward).toLocaleString("de-DE")} G</span>
+                                        </div>
                                     </div>
                                     <div className="cargo-item-sub">
                                     <span style={{ background: TYPE_COLORS[c.cargoType] + "22", color: TYPE_COLORS[c.cargoType], padding: "1px 6px", borderRadius: 3, fontSize: 10, fontWeight: "bold", letterSpacing: 1 }}>
@@ -363,6 +413,30 @@ const WeightIcon = () => (
                         {selected ? (
                             <>
                                 <div className="cargo-detail-title">{selected.name}</div>
+
+                                {/* Warnung für verderbliche Waren */}
+                                {(selected.cargoType === "FOOD" || selected.cargoType === "HAZARDOUS") && (
+                                    <div style={{
+                                        background: "#FF5722",
+                                        color: "white",
+                                        padding: 8,
+                                        borderRadius: 4,
+                                        fontSize: 12,
+                                        fontWeight: "bold",
+                                        marginBottom: 12,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 8
+                                    }}>
+                                        <span>⚠️</span>
+                                        <span>
+                                            {selected.cargoType === "FOOD"
+                                            ? "Verderbliche Ware - schnelle Lieferung erforderlich!"
+                                            : "Gefährliches Material - wird bei Ablauf entsorgt!"}
+                                        </span>
+                                    </div>
+                                )}
+
                                 <div style={{ color: "#7a6a4a", fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
                                     {selected.description}
                                 </div>
@@ -382,7 +456,14 @@ const WeightIcon = () => (
                                 <div className="cargo-stats">
                                     <div className="cargo-stat">
                                         <div className="cargo-stat-label">Belohnung</div>
-                                        <strong>{Number(selected.reward).toLocaleString("de-DE")} G</strong>
+                                        <strong>
+                                            {Number(selected.reward).toLocaleString("de-DE")} G
+                                            {selected.cargoStatus === "EXPIRED" && (
+                                                <span style={{ color: "#FF5722", fontSize: 12, marginLeft: 8 }}>
+                                                    ({getExpiredRewardPercent(selected.cargoType)}%)
+                                                </span>
+                                            )}
+                                        </strong>
                                     </div>
                                     <div className="cargo-stat">
                                         <div className="cargo-stat-label">Kapazität</div>
