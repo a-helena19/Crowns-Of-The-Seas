@@ -36,7 +36,7 @@ public class AcceptCargoServiceImpl implements AcceptCargoService {
     private static final double FASTEST_SPEED_SETTING = 1.0;
     private static final double EXPIRY_BUFFER_FACTOR = 3.0;
     private static final int MIN_EXPIRY_TICKS = 20;
-    private static final int BASE_LOADING_TICKS = 2;
+    private static final int BASE_LOADING_TICKS = 5;
 
     private final SessionCargoRepository sessionCargoRepository;
     private final CargoRepository cargoRepository;
