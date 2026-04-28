@@ -3,6 +3,7 @@ package at.fhv.backend.application.services;
 import at.fhv.backend.application.dtos.mapper.TravelResponseMapper;
 import at.fhv.backend.application.services.cargo.PortDistanceForCargoService;
 import at.fhv.backend.application.services.port.PortQueryService;
+import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.rest.CargoWebSocketController;
 import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
@@ -52,7 +53,6 @@ import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
 
 @ExtendWith(MockitoExtension.class)
 class TravelServiceImplTest {
-
     @Nested
     class ValidateTravelServiceImplTest {
         private ValidateTravelService validateTravelService;
@@ -163,6 +163,8 @@ class TravelServiceImplTest {
         @Mock private SessionCargoRepository sessionCargoRepository;
         @Mock private CargoWebSocketController cargoWebSocketController;
         @Mock private PortDistanceForCargoService portDistanceForCargoService;
+        @Mock private SessionPlayerRepository sessionPlayerRepository;
+
 
         private StartTravelServiceImpl service;
 
@@ -174,7 +176,7 @@ class TravelServiceImplTest {
                     travelRepository, travelResponseMapper,
                     gameSessionRepository, gameTickScheduler,
                     sessionCargoRepository, cargoWebSocketController,
-                    portDistanceForCargoService
+                    portDistanceForCargoService, sessionPlayerRepository
             );
         }
 
