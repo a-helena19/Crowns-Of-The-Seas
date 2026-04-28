@@ -5,7 +5,6 @@ import at.fhv.backend.application.dtos.mapper.ShipResponseMapper;
 import at.fhv.backend.rest.dtos.ship.request.BuyShipDTO;
 import at.fhv.backend.rest.dtos.ship.response.PlayerShipDTO;
 import at.fhv.backend.application.services.impl.ship.PurchaseShipServiceImpl;
-import at.fhv.backend.application.services.impl.session.GameTickScheduler;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.application.services.ship.ValidateShipService;
 import at.fhv.backend.domain.model.exception.InsufficientFundsException;
@@ -46,7 +45,8 @@ class PurchaseShipServiceImplTest {
     @Mock private ShipResponseMapper shipResponseMapper;
     @Mock private PortQueryService portQueryService;
     @Mock private SessionPlayerRepository sessionPlayerRepository;
-    @Mock private GameTickScheduler gameTickScheduler;
+    @Mock private at.fhv.backend.application.services.impl.session.GameTickScheduler gameTickScheduler;
+    @Mock private at.fhv.backend.rest.ShipMarketWebSocketController shipMarketWebSocketController;
 
     private PurchaseShipServiceImpl service;
 
@@ -55,14 +55,15 @@ class PurchaseShipServiceImplTest {
         service = new PurchaseShipServiceImpl(
                 validateShipService, shipRepository, playerShipRepository,
                 playerShipResponseMapper, shipResponseMapper,
-                portQueryService, sessionPlayerRepository, gameTickScheduler
+                portQueryService, sessionPlayerRepository,
+                gameTickScheduler, shipMarketWebSocketController
         );
     }
 
     private Ship buildShip(BigDecimal price) {
         return Ship.create("Black Pearl", "A fast ship", ShipClass.STANDARD,
                 price, 100, 15.0, 2.5,
-                BigDecimal.valueOf(500), BigDecimal.valueOf(200), 0.9, "icon.png");
+                BigDecimal.valueOf(500), BigDecimal.valueOf(200), 0.9, "icon.png", 20);
     }
 
     private ISessionPlayer buildPlayer(UUID userId, UUID sessionId, BigDecimal balance) {
@@ -86,10 +87,10 @@ class PurchaseShipServiceImplTest {
         when(sessionPlayerRepository.save(player)).thenReturn(player);
         when(portQueryService.findAll())
                 .thenReturn(List.of(new PortResponseDTO(startPortId, "Hamburg", 49.5, 22.0)));
+        when(playerShipRepository.save(any(PlayerShip.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
         when(playerShipResponseMapper.toResponse(any(PlayerShip.class), eq(ship)))
                 .thenReturn(new PlayerShipDTO());
-        doNothing().when(gameTickScheduler).triggerImmediateBroadcast(sessionId);
-        // playerShipRepository.save() is intentionally NOT mocked here to allow tests to override
         return startPortId;
     }
 
@@ -100,8 +101,6 @@ class PurchaseShipServiceImplTest {
         Ship ship = buildShip(BigDecimal.valueOf(1000));
         ISessionPlayer player = buildPlayer(playerId, sessionId, BigDecimal.valueOf(5000));
         stubSuccessfulPurchase(ship, player, playerId, sessionId);
-        when(playerShipRepository.save(any(PlayerShip.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
 
         service.buyShip(playerId, sessionId, buildBuyShipDTO(ship.getId()));
 
@@ -115,8 +114,6 @@ class PurchaseShipServiceImplTest {
         Ship ship = buildShip(BigDecimal.valueOf(1000));
         ISessionPlayer player = buildPlayer(playerId, sessionId, BigDecimal.valueOf(5000));
         stubSuccessfulPurchase(ship, player, playerId, sessionId);
-        when(playerShipRepository.save(any(PlayerShip.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
 
         service.buyShip(playerId, sessionId, buildBuyShipDTO(ship.getId()));
 

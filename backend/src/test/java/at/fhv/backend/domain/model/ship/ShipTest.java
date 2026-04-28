@@ -12,7 +12,7 @@ class ShipTest {
     void givenValidParameters_whenCreate_thenIdIsAssigned() {
         Ship ship = Ship.create("Black Pearl", "A legendary ship", ShipClass.BUDGET,
                 new BigDecimal("50000.00"), 200, 15.5, 0.8,
-                new BigDecimal("1000.00"), new BigDecimal("500.00"), 0.9, "icons/black_pearl.png");
+                new BigDecimal("1000.00"), new BigDecimal("500.00"), 0.9, "icons/black_pearl.png", 20);
 
         assertThat(ship.getId()).isNotNull();
     }
@@ -21,10 +21,10 @@ class ShipTest {
     void givenTwoCreatedShips_thenIdsAreUnique() {
         Ship ship1 = Ship.create("Black Pearl", "desc", ShipClass.BUDGET,
                 new BigDecimal("50000.00"), 200, 15.5, 0.8,
-                new BigDecimal("1000.00"), new BigDecimal("500.00"), 0.9, "icon.png");
+                new BigDecimal("1000.00"), new BigDecimal("500.00"), 0.9, "icon.png", 20);
         Ship ship2 = Ship.create("Black Pearl", "desc", ShipClass.BUDGET,
                 new BigDecimal("50000.00"), 200, 15.5, 0.8,
-                new BigDecimal("1000.00"), new BigDecimal("500.00"), 0.9, "icon.png");
+                new BigDecimal("1000.00"), new BigDecimal("500.00"), 0.9, "icon.png", 20);
 
         assertThat(ship1.getId()).isNotEqualTo(ship2.getId());
     }
@@ -33,7 +33,7 @@ class ShipTest {
     void givenValidParameters_whenCreate_thenFieldsAreSetCorrectly() {
         Ship ship = Ship.create("Black Pearl", "A legendary ship", ShipClass.BUDGET,
                 new BigDecimal("50000.00"), 200, 15.5, 0.8,
-                new BigDecimal("1000.00"), new BigDecimal("500.00"), 0.9, "icons/black_pearl.png");
+                new BigDecimal("1000.00"), new BigDecimal("500.00"), 0.9, "icons/black_pearl.png", 20);
 
         assertThat(ship.getName()).isEqualTo("Black Pearl");
         assertThat(ship.getDescription()).isEqualTo("A legendary ship");
@@ -55,7 +55,7 @@ class ShipTest {
         Ship ship = Ship.reconstruct(fixedId, "Flying Dutchman", "Ghost ship",
                 ShipClass.PREMIUM, new BigDecimal("99999.00"), 500,
                 12.0, 1.2, new BigDecimal("2000.00"), new BigDecimal("800.00"),
-                0.75, "icons/dutchman.png");
+                0.75, "icons/dutchman.png", 20);
 
         assertThat(ship.getId()).isEqualTo(fixedId);
     }
@@ -67,7 +67,7 @@ class ShipTest {
         Ship ship = Ship.reconstruct(fixedId, "Flying Dutchman", "Ghost ship",
                 ShipClass.PREMIUM, new BigDecimal("99999.00"), 500,
                 12.0, 1.2, new BigDecimal("2000.00"), new BigDecimal("800.00"),
-                0.75, "icons/dutchman.png");
+                0.75, "icons/dutchman.png", 20);
 
         assertThat(ship.getName()).isEqualTo("Flying Dutchman");
         assertThat(ship.getDescription()).isEqualTo("Ghost ship");

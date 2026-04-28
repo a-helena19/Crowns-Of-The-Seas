@@ -16,9 +16,10 @@ public class Ship {
     private final BigDecimal operatingCost;
     private final double baseReliability;
     private final String iconUrl;
+    private final int stock;
 
     private Ship(UUID id, String name, String description, ShipClass shipClass, BigDecimal price, int maxCargoCapacity, double maxSpeed,
-                 double fuelConsumption, BigDecimal maxFuel, BigDecimal operatingCost, double baseReliability, String iconUrl) {
+                 double fuelConsumption, BigDecimal maxFuel, BigDecimal operatingCost, double baseReliability, String iconUrl, int stock) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -31,10 +32,11 @@ public class Ship {
         this.operatingCost = operatingCost;
         this.baseReliability = baseReliability;
         this.iconUrl = iconUrl;
+        this.stock = stock;
     }
 
     public static Ship create(String name, String description, ShipClass shipClass, BigDecimal price, int maxCargoCapacity, double maxSpeed,
-                              double fuelConsumption, BigDecimal maxFuel, BigDecimal operatingCost, double baseReliability, String iconUrl) {
+                              double fuelConsumption, BigDecimal maxFuel, BigDecimal operatingCost, double baseReliability, String iconUrl, int stock) {
         return new Ship(
                 UUID.randomUUID(),
                 name, description,
@@ -46,11 +48,12 @@ public class Ship {
                 maxFuel,
                 operatingCost,
                 baseReliability,
-                iconUrl);
+                iconUrl,
+                stock);
     }
 
     public static Ship reconstruct(UUID id, String name, String description, ShipClass shipClass, BigDecimal price, int maxCargoCapacity, double maxSpeed,
-                                   double fuelConsumption, BigDecimal maxFuel, BigDecimal operatingCost, double baseReliability, String iconUrl) {
+                                   double fuelConsumption, BigDecimal maxFuel, BigDecimal operatingCost, double baseReliability, String iconUrl, int stock) {
         return new Ship(
                 id,
                 name,
@@ -63,8 +66,9 @@ public class Ship {
                 maxFuel,
                 operatingCost,
                 baseReliability,
-                iconUrl
-                );
+                iconUrl,
+                stock
+        );
     }
 
     public UUID getId() {
@@ -115,4 +119,7 @@ public class Ship {
         return iconUrl;
     }
 
+    public int getStock() {
+        return stock;
+    }
 }

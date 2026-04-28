@@ -21,6 +21,8 @@ public class ShipResponseMapper implements DtoMapper<Ship, ShipDTO> {
         response.setOperatingCost(ship.getOperatingCost());
         response.setBaseReliability(ship.getBaseReliability());
         response.setIconUrl(ship.getIconUrl());
+        response.setStock(ship.getStock());
+        response.setAvailableStock(ship.getStock());
         return response;
     }
 }

@@ -23,4 +23,6 @@ public interface PlayerShipRepository {
             UUID sessionId,
             ShipStatus status
     );
+
+    long countByShipIdAndSessionId(UUID shipId, UUID sessionId);
 }
