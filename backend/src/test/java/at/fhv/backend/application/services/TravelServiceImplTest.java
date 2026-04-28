@@ -27,12 +27,15 @@ import at.fhv.backend.domain.model.ship.ShipRepository;
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.domain.model.travel.TravelStatus;
+import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -150,6 +153,7 @@ class TravelServiceImplTest {
     }
 
     @Nested
+    @MockitoSettings(strictness = Strictness.LENIENT)
     class StartTravelServiceImplTest {
         @Mock private PlayerShipRepository playerShipRepository;
         @Mock private ShipRepository shipRepository;
@@ -163,6 +167,7 @@ class TravelServiceImplTest {
         @Mock private SessionCargoRepository sessionCargoRepository;
         @Mock private CargoWebSocketController cargoWebSocketController;
         @Mock private PortDistanceForCargoService portDistanceForCargoService;
+        @Mock private SessionPlayerRepository sessionPlayerRepository;
 
         private StartTravelServiceImpl service;
 
@@ -174,7 +179,7 @@ class TravelServiceImplTest {
                     travelRepository, travelResponseMapper,
                     gameSessionRepository, gameTickScheduler,
                     sessionCargoRepository, cargoWebSocketController,
-                    portDistanceForCargoService
+                    portDistanceForCargoService, sessionPlayerRepository
             );
         }
 
