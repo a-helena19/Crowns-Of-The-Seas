@@ -67,5 +67,5 @@ stages:
         steps:
           - script: |
               docker-compose down
-              docker-compose up -d
+              docker-compose --profile app up -d
             displayName: 'Deploy with Docker Compose'
