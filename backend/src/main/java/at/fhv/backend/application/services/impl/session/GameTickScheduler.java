@@ -118,8 +118,11 @@ public class GameTickScheduler {
     }
 
     @Transactional
-    public void handleUnloadingPhase(int currentTick) {
-        List<Travel> arrivedTravels = travelRepository.findByStatus(TravelStatus.ARRIVED);
+    public void handleUnloadingPhase(UUID sessionId, int currentTick) {
+        List<Travel> arrivedTravels = travelRepository.findAllInProgressBySessionId(sessionId)
+                .stream()
+                .filter(t -> t.getTravelStatus() == TravelStatus.ARRIVED)
+                .collect(Collectors.toList());
 
         for (Travel travel : arrivedTravels) {
             PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
@@ -134,8 +137,13 @@ public class GameTickScheduler {
 
     @Transactional
     public void handleUnloadingComplete(Travel travel, int currentTick) {
-        List<SessionCargo> cargos = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
+        PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
 
+        if (ship == null || ship.getStatus() != ShipStatus.UNLOADING) {
+            return;
+        }
+
+        List<SessionCargo> cargos = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
         BigDecimal reward = cargoUnloadingPhaseService.completeUnloadingPhase(travel, cargos);
 
         System.out.println("[GameTick] Unloading complete for travel " + travel.getTravelId());
@@ -202,14 +210,13 @@ public class GameTickScheduler {
             return;
         }
 
-        // Ankunft und Schiffspositionen separat — Fehler hier blockieren den Tick nicht
         try {
             GameSession session = gameSessionRepository.findById(sessionId).orElse(null);
             if (session == null) return;
             int currentTick = session.getCurrentTick();
 
             checkLoadingCompletion(sessionId, currentTick);
-            handleUnloadingPhase(currentTick);
+            handleUnloadingPhase(sessionId, currentTick);
 
             List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
             for (Travel travel : activeTravels) {
