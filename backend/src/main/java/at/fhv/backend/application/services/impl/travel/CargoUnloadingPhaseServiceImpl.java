@@ -59,7 +59,11 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
     @Override
     @Transactional
     public BigDecimal completeUnloadingPhase(Travel travel, List<SessionCargo> cargosForPlayer) {
-        unloadAllCargo(travel, cargosForPlayer);
+        // Two-phase unloading so the reward calculation sees the correct cargo statuses:
+        // 1) Mark ASSIGNED cargos as DELIVERED (EXPIRED stays EXPIRED).
+        // 2) Calculate the reward — RewardCalculationService filters by DELIVERED/EXPIRED.
+        // 3) Pay out, send event, then start the cooldown (status -> INACTIVE).
+        markCargosAsDelivered(travel, cargosForPlayer);
 
         BigDecimal totalReward = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
 
@@ -84,13 +88,17 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             }
         }
 
+        // Send the event while cargos are still DELIVERED/EXPIRED so the breakdown is correct.
+        sendUnloadingCompleteEvent(travel, playerId, cargosForPlayer, previousBalance, newBalance);
+
+        // Now move cargos into INACTIVE (cooldown).
+        startCargoCooldowns(travel, cargosForPlayer);
+
         PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
         if (ship != null) {
             ship.completeUnloading();
             playerShipRepository.save(ship);
         }
-
-        sendUnloadingCompleteEvent(travel, playerId, cargosForPlayer, previousBalance, newBalance);
 
         return totalReward;
     }
@@ -104,10 +112,33 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         return !ship.isStillUnloading(currentTick);
     }
 
-    private void unloadAllCargo(Travel travel, List<SessionCargo> cargosForPlayer) {
+    private void markCargosAsDelivered(Travel travel, List<SessionCargo> cargosForPlayer) {
         for (SessionCargo cargo : cargosForPlayer) {
-            if (isCargoForThisTravel(cargo, travel)) {
-                unloadCargo(cargo, travel);
+            if (isCargoForThisTravel(cargo, travel) && cargo.getCargoStatus() == CargoStatus.ASSIGNED) {
+                cargo.deliver();
+                System.out.println("[CargoUnloading] Cargo " + cargo.getId()
+                        + " delivered at port " + travel.getDestinationPortId());
+            }
+        }
+    }
+
+    private void startCargoCooldowns(Travel travel, List<SessionCargo> cargosForPlayer) {
+        for (SessionCargo cargo : cargosForPlayer) {
+            // After delivery the cargo is DELIVERED; expired cargos that were unloaded stay EXPIRED.
+            // Both should now go into the cooldown (INACTIVE) phase.
+            boolean isForThisShipAndPort = cargo.getAssignedPlayerShipId() != null
+                    && cargo.getAssignedPlayerShipId().equals(travel.getPlayerShipId())
+                    && cargo.getDestinationPortId().equals(travel.getDestinationPortId());
+            boolean isDeliveredOrExpired = cargo.getCargoStatus() == CargoStatus.DELIVERED
+                    || cargo.getCargoStatus() == CargoStatus.EXPIRED;
+
+            if (isForThisShipAndPort && isDeliveredOrExpired) {
+                int cooldown = CargoSessionInitializer.randomizedCooldownFor(cargo.getCargoType(), rng);
+                cargo.startCooldown(travel.getArrivalTick() + cooldown);
+                System.out.println("[CargoUnloading] Cargo " + cargo.getId()
+                        + " set to INACTIVE with cooldown until tick "
+                        + (travel.getArrivalTick() + cooldown));
+                sessionCargoRepository.save(cargo);
             }
         }
     }
@@ -121,22 +152,6 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                 || cargo.getCargoStatus() == CargoStatus.EXPIRED;
 
         return isForThisShipAndPort && isAssignedOrExpired;
-    }
-
-    private void unloadCargo(SessionCargo cargo, Travel travel) {
-        if (cargo.getCargoStatus() == CargoStatus.ASSIGNED) {
-            cargo.deliver();
-            System.out.println("[CargoUnloading] Cargo " + cargo.getId() + " delivered at port " + travel.getDestinationPortId());
-        } else if (cargo.getCargoStatus() == CargoStatus.EXPIRED) {
-            System.out.println("[CargoUnloading] Cargo " + cargo.getId() + " expired but unloaded at port " + travel.getDestinationPortId());
-        }
-
-        int cooldown = CargoSessionInitializer.randomizedCooldownFor(cargo.getCargoType(), rng);
-        cargo.startCooldown(travel.getArrivalTick() + cooldown);
-
-        System.out.println("[CargoUnloading] Cargo " + cargo.getId() + " set to INACTIVE with cooldown until tick " + (travel.getArrivalTick() + cooldown));
-
-        sessionCargoRepository.save(cargo);
     }
 
     private void sendUnloadingCompleteEvent(Travel travel, UUID playerId,

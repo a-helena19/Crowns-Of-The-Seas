@@ -1,6 +1,7 @@
 package at.fhv.backend.application.services;
 
 import at.fhv.backend.application.services.impl.travel.CargoUnloadServiceImpl;
+import at.fhv.backend.application.services.impl.travel.CargoUnloadingPhaseServiceImpl;
 import at.fhv.backend.application.services.impl.travel.RewardCalculationServiceImpl;
 import at.fhv.backend.application.services.impl.travel.TravelArrivalServiceImpl;
 import at.fhv.backend.application.services.travel.CargoUnloadService;
@@ -384,71 +385,6 @@ class TravelCompletionServiceTest {
         }
 
         @Test
-        void givenRewardAvailable_whenHandleArrival_thenPlayerBalanceIncreased() {
-            UUID userId = UUID.randomUUID();
-            UUID sessionId = UUID.randomUUID();
-            UUID playerShipId = UUID.randomUUID();
-            UUID destinationPortId = UUID.randomUUID();
-            // Erstelle eine Travel mit userId als playerId
-            Travel travel = Travel.start(playerShipId, userId, sessionId,
-                    UUID.randomUUID(), destinationPortId, 5.0, 1.0, 0.1, BigDecimal.valueOf(500), 0);
-            PlayerShip playerShip = buildPlayerShip(UUID.randomUUID());
-
-            ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
-            GameSession session = buildGameSession(UUID.randomUUID());
-            session.addPlayer(player);
-
-            // Create a delivered cargo with 1000 reward
-            UUID cargoId = UUID.randomUUID();
-            SessionCargo cargo = SessionCargo.reconstruct(
-                    cargoId, UUID.randomUUID(), sessionId,
-                    UUID.randomUUID(), destinationPortId,
-                    BigDecimal.valueOf(1000), false, 50,
-                    CargoType.GENERAL_GOODS, 0.1,
-                    CargoStatus.DELIVERED, UUID.randomUUID(), playerShipId, 0, 5, -1, -1
-            );
-
-            when(sessionCargoRepository.findByAssignedPlayerId(userId)).thenReturn(List.of(cargo));
-            when(travelRepository.save(any(Travel.class))).thenAnswer(inv -> inv.getArgument(0));
-            when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
-            when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
-            when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
-            when(gameSessionRepository.save(any(GameSession.class))).thenAnswer(inv -> inv.getArgument(0));
-
-            service.handleArrival(travel);
-
-            assertThat(player.getBalance()).isEqualByComparingTo(new BigDecimal("41500.00"));
-        }
-
-        @Test
-        void givenNoReward_whenHandleArrival_thenPlayerBalanceUnchanged() {
-            UUID userId = UUID.randomUUID();
-            UUID sessionId = UUID.randomUUID();
-            UUID playerShipId = UUID.randomUUID();
-            UUID destinationPortId = UUID.randomUUID();
-            // Erstelle Travel mit userId als playerId
-            Travel travel = Travel.start(playerShipId, userId, sessionId,
-                    UUID.randomUUID(), destinationPortId, 5.0, 1.0, 0.1, BigDecimal.valueOf(500), 0);
-            PlayerShip playerShip = buildPlayerShip(UUID.randomUUID());
-
-            ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
-            GameSession session = buildGameSession(UUID.randomUUID());
-            session.addPlayer(player);
-            BigDecimal initialBalance = player.getBalance();
-
-            when(sessionCargoRepository.findByAssignedPlayerId(userId)).thenReturn(List.of());
-            when(travelRepository.save(any(Travel.class))).thenAnswer(inv -> inv.getArgument(0));
-            when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
-            when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
-            when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
-            when(gameSessionRepository.save(any(GameSession.class))).thenAnswer(inv -> inv.getArgument(0));
-
-            service.handleArrival(travel);
-
-            assertThat(player.getBalance()).isEqualByComparingTo(initialBalance);
-        }
-
-        @Test
         void givenCargoUnloadingNeeded_whenHandleArrival_thenCargoUnloadingPhaseServiceCalled() {
             UUID playerId = UUID.randomUUID();
             UUID sessionId = UUID.randomUUID();
@@ -469,5 +405,143 @@ class TravelCompletionServiceTest {
             assertThat(playerShip.getStatus()).isEqualTo(ShipStatus.UNLOADING);
         }
     }
-}
 
+    @Nested
+    @MockitoSettings(strictness = Strictness.LENIENT)
+    class CargoUnloadingPhaseServiceImplTest {
+        @Mock private SessionCargoRepository sessionCargoRepository;
+        @Mock private PlayerShipRepository playerShipRepository;
+        @Mock private GameSessionRepository gameSessionRepository;
+        @Mock private GameSessionWebSocketController webSocketController;
+        @Mock private PortRepository portRepository;
+        @Mock private CargoRepository cargoRepository;
+
+        private CargoUnloadingPhaseServiceImpl service;
+
+        @BeforeEach
+        void setUp() {
+            // Use the real RewardCalculationService so we test the full reward flow end-to-end.
+            service = new CargoUnloadingPhaseServiceImpl(
+                    sessionCargoRepository,
+                    playerShipRepository,
+                    gameSessionRepository,
+                    new RewardCalculationServiceImpl(),
+                    webSocketController,
+                    portRepository,
+                    cargoRepository
+            );
+        }
+
+        private PlayerShip buildPlayerShipInUnloading(UUID destinationPortId) {
+            PlayerShip ps = PlayerShip.createFromPurchase(
+                    UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+            ps.completeRegistration();
+            ps.departForVoyage(destinationPortId);
+            ps.arriveAndStartUnloading(destinationPortId, 10);
+            return ps;
+        }
+
+        private GameSession buildSessionWithPlayer(UUID userId, UUID sessionId, ISessionPlayer player) {
+            GameSession session = new GameSession(UUID.randomUUID(), 4, 5, 100, Duration.ofMinutes(30));
+            session.addPlayer(player);
+            return session;
+        }
+
+        @Test
+        void givenAssignedCargoWithReward_whenCompleteUnloadingPhase_thenPlayerBalanceIncreased() {
+            UUID userId = UUID.randomUUID();
+            UUID sessionId = UUID.randomUUID();
+            UUID playerShipId = UUID.randomUUID();
+            UUID destinationPortId = UUID.randomUUID();
+
+            Travel travel = Travel.start(playerShipId, userId, sessionId,
+                    UUID.randomUUID(), destinationPortId, 5.0, 1.0, 0.1, BigDecimal.valueOf(500), 0);
+
+            PlayerShip playerShip = buildPlayerShipInUnloading(destinationPortId);
+            ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
+            GameSession session = buildSessionWithPlayer(userId, sessionId, player);
+
+            // ASSIGNED cargo (so unloadCargo will deliver it during the phase). Reward 1000.
+            SessionCargo cargo = SessionCargo.reconstruct(
+                    UUID.randomUUID(), UUID.randomUUID(), sessionId,
+                    UUID.randomUUID(), destinationPortId,
+                    BigDecimal.valueOf(1000), false, 50,
+                    CargoType.GENERAL_GOODS, 0.1,
+                    CargoStatus.ASSIGNED, userId, playerShipId, 0, 5, -1, -1
+            );
+
+            when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
+            when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+            when(gameSessionRepository.save(any(GameSession.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(sessionCargoRepository.save(any(SessionCargo.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            service.completeUnloadingPhase(travel, List.of(cargo));
+
+            // 40000 (start) + 1000 (cargo reward) + 500 (base reward) = 41500
+            assertThat(player.getBalance()).isEqualByComparingTo(new BigDecimal("41500.00"));
+        }
+
+        @Test
+        void givenNoCargoAndNoBaseReward_whenCompleteUnloadingPhase_thenPlayerBalanceUnchanged() {
+            UUID userId = UUID.randomUUID();
+            UUID sessionId = UUID.randomUUID();
+            UUID playerShipId = UUID.randomUUID();
+            UUID destinationPortId = UUID.randomUUID();
+
+            Travel travel = Travel.start(playerShipId, userId, sessionId,
+                    UUID.randomUUID(), destinationPortId, 5.0, 1.0, 0.1, BigDecimal.ZERO, 0);
+
+            PlayerShip playerShip = buildPlayerShipInUnloading(destinationPortId);
+            ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
+            GameSession session = buildSessionWithPlayer(userId, sessionId, player);
+            BigDecimal initialBalance = player.getBalance();
+
+            when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
+            when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+            when(gameSessionRepository.save(any(GameSession.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            service.completeUnloadingPhase(travel, List.of());
+
+            assertThat(player.getBalance()).isEqualByComparingTo(initialBalance);
+        }
+
+        @Test
+        void givenAssignedCargo_whenCompleteUnloadingPhase_thenCargoEndsAsInactive() {
+            // Confirms the unload still happens after reward calculation:
+            // cargo must be INACTIVE (cooldown) once the phase is done.
+            UUID userId = UUID.randomUUID();
+            UUID sessionId = UUID.randomUUID();
+            UUID playerShipId = UUID.randomUUID();
+            UUID destinationPortId = UUID.randomUUID();
+
+            Travel travel = Travel.start(playerShipId, userId, sessionId,
+                    UUID.randomUUID(), destinationPortId, 5.0, 1.0, 0.1, BigDecimal.ZERO, 0);
+
+            PlayerShip playerShip = buildPlayerShipInUnloading(destinationPortId);
+            ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
+            GameSession session = buildSessionWithPlayer(userId, sessionId, player);
+
+            SessionCargo cargo = SessionCargo.reconstruct(
+                    UUID.randomUUID(), UUID.randomUUID(), sessionId,
+                    UUID.randomUUID(), destinationPortId,
+                    BigDecimal.valueOf(1000), false, 50,
+                    CargoType.GENERAL_GOODS, 0.1,
+                    CargoStatus.ASSIGNED, userId, playerShipId, 0, 5, -1, -1
+            );
+
+            when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
+            when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+            when(gameSessionRepository.save(any(GameSession.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(sessionCargoRepository.save(any(SessionCargo.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            service.completeUnloadingPhase(travel, List.of(cargo));
+
+            // Reward got paid (1000) AND cargo is now in cooldown.
+            assertThat(player.getBalance()).isEqualByComparingTo(new BigDecimal("41000.00"));
+            assertThat(cargo.getCargoStatus()).isEqualTo(CargoStatus.INACTIVE);
+        }
+    }
+}
