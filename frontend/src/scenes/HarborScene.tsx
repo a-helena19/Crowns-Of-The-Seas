@@ -5,8 +5,6 @@ import InfoPanel from "../components/InfoPanel";
 import CargoScreen from "./CargoScreen";
 import ShipScreen from "./ShipScreen";
 import LoadingScreen from "./LoadingScreen";
-import TravelResultScreen from "./TravelResultScreen";
-import { UnloadingPhaseScreen } from "./UnloadingPhaseScreen.tsx";
 import backIcon from "../assets/goback.png";
 import background from "../assets/background.jpg";
 import "../style/harbor.css";
@@ -43,27 +41,6 @@ interface SelectedCargo {
     loadingDurationSeconds?: number;
 }
 
-interface CargoRewardBreakdown {
-    cargoId: string;
-    cargoName: string;
-    destinationPort: string;
-    baseReward: number;
-    actualReward: number;
-    percentage: number;
-    status: "DELIVERED" | "EXPIRED";
-    cargoType: string;
-}
-
-interface TravelCompleteEvent {
-    travelId: string;
-    playerId: string;
-    cargoRewards: CargoRewardBreakdown[];
-    baseReward: number;
-    totalReward: number;
-    previousBalance: number;
-    newBalance: number;
-}
-
 export default function HarborScene({ onClose }: { onClose: () => void }) {
     const [selectedShip, setSelectedShip] = useState<SelectedShip | null>(null);
     const [selectedCargo, setSelectedCargo] = useState<SelectedCargo | null>(null);
@@ -73,15 +50,7 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
     const [startError, setStartError] = useState<string | null>(null);
     const [pilotageSelected, setPilotageSelected] = useState(false);
     const [showDeparture, setShowDeparture] = useState(false);
-    const [travelResult, setTravelResult] = useState<TravelCompleteEvent | null>(null);
     const [loadingDurationSeconds, setLoadingDurationSeconds] = useState<number>(10);
-
-    const [unloadingState, setUnloadingState] = useState<{
-        shipName: string;
-        portName: string;
-        completedAtTick: number;
-    } | null>(null);
-    const [currentTick, setCurrentTick] = useState(0);
 
     const [view, setView] = useState<"main" | "cargo" | "ship">("main");
     const [currentPortId, setCurrentPortId] = useState<string | null>(null);
@@ -107,43 +76,6 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
             })
             .catch(console.error);
     }, [playerId, sessionId, token]);
-
-    useEffect(() => {
-        const handler = (e: Event) => {
-            const detail = (e as CustomEvent<{ currentTick: number; ships: any[] }>).detail;
-            setCurrentTick(detail.currentTick);
-
-            const myShip = detail.ships.find(s =>
-                s.playerId === playerId && s.status === 'UNLOADING'
-            );
-            if (myShip && myShip.arrivalTick != null) {
-                const port = window.__latestPorts?.find((p: any) => p.id === myShip.currentPortId);
-
-                setUnloadingState(prev => ({
-                    shipName: prev?.shipName ?? selectedShip?.name ?? myShip.playerName,
-                    portName: port?.name ?? prev?.portName ?? "Hafen",
-                    completedAtTick: myShip.arrivalTick,
-                }));
-            }
-        };
-        window.addEventListener('backend-ship-positions', handler);
-        return () => window.removeEventListener('backend-ship-positions', handler);
-    }, [playerId, selectedShip?.name]);
-
-    useEffect(() => {
-        if (travelResult) setUnloadingState(null);
-    }, [travelResult]);
-
-    useEffect(() => {
-        const handleTravelComplete = (event: Event) => {
-            const data = (event as CustomEvent<TravelCompleteEvent>).detail;
-            setTravelResult(data);
-            window.dispatchEvent(new CustomEvent('player-balance-updated'));
-        };
-
-        window.addEventListener('travel-complete', handleTravelComplete);
-        return () => window.removeEventListener('travel-complete', handleTravelComplete);
-    }, []);
 
     function handleShipSelect(ship: any) {
         setSelectedShip(ship);
@@ -271,31 +203,6 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
                         <DepartureAnimation
                             shipIconUrl={selectedShip.iconUrl ?? "/fallback-ship.png"}
                             onComplete={onClose}
-                        />
-                    )}
-
-                    {unloadingState && !travelResult && (
-                        <UnloadingPhaseScreen
-                            shipName={unloadingState.shipName}
-                            portName={unloadingState.portName}
-                            unloadingCompletedAtTick={unloadingState.completedAtTick}
-                            currentTick={currentTick}
-                            totalReward={0}
-                            onComplete={() => { /* wird durch travel-complete-Event übersteuert */ }}
-                        />
-                    )}
-
-                    {travelResult && (
-                        <TravelResultScreen
-                            cargos={travelResult.cargoRewards}
-                            baseReward={travelResult.baseReward}
-                            totalReward={travelResult.totalReward}
-                            previousBalance={travelResult.previousBalance}
-                            newBalance={travelResult.newBalance}
-                            onClose={() => {
-                                setTravelResult(null);
-                                onClose();
-                            }}
                         />
                     )}
                 </>

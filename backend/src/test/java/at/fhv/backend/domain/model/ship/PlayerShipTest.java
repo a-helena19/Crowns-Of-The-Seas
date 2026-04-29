@@ -110,7 +110,8 @@ class PlayerShipTest {
     void givenEnRoute_whenArriveAtPort_thenStatusIsAtPort() {
         playerShip.completeRegistration();
         playerShip.departForVoyage(UUID.randomUUID());
-        playerShip.arriveAtPort(UUID.randomUUID());
+        playerShip.arriveAndStartUnloading(UUID.randomUUID(), 5);
+        playerShip.completeUnloading();
         assertThat(playerShip.getStatus()).isEqualTo(ShipStatus.AT_PORT);
     }
 
@@ -119,7 +120,7 @@ class PlayerShipTest {
         playerShip.completeRegistration();
         playerShip.departForVoyage(UUID.randomUUID());
         UUID arrivalPort = UUID.randomUUID();
-        playerShip.arriveAtPort(arrivalPort);
+        playerShip.arriveAndStartUnloading(arrivalPort, 5);
         assertThat(playerShip.getCurrentPortId()).isEqualTo(arrivalPort);
     }
 
@@ -127,14 +128,14 @@ class PlayerShipTest {
     void givenEnRoute_whenArriveAtPort_thenTargetPortIsNull() {
         playerShip.completeRegistration();
         playerShip.departForVoyage(UUID.randomUUID());
-        playerShip.arriveAtPort(UUID.randomUUID());
+        playerShip.arriveAndStartUnloading(UUID.randomUUID(), 5);
         assertThat(playerShip.getTargetPortId()).isNull();
     }
 
     @Test
     void givenAtPort_whenArriveAtPort_thenThrowsInvalidShipStatusTransition() {
         playerShip.completeRegistration();
-        assertThatThrownBy(() -> playerShip.arriveAtPort(UUID.randomUUID())).isInstanceOf(InvalidShipStatusTransition.class);
+        assertThatThrownBy(() -> playerShip.arriveAndStartUnloading(UUID.randomUUID(), 5)).isInstanceOf(InvalidShipStatusTransition.class);
     }
 
     @Test
@@ -191,7 +192,7 @@ class PlayerShipTest {
         UUID portId     = UUID.randomUUID();
         UUID targetPort = UUID.randomUUID();
 
-        PlayerShip reconstructed = PlayerShip.reconstruct(id, shipId, playerId, sessionId, ShipStatus.EN_ROUTE, 75.0, 60.0, portId, targetPort, -1);
+        PlayerShip reconstructed = PlayerShip.reconstruct(id, shipId, playerId, sessionId, ShipStatus.EN_ROUTE, 75.0, 60.0, portId, targetPort, -1, -1);
         assertThat(reconstructed.getId()).isEqualTo(id);
         assertThat(reconstructed.getShipId()).isEqualTo(shipId);
         assertThat(reconstructed.getPlayerId()).isEqualTo(playerId);

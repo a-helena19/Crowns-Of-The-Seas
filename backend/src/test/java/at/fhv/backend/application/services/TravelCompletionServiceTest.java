@@ -4,6 +4,7 @@ import at.fhv.backend.application.services.impl.travel.CargoUnloadServiceImpl;
 import at.fhv.backend.application.services.impl.travel.RewardCalculationServiceImpl;
 import at.fhv.backend.application.services.impl.travel.TravelArrivalServiceImpl;
 import at.fhv.backend.application.services.travel.CargoUnloadService;
+import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.RewardCalculationService;
 import at.fhv.backend.domain.model.cargo.*;
 import at.fhv.backend.domain.model.player.BaseSessionPlayer;
@@ -13,6 +14,7 @@ import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
+import at.fhv.backend.domain.model.ship.ShipStatus;
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.domain.model.travel.TravelStatus;
@@ -310,21 +312,16 @@ class TravelCompletionServiceTest {
         @Mock private TravelRepository travelRepository;
         @Mock private PlayerShipRepository playerShipRepository;
         @Mock private GameSessionRepository gameSessionRepository;
-        @Mock private CargoUnloadService cargoUnloadService;
-        @Mock private RewardCalculationService rewardCalculationService;
-        @Mock private GameSessionWebSocketController webSocketController;
+        @Mock private CargoUnloadingPhaseService cargoUnloadingPhaseService;
         @Mock private SessionCargoRepository sessionCargoRepository;
-        @Mock private PortRepository portRepository;
-        @Mock private CargoRepository cargoRepository;
 
         private TravelArrivalServiceImpl service;
 
         @BeforeEach
         void setUp() {
             service = new TravelArrivalServiceImpl(
-                    travelRepository, playerShipRepository, gameSessionRepository,
-                    cargoUnloadService, rewardCalculationService, webSocketController,
-                    sessionCargoRepository, portRepository, cargoRepository
+                    travelRepository, playerShipRepository, sessionCargoRepository,
+                    cargoUnloadingPhaseService, gameSessionRepository
             );
         }
 
@@ -357,8 +354,6 @@ class TravelCompletionServiceTest {
             when(travelRepository.save(any(Travel.class))).thenAnswer(inv -> inv.getArgument(0));
             when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
             when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
-            doNothing().when(cargoUnloadService).unloadCargoForTravel(any(Travel.class), any());
-            when(rewardCalculationService.calculateTotalReward(travel, List.of())).thenReturn(BigDecimal.ZERO);
             when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.empty());
 
             service.handleArrival(travel);
@@ -380,8 +375,6 @@ class TravelCompletionServiceTest {
             when(travelRepository.save(any(Travel.class))).thenAnswer(inv -> inv.getArgument(0));
             when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
             when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
-            doNothing().when(cargoUnloadService).unloadCargoForTravel(any(Travel.class), any());
-            when(rewardCalculationService.calculateTotalReward(travel, List.of())).thenReturn(BigDecimal.ZERO);
             when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.empty());
 
             service.handleArrival(travel);
@@ -404,20 +397,27 @@ class TravelCompletionServiceTest {
             ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
             GameSession session = buildGameSession(UUID.randomUUID());
             session.addPlayer(player);
-            BigDecimal reward = BigDecimal.valueOf(1000);
 
-            when(sessionCargoRepository.findByAssignedPlayerId(userId)).thenReturn(List.of());
+            // Create a delivered cargo with 1000 reward
+            UUID cargoId = UUID.randomUUID();
+            SessionCargo cargo = SessionCargo.reconstruct(
+                    cargoId, UUID.randomUUID(), sessionId,
+                    UUID.randomUUID(), destinationPortId,
+                    BigDecimal.valueOf(1000), false, 50,
+                    CargoType.GENERAL_GOODS, 0.1,
+                    CargoStatus.DELIVERED, UUID.randomUUID(), playerShipId, 0, 5, -1, -1
+            );
+
+            when(sessionCargoRepository.findByAssignedPlayerId(userId)).thenReturn(List.of(cargo));
             when(travelRepository.save(any(Travel.class))).thenAnswer(inv -> inv.getArgument(0));
             when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
             when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
-            doNothing().when(cargoUnloadService).unloadCargoForTravel(any(Travel.class), any());
-            when(rewardCalculationService.calculateTotalReward(travel, List.of())).thenReturn(reward);
             when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
             when(gameSessionRepository.save(any(GameSession.class))).thenAnswer(inv -> inv.getArgument(0));
 
             service.handleArrival(travel);
 
-            assertThat(player.getBalance()).isEqualByComparingTo(new BigDecimal("41000.00"));
+            assertThat(player.getBalance()).isEqualByComparingTo(new BigDecimal("41500.00"));
         }
 
         @Test
@@ -440,8 +440,6 @@ class TravelCompletionServiceTest {
             when(travelRepository.save(any(Travel.class))).thenAnswer(inv -> inv.getArgument(0));
             when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
             when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
-            doNothing().when(cargoUnloadService).unloadCargoForTravel(any(Travel.class), any());
-            when(rewardCalculationService.calculateTotalReward(travel, List.of())).thenReturn(BigDecimal.ZERO);
             when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
             when(gameSessionRepository.save(any(GameSession.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -451,7 +449,7 @@ class TravelCompletionServiceTest {
         }
 
         @Test
-        void givenCargoUnloadingNeeded_whenHandleArrival_thenCargoUnloadServiceCalled() {
+        void givenCargoUnloadingNeeded_whenHandleArrival_thenCargoUnloadingPhaseServiceCalled() {
             UUID playerId = UUID.randomUUID();
             UUID sessionId = UUID.randomUUID();
             UUID playerShipId = UUID.randomUUID();
@@ -464,13 +462,11 @@ class TravelCompletionServiceTest {
             when(travelRepository.save(any(Travel.class))).thenAnswer(inv -> inv.getArgument(0));
             when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
             when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
-            doNothing().when(cargoUnloadService).unloadCargoForTravel(any(Travel.class), any());
-            when(rewardCalculationService.calculateTotalReward(travel, cargos)).thenReturn(BigDecimal.ZERO);
             when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.empty());
 
             service.handleArrival(travel);
 
-            verify(cargoUnloadService, times(1)).unloadCargoForTravel(travel, cargos);
+            assertThat(playerShip.getStatus()).isEqualTo(ShipStatus.UNLOADING);
         }
     }
 }
