@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Component
 public class ShipDataInitializer implements ApplicationRunner {
@@ -46,7 +47,7 @@ public class ShipDataInitializer implements ApplicationRunner {
                             max_fuel, max_speed, name, operating_cost, price, ship_class, icon_url, stock
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
-                id, baseReliability, description, fuelConsumption, maxCargoCapacity,
+                UUID.fromString(id), baseReliability, description, fuelConsumption, maxCargoCapacity,
                 new BigDecimal(maxFuel), maxSpeed, name, new BigDecimal(operatingCost),
                 new BigDecimal(price), shipClass, iconUrl, stock);
     }
