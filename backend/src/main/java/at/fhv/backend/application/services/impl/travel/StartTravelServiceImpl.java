@@ -98,13 +98,13 @@ public class StartTravelServiceImpl implements StartTravelService {
             Ship ship = shipRepository.findById(playerShip.getShipId())
                     .orElseThrow(() -> new ShipNotFoundException("Ship", playerShip.getShipId()));
 
-            if (playerShip.getStatus() != ShipStatus.LOADING) {
-                throw new InvalidShipStatusTransition(
-                        "Ship must be in LOADING status to start travel",
-                        "shipId",
-                        playerShip.getId()
-                );
-            }
+//            if (playerShip.getStatus() != ShipStatus.LOADING) {
+//                throw new InvalidShipStatusTransition(
+//                        "Ship must be in LOADING status to start travel",
+//                        "shipId",
+//                        playerShip.getId()
+//                );
+//            }
 
             UUID originPortId = playerShip.getCurrentPortId();
             UUID destinationPortId = request.getDestinationPortId();
