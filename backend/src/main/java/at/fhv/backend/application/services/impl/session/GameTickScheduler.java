@@ -119,18 +119,18 @@ public class GameTickScheduler {
 
     @Transactional
     public void handleUnloadingPhase(UUID sessionId, int currentTick) {
-        List<Travel> arrivedTravels = travelRepository.findAllInProgressBySessionId(sessionId)
-                .stream()
-                .filter(t -> t.getTravelStatus() == TravelStatus.ARRIVED)
-                .collect(Collectors.toList());
+        List<Travel> arrivedTravels = travelRepository
+                .findAllBySessionIdAndStatus(sessionId, TravelStatus.ARRIVED);
 
         for (Travel travel : arrivedTravels) {
             PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
+            if (ship == null) continue;
 
-            if (ship != null && ship.getStatus() == ShipStatus.UNLOADING) {
-                if (ship.getUnloadingCompletedAtTick() != null && currentTick >= ship.getUnloadingCompletedAtTick()) {
-                    handleUnloadingComplete(travel, currentTick);
-                }
+            if (ship.getStatus() != ShipStatus.UNLOADING) continue;
+
+            if (ship.getUnloadingCompletedAtTick() != null
+                    && currentTick >= ship.getUnloadingCompletedAtTick()) {
+                handleUnloadingComplete(travel, currentTick);
             }
         }
     }
@@ -304,16 +304,33 @@ public class GameTickScheduler {
                     positions.add(new ShipPositionsUpdateEvent.ShipPosition(
                             playerShip.getId(), playerShip.getPlayerId(), playerName,
                             iconUrl, x, y, "EN_ROUTE", travel.getArrivalTick(),
-                            origin.x(), origin.y(), dest.x(), dest.y(), travel.getStartTick()
+                            origin.x(), origin.y(), dest.x(), dest.y(), travel.getStartTick(), null
                     ));
                 }
             } else if (playerShip.getCurrentPortId() != null) {
                 PortResponseDTO port = portMap.get(playerShip.getCurrentPortId());
                 if (port != null) {
+                    // Echten Ship-Status durchreichen statt hartcodiert "AT_PORT"
+                    String status = switch (playerShip.getStatus()) {
+                        case LOADING   -> "LOADING";
+                        case UNLOADING -> "UNLOADING";
+                        default        -> "AT_PORT";
+                    };
+
+                    // arrivalTick Feld als unloadingCompletedAtTick verwenden, damit Frontend
+                    // den Fortschritt der Unloading-Phase anzeigen kann
+                    Integer completionTick = null;
+                    if (playerShip.getStatus() == ShipStatus.UNLOADING) {
+                        completionTick = playerShip.getUnloadingCompletedAtTick();
+                    } else if (playerShip.getStatus() == ShipStatus.LOADING) {
+                        completionTick = playerShip.getLoadingCompletedAtTick();
+                    }
+
                     positions.add(new ShipPositionsUpdateEvent.ShipPosition(
                             playerShip.getId(), playerShip.getPlayerId(), playerName,
-                            iconUrl, port.x(), port.y(), "AT_PORT", null,
-                            null, null, null, null, null
+                            iconUrl, port.x(), port.y(), status, completionTick,
+                            null, null, null, null, null,
+                            playerShip.getCurrentPortId()
                     ));
                 }
             }

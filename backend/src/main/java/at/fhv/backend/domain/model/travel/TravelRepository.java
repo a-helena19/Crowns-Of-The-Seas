@@ -13,4 +13,5 @@ public interface TravelRepository {
     List<Travel> findAllInProgressBySessionId(UUID sessionId);
 
     List<Travel> findByStatus(TravelStatus travelStatus);
+    List<Travel> findAllBySessionIdAndStatus(UUID sessionId, TravelStatus status);
 }

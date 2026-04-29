@@ -73,4 +73,12 @@ public class TravelRepositoryImpl implements TravelRepository {
                 .map(travelMapper::toDomainModel)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<Travel> findAllBySessionIdAndStatus(UUID sessionId, TravelStatus status) {
+        return travelJpaRepository.findAllBySessionIdAndStatus(sessionId, status)
+                .stream()
+                .map(travelMapper::toDomainModel)
+                .collect(Collectors.toList());
+    }
 }

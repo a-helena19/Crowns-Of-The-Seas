@@ -14,13 +14,14 @@ interface ShipPositionData {
     iconUrl: string;
     x: number;
     y: number;
-    status: 'EN_ROUTE' | 'AT_PORT';
+    status: 'EN_ROUTE' | 'AT_PORT' | 'LOADING' | 'UNLOADING';
     arrivalTick: number | null;
     originX: number | null;
     originY: number | null;
     destX: number | null;
     destY: number | null;
     startTick: number | null;
+    currentPortId: string | null;
 }
 
 interface ShipPositionsPayload {
@@ -32,7 +33,7 @@ interface ShipEntry {
     sprite: Phaser.GameObjects.Sprite;
     controller: Ship;
     tooltip: Phaser.GameObjects.Text;
-    lastStatus: 'EN_ROUTE' | 'AT_PORT' | null;
+    lastStatus: 'EN_ROUTE' | 'AT_PORT' | 'LOADING' | 'UNLOADING' | null;
     lastStartTick: number | null;
     lastShipData: ShipPositionData;
 }
@@ -224,7 +225,7 @@ export default class MainScene extends Phaser.Scene {
 
     private createShipSprite(
         id: string, playerName: string, textureKey: string,
-        status: 'EN_ROUTE' | 'AT_PORT',
+        status: 'EN_ROUTE' | 'AT_PORT' | 'LOADING' | 'UNLOADING',
         shipData: ShipPositionData,
         tickRateMs: number,
         currentTick: number,
