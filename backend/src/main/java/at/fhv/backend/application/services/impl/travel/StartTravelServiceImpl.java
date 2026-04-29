@@ -98,9 +98,9 @@ public class StartTravelServiceImpl implements StartTravelService {
             Ship ship = shipRepository.findById(playerShip.getShipId())
                     .orElseThrow(() -> new ShipNotFoundException("Ship", playerShip.getShipId()));
 
-            if (playerShip.getStatus() != ShipStatus.LOADING) {
+            if (playerShip.getStatus() != ShipStatus.READY_TO_DEPART) {
                 throw new InvalidShipStatusTransition(
-                        "Ship must be in LOADING status to start travel",
+                        "Ship must be in READY_TO_DEPART status to start travel",
                         "shipId",
                         playerShip.getId()
                 );
@@ -125,10 +125,9 @@ public class StartTravelServiceImpl implements StartTravelService {
                     .orElseThrow(() -> new PlayerNotFoundException(playerId));
 
             Integer loadingCompletedAtTick = playerShip.getLoadingCompletedAtTick();
-            if (loadingCompletedAtTick == null) {
-                throw new IllegalStateException("Ship is not loading");
-            }
-            double loadingDurationSeconds = (loadingCompletedAtTick - currentTick) * session.getTickRateSeconds();
+            double loadingDurationSeconds = loadingCompletedAtTick != null && loadingCompletedAtTick > 0
+                    ? loadingCompletedAtTick * session.getTickRateSeconds()
+                    : 0;
 
             double distance = portDistanceForCargoService.distanceBetween(originPortId, destinationPortId);
             double speedSetting = Math.max(0.25, Math.min(1.0, request.getSpeedSetting()));
@@ -142,6 +141,7 @@ public class StartTravelServiceImpl implements StartTravelService {
             double requiredFuelPercent = (requiredFuelAbsolute / ship.getMaxFuel().doubleValue()) * 100.0;
 
             playerShip.consumeFuel(requiredFuelPercent);
+            playerShip.depart();
             playerShipRepository.save(playerShip);
 
             double riskFactor = calculateRiskFactor(playerShip, ship);

@@ -99,16 +99,28 @@ public class PlayerShip {
         return loadingCompletedAtTick > 0 && currentTick < loadingCompletedAtTick;
     }
 
-    public void completeLoadingAndDepart() {
+    public void completeLoading() {
         if (this.status != ShipStatus.LOADING) {
             throw new InvalidShipStatusTransition(
-                    "Ship must have the status LOADING to complete loading and depart",
+                    "Ship must have the status LOADING to complete loading",
+                    "shipId",
+                    shipId
+            );
+        }
+        this.status = ShipStatus.READY_TO_DEPART;
+        this.loadingCompletedAtTick = -1;
+    }
+
+    public void depart() {
+        if (this.status != ShipStatus.READY_TO_DEPART) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status READY_TO_DEPART to depart",
                     "shipId",
                     shipId
             );
         }
         this.status = ShipStatus.EN_ROUTE;
-        this.loadingCompletedAtTick = -1;
+        this.currentPortId = null;
     }
 
     public int getLoadingCompletedAtTick() {
@@ -144,15 +156,6 @@ public class PlayerShip {
     public Integer getUnloadingCompletedAtTick() {
         return unloadingCompletedAtTick;
     }
-
-//    public void arriveAtPort(UUID portId) {
-//        if (this.status != ShipStatus.EN_ROUTE) {
-//            throw new InvalidShipStatusTransition("Ship must have the status EN_ROUTE", "shipId", shipId);
-//        }
-//        this.status = ShipStatus.AT_PORT;
-//        this.currentPortId = portId;
-//        this.targetPortId = null;
-//    }
 
     public void consumeFuel(double amountPercent) {
         this.fuel = Math.max(0.0, this.fuel - amountPercent);

@@ -108,11 +108,11 @@ public class GameTickScheduler {
                     && ship.getLoadingCompletedAtTick() > 0
                     && currentTick >= ship.getLoadingCompletedAtTick()) {
 
-                ship.completeLoadingAndDepart();
+                ship.completeLoading();
                 playerShipRepository.save(ship);
 
                 System.out.println("[GameTick] Ship " + ship.getId()
-                        + " loading completed at tick " + currentTick);
+                        + " loading completed at tick " + currentTick + " → READY_TO_DEPART");
             }
         }
     }
@@ -310,15 +310,13 @@ public class GameTickScheduler {
             } else if (playerShip.getCurrentPortId() != null) {
                 PortResponseDTO port = portMap.get(playerShip.getCurrentPortId());
                 if (port != null) {
-                    // Echten Ship-Status durchreichen statt hartcodiert "AT_PORT"
                     String status = switch (playerShip.getStatus()) {
-                        case LOADING   -> "LOADING";
-                        case UNLOADING -> "UNLOADING";
-                        default        -> "AT_PORT";
+                        case LOADING         -> "LOADING";
+                        case READY_TO_DEPART -> "READY_TO_DEPART";
+                        case UNLOADING       -> "UNLOADING";
+                        default              -> "AT_PORT";
                     };
 
-                    // arrivalTick Feld als unloadingCompletedAtTick verwenden, damit Frontend
-                    // den Fortschritt der Unloading-Phase anzeigen kann
                     Integer completionTick = null;
                     if (playerShip.getStatus() == ShipStatus.UNLOADING) {
                         completionTick = playerShip.getUnloadingCompletedAtTick();
@@ -387,8 +385,8 @@ public class GameTickScheduler {
                     double spawnChance = spawnChanceFor(sc.getCargoType());
                     if (rng.nextDouble() < spawnChance) {
                         System.out.println("[CargoRespawn] Cargo " + sc.getId() + " respawning at port " + entry.getKey()
-                            + " (status=" + sc.getCargoStatus() + ", cooldownUntil=" + sc.getCooldownUntilTick()
-                            + ", currentTick=" + currentTick + ")");
+                                + " (status=" + sc.getCargoStatus() + ", cooldownUntil=" + sc.getCooldownUntilTick()
+                                + ", currentTick=" + currentTick + ")");
                         sc.activate();
                         sessionCargoRepository.save(sc);
                         activeCount++;
