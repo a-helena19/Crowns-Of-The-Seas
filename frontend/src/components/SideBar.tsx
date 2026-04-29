@@ -1,17 +1,21 @@
 import "../style/Sidebar.css";
 
-type View = "map" | "harbor" | "broker" | "portProfile";
+type View = "map" | "harbor" | "broker" | "portProfile" | "cargoManagement";
 
 interface Props {
     currentView: View;
     onStartAction: () => void;
     onOpenBroker: () => void;
+    onOpenCargoManagement: () => void;
+    assignedCargoCount: number;
 }
 
 export default function Sidebar({
                                     currentView,
                                     onStartAction,
                                     onOpenBroker,
+                                    onOpenCargoManagement,
+                                    assignedCargoCount,
                                 }: Props) {
     return (
         <div className="sidebar">
@@ -27,6 +31,15 @@ export default function Sidebar({
                 label="Start Travel"
                 onClick={onStartAction}
             />
+
+            {/* NEU: Frachtübersicht Button */}
+            <SidebarButton
+                label={assignedCargoCount > 0 ? `Frachten (${assignedCargoCount})` : "Frachten"}
+                active={currentView === "cargoManagement"}
+                onClick={onOpenCargoManagement}
+                highlight={assignedCargoCount > 0}
+            />
+
             <div className="sidebar-spacer" />
         </div>
     );
@@ -36,11 +49,17 @@ function SidebarButton({
                            label,
                            onClick,
                            active,
-                       }: any) {
+                           highlight,
+                       }: {
+    label: string;
+    onClick?: () => void;
+    active?: boolean;
+    highlight?: boolean;
+}) {
     return (
         <button
             onClick={onClick}
-            className={`sidebar-btn ${active ? "active" : ""}`}
+            className={`sidebar-btn ${active ? "active" : ""} ${highlight ? "highlight" : ""}`}
         >
             {label}
         </button>

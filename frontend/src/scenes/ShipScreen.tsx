@@ -12,6 +12,7 @@ interface PlayerShip {
     maxSpeed?: number;
     maxCargoCapacity?: number;
     iconUrl?: string;
+    currentPortId?: string;
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -40,7 +41,12 @@ function StatBar({ value, color }: { value: number; color: string }) {
     );
 }
 
-export default function ShipScreen({ onSelect }: { onSelect: (ship: PlayerShip) => void }) {
+interface ShipScreenProps {
+    onSelect: (ship: PlayerShip) => void;
+    filterByPortId?: string;
+}
+
+export default function ShipScreen({ onSelect, filterByPortId }: ShipScreenProps) {
     const [ships, setShips] = useState<PlayerShip[]>([]);
     const [loading, setLoading] = useState(true);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -60,9 +66,22 @@ export default function ShipScreen({ onSelect }: { onSelect: (ship: PlayerShip) 
             headers: { Authorization: `Bearer ${localStorage.getItem("auth_token") ?? ""}` },
         })
             .then(res => res.json())
-            .then(data => setShips(data))
+            .then(data => {
+                const allShips: PlayerShip[] = data;
+                const sorted = filterByPortId
+                    ? [
+                        ...allShips.filter(s => s.currentPortId === filterByPortId && s.status === "AT_PORT"),
+                        ...allShips.filter(s => !(s.currentPortId === filterByPortId && s.status === "AT_PORT")),
+                    ]
+                    : [
+                        ...allShips.filter(s => s.status === "AT_PORT"),
+                        ...allShips.filter(s => s.status !== "AT_PORT"),
+                    ];
+                setShips(sorted);
+            })
             .catch(console.error)
             .finally(() => setLoading(false));
+
 
     }, [playerId]);
 

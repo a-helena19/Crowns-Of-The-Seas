@@ -8,6 +8,8 @@ import ShipBrokerScene from "../scenes/ShipBrokerScene.tsx";
 import PortProfileScreen from "../scenes/PortProfileScreen.tsx";
 import TravelNotification from "../components/TravelNotification.tsx";
 import { useGameSessionWebSocket } from "../hooks/useGameSessionWebSocket.ts";
+import CargoManagementScreen from "../scenes/CargoManagementScreen";
+import type { AssignedCargoEntry } from "../types/assignedCargo";
 
 export const TOP_BAR_HEIGHT = '8vh';
 export const BOTTOM_BAR_HEIGHT = '25vh';
@@ -40,7 +42,7 @@ interface UnloadingState {
 }
 
 export default function GameScreen() {
-    const [view, setView] = useState<"map" | "harbor" | "broker" | "portProfile">("map");
+    const [view, setView] = useState<"map" | "harbor" | "broker" | "portProfile" | "cargoManagement">("map");
     const [selectedPort, setSelectedPort] = useState<{ id: string; name: string; x: number; y: number } | null>(null);
 
     // Travel/Unloading State auf höchster Ebene, damit Notification überall sichtbar ist
@@ -54,6 +56,25 @@ export default function GameScreen() {
 
     const userData = localStorage.getItem('crowns_user');
     const playerId: string | null = userData ? JSON.parse(userData).id : null;
+
+    const [assignedCargos, setAssignedCargos] = useState<AssignedCargoEntry[]>([]);
+
+    function handleCargoAssigned(entry: AssignedCargoEntry) {
+        setAssignedCargos(prev => {
+            if (prev.some(e => e.cargoId === entry.cargoId)) return prev;
+            return [...prev, entry];
+        });
+    }
+
+    function handleCargoCompleted(cargoId: string) {
+        setAssignedCargos(prev =>
+            prev.map(e => e.cargoId === cargoId ? { ...e, loadingDone: true } : e)
+        );
+    }
+
+    function handleCargoRemoved(cargoId: string) {
+        setAssignedCargos(prev => prev.filter(e => e.cargoId !== cargoId));
+    }
 
     useEffect(() => {
         if (typeof window.__tickRateMs !== 'number' || !Number.isFinite(window.__tickRateMs) || window.__tickRateMs <= 0) {
@@ -134,9 +155,24 @@ export default function GameScreen() {
         <div className={`app-layout ${view}`}>
             <div className="top"><TopBar /></div>
             <div className="game"><Game view={view} /></div>
-            <div className={`fullscreen-overlay ${(view === "harbor" || view === "broker") ? "open" : "closed"}`}>
-                {view === "harbor" && <HarborScene onClose={() => setView("map")} />}
+            <div className={`fullscreen-overlay ${
+                (view === "harbor" || view === "broker" || view === "cargoManagement") ? "open" : "closed"
+            }`}>
+                {view === "harbor" && (
+                    <HarborScene
+                        onClose={() => setView("map")}
+                        onCargoAssigned={handleCargoAssigned}
+                    />
+                )}
                 {view === "broker" && <ShipBrokerScene onClose={() => setView("map")} />}
+                {view === "cargoManagement" && (
+                    <CargoManagementScreen
+                        assignedCargos={assignedCargos}
+                        onCargoLoadingDone={handleCargoCompleted}
+                        onCargoRemoved={handleCargoRemoved}
+                        onClose={() => setView("map")}
+                    />
+                )}
             </div>
             {view === "portProfile" && selectedPort && (
                 <PortProfileScreen port={selectedPort} onClose={() => setView("map")} />
@@ -147,6 +183,8 @@ export default function GameScreen() {
                         currentView={view}
                         onStartAction={() => setView("harbor")}
                         onOpenBroker={() => setView("broker")}
+                        onOpenCargoManagement={() => setView("cargoManagement")}
+                        assignedCargoCount={assignedCargos.length}
                     />
                 </div>
             )}

@@ -2,41 +2,33 @@ import GameButton from "./GameButton";
 import PixelPanel from "./PixelPanel";
 
 export default function DialogBubble({
-    onOpenCargo, onOpenShip, onStartTravel, startTravelDisabled,
-    pilotageSelected, onTogglePilotage,
-}: {
-    onOpenCargo: () => void;
+                                         onOpenCargo,
+                                         onOpenShip,
+                                         selectedShipName,
+                                     }: {
+    onOpenCargo?: () => void;
     onOpenShip: () => void;
-    onStartTravel?: () => void;
-    startTravelDisabled?: boolean;
-    pilotageSelected?: boolean;
-    onTogglePilotage?: () => void;
+    selectedShipName?: string;
 }) {
     return (
         <PixelPanel className="bubble">
             <p>Wohin geht's hin, Captain?</p>
+            {selectedShipName && (
+                <div className="harbor-selected-ship-hint">
+                    🚢 {selectedShipName} ausgewählt
+                </div>
+            )}
             <div className="options">
                 <GameButton onClick={onOpenShip}>
-                    Schiff auswählen
+                    {selectedShipName ? "Schiff wechseln" : "Schiff auswählen"}
                 </GameButton>
-                <GameButton onClick={onOpenCargo}>
-                    Frachtbörse öffnen
-                </GameButton>
-                {onTogglePilotage && (
-                    <div className="pilotage-row">
-                        <button
-                            className={`pilotage-toggle ${pilotageSelected ? "active" : ""}`}
-                            onClick={onTogglePilotage}
-                        >
-                            <span className="pilotage-check">{pilotageSelected ? "✓" : "○"}</span>
-                            <span className="pilotage-label">Lotsendienst</span>
-                            <span className="pilotage-cost">600 Taler</span>
-                        </button>
-                    </div>
-                )}
-                {onStartTravel && (
-                    <GameButton onClick={onStartTravel} variant="danger" disabled={startTravelDisabled}>
-                        {startTravelDisabled ? "Reise wird gestartet…" : "Reise starten"}
+                {onOpenCargo ? (
+                    <GameButton onClick={onOpenCargo}>
+                        Frachtbörse öffnen
+                    </GameButton>
+                ) : (
+                    <GameButton onClick={() => {}} disabled>
+                        Erst Schiff auswählen
                     </GameButton>
                 )}
             </div>
