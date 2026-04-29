@@ -23,9 +23,9 @@ public class ValidateTravelServiceImpl implements ValidateTravelService {
             throw new ShipNotOwnedException("Ship is not owned by player", playerId);
         }
 
-//        if (playerShip.getStatus() != ShipStatus.LOADING) {
-//            throw new InvalidShipStatusTransition("Ship must be LOADING", "shipId", playerShip.getId());
-//        }
+        if (playerShip.getStatus() != ShipStatus.LOADING) {
+            throw new InvalidShipStatusTransition("Ship must be LOADING", "shipId", playerShip.getId());
+        }
 
         if (originPortId != null && originPortId.equals(destinationPortId)) {
             throw new SamePortException("Same origin and destination port: ", originPortId);
