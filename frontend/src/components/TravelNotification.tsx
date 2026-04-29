@@ -72,7 +72,7 @@ export default function TravelNotification({
     let progressPct = 0;
     let ticksRemaining = 0;
     if (mode === "unloading" && unloadingState) {
-        const totalTicks = Math.max(1, unloadingState.completedAtTick - currentTick + (unloadingState.completedAtTick - currentTick));
+        //const totalTicks = Math.max(1, unloadingState.completedAtTick - currentTick + (unloadingState.completedAtTick - currentTick));
         ticksRemaining = Math.max(0, unloadingState.completedAtTick - currentTick);
         const assumedTotal = Math.max(ticksRemaining + 1, 5);
         progressPct = Math.min(100, ((assumedTotal - ticksRemaining) / assumedTotal) * 100);

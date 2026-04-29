@@ -21,7 +21,7 @@ interface ShipPositionData {
     destX: number | null;
     destY: number | null;
     startTick: number | null;
-    currentPortId: string | null;
+    currentPortId?: string | null;
 }
 
 interface ShipPositionsPayload {
