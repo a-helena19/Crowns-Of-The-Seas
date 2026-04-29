@@ -28,11 +28,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_PROFILES_ACTIVE: local
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/crowns_of_the_seas
-      SPRING_DATASOURCE_USERNAME: crowns
-      SPRING_DATASOURCE_PASSWORD: crowns
-      SPRING_DOCKER_COMPOSE_ENABLED: false
+      SPRING_PROFILES_ACTIVE: server
     depends_on:
       postgres:
         condition: service_healthy
