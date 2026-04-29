@@ -204,6 +204,7 @@ export function useGameSessionWebSocket({
                         try {
                             const event = JSON.parse(message.body) as TravelCompleteEvent;
                             window.dispatchEvent(new CustomEvent('travel-complete', { detail: event }));
+                            window.dispatchEvent(new Event('player-balance-updated'));
                         } catch (error) {
                             console.error('Error parsing travel-complete event:', error);
                         }

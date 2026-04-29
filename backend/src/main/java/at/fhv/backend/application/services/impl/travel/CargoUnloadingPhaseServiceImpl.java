@@ -18,6 +18,7 @@ import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.rest.GameSessionWebSocketController;
 import at.fhv.backend.rest.dtos.websocket.CargoRewardBreakdown;
+import at.fhv.backend.rest.dtos.websocket.PlayerInfo;
 import at.fhv.backend.rest.dtos.websocket.TravelCompleteEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
