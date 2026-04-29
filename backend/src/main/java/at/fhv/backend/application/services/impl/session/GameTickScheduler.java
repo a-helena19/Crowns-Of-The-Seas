@@ -125,7 +125,7 @@ public class GameTickScheduler {
             PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
 
             if (ship != null && ship.getStatus() == ShipStatus.UNLOADING) {
-                if (currentTick >= ship.getUnloadingCompletedAtTick()) {
+                if (ship.getUnloadingCompletedAtTick() != null && currentTick >= ship.getUnloadingCompletedAtTick()) {
                     handleUnloadingComplete(travel, currentTick);
                 }
             }

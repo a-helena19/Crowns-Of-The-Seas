@@ -50,7 +50,7 @@ public class PlayerShip {
     }
 
     public static PlayerShip reconstruct(UUID id, UUID shipId, UUID playerId, UUID sessionId, ShipStatus status, double condition, double fuel,
-                                         UUID currentPortId, UUID targetPortId, int loadingCompletedAtTick, int unloadingCompletedAtTick) {
+                                         UUID currentPortId, UUID targetPortId, Integer loadingCompletedAtTick, Integer unloadingCompletedAtTick) {
         return new PlayerShip(
                 id,
                 shipId,
@@ -61,8 +61,8 @@ public class PlayerShip {
                 fuel,
                 currentPortId,
                 targetPortId,
-                loadingCompletedAtTick,
-                unloadingCompletedAtTick);
+                loadingCompletedAtTick==null ? -1 : loadingCompletedAtTick,
+                unloadingCompletedAtTick == null ? -1 : unloadingCompletedAtTick);
     }
 
     public void completeRegistration() {
@@ -141,7 +141,7 @@ public class PlayerShip {
         this.unloadingCompletedAtTick = -1;
     }
 
-    public int getUnloadingCompletedAtTick() {
+    public Integer getUnloadingCompletedAtTick() {
         return unloadingCompletedAtTick;
     }
 

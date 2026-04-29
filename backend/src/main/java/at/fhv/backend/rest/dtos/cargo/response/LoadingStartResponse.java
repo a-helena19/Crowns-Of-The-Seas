@@ -3,7 +3,7 @@ package at.fhv.backend.rest.dtos.cargo.response;
 public class LoadingStartResponse {
     private String cargoId;
     private double loadingDurationSeconds;
-    private int loadingCompletedAtTick;
+    private Integer loadingCompletedAtTick;
 
     public LoadingStartResponse() {}
 
@@ -23,11 +23,11 @@ public class LoadingStartResponse {
         this.loadingDurationSeconds = loadingDurationSeconds;
     }
 
-    public int getLoadingCompletedAtTick() {
+    public Integer getLoadingCompletedAtTick() {
         return loadingCompletedAtTick;
     }
 
-    public void setLoadingCompletedAtTick(int loadingCompletedAtTick) {
+    public void setLoadingCompletedAtTick(Integer loadingCompletedAtTick) {
         this.loadingCompletedAtTick = loadingCompletedAtTick;
     }
 }

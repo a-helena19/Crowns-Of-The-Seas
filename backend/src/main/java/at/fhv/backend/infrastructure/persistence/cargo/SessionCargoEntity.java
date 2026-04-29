@@ -193,11 +193,11 @@ public class SessionCargoEntity {
         this.expiresAtTick = expiresAtTick;
     }
 
-    public int getLoadingCompletedAtTick() {
+    public Integer getLoadingCompletedAtTick() {
         return loadingCompletedAtTick;
     }
 
-    public void setLoadingCompletedAtTick(int loadingCompletedAtTick) {
+    public void setLoadingCompletedAtTick(Integer loadingCompletedAtTick) {
         this.loadingCompletedAtTick = loadingCompletedAtTick;
     }
 }

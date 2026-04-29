@@ -75,8 +75,13 @@ public class CargoRestController {
                     .orElseThrow(() -> new RuntimeException("Session not found"));
 
 
-            int loadingCompletedAtTick = playerShip.getLoadingCompletedAtTick();
+            Integer loadingCompletedAtTick = playerShip.getLoadingCompletedAtTick();
             int currentTick = session.getCurrentTick();
+
+            if (loadingCompletedAtTick == null) {
+                return ResponseEntity.badRequest().body(new ErrorResponse("Loading not started", "INVALID_LOADING_STATE"));
+            }
+
             double loadingDurationSeconds = (loadingCompletedAtTick - currentTick) * session.getTickRateSeconds();
 
             LoadingStartResponse response = new LoadingStartResponse();

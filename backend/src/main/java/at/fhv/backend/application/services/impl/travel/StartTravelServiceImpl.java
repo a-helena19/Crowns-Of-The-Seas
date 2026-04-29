@@ -124,7 +124,10 @@ public class StartTravelServiceImpl implements StartTravelService {
             ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
                     .orElseThrow(() -> new PlayerNotFoundException(playerId));
 
-            int loadingCompletedAtTick = playerShip.getLoadingCompletedAtTick();
+            Integer loadingCompletedAtTick = playerShip.getLoadingCompletedAtTick();
+            if (loadingCompletedAtTick == null) {
+                throw new IllegalStateException("Ship is not loading");
+            }
             double loadingDurationSeconds = (loadingCompletedAtTick - currentTick) * session.getTickRateSeconds();
 
             double distance = portDistanceForCargoService.distanceBetween(originPortId, destinationPortId);
