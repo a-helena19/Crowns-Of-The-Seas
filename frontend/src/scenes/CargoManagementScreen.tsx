@@ -91,14 +91,19 @@ export default function CargoManagementScreen({
         setStartingMap(m => ({ ...m, [entry.cargoId]: true }));
         setErrorMap(m => ({ ...m, [entry.cargoId]: "" }));
 
-        // Retry-Logik: Das Backend setzt den Schiffsstatus erst beim nächsten
-        // Tick auf READY_TO_DEPART. Falls das Frontend schon früher den Button
-        // freigibt (lokaler Timer abgelaufen), warten wir kurz und versuchen es
-        // nochmal, anstatt sofort einen Fehler anzuzeigen.
-        const MAX_RETRIES = 5;
-        const RETRY_DELAY_MS = 1500;
+        // Das Backend setzt den Schiffsstatus erst beim nächsten Tick auf
+        // READY_TO_DEPART. Falls das Frontend-Timer schon abgelaufen ist,
+        // aber das Backend noch nicht bereit ist (SHIP_NOT_READY), warten
+        // wir still mit ansteigendem Delay — kein Fehler wird angezeigt,
+        // der Nutzer sieht nur "Reise wird gestartet…".
+        //
+        // Maximale Wartezeit ≈ 2 volle Tick-Zyklen (Fallback: 5 s pro Tick).
+        const tickMs = (window as unknown as { __tickRateMs?: number }).__tickRateMs ?? 5000;
+        const MAX_WAIT_MS = tickMs * 2.5;
+        const BASE_RETRY_DELAY_MS = Math.max(500, Math.min(tickMs * 0.4, 2000));
+        const MAX_RETRIES = Math.ceil(MAX_WAIT_MS / BASE_RETRY_DELAY_MS);
 
-        const attemptStart = async (retriesLeft: number): Promise<void> => {
+        const attemptStart = async (retriesLeft: number, delayMs: number): Promise<void> => {
             try {
                 const response = await fetch(`/api/travels/start/${playerId}?sessionId=${sessionId}`, {
                     method: "POST",
@@ -133,28 +138,29 @@ export default function CargoManagementScreen({
                     else msg = errData.message ?? msg;
                 } catch { /* noop */ }
 
-                // Wenn der Fehler darauf hindeutet, dass das Schiff noch nicht
-                // READY_TO_DEPART ist (Beladung im Backend noch nicht abgeschlossen),
-                // kurz warten und erneut versuchen.
-                const isLoadingNotDone = errorCode === "SHIP_NOT_READY";
-
-                if (isLoadingNotDone && retriesLeft > 0) {
-                    await new Promise<void>(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-                    return attemptStart(retriesLeft - 1);
+                // SHIP_NOT_READY bedeutet: Backend-Tick hat die Beladung noch nicht
+                // abgeschlossen. Wir warten still und versuchen es automatisch erneut.
+                // Der Nutzer sieht "Reise wird gestartet…" — kein sichtbarer Fehler.
+                if (errorCode === "SHIP_NOT_READY" && retriesLeft > 0) {
+                    await new Promise<void>(resolve => setTimeout(resolve, delayMs));
+                    // Leicht ansteigendes Delay (max. 1 Tick-Länge), um nicht zu spammen
+                    const nextDelay = Math.min(delayMs * 1.3, tickMs);
+                    return attemptStart(retriesLeft - 1, nextDelay);
                 }
 
                 setErrorMap(m => ({ ...m, [entry.cargoId]: msg }));
             } catch {
+                // Netzwerkfehler: auch kurz warten und nochmal versuchen
                 if (retriesLeft > 0) {
-                    await new Promise<void>(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-                    return attemptStart(retriesLeft - 1);
+                    await new Promise<void>(resolve => setTimeout(resolve, delayMs));
+                    return attemptStart(retriesLeft - 1, delayMs);
                 }
                 setErrorMap(m => ({ ...m, [entry.cargoId]: "Verbindungsfehler." }));
             }
         };
 
         try {
-            await attemptStart(MAX_RETRIES);
+            await attemptStart(MAX_RETRIES, BASE_RETRY_DELAY_MS);
         } finally {
             setStartingMap(m => ({ ...m, [entry.cargoId]: false }));
         }
@@ -254,7 +260,9 @@ export default function CargoManagementScreen({
                                             onClick={() => handleStartTravel(selectedEntry)}
                                             disabled={startingMap[selectedEntry.cargoId]}
                                         >
-                                            {startingMap[selectedEntry.cargoId] ? "Reise wird gestartet…" : "Reise starten"}
+                                            {startingMap[selectedEntry.cargoId]
+                                                ? "⏳ Reise wird gestartet…"
+                                                : "Reise starten"}
                                         </button>
                                     </div>
                                 )}

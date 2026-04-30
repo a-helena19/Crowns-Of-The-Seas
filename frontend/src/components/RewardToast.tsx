@@ -24,6 +24,10 @@ export default function RewardToast({ shipName, from, to, reward, onDismiss }: R
     }, [onDismiss]);
 
     useEffect(() => {
+        dismissedRef.current = false;
+    }, []);
+
+    useEffect(() => {
         autoTimerRef.current = setTimeout(dismiss, 6000);
         return () => {
             if (autoTimerRef.current) clearTimeout(autoTimerRef.current);

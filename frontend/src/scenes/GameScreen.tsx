@@ -121,20 +121,25 @@ export default function GameScreen() {
                             }
                             : undefined,
                     };
-                })
+                });
+                return updated;
+            });
 
+            setAssignedCargos(prev => {
                 const matched = prev.find(e => e.travelId === data.travelId);
                 if (matched) {
-                    setRewardToasts(t => [...t, {
-                        id: data.travelId,
-                        shipName: matched.shipName,
-                        from: matched.from,
-                        to: matched.to,
-                        reward: data.totalReward,
-                    }]);
+                    setRewardToasts(t => {
+                        if (t.some(toast => toast.id === data.travelId)) return t;
+                        return [...t, {
+                            id: data.travelId,
+                            shipName: matched.shipName,
+                            from: matched.from,
+                            to: matched.to,
+                            reward: data.totalReward,
+                        }];
+                    });
                 }
-
-                return updated;
+                return prev;
             });
 
 
