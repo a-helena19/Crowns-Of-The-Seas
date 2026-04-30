@@ -545,7 +545,7 @@ const WeightIcon = () => (
 
                                 {!playerShipId && (
                                     <div className="cargo-speed-hint" style={{ marginTop: 20, marginBottom: 16 }}>
-                                        Wähle zuerst ein Schiff aus, um eine Reise zu starten.
+                                        Wähle zuerst ein Schiff aus, um eine Fracht anzunehmen.
                                     </div>
                                 )}
 

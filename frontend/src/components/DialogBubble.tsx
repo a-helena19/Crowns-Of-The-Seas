@@ -22,15 +22,9 @@ export default function DialogBubble({
                 <GameButton onClick={onOpenShip}>
                     {selectedShipName ? "Schiff wechseln" : "Schiff auswählen"}
                 </GameButton>
-                {onOpenCargo ? (
-                    <GameButton onClick={onOpenCargo}>
-                        Frachtbörse öffnen
-                    </GameButton>
-                ) : (
-                    <GameButton onClick={() => {}} disabled>
-                        Erst Schiff auswählen
-                    </GameButton>
-                )}
+                <GameButton onClick={onOpenCargo ?? (() => {})}>
+                    Frachtbörse öffnen
+                </GameButton>
             </div>
         </PixelPanel>
     );

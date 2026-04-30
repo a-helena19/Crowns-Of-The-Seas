@@ -127,7 +127,7 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
                     )}
 
                     <DialogBubble
-                        onOpenCargo={selectedShip ? () => setView("cargo") : undefined}
+                        onOpenCargo={() => setView("cargo")}
                         onOpenShip={() => setView("ship")}
                         selectedShipName={selectedShip?.name}
                     />
@@ -141,10 +141,10 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
                 />
             )}
 
-            {view === "cargo" && selectedShip && (
+            {view === "cargo" && (
                 <CargoScreen
                     currentPortId={selectedPortId}
-                    playerShipId={selectedShip.id}
+                    playerShipId={selectedShip?.id ?? null}
                     onCargoAccepted={handleCargoAccepted}
                 />
             )}

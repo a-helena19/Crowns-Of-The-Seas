@@ -148,3 +148,27 @@
 .cm-reward-row.warn {
     color: #ff9800;
 }
+
+.progress-fill-smooth {
+    height: 100%;
+    border-radius: 1px;
+}
+
+.unload-box {
+    position: absolute;
+    font-size: 20px;
+    opacity: 0;
+    top: 8px;
+    animation: sinkCargo 2.4s ease-in forwards;
+    z-index: 3;
+}
+.unload-box:nth-child(1) { left: 30%; animation-delay: 0.5s; }
+.unload-box:nth-child(2) { left: 55%; animation-delay: 3.5s; }
+.unload-box:nth-child(3) { left: 42%; animation-delay: 6.5s; }
+
+@keyframes sinkCargo {
+    0%   { opacity: 0;   transform: translateY(0)   scale(0.8); }
+    15%  { opacity: 1;   transform: translateY(8px)  scale(1);   }
+    70%  { opacity: 0.9; transform: translateY(44px) scale(1);   }
+    100% { opacity: 0;   transform: translateY(64px) scale(0.7); }
+}

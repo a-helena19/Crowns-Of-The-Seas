@@ -1,4 +1,44 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+
+// Fließender Fortschrittsbalken: interpoliert zwischen Tick-Updates mit CSS-Transition.
+function SmoothProgressBar({ targetPct, color }: { targetPct: number; color: string }) {
+    const [displayPct, setDisplayPct] = useState(targetPct);
+    const [transitionMs, setTransitionMs] = useState(0);
+    const prevTargetRef = useRef(targetPct);
+
+    useEffect(() => {
+        if (targetPct === prevTargetRef.current) return;
+        // Transition-Dauer = Tick-Rate des Backends (oder 5 s als Fallback)
+        const tickMs = (window as unknown as { __tickRateMs?: number }).__tickRateMs ?? 5000;
+        setTransitionMs(tickMs * 0.95);
+        setDisplayPct(targetPct);
+        prevTargetRef.current = targetPct;
+    }, [targetPct]);
+
+    return (
+        <div className="progress-track" style={{ marginTop: 12 }}>
+            <div
+                className="progress-fill-smooth"
+                style={{
+                    width: `${Math.min(100, Math.max(0, displayPct))}%`,
+                    transition: transitionMs > 0 ? `width ${transitionMs}ms linear` : "none",
+                    background: `linear-gradient(90deg, ${color}, ${color}bb)`,
+                }}
+            />
+        </div>
+    );
+}
+
+// Wrapper der sich die erste bekannte Restdauer merkt, um Prozent korrekt zu berechnen.
+function TravelProgressBar({ remaining, color }: { remaining: number; color: string }) {
+    const initialRef = useRef<number | null>(null);
+    if (initialRef.current === null && remaining > 0) {
+        initialRef.current = remaining;
+    }
+    const total = initialRef.current ?? remaining;
+    const pct = total > 0 ? Math.min(100, (1 - remaining / total) * 100) : 100;
+    return <SmoothProgressBar targetPct={pct} color={color} />;
+}
 import LoadingScreen from "./LoadingScreen";
 import backIcon from "../assets/goback.png";
 import background from "../assets/background.jpg";
@@ -50,38 +90,71 @@ export default function CargoManagementScreen({
         if (!playerId || !sessionId) return;
         setStartingMap(m => ({ ...m, [entry.cargoId]: true }));
         setErrorMap(m => ({ ...m, [entry.cargoId]: "" }));
-        try {
-            const response = await fetch(`/api/travels/start/${playerId}?sessionId=${sessionId}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({
-                    playerShipId: entry.shipId,
-                    destinationPortId: entry.destinationPortId,
-                    sessionCargoId: entry.cargoId,
-                    speedSetting: entry.speedSetting,
-                    pilotageService: pilotageMap[entry.cargoId] ?? false,
-                }),
-            });
-            if (response.ok) {
-                const data = await response.json() as { travelId?: string };
-                window.dispatchEvent(new CustomEvent("player-balance-updated"));
-                setShowDeparture(entry);
-                onCargoPhaseChange(entry.cargoId, "en_route", data.travelId);
-            } else {
+
+        // Retry-Logik: Das Backend setzt den Schiffsstatus erst beim nächsten
+        // Tick auf READY_TO_DEPART. Falls das Frontend schon früher den Button
+        // freigibt (lokaler Timer abgelaufen), warten wir kurz und versuchen es
+        // nochmal, anstatt sofort einen Fehler anzuzeigen.
+        const MAX_RETRIES = 5;
+        const RETRY_DELAY_MS = 1500;
+
+        const attemptStart = async (retriesLeft: number): Promise<void> => {
+            try {
+                const response = await fetch(`/api/travels/start/${playerId}?sessionId=${sessionId}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({
+                        playerShipId: entry.shipId,
+                        destinationPortId: entry.destinationPortId,
+                        sessionCargoId: entry.cargoId,
+                        speedSetting: entry.speedSetting,
+                        pilotageService: pilotageMap[entry.cargoId] ?? false,
+                    }),
+                });
+
+                if (response.ok) {
+                    const data = await response.json() as { travelId?: string };
+                    window.dispatchEvent(new CustomEvent("player-balance-updated"));
+                    setShowDeparture(entry);
+                    onCargoPhaseChange(entry.cargoId, "en_route", data.travelId);
+                    return;
+                }
+
                 const text = await response.text();
+                let errorCode: string | undefined;
                 let msg = "Reise konnte nicht gestartet werden.";
                 try {
                     const errData = JSON.parse(text) as { error?: string; message?: string };
+                    errorCode = errData.error;
                     if (errData.error === "CARGO_TAKEN") msg = "Fracht wurde bereits vergeben.";
                     else if (errData.error === "CAPACITY_EXCEEDED") msg = "Schiff zu klein für diese Fracht.";
                     else if (errData.error === "INSUFFICIENT_FUEL") msg = errData.message ?? "Nicht genug Treibstoff.";
                     else if (errData.error === "INSUFFICIENT_BALANCE") msg = errData.message ?? "Nicht genug Taler für den Lotsendienst.";
                     else msg = errData.message ?? msg;
                 } catch { /* noop */ }
+
+                // Wenn der Fehler darauf hindeutet, dass das Schiff noch nicht
+                // READY_TO_DEPART ist (Beladung im Backend noch nicht abgeschlossen),
+                // kurz warten und erneut versuchen.
+                const isLoadingNotDone = errorCode === "SHIP_NOT_READY";
+
+                if (isLoadingNotDone && retriesLeft > 0) {
+                    await new Promise<void>(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+                    return attemptStart(retriesLeft - 1);
+                }
+
                 setErrorMap(m => ({ ...m, [entry.cargoId]: msg }));
+            } catch {
+                if (retriesLeft > 0) {
+                    await new Promise<void>(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+                    return attemptStart(retriesLeft - 1);
+                }
+                setErrorMap(m => ({ ...m, [entry.cargoId]: "Verbindungsfehler." }));
             }
-        } catch {
-            setErrorMap(m => ({ ...m, [entry.cargoId]: "Verbindungsfehler." }));
+        };
+
+        try {
+            await attemptStart(MAX_RETRIES);
         } finally {
             setStartingMap(m => ({ ...m, [entry.cargoId]: false }));
         }
@@ -195,37 +268,58 @@ export default function CargoManagementScreen({
                                 <div className="cm-travel-ticks">
                                     Ankunft in {Math.max(0, (selectedEntry.arrivalTick ?? 0) - (selectedEntry.currentTick ?? 0))} Tagen
                                 </div>
-                                <div className="progress-track" style={{ marginTop: 12 }}>
-                                    {(() => {
-                                        const total = selectedEntry.arrivalTick ?? 1;
-                                        const elapsed = selectedEntry.currentTick ?? 0;
-                                        const pct = Math.min(100, (elapsed / total) * 100);
-                                        return <div className="progress-fill-done" style={{ width: `${pct}%` }} />;
-                                    })()}
-                                </div>
+                                {(() => {
+                                    const remaining = Math.max(0, (selectedEntry.arrivalTick ?? 0) - (selectedEntry.currentTick ?? 0));
+                                    return <TravelProgressBar remaining={remaining} color="#ff9800" />;
+                                })()}
                             </div>
                         )}
 
                         {selectedEntry.phase === "unloading" && (
-                            <div className="cm-travel-panel">
-                                <div className="cm-travel-title">⚓ Wird entladen…</div>
-                                <div className="cm-travel-route">{selectedEntry.to}</div>
+                            <div className="loading-panel">
+                                <div className="loading-title">
+                                    Schiff wird entladen
+                                    <span className="loading-dots">
+                                        <span>.</span><span>.</span><span>.</span>
+                                    </span>
+                                </div>
+
+                                <div className="loading-ship-wrap">
+                                    <span className="unload-box">📦</span>
+                                    <span className="unload-box">📦</span>
+                                    <span className="unload-box">📦</span>
+                                    <img
+                                        src={selectedEntry.shipIconUrl ?? "/fallback-ship.png"}
+                                        alt={selectedEntry.shipName}
+                                        className="loading-ship-img"
+                                        onError={e => { (e.target as HTMLImageElement).src = "/fallback-ship.png"; }}
+                                    />
+                                </div>
+
+                                <div className="loading-route">
+                                    {selectedEntry.from} → {selectedEntry.to}
+                                </div>
+
+                                <div className="loading-capacity">
+                                    <div className="loading-capacity-label">
+                                        <span>Ladekapazität</span>
+                                        <span>{selectedEntry.weight}t / {selectedEntry.maxCargoCapacity > 0 ? `${selectedEntry.maxCargoCapacity}t` : "–"}</span>
+                                    </div>
+                                    <div className="capacity-track">
+                                        <div className="capacity-fill ok" style={{
+                                            width: `${selectedEntry.maxCargoCapacity > 0 ? Math.min((selectedEntry.weight / selectedEntry.maxCargoCapacity) * 100, 100) : 100}%`
+                                        }} />
+                                    </div>
+                                </div>
+
                                 {selectedEntry.unloadingCompletedAtTick != null && (
-                                    <>
-                                        <div className="cm-travel-ticks">
-                                            Fertig in {Math.max(0, selectedEntry.unloadingCompletedAtTick - (selectedEntry.currentTick ?? 0))} Tagen
-                                        </div>
-                                        <div className="progress-track" style={{ marginTop: 12 }}>
-                                            <div
-                                                className="progress-fill-done"
-                                                style={{
-                                                    width: `${Math.min(100, Math.max(0,
-                                                        100 - ((selectedEntry.unloadingCompletedAtTick - (selectedEntry.currentTick ?? 0)) / 3 * 100)
-                                                    ))}%`
-                                                }}
-                                            />
-                                        </div>
-                                    </>
+                                    <div className="loading-progress-wrap">
+                                        <div className="loading-progress-label">Entladevorgang</div>
+                                        {(() => {
+                                            const remaining = Math.max(0, selectedEntry.unloadingCompletedAtTick - (selectedEntry.currentTick ?? 0));
+                                            return <TravelProgressBar remaining={remaining} color="#2196f3" />;
+                                        })()}
+                                    </div>
                                 )}
                             </div>
                         )}
