@@ -1,12 +1,9 @@
 package at.fhv.backend.application.services;
 
-import at.fhv.backend.application.services.impl.travel.CargoUnloadServiceImpl;
 import at.fhv.backend.application.services.impl.travel.CargoUnloadingPhaseServiceImpl;
 import at.fhv.backend.application.services.impl.travel.RewardCalculationServiceImpl;
 import at.fhv.backend.application.services.impl.travel.TravelArrivalServiceImpl;
-import at.fhv.backend.application.services.travel.CargoUnloadService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
-import at.fhv.backend.application.services.travel.RewardCalculationService;
 import at.fhv.backend.domain.model.cargo.*;
 import at.fhv.backend.domain.model.player.BaseSessionPlayer;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
@@ -42,125 +39,6 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class TravelCompletionServiceTest {
 
-    @Nested
-    @MockitoSettings(strictness = Strictness.LENIENT)
-    class CargoUnloadServiceImplTest {
-        @Mock private SessionCargoRepository sessionCargoRepository;
-        private CargoUnloadServiceImpl service;
-
-        @BeforeEach
-        void setUp() {
-            service = new CargoUnloadServiceImpl(sessionCargoRepository);
-        }
-
-        private Travel buildTravel(UUID playerShipId, UUID destinationPortId, int arrivalTick) {
-            return Travel.start(playerShipId, UUID.randomUUID(), UUID.randomUUID(),
-                    UUID.randomUUID(), destinationPortId, 5.0, 1.0, 0.1, BigDecimal.valueOf(500), arrivalTick);
-        }
-
-        private SessionCargo buildAssignedCargo(UUID sessionId, UUID playerShipId, UUID destinationPortId) {
-            UUID cargoId = UUID.randomUUID();
-            return SessionCargo.reconstruct(
-                    cargoId, UUID.randomUUID(), sessionId,
-                    UUID.randomUUID(), destinationPortId,
-                    BigDecimal.valueOf(1000), false, 50,
-                    CargoType.GENERAL_GOODS, 0.1,
-                    CargoStatus.ASSIGNED, UUID.randomUUID(), playerShipId, 0, 5, -1, -1
-            );
-        }
-
-        private SessionCargo buildExpiredCargo(UUID sessionId, UUID playerShipId, UUID destinationPortId) {
-            UUID cargoId = UUID.randomUUID();
-            return SessionCargo.reconstruct(
-                    cargoId, UUID.randomUUID(), sessionId,
-                    UUID.randomUUID(), destinationPortId,
-                    BigDecimal.valueOf(1000), false, 50,
-                    CargoType.FOOD, 0.1,
-                    CargoStatus.EXPIRED, UUID.randomUUID(), playerShipId, 0, 3, 3, -1
-            );
-        }
-
-        @Test
-        void givenAssignedCargo_whenUnload_thenCargoStatusChangesToDelivered() {
-            UUID playerShipId = UUID.randomUUID();
-            UUID destinationPortId = UUID.randomUUID();
-            UUID sessionId = UUID.randomUUID();
-            Travel travel = buildTravel(playerShipId, destinationPortId, 10);
-            SessionCargo cargo = buildAssignedCargo(sessionId, playerShipId, destinationPortId);
-
-            when(sessionCargoRepository.save(any(SessionCargo.class)))
-                    .thenAnswer(inv -> inv.getArgument(0));
-
-            service.unloadCargoForTravel(travel, List.of(cargo));
-
-            // Nach Entladen geht Cargo in INACTIVE (Cooldown) Phase
-            assertThat(cargo.getCargoStatus()).isEqualTo(CargoStatus.INACTIVE);
-            verify(sessionCargoRepository, times(1)).save(any(SessionCargo.class));
-        }
-
-        @Test
-        void givenExpiredCargo_whenUnload_thenCargoStatusChangesToInactive() {
-            UUID playerShipId = UUID.randomUUID();
-            UUID destinationPortId = UUID.randomUUID();
-            UUID sessionId = UUID.randomUUID();
-            Travel travel = buildTravel(playerShipId, destinationPortId, 10);
-            SessionCargo cargo = buildExpiredCargo(sessionId, playerShipId, destinationPortId);
-
-            when(sessionCargoRepository.save(any(SessionCargo.class)))
-                    .thenAnswer(inv -> inv.getArgument(0));
-
-            service.unloadCargoForTravel(travel, List.of(cargo));
-
-            // Auch expiriertes Cargo geht in INACTIVE (Cooldown)
-            assertThat(cargo.getCargoStatus()).isEqualTo(CargoStatus.INACTIVE);
-            verify(sessionCargoRepository, times(1)).save(any(SessionCargo.class));
-        }
-
-        @Test
-        void givenCargoWithWrongShip_whenUnload_thenCargoNotUnloaded() {
-            UUID playerShipId = UUID.randomUUID();
-            UUID otherShipId = UUID.randomUUID();
-            UUID destinationPortId = UUID.randomUUID();
-            UUID sessionId = UUID.randomUUID();
-            Travel travel = buildTravel(playerShipId, destinationPortId, 10);
-
-            UUID cargoId = UUID.randomUUID();
-            SessionCargo cargo = SessionCargo.reconstruct(
-                    cargoId, UUID.randomUUID(), sessionId,
-                    UUID.randomUUID(), destinationPortId,
-                    BigDecimal.valueOf(1000), false, 50,
-                    CargoType.GENERAL_GOODS, 0.1,
-                    CargoStatus.ASSIGNED, UUID.randomUUID(), otherShipId, 0, 5, -1, -1
-            );
-
-            service.unloadCargoForTravel(travel, List.of(cargo));
-
-            assertThat(cargo.getCargoStatus()).isEqualTo(CargoStatus.ASSIGNED);
-            verify(sessionCargoRepository, never()).save(any(SessionCargo.class));
-        }
-
-        @Test
-        void givenMultipleCargos_whenUnload_thenOnlyRelevantCargoIsUnloaded() {
-            UUID playerShipId = UUID.randomUUID();
-            UUID destinationPortId = UUID.randomUUID();
-            UUID sessionId = UUID.randomUUID();
-            Travel travel = buildTravel(playerShipId, destinationPortId, 10);
-
-            SessionCargo relevantCargo = buildAssignedCargo(sessionId, playerShipId, destinationPortId);
-            SessionCargo irrelevantCargo = buildAssignedCargo(sessionId, UUID.randomUUID(), UUID.randomUUID());
-
-            when(sessionCargoRepository.save(any(SessionCargo.class)))
-                    .thenAnswer(inv -> inv.getArgument(0));
-
-            service.unloadCargoForTravel(travel, List.of(relevantCargo, irrelevantCargo));
-
-            // Relevant cargo wird entladen und geht in INACTIVE (Cooldown)
-            assertThat(relevantCargo.getCargoStatus()).isEqualTo(CargoStatus.INACTIVE);
-            // Irrelevant cargo bleibt unverändert
-            assertThat(irrelevantCargo.getCargoStatus()).isEqualTo(CargoStatus.ASSIGNED);
-            verify(sessionCargoRepository, times(1)).save(any(SessionCargo.class));
-        }
-    }
 
     @Nested
     class RewardCalculationServiceImplTest {
@@ -191,14 +69,13 @@ class TravelCompletionServiceTest {
 
         private SessionCargo buildExpiredCargo(UUID sessionId, UUID destinationPortId, BigDecimal reward, CargoType type) {
             UUID cargoId = UUID.randomUUID();
-            SessionCargo cargo = SessionCargo.reconstruct(
+            return SessionCargo.reconstruct(
                     cargoId, UUID.randomUUID(), sessionId,
                     UUID.randomUUID(), destinationPortId,
                     reward, false, 50,
                     type, 0.1,
                     CargoStatus.EXPIRED, UUID.randomUUID(), UUID.randomUUID(), 0, 3, 3, -1
             );
-            return cargo;
         }
 
         @Test
@@ -297,7 +174,6 @@ class TravelCompletionServiceTest {
 
         @Test
         void givenNullReward_whenCalculateReward_thenReturnsZero() {
-            UUID sessionId = UUID.randomUUID();
             UUID destinationPortId = UUID.randomUUID();
             Travel travel = buildTravel(destinationPortId, null);
 
@@ -338,20 +214,15 @@ class TravelCompletionServiceTest {
             return ps;
         }
 
-        private GameSession buildGameSession(UUID hostId) {
-            return new GameSession(hostId, 4, 5, 100, Duration.ofMinutes(30));
-        }
-
         @Test
         void givenValidTravel_whenHandleArrival_thenTravelMarkedAsArrived() {
-            UUID playerId = UUID.randomUUID();
-            UUID sessionId = UUID.randomUUID();
             UUID playerShipId = UUID.randomUUID();
+            UUID sessionId = UUID.randomUUID();
             UUID destinationPortId = UUID.randomUUID();
             Travel travel = buildTravel(playerShipId, destinationPortId, sessionId);
-            PlayerShip playerShip = buildPlayerShip(UUID.randomUUID());
+            PlayerShip playerShip = buildPlayerShip(playerShipId);
 
-            when(sessionCargoRepository.findByAssignedPlayerId(playerId)).thenReturn(List.of());
+            when(sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId())).thenReturn(List.of());
             when(travelRepository.save(any(Travel.class))).thenAnswer(inv -> inv.getArgument(0));
             when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
             when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -365,14 +236,13 @@ class TravelCompletionServiceTest {
 
         @Test
         void givenValidTravel_whenHandleArrival_thenPlayerShipArrivesAtPort() {
-            UUID playerId = UUID.randomUUID();
-            UUID sessionId = UUID.randomUUID();
             UUID playerShipId = UUID.randomUUID();
+            UUID sessionId = UUID.randomUUID();
             UUID destinationPortId = UUID.randomUUID();
             Travel travel = buildTravel(playerShipId, destinationPortId, sessionId);
-            PlayerShip playerShip = buildPlayerShip(UUID.randomUUID());
+            PlayerShip playerShip = buildPlayerShip(playerShipId);
 
-            when(sessionCargoRepository.findByAssignedPlayerId(playerId)).thenReturn(List.of());
+            when(sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId())).thenReturn(List.of());
             when(travelRepository.save(any(Travel.class))).thenAnswer(inv -> inv.getArgument(0));
             when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
             when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -385,16 +255,15 @@ class TravelCompletionServiceTest {
         }
 
         @Test
-        void givenCargoUnloadingNeeded_whenHandleArrival_thenCargoUnloadingPhaseServiceCalled() {
-            UUID playerId = UUID.randomUUID();
-            UUID sessionId = UUID.randomUUID();
+        void givenCargoUnloadingNeeded_whenHandleArrival_thenShipSetToUnloading() {
             UUID playerShipId = UUID.randomUUID();
+            UUID sessionId = UUID.randomUUID();
             UUID destinationPortId = UUID.randomUUID();
             Travel travel = buildTravel(playerShipId, destinationPortId, sessionId);
-            PlayerShip playerShip = buildPlayerShip(UUID.randomUUID());
+            PlayerShip playerShip = buildPlayerShip(playerShipId);
             List<SessionCargo> cargos = List.of();
 
-            when(sessionCargoRepository.findByAssignedPlayerId(playerId)).thenReturn(cargos);
+            when(sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId())).thenReturn(cargos);
             when(travelRepository.save(any(Travel.class))).thenAnswer(inv -> inv.getArgument(0));
             when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
             when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -441,7 +310,7 @@ class TravelCompletionServiceTest {
             return ps;
         }
 
-        private GameSession buildSessionWithPlayer(UUID userId, UUID sessionId, ISessionPlayer player) {
+        private GameSession buildSessionWithPlayer(ISessionPlayer player) {
             GameSession session = new GameSession(UUID.randomUUID(), 4, 5, 100, Duration.ofMinutes(30));
             session.addPlayer(player);
             return session;
@@ -459,7 +328,7 @@ class TravelCompletionServiceTest {
 
             PlayerShip playerShip = buildPlayerShipInUnloading(destinationPortId);
             ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
-            GameSession session = buildSessionWithPlayer(userId, sessionId, player);
+            GameSession session = buildSessionWithPlayer(player);
 
             // ASSIGNED cargo (so unloadCargo will deliver it during the phase). Reward 1000.
             SessionCargo cargo = SessionCargo.reconstruct(
@@ -475,6 +344,8 @@ class TravelCompletionServiceTest {
             when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
             when(gameSessionRepository.save(any(GameSession.class))).thenAnswer(inv -> inv.getArgument(0));
             when(sessionCargoRepository.save(any(SessionCargo.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(portRepository.findById(any())).thenReturn(Optional.empty());
+            when(cargoRepository.findById(any())).thenReturn(Optional.empty());
 
             service.completeUnloadingPhase(travel, List.of(cargo));
 
@@ -494,13 +365,15 @@ class TravelCompletionServiceTest {
 
             PlayerShip playerShip = buildPlayerShipInUnloading(destinationPortId);
             ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
-            GameSession session = buildSessionWithPlayer(userId, sessionId, player);
+            GameSession session = buildSessionWithPlayer(player);
             BigDecimal initialBalance = player.getBalance();
 
             when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
             when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
             when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
             when(gameSessionRepository.save(any(GameSession.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(portRepository.findById(any())).thenReturn(Optional.empty());
+            when(cargoRepository.findById(any())).thenReturn(Optional.empty());
 
             service.completeUnloadingPhase(travel, List.of());
 
@@ -521,7 +394,7 @@ class TravelCompletionServiceTest {
 
             PlayerShip playerShip = buildPlayerShipInUnloading(destinationPortId);
             ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
-            GameSession session = buildSessionWithPlayer(userId, sessionId, player);
+            GameSession session = buildSessionWithPlayer(player);
 
             SessionCargo cargo = SessionCargo.reconstruct(
                     UUID.randomUUID(), UUID.randomUUID(), sessionId,
@@ -536,6 +409,8 @@ class TravelCompletionServiceTest {
             when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
             when(gameSessionRepository.save(any(GameSession.class))).thenAnswer(inv -> inv.getArgument(0));
             when(sessionCargoRepository.save(any(SessionCargo.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(portRepository.findById(any())).thenReturn(Optional.empty());
+            when(cargoRepository.findById(any())).thenReturn(Optional.empty());
 
             service.completeUnloadingPhase(travel, List.of(cargo));
 

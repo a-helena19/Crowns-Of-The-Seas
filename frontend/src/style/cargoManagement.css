@@ -93,3 +93,58 @@
     border: 3px solid #5a3a0a;
     padding: 14px;
 }
+
+/* Phase-Farben in der Liste */
+.cm-cargo-item.phase-en_route  { border-left: 4px solid #ff9800; }
+.cm-cargo-item.phase-unloading { border-left: 4px solid #2196f3; }
+.cm-cargo-item.phase-completed { border-left: 4px solid #4caf50; }
+
+/* Reise-Panel */
+.cm-travel-panel {
+    background: rgba(20, 10, 3, 0.88);
+    border: 3px solid #5a3a0a;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.cm-travel-title { font-family: var(--font-game); color: #c89b3c; font-size: 18px; }
+.cm-travel-route { color: #a89060; font-size: 14px; }
+.cm-travel-ticks { color: #d1ba7e; font-size: 13px; }
+
+/* Belohnungs-Panel */
+.cm-reward-panel {
+    background: rgba(10, 30, 10, 0.9);
+    border: 3px solid #2e6b1a;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+    text-align: center;
+}
+.cm-reward-title  { font-family: var(--font-game); color: #90ee90; font-size: 20px; }
+.cm-reward-route  { color: #a89060; font-size: 13px; }
+.cm-reward-amount { font-family: var(--font-game); color: #ffd700; font-size: 32px; }
+.cm-reward-detail { color: #888; font-size: 12px; }
+.cm-reward-dismiss { color: #666; font-size: 11px; font-style: italic; margin-top: 8px; }
+
+.cm-reward-breakdown {
+    width: 100%;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cm-reward-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #a89060;
+}
+
+.cm-reward-row.warn {
+    color: #ff9800;
+}

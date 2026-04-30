@@ -6,49 +6,17 @@ import SideBar from "../components/SideBar";
 import HarborScene from "../scenes/HarborScene.tsx";
 import ShipBrokerScene from "../scenes/ShipBrokerScene.tsx";
 import PortProfileScreen from "../scenes/PortProfileScreen.tsx";
-import TravelNotification from "../components/TravelNotification.tsx";
 import { useGameSessionWebSocket } from "../hooks/useGameSessionWebSocket.ts";
 import CargoManagementScreen from "../scenes/CargoManagementScreen";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
+import RewardToast from "../components/RewardToast.tsx";
 
 export const TOP_BAR_HEIGHT = '8vh';
 export const BOTTOM_BAR_HEIGHT = '25vh';
 
-interface CargoRewardBreakdown {
-    cargoId: string;
-    cargoName: string;
-    destinationPort: string;
-    baseReward: number;
-    actualReward: number;
-    percentage: number;
-    status: "DELIVERED" | "EXPIRED";
-    cargoType: string;
-}
-
-interface TravelCompleteEvent {
-    travelId: string;
-    playerId: string;
-    cargoRewards: CargoRewardBreakdown[];
-    baseReward: number;
-    totalReward: number;
-    previousBalance: number;
-    newBalance: number;
-}
-
-interface UnloadingState {
-    portName: string;
-    completedAtTick: number;
-    cargoCount: number;
-}
-
 export default function GameScreen() {
     const [view, setView] = useState<"map" | "harbor" | "broker" | "portProfile" | "cargoManagement">("map");
     const [selectedPort, setSelectedPort] = useState<{ id: string; name: string; x: number; y: number } | null>(null);
-
-    // Travel/Unloading State auf höchster Ebene, damit Notification überall sichtbar ist
-    const [unloadingState, setUnloadingState] = useState<UnloadingState | null>(null);
-    const [currentTick, setCurrentTick] = useState(0);
-    const [travelResult, setTravelResult] = useState<TravelCompleteEvent | null>(null);
 
     const sessionData = sessionStorage.getItem('currentSession');
     const sessionId = sessionData ? JSON.parse(sessionData).id : null;
@@ -58,6 +26,9 @@ export default function GameScreen() {
     const playerId: string | null = userData ? JSON.parse(userData).id : null;
 
     const [assignedCargos, setAssignedCargos] = useState<AssignedCargoEntry[]>([]);
+    const [rewardToasts, setRewardToasts] = useState<{
+        id: string; shipName: string; from: string; to: string; reward: number;
+    }[]>([]);
 
     function handleCargoAssigned(entry: AssignedCargoEntry) {
         setAssignedCargos(prev => {
@@ -76,6 +47,12 @@ export default function GameScreen() {
         setAssignedCargos(prev => prev.filter(e => e.cargoId !== cargoId));
     }
 
+    function handleCargoPhaseChange(cargoId: string, phase: AssignedCargoEntry["phase"], travelId?: string) {
+        setAssignedCargos(prev => prev.map(e =>
+            e.cargoId === cargoId ? { ...e, phase, ...(travelId ? { travelId } : {}) } : e
+        ));
+    }
+
     useEffect(() => {
         if (typeof window.__tickRateMs !== 'number' || !Number.isFinite(window.__tickRateMs) || window.__tickRateMs <= 0) {
             window.__tickRateMs = tickRateSeconds * 1000;
@@ -91,39 +68,79 @@ export default function GameScreen() {
         window.addEventListener('port-clicked', onPortClicked);
         return () => window.removeEventListener('port-clicked', onPortClicked);
     }, []);
-    
+
     useEffect(() => {
         const handler = (e: Event) => {
-            const detail = (e as CustomEvent<{ currentTick: number; ships: any[] }>).detail;
-            setCurrentTick(detail.currentTick);
+            const detail = (e as CustomEvent<{
+                currentTick: number;
+                ships: { playerShipId: string; status: string; arrivalTick?: number; currentPortId?: string; travelId?: string }[]
+            }>).detail;
 
-            const myShip = detail.ships.find(s =>
-                s.playerId === playerId && s.status === 'UNLOADING'
-            );
-            if (myShip && myShip.arrivalTick != null) {
-                const port = window.__latestPorts?.find((p: any) => p.id === myShip.currentPortId);
-                setUnloadingState(prev => ({
-                    portName: port?.name ?? prev?.portName ?? "Hafen",
-                    completedAtTick: myShip.arrivalTick,
-                    cargoCount: prev?.cargoCount ?? 0,
-                }));
-            }
+            setAssignedCargos(prev => prev.map(entry => {
+                if (entry.phase !== "en_route" && entry.phase !== "unloading") return entry;
+                const ship = detail.ships.find(s => s.playerShipId === entry.shipId);
+                if (!ship) return entry;
+                if (ship.status === "UNLOADING") {
+                    return  { ...entry, phase: "unloading", arrivalTick: ship.arrivalTick, currentTick: detail.currentTick, unloadingCompletedAtTick: ship.arrivalTick, };
+                }
+                if (ship.status === "EN_ROUTE") {
+                    return { ...entry, currentTick: detail.currentTick, arrivalTick: ship.arrivalTick ?? entry.arrivalTick, };
+                }
+                return entry;
+            }));
         };
-        window.addEventListener('backend-ship-positions', handler);
-        return () => window.removeEventListener('backend-ship-positions', handler);
+        window.addEventListener("backend-ship-positions", handler);
+        return () => window.removeEventListener("backend-ship-positions", handler);
     }, [playerId]);
 
     useEffect(() => {
-        const handleTravelComplete = (event: Event) => {
-            const data = (event as CustomEvent<TravelCompleteEvent>).detail;
-            if (data.playerId !== playerId) return; // nur eigene Reisen anzeigen
-            setTravelResult(data);
-            setUnloadingState(null); // Unloading-Phase beendet
-            window.dispatchEvent(new CustomEvent('player-balance-updated'));
-        };
+        const handler = (e: Event) => {
+            const data = (e as CustomEvent<{
+                travelId: string;
+                playerId: string;
+                totalReward: number;
+                baseReward: number;
+                cargoRewards: { actualReward: number; percentage: number; baseReward: number }[];
+            }>).detail;
+            if (data.playerId !== playerId) return;
 
-        window.addEventListener('travel-complete', handleTravelComplete);
-        return () => window.removeEventListener('travel-complete', handleTravelComplete);
+            window.dispatchEvent(new CustomEvent("player-balance-updated"));
+
+            setAssignedCargos(prev => {
+                const updated = prev.map(entry => {
+                    if (entry.travelId !== data.travelId) return entry;
+                    return {
+                        ...entry,
+                        phase: "completed" as const,
+                        reward: data.totalReward,
+                        rewardDetails: data.cargoRewards[0]
+                            ? {
+                                baseReward: data.cargoRewards[0].baseReward,
+                                actualReward: data.cargoRewards[0].actualReward,
+                                percentage: data.cargoRewards[0].percentage
+                            }
+                            : undefined,
+                    };
+                })
+
+                const matched = prev.find(e => e.travelId === data.travelId);
+                if (matched) {
+                    setRewardToasts(t => [...t, {
+                        id: data.travelId,
+                        shipName: matched.shipName,
+                        from: matched.from,
+                        to: matched.to,
+                        reward: data.totalReward,
+                    }]);
+                }
+
+                return updated;
+            });
+
+
+        };
+        window.addEventListener("travel-complete", handler);
+        return () => window.removeEventListener("travel-complete", handler);
     }, [playerId]);
 
     const handleSessionUpdate = useCallback(() => {}, []);
@@ -170,6 +187,7 @@ export default function GameScreen() {
                         assignedCargos={assignedCargos}
                         onCargoLoadingDone={handleCargoCompleted}
                         onCargoRemoved={handleCargoRemoved}
+                        onCargoPhaseChange={handleCargoPhaseChange}
                         onClose={() => setView("map")}
                     />
                 )}
@@ -194,13 +212,16 @@ export default function GameScreen() {
                 </div>
             )}
 
-            {/* Notification rechts unten — sichtbar in allen Views */}
-            <TravelNotification
-                unloadingState={unloadingState}
-                currentTick={currentTick}
-                travelResult={travelResult}
-                onResultDismiss={() => setTravelResult(null)}
-            />
+            {rewardToasts.map(toast => (
+                <RewardToast
+                    key={toast.id}
+                    shipName={toast.shipName}
+                    from={toast.from}
+                    to={toast.to}
+                    reward={toast.reward}
+                    onDismiss={() => setRewardToasts(prev => prev.filter(t => t.id !== toast.id))}
+                />
+            ))}
         </div>
     );
 }

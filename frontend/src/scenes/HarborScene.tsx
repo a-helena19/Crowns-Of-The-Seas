@@ -90,6 +90,7 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
             loadingDurationSeconds: c.loadingDurationSeconds ?? 10,
             loadingStartedAt: Date.now(),
             loadingDone: false,
+            phase: "loading",
         };
         onCargoAssigned(entry);
         onClose(); // zurück zur Karte – Ladevorgang läuft im Hintergrund
