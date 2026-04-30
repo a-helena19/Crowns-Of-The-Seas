@@ -324,45 +324,77 @@ export default function CargoManagementScreen({
                             </div>
                         )}
 
-                        {selectedEntry.phase === "completed" && (
-                            <div className="cm-reward-panel">
-                                <div className="cm-reward-title">🎉 Lieferung abgeschlossen!</div>
-                                <div className="cm-reward-route">{selectedEntry.from} → {selectedEntry.to}</div>
-                                <div className="cm-reward-amount">
-                                    +{selectedEntry.reward?.toLocaleString("de-DE")} T
-                                </div>
-                                {selectedEntry.rewardDetails && (
-                                    <>
-                                        <div className="cm-reward-detail">
-                                            {selectedEntry.rewardDetails.percentage.toFixed(0)}% der Basisbelohnung
+                        {selectedEntry.phase === "completed" && (() => {
+                            const isPerfect = !selectedEntry.rewardDetails || selectedEntry.rewardDetails.percentage >= 100;
+                            const details = selectedEntry.rewardDetails;
+                            return (
+                                <div className="cm-reward-panel">
+                                    {/* Header */}
+                                    <div className="cm-reward-header">
+                                        <span>{isPerfect ? '🌟' : '⚓'}</span>
+                                        <div className="cm-reward-title">
+                                            {isPerfect ? 'Perfekte Reise!' : 'Reise abgeschlossen!'}
                                         </div>
+                                    </div>
+
+                                    {isPerfect && (
+                                        <div className="cm-reward-perfect-badge">
+                                            100% Lieferquote — alle Frachten erfolgreich abgeliefert!
+                                        </div>
+                                    )}
+
+                                    {/* Frachtbilanz */}
+                                    <div className="cm-reward-section-label">
+                                        Frachtbilanz (1)
+                                    </div>
+                                    <div className={`cm-reward-cargo-item${!isPerfect ? " expired" : ""}`}>
+                                        <div style={{ flex: 1 }}>
+                                            <div className="cm-reward-cargo-name">{selectedEntry.from} → {selectedEntry.to}</div>
+                                            <div className="cm-reward-cargo-sub">→ {selectedEntry.to}</div>
+                                        </div>
+                                        <span className={`cm-reward-cargo-amount${!isPerfect ? " expired" : ""}`}>
+                                            +{(details?.actualReward ?? selectedEntry.reward ?? 0).toLocaleString("de-DE")}T
+                                        </span>
+                                    </div>
+
+                                    {/* Summary */}
+                                    {details && (
                                         <div className="cm-reward-breakdown">
                                             <div className="cm-reward-row">
-                                                <span>Basisbelohnung</span>
-                                                <span>{selectedEntry.rewardDetails.baseReward.toLocaleString("de-DE")} T</span>
+                                                <span>Cargo Belohnung</span>
+                                                <span className="cm-reward-row-value">+{details.actualReward.toLocaleString("de-DE")}T</span>
                                             </div>
-                                            <div className="cm-reward-row">
-                                                <span>Ausbezahlt ({selectedEntry.rewardDetails.percentage.toFixed(0)}%)</span>
-                                                <span>{selectedEntry.rewardDetails.actualReward.toLocaleString("de-DE")} T</span>
-                                            </div>
-                                            {selectedEntry.rewardDetails.percentage < 100 && (
-                                                <div className="cm-reward-row warn">
-                                                    <span>⚠ Fracht war abgelaufen</span>
-                                                    <span>−{(selectedEntry.rewardDetails.baseReward - selectedEntry.rewardDetails.actualReward).toLocaleString("de-DE")} T</span>
+                                            {isPerfect && (
+                                                <div className="cm-reward-row bonus">
+                                                    <span>🎁 Reise Bonus</span>
+                                                    <span>+{details.actualReward.toLocaleString("de-DE")}T</span>
                                                 </div>
                                             )}
+                                            {!isPerfect && (
+                                                <div className="cm-reward-row warn">
+                                                    <span>⚠ Fracht war abgelaufen ({details.percentage.toFixed(0)}%)</span>
+                                                    <span>−{(details.baseReward - details.actualReward).toLocaleString("de-DE")}T</span>
+                                                </div>
+                                            )}
+                                            <div className="cm-reward-row total">
+                                                <span>Gesamt</span>
+                                                <span className="cm-reward-row-value">
+                                                    +{(selectedEntry.reward ?? 0).toLocaleString("de-DE")}T
+                                                </span>
+                                            </div>
                                         </div>
-                                    </>
-                                )}
-                                <button
-                                    className="game-btn"
-                                    onClick={() => onCargoRemoved(selectedEntry.cargoId)}
-                                    style={{ marginTop: 12 }}
-                                >
-                                    Schließen
-                                </button>
-                            </div>
-                        )}
+                                    )}
+
+                                    {/* Weiter-Button */}
+                                    <button
+                                        className="cm-reward-btn"
+                                        onClick={() => onCargoRemoved(selectedEntry.cargoId)}
+                                    >
+                                        Fracht schließen
+                                    </button>
+                                </div>
+                            );
+                        })()}
                     </div>
                 )}
             </div>
