@@ -11,4 +11,7 @@ public interface TravelRepository {
     Optional<Travel> findActiveByPlayerShipId(UUID playerShipId);
     List<Travel> findAllInProgress();
     List<Travel> findAllInProgressBySessionId(UUID sessionId);
+
+    List<Travel> findByStatus(TravelStatus travelStatus);
+    List<Travel> findAllBySessionIdAndStatus(UUID sessionId, TravelStatus status);
 }

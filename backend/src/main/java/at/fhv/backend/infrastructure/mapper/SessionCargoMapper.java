@@ -26,6 +26,7 @@ public class SessionCargoMapper implements EntityMapper<SessionCargo, SessionCar
         e.setSpawnTick(sc.getSpawnTick());
         e.setCooldownUntilTick(sc.getCooldownUntilTick());
         e.setExpiresAtTick(sc.getExpiresAtTick());
+        e.setLoadingCompletedAtTick(sc.getLoadingCompletedAtTick());
         return e;
     }
 
@@ -37,7 +38,7 @@ public class SessionCargoMapper implements EntityMapper<SessionCargo, SessionCar
                 e.getReward(), e.isContainsIllegal(), e.getCapacity(),
                 e.getCargoType(), e.getRisk(), e.getCargoStatus(),
                 e.getAssignedPlayerId(), e.getAssignedPlayerShipId(),
-                e.getSpawnTick(), e.getCooldownUntilTick(), e.getExpiresAtTick()
+                e.getSpawnTick(), e.getCooldownUntilTick(), e.getExpiresAtTick(), e.getLoadingCompletedAtTick()
         );
     }
 }

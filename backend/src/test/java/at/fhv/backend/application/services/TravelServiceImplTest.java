@@ -225,7 +225,7 @@ class TravelServiceImplTest {
                     BigDecimal.valueOf(1000), false, capacity,
                     CargoType.GENERAL_GOODS, 0.1,
                     CargoStatus.AVAILABLE, null, null,
-                    0, -1, -1
+                    0, -1, -1, -1
             );
         }
 
@@ -244,6 +244,7 @@ class TravelServiceImplTest {
             when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId)).thenReturn(Optional.of(playerShip));
             when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
             when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
+            when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(new at.fhv.backend.domain.model.player.BaseSessionPlayer(playerId, sessionId, "TestPlayer", false)));
             when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
             stubPortQueryService(playerShip.getCurrentPortId(), destinationPortId);
             when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(10.0);
@@ -272,6 +273,7 @@ class TravelServiceImplTest {
             when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId)).thenReturn(Optional.of(playerShip));
             when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
             when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
+            when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(new at.fhv.backend.domain.model.player.BaseSessionPlayer(playerId, sessionId, "TestPlayer", false)));
             when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
             stubPortQueryService(playerShip.getCurrentPortId(), destinationPortId);
             when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(10.0);
@@ -301,6 +303,7 @@ class TravelServiceImplTest {
             when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId)).thenReturn(Optional.of(playerShip));
             when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
             when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
+            when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(new at.fhv.backend.domain.model.player.BaseSessionPlayer(playerId, sessionId, "TestPlayer", false)));
             when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
             stubPortQueryService(playerShip.getCurrentPortId(), destinationPortId);
             when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(15.0);
@@ -343,7 +346,7 @@ class TravelServiceImplTest {
                     UUID.randomUUID(), destinationPortId,
                     BigDecimal.valueOf(1000), false, 50,
                     CargoType.GENERAL_GOODS, 0.1,
-                    CargoStatus.ASSIGNED, UUID.randomUUID(), UUID.randomUUID(), 0, 5, -1
+                    CargoStatus.ASSIGNED, UUID.randomUUID(), UUID.randomUUID(), 0, 5, -1, -1
             );
 
             when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId))
@@ -373,6 +376,7 @@ class TravelServiceImplTest {
             when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId)).thenReturn(Optional.of(playerShip));
             when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
             when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
+            when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(new at.fhv.backend.domain.model.player.BaseSessionPlayer(playerId, sessionId, "TestPlayer", false)));
             when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
             stubPortQueryService(playerShip.getCurrentPortId(), destinationPortId);
             when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(10.0);
@@ -402,6 +406,7 @@ class TravelServiceImplTest {
             when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId)).thenReturn(Optional.of(playerShip));
             when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
             when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
+            when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(new at.fhv.backend.domain.model.player.BaseSessionPlayer(playerId, sessionId, "TestPlayer", false)));
             when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
             stubPortQueryService(playerShip.getCurrentPortId(), destinationPortId);
             when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(10.0);

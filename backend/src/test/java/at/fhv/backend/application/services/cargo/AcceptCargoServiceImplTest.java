@@ -9,6 +9,7 @@ import at.fhv.backend.domain.model.cargo.exception.CargoCapacityExceededExceptio
 import at.fhv.backend.domain.model.cargo.exception.CargoNotAvailableException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
+import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.session.SessionStatus;
@@ -41,6 +42,7 @@ class AcceptCargoServiceImplTest {
     @Mock private GameSessionRepository gameSessionRepository;
     @Mock private PortQueryService portQueryService;
     @Mock private PortDistanceForCargoService portDistanceForCargoService;
+    @Mock private SessionPlayerRepository sessionPlayerRepository;
 
     private AcceptCargoServiceImpl service;
 
@@ -49,7 +51,7 @@ class AcceptCargoServiceImplTest {
         service = new AcceptCargoServiceImpl(
                 sessionCargoRepository, cargoRepository, playerShipRepository,
                 shipRepository, gameSessionRepository, portQueryService,
-                portDistanceForCargoService);
+                portDistanceForCargoService, sessionPlayerRepository);
     }
 
     private GameSession buildRunningSession(UUID sessionId, int currentTick) {
@@ -87,7 +89,7 @@ class AcceptCargoServiceImplTest {
         return PlayerShip.reconstruct(
                 UUID.randomUUID(), shipId, playerId, sessionId,
                 ShipStatus.AT_PORT, 100.0, 100.0,
-                UUID.randomUUID(), null
+                UUID.randomUUID(), null, -1, -1
         );
     }
 
@@ -96,6 +98,11 @@ class AcceptCargoServiceImplTest {
         req.setSessionCargoId(sessionCargoId);
         req.setPlayerShipId(playerShipId);
         return req;
+    }
+
+    private void mockSessionPlayer(UUID playerId, UUID sessionId) {
+        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId))
+                .thenReturn(Optional.of(new at.fhv.backend.domain.model.player.BaseSessionPlayer(playerId, sessionId, "TestPlayer", false)));
     }
 
     @Test
@@ -207,6 +214,7 @@ class AcceptCargoServiceImplTest {
         when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(100.0);
         when(sessionCargoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(portQueryService.findById(any())).thenThrow(new RuntimeException("not found"));
+        mockSessionPlayer(playerId, sessionId);
 
         SessionCargoDTO dto = service.acceptCargo(playerId, sessionId, buildRequest(cargo.getId(), playerShip.getId()));
 
@@ -230,6 +238,7 @@ class AcceptCargoServiceImplTest {
         when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(50.0);
         when(sessionCargoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(portQueryService.findById(any())).thenThrow(new RuntimeException("not found"));
+        mockSessionPlayer(playerId, sessionId);
 
         service.acceptCargo(playerId, sessionId, buildRequest(cargo.getId(), playerShip.getId()));
 
@@ -252,6 +261,7 @@ class AcceptCargoServiceImplTest {
         when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(50.0);
         when(sessionCargoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(portQueryService.findById(any())).thenThrow(new RuntimeException("not found"));
+        mockSessionPlayer(playerId, sessionId);
 
         SessionCargoDTO dto = service.acceptCargo(playerId, sessionId, buildRequest(cargo.getId(), playerShip.getId()));
 
@@ -276,6 +286,7 @@ class AcceptCargoServiceImplTest {
                 .thenThrow(new RuntimeException("Port not found"));
         when(sessionCargoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(portQueryService.findById(any())).thenThrow(new RuntimeException("not found"));
+        mockSessionPlayer(playerId, sessionId);
 
         SessionCargoDTO dto = service.acceptCargo(playerId, sessionId, buildRequest(cargo.getId(), playerShip.getId()));
 
@@ -300,6 +311,7 @@ class AcceptCargoServiceImplTest {
         when(sessionCargoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(portQueryService.findById(cargo.getOriginPortId())).thenReturn(new at.fhv.backend.rest.dtos.port.PortResponseDTO(cargo.getOriginPortId(), "Lissabon", 1, 2));
         when(portQueryService.findById(cargo.getDestinationPortId())).thenReturn(new at.fhv.backend.rest.dtos.port.PortResponseDTO(cargo.getDestinationPortId(), "Genua", 3, 4));
+        mockSessionPlayer(playerId, sessionId);
 
         SessionCargoDTO dto = service.acceptCargo(playerId, sessionId, buildRequest(cargo.getId(), playerShip.getId()));
 

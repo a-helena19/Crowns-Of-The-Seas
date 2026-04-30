@@ -85,10 +85,9 @@ class PurchaseShipServiceImplTest {
                 .thenReturn(Optional.of(player));
         when(validateShipService.validatePurchase(eq(ship), any())).thenReturn(ship.getPrice());
         when(sessionPlayerRepository.save(player)).thenReturn(player);
+        when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
         when(portQueryService.findAll())
                 .thenReturn(List.of(new PortResponseDTO(startPortId, "Hamburg", 49.5, 22.0)));
-        when(playerShipRepository.save(any(PlayerShip.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
         when(playerShipResponseMapper.toResponse(any(PlayerShip.class), eq(ship)))
                 .thenReturn(new PlayerShipDTO());
         return startPortId;
@@ -169,13 +168,22 @@ class PurchaseShipServiceImplTest {
         UUID sessionId = UUID.randomUUID();
         Ship ship = buildShip(BigDecimal.valueOf(1000));
         ISessionPlayer player = buildPlayer(playerId, sessionId, BigDecimal.valueOf(5000));
-        stubSuccessfulPurchase(ship, player, playerId, sessionId);
 
+        UUID startPortId = UUID.randomUUID();
+        when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
+        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId))
+                .thenReturn(Optional.of(player));
+        when(validateShipService.validatePurchase(eq(ship), any())).thenReturn(ship.getPrice());
+        when(sessionPlayerRepository.save(player)).thenReturn(player);
         when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> {
             PlayerShip ps = inv.getArgument(0);
             assertThat(ps.getStatus().name()).isEqualTo("AT_PORT");
             return ps;
         });
+        when(portQueryService.findAll())
+                .thenReturn(List.of(new PortResponseDTO(startPortId, "Hamburg", 49.5, 22.0)));
+        when(playerShipResponseMapper.toResponse(any(PlayerShip.class), eq(ship)))
+                .thenReturn(new PlayerShipDTO());
 
         service.buyShip(playerId, sessionId, buildBuyShipDTO(ship.getId()));
     }

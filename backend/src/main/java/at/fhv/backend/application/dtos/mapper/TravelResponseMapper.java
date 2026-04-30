@@ -22,6 +22,7 @@ public class TravelResponseMapper implements DtoMapper<Travel, TravelDTO> {
         response.setStartedAt(travel.getStartedAt());
         response.setArrivedAt(travel.getArrivedAt());
         response.setFuelConsumed(travel.getFuelConsumed());
+        response.setLoadingDurationSeconds(travel.getLoadingDurationSeconds());
         return response;
     }
 }

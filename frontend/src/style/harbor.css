@@ -284,4 +284,54 @@
 .pilotage-label { flex: 1; }
 .pilotage-cost  { font-size: 13px; opacity: 0.8; white-space: nowrap; }
 
-/* Abfahrtsanimation wird von DepartureAnimation.tsx (Canvas) gerendert */
+
+/* Port-Selektor in HarborScene */
+.harbor-port-selector {
+    position: absolute;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(20, 10, 3, 0.9);
+    border: 2px solid #5a3a0a;
+    padding: 8px 16px;
+    z-index: 20;
+}
+
+.harbor-port-selector-label {
+    font-family: var(--font-game);
+    color: #c89b3c;
+    font-size: 14px;
+}
+
+.harbor-port-btn {
+    font-family: var(--font-game);
+    font-size: 14px;
+    padding: 6px 14px;
+    background: #2a1a05;
+    color: #c89b3c;
+    border: 2px solid #5a3a0a;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.harbor-port-btn:hover { filter: brightness(1.2); }
+
+.harbor-port-btn.active {
+    background: #1a3a10;
+    color: #90ee90;
+    border-color: #2e6b1a;
+}
+
+.harbor-selected-ship-hint {
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: #90ee90;
+    background: rgba(26, 58, 16, 0.5);
+    border: 1px solid #2e6b1a;
+    padding: 4px 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}

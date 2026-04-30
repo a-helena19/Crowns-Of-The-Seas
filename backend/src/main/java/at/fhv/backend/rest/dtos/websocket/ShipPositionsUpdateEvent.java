@@ -26,6 +26,7 @@ public record ShipPositionsUpdateEvent(
             Double originY,
             Double destX,
             Double destY,
-            Integer startTick
+            Integer startTick,
+            UUID currentPortId
     ) {}
 }

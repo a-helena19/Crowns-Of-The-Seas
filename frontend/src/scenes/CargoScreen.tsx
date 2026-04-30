@@ -51,6 +51,12 @@ interface ShipPositionEventPayload {
     }>;
 }
 
+interface LoadingStartResponse {
+    cargoId: string;
+    loadingDurationSeconds: number;
+    loadingCompletedAtTick: number;
+}
+
 const TYPE_LABELS: Record<string, string> = {
     GENERAL_GOODS: "General",
     FOOD: "Food",
@@ -79,7 +85,45 @@ interface AcceptedCargo {
     weight: number;
     destinationPortId: string;
     speedSetting: number;
+    loadingDurationSeconds?: number;
 }
+
+// Hilfsfunktionen für Status
+const getStatusLabel = (status: string): string => {
+    switch (status) {
+        case "AVAILABLE": return "📦 Verfügbar";
+        case "ASSIGNED": return "🚢 Zugeteilt";
+        case "DELIVERED": return "✅ Geliefert";
+        case "EXPIRED": return "❌ Abgelaufen";
+        case "INACTIVE": return "⊘ Inaktiv";
+        default: return status;
+    }
+};
+
+const getStatusColor = (status: string): string => {
+    switch (status) {
+        case "AVAILABLE": return "#4CAF50";  // Grün
+        case "ASSIGNED": return "#2196F3";   // Blau
+        case "DELIVERED": return "#8BC34A";  // Hellgrün
+        case "EXPIRED": return "#FF5722";    // Orange/Rot
+        case "INACTIVE": return "#999";      // Grau
+        default: return "#666";
+    }
+};
+
+// Berechnet die Belohnung für EXPIRED Cargo (typ-abhängig)
+const getExpiredRewardPercent = (cargoType: string): number => {
+    switch (cargoType) {
+        case "FOOD": return 0;
+        case "HAZARDOUS": return 0;
+        case "FRAGILE": return 10;
+        case "ELECTRONICS": return 15;
+        case "LUXURY_GOODS": return 20;
+        case "GENERAL_GOODS": return 40;
+        case "INDUSTRIAL_GOODS": return 50;
+        default: return 0;
+    }
+};
 
 interface Props {
     onCargoAccepted: (cargo: AcceptedCargo) => void;
@@ -134,9 +178,9 @@ const WeightIcon = () => (
             return;
         }
 
-        const readTransitState = (ships: Array<{ playerShipId: string; status: "EN_ROUTE" | "AT_PORT" }>) => {
+        const readTransitState = (ships: Array<{ playerShipId: string; status: "EN_ROUTE" | "AT_PORT" | "LOADING" }>) => {
             const me = ships.find((s) => s.playerShipId === playerShipId);
-            setShipInTransit(me?.status === "EN_ROUTE");
+            setShipInTransit(me?.status === "EN_ROUTE" || me?.status === "LOADING");
         };
 
         if (window.__latestShips) {
@@ -248,31 +292,58 @@ const WeightIcon = () => (
     const canAfford = !fuelEstimate || (currentSpeedOpt?.canAfford ?? false);
     const hasNoAffordableOption = fuelEstimate != null && fuelEstimate.speedOptions.every((o) => !o.canAfford);
 
-    function handleAcceptCargo() {
+    async function handleAcceptCargo() {
         if (!selected) return;
         if (!playerShipId) { setAcceptError("Bitte zuerst ein Schiff auswählen."); return; }
         if (hasNoAffordableOption) { setFuelError("Nicht genug Treibstoff für diese Fracht."); return; }
         if (!canAfford) { setFuelError("Nicht genug Treibstoff für dieses Speed-Setting."); return; }
         setFuelError(null);
-        setAcceptError(null);
-        onCargoAccepted({
-            id: selected.id,
-            from: selected.originPortName,
-            to: selected.destinationPortName,
-            weight: selected.capacity,
-            destinationPortId: selected.destinationPortId,
-            speedSetting: SPEED_SETTINGS[speedIndex],
-        });
+
+        try {
+            const response = await fetch(
+                `/api/cargo/accept?playerId=${playerId}&sessionId=${sessionId}`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        playerShipId: playerShipId,
+                        sessionCargoId: selected.id,
+                        destinationPortId: selected.destinationPortId
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                setFuelError(errorData.message || "Fracht konnte nicht akzeptiert werden");
+                return;
+            }
+
+            const loadingResponse = await response.json() as LoadingStartResponse;
+
+            onCargoAccepted({
+                id: selected.id,
+                from: selected.originPortName,
+                to: selected.destinationPortName,
+                weight: selected.capacity,
+                destinationPortId: selected.destinationPortId,
+                speedSetting: SPEED_SETTINGS[speedIndex],
+                loadingDurationSeconds: loadingResponse.loadingDurationSeconds
+            });
+
+        } catch (error) {
+            setFuelError("Verbindungsfehler beim Akzeptieren der Fracht");
+            console.error(error);
+        }
     }
 
     const riskLabel = (r: number) => r < 0.1 ? "Niedrig" : r < 0.25 ? "Mittel" : r < 0.4 ? "Hoch" : "Extrem";
     const riskClass = (r: number) => r < 0.1 ? "risk-low" : r < 0.25 ? "risk-medium" : r < 0.4 ? "risk-high" : "risk-extreme";
 
-    /**
-     * Berechnet wie viele Ticks/Tage noch uebrig sind bis ein Cargo expired.
-     * - null  => Cargo laeuft nicht ab (lifetimeTicks <= 0)
-     * - <= 0  => Cargo ist gerade abgelaufen
-     */
+
     const ticksUntilExpiry = (c: SessionCargoDTO): number | null => {
         if (!c.expiresAtTick || c.expiresAtTick < 0) return null;
         return c.expiresAtTick - currentTick;
@@ -335,7 +406,20 @@ const WeightIcon = () => (
                                 >
                                     <div className="cargo-item-row">
                                         <span className="cargo-item-name">{c.name}</span>
-                                        <span className="cargo-item-profit">{Number(c.reward).toLocaleString("de-DE")} G</span>
+                                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                            {/* Status Badge */}
+                                            <span className="cargo-status-badge" style={{
+                                                padding: "2px 6px",
+                                                borderRadius: 3,
+                                                fontSize: 10,
+                                                fontWeight: "bold",
+                                                backgroundColor: getStatusColor(c.cargoStatus),
+                                                color: "white"
+                                            }}>
+                                                {getStatusLabel(c.cargoStatus)}
+                                            </span>
+                                            <span className="cargo-item-profit">{Number(c.reward).toLocaleString("de-DE")} G</span>
+                                        </div>
                                     </div>
                                     <div className="cargo-item-sub">
                                     <span style={{ background: TYPE_COLORS[c.cargoType] + "22", color: TYPE_COLORS[c.cargoType], padding: "1px 6px", borderRadius: 3, fontSize: 10, fontWeight: "bold", letterSpacing: 1 }}>
@@ -363,6 +447,30 @@ const WeightIcon = () => (
                         {selected ? (
                             <>
                                 <div className="cargo-detail-title">{selected.name}</div>
+
+                                {/* Warnung für verderbliche Waren */}
+                                {(selected.cargoType === "FOOD" || selected.cargoType === "HAZARDOUS") && (
+                                    <div style={{
+                                        background: "#FF5722",
+                                        color: "white",
+                                        padding: 8,
+                                        borderRadius: 4,
+                                        fontSize: 12,
+                                        fontWeight: "bold",
+                                        marginBottom: 12,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 8
+                                    }}>
+                                        <span>⚠️</span>
+                                        <span>
+                                            {selected.cargoType === "FOOD"
+                                            ? "Verderbliche Ware - schnelle Lieferung erforderlich!"
+                                            : "Gefährliches Material - wird bei Ablauf entsorgt!"}
+                                        </span>
+                                    </div>
+                                )}
+
                                 <div style={{ color: "#7a6a4a", fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
                                     {selected.description}
                                 </div>
@@ -382,7 +490,14 @@ const WeightIcon = () => (
                                 <div className="cargo-stats">
                                     <div className="cargo-stat">
                                         <div className="cargo-stat-label">Belohnung</div>
-                                        <strong>{Number(selected.reward).toLocaleString("de-DE")} G</strong>
+                                        <strong>
+                                            {Number(selected.reward).toLocaleString("de-DE")} G
+                                            {selected.cargoStatus === "EXPIRED" && (
+                                                <span style={{ color: "#FF5722", fontSize: 12, marginLeft: 8 }}>
+                                                    ({getExpiredRewardPercent(selected.cargoType)}%)
+                                                </span>
+                                            )}
+                                        </strong>
                                     </div>
                                     <div className="cargo-stat">
                                         <div className="cargo-stat-label">Kapazität</div>
@@ -430,7 +545,7 @@ const WeightIcon = () => (
 
                                 {!playerShipId && (
                                     <div className="cargo-speed-hint" style={{ marginTop: 20, marginBottom: 16 }}>
-                                        Wähle zuerst ein Schiff aus, um eine Reise zu starten.
+                                        Wähle zuerst ein Schiff aus, um eine Fracht anzunehmen.
                                     </div>
                                 )}
 

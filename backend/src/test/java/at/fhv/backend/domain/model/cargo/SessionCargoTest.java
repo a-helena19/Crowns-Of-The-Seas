@@ -315,7 +315,7 @@ class SessionCargoTest {
                 id, cargoId, sessionId, originPortId, destPortId,
                 BigDecimal.valueOf(500), true, 100,
                 CargoType.HAZARDOUS, 0.8, CargoStatus.ASSIGNED,
-                playerId, shipId, 10, -1, 50
+                playerId, shipId, 10, -1, 50, -1
         );
 
         assertThat(cargo.getId()).isEqualTo(id);

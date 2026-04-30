@@ -15,9 +15,11 @@ public class PlayerShip {
     private double fuel;
     private UUID currentPortId;
     private UUID targetPortId;
+    private int loadingCompletedAtTick = -1;
+    private int unloadingCompletedAtTick = -1;
 
     private PlayerShip(UUID id, UUID shipId, UUID playerId, UUID sessionId, ShipStatus status, double condition, double fuel,
-                       UUID currentPortId, UUID targetPortId) {
+                       UUID currentPortId, UUID targetPortId, int loadingCompletedAtTick, int unloadingCompletedAtTick) {
         this.id = id;
         this.shipId = shipId;
         this.playerId = playerId;
@@ -27,6 +29,8 @@ public class PlayerShip {
         this.fuel = fuel;
         this.currentPortId = currentPortId;
         this.targetPortId = targetPortId;
+        this.loadingCompletedAtTick = loadingCompletedAtTick;
+        this.unloadingCompletedAtTick = unloadingCompletedAtTick;
     }
 
     public static PlayerShip createFromPurchase(UUID shipId, UUID playerId, UUID sessionId, UUID startPortId) {
@@ -39,12 +43,14 @@ public class PlayerShip {
                 100.0,
                 100.0,
                 startPortId,
-                null
+                null,
+                -1,
+                -1
         );
     }
 
     public static PlayerShip reconstruct(UUID id, UUID shipId, UUID playerId, UUID sessionId, ShipStatus status, double condition, double fuel,
-                                         UUID currentPortId, UUID targetPortId) {
+                                         UUID currentPortId, UUID targetPortId, Integer loadingCompletedAtTick, Integer unloadingCompletedAtTick) {
         return new PlayerShip(
                 id,
                 shipId,
@@ -54,8 +60,9 @@ public class PlayerShip {
                 condition,
                 fuel,
                 currentPortId,
-                targetPortId
-                );
+                targetPortId,
+                loadingCompletedAtTick==null ? -1 : loadingCompletedAtTick,
+                unloadingCompletedAtTick == null ? -1 : unloadingCompletedAtTick);
     }
 
     public void completeRegistration() {
@@ -75,13 +82,79 @@ public class PlayerShip {
         this.currentPortId = null;
     }
 
-    public void arriveAtPort(UUID portId) {
+    public void startLoading(UUID destinationPortId, int loadingCompletedAtTick) {
+        if (this.status != ShipStatus.AT_PORT) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status AT_PORT to start loading",
+                    "shipId",
+                    shipId
+            );
+        }
+        this.status = ShipStatus.LOADING;
+        this.targetPortId = destinationPortId;
+        this.loadingCompletedAtTick = loadingCompletedAtTick;
+    }
+
+    public boolean isStillLoading(int currentTick) {
+        return loadingCompletedAtTick > 0 && currentTick < loadingCompletedAtTick;
+    }
+
+    public void completeLoading() {
+        if (this.status != ShipStatus.LOADING) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status LOADING to complete loading",
+                    "shipId",
+                    shipId
+            );
+        }
+        this.status = ShipStatus.READY_TO_DEPART;
+        this.loadingCompletedAtTick = -1;
+    }
+
+    public void depart() {
+        if (this.status != ShipStatus.READY_TO_DEPART) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status READY_TO_DEPART to depart",
+                    "shipId",
+                    shipId
+            );
+        }
+        this.status = ShipStatus.EN_ROUTE;
+        this.currentPortId = null;
+    }
+
+    public int getLoadingCompletedAtTick() {
+        return loadingCompletedAtTick;
+    }
+
+    public void arriveAndStartUnloading(UUID portId, int unloadingCompletedAtTick) {
         if (this.status != ShipStatus.EN_ROUTE) {
             throw new InvalidShipStatusTransition("Ship must have the status EN_ROUTE", "shipId", shipId);
         }
-        this.status = ShipStatus.AT_PORT;
+        this.status = ShipStatus.UNLOADING;
         this.currentPortId = portId;
         this.targetPortId = null;
+        this.unloadingCompletedAtTick = unloadingCompletedAtTick;
+    }
+
+    public boolean isStillUnloading(int currentTick) {
+        return status == ShipStatus.UNLOADING && unloadingCompletedAtTick > 0 && currentTick < unloadingCompletedAtTick;
+    }
+
+    public void completeUnloading() {
+        if (this.status != ShipStatus.UNLOADING) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status UNLOADING to complete unloading",
+                    "shipId",
+                    shipId
+            );
+        }
+        this.status = ShipStatus.AT_PORT;
+        this.unloadingCompletedAtTick = -1;
+    }
+
+    public Integer getUnloadingCompletedAtTick() {
+        return unloadingCompletedAtTick;
     }
 
     public void consumeFuel(double amountPercent) {

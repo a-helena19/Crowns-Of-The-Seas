@@ -60,6 +60,9 @@ public class SessionCargoEntity {
     @Column(name = "expires_at_tick", nullable = false)
     private int expiresAtTick;
 
+    @Column(name = "loading_completed_at_tick")
+    private int loadingCompletedAtTick = -1;
+
     public SessionCargoEntity() {}
 
     public UUID getId() {
@@ -188,5 +191,13 @@ public class SessionCargoEntity {
 
     public void setExpiresAtTick(int expiresAtTick) {
         this.expiresAtTick = expiresAtTick;
+    }
+
+    public Integer getLoadingCompletedAtTick() {
+        return loadingCompletedAtTick;
+    }
+
+    public void setLoadingCompletedAtTick(Integer loadingCompletedAtTick) {
+        this.loadingCompletedAtTick = loadingCompletedAtTick;
     }
 }

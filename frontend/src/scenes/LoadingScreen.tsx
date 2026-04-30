@@ -19,10 +19,15 @@ interface LoadingScreenProps {
     cargo: Cargo;
     done: boolean;
     onComplete: () => void;
+    loadingDurationSeconds?: number;
 }
 
-export default function LoadingScreen({ ship, cargo, done, onComplete }: LoadingScreenProps) {
+export default function LoadingScreen({ ship, cargo, done, onComplete,
+                                          loadingDurationSeconds = 10
+                                      }: LoadingScreenProps) {
     const progressRef = useRef<HTMLDivElement>(null);
+
+    const animationDuration = loadingDurationSeconds || 10;
 
     useEffect(() => {
         if (done) return;
@@ -31,12 +36,13 @@ export default function LoadingScreen({ ship, cargo, done, onComplete }: Loading
         const onEnd = () => onComplete();
         el.addEventListener('animationend', onEnd, { once: true });
         // Fallback in case animationend doesn't fire
-        const fallback = setTimeout(onComplete, 10500);
+        const fallback = setTimeout(onComplete, animationDuration * 1000);
+
         return () => {
             el.removeEventListener('animationend', onEnd);
             clearTimeout(fallback);
         };
-    }, [done, onComplete]);
+    }, [done, onComplete, animationDuration]);
 
     const maxCap = ship.maxCargoCapacity ?? 0;
     const fillPct = maxCap > 0 ? Math.min((cargo.weight / maxCap) * 100, 100) : 100;
@@ -98,7 +104,9 @@ export default function LoadingScreen({ ship, cargo, done, onComplete }: Loading
                 <div className="progress-track">
                     {done
                         ? <div className="progress-fill-done" />
-                        : <div className="progress-fill" ref={progressRef} />
+                        : <div className="progress-fill" ref={progressRef} style={{
+                            animation: `progressFill ${animationDuration}s linear forwards, shimmer 1.5s linear infinite`
+                        }}/>
                     }
                 </div>
             </div>

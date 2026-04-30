@@ -1,75 +1,58 @@
-import DepartureAnimation from "./DepartureAnimation";
-import Sailor from "../components/Sailor";
-import DialogBubble from "../components/DialogBubble";
-import InfoPanel from "../components/InfoPanel";
+import { useState, useEffect } from "react";
 import CargoScreen from "./CargoScreen";
 import ShipScreen from "./ShipScreen";
-import LoadingScreen from "./LoadingScreen";
+import Sailor from "../components/Sailor";
+import DialogBubble from "../components/DialogBubble";
 import backIcon from "../assets/goback.png";
 import background from "../assets/background.jpg";
 import "../style/harbor.css";
-import { useState, useEffect } from "react";
+import type { AssignedCargoEntry } from "../types/assignedCargo";
 
-interface SelectedShip {
+interface Port {
     id: string;
     name: string;
-    fuel: number;
-    condition: number;
-    status: string;
-    maxCargoCapacity?: number;
-    currentPortId?: string;
-    iconUrl?: string;
 }
 
-interface ShipResponse {
-    id: string;
-    name: string;
-    fuel: number;
-    condition: number;
-    status: string;
-    maxCargoCapacity?: number;
-    currentPortId?: string;
+interface HarborSceneProps {
+    onClose: () => void;
+    onCargoAssigned: (entry: AssignedCargoEntry) => void;
 }
 
-interface SelectedCargo {
-    id: string;
-    from: string;
-    to: string;
-    weight: number;
-    destinationPortId: string;
-    speedSetting: number;
-}
-
-export default function HarborScene({ onClose }: { onClose: () => void }) {
-    const [selectedShip, setSelectedShip] = useState<SelectedShip | null>(null);
-    const [selectedCargo, setSelectedCargo] = useState<SelectedCargo | null>(null);
-    const [isLoadingShip, setIsLoadingShip] = useState(false);
-    const [loadingDone, setLoadingDone] = useState(false);
-    const [starting, setStarting] = useState(false);
-    const [startError, setStartError] = useState<string | null>(null);
-    const [pilotageSelected, setPilotageSelected] = useState(false);
-    const [showDeparture, setShowDeparture] = useState(false);
-
+export default function HarborScene({ onClose, onCargoAssigned }: HarborSceneProps) {
     const [view, setView] = useState<"main" | "cargo" | "ship">("main");
-    const [currentPortId, setCurrentPortId] = useState<string | null>(null);
-    const [infoHint, setInfoHint] = useState<string | null>(null);
+    const [selectedPortId, setSelectedPortId] = useState<string | null>(null);
+    const [myPorts, setMyPorts] = useState<Port[]>([]);
+    const [selectedShip, setSelectedShip] = useState<{
+        id: string; name: string; fuel: number; condition: number;
+        status: string; maxCargoCapacity?: number; iconUrl?: string;
+        currentPortId?: string;
+    } | null>(null);
 
     const userData = localStorage.getItem("crowns_user");
-    const playerId: string | null = userData ? JSON.parse(userData).id : null;
+    const playerId = userData ? JSON.parse(userData).id : null;
     const sessionData = sessionStorage.getItem("currentSession");
-    const sessionId: string | null = sessionData ? JSON.parse(sessionData).id : null;
+    const sessionId = sessionData ? JSON.parse(sessionData).id : null;
     const token = localStorage.getItem("auth_token") ?? "";
 
+    // Häfen laden, in denen der Spieler Schiffe hat (Status AT_PORT)
     useEffect(() => {
         if (!playerId || !sessionId) return;
         fetch(`/api/ships/player/${playerId}?sessionId=${sessionId}`, {
             headers: { Authorization: `Bearer ${token}` },
         })
-            .then((r) => r.json() as Promise<ShipResponse[]>)
-            .then((ships) => {
-                const atPort = ships.find((s) => s.status === "AT_PORT" && s.currentPortId);
-                if (atPort?.currentPortId) {
-                    setCurrentPortId(atPort.currentPortId);
+            .then(r => r.json())
+            .then((ships: any[]) => {
+                const portsMap = new Map<string, string>();
+                ships
+                    .filter(s => s.status === "AT_PORT" && s.currentPortId)
+                    .forEach(s => {
+                        const portName = window.__latestPorts?.find((p: any) => p.id === s.currentPortId)?.name ?? s.currentPortId;
+                        portsMap.set(s.currentPortId, portName);
+                    });
+                const portList = Array.from(portsMap.entries()).map(([id, name]) => ({ id, name }));
+                setMyPorts(portList);
+                if (portList.length === 1) {
+                    setSelectedPortId(portList[0].id);
                 }
             })
             .catch(console.error);
@@ -77,73 +60,45 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
 
     function handleShipSelect(ship: any) {
         setSelectedShip(ship);
-        setLoadingDone(false);
-        setPilotageSelected(false);
+        // Port automatisch auf den Hafen des Schiffs setzen
+        if (ship.currentPortId) setSelectedPortId(ship.currentPortId);
         setView("main");
-        const cargoWeight = selectedCargo?.weight ?? 0;
-        const shipCap = ship.maxCargoCapacity ?? Infinity;
-        if (selectedCargo && cargoWeight <= shipCap) {
-            setIsLoadingShip(true);
-        }
     }
 
     function handleBack() {
-        if (view === "cargo" || view === "ship") setView("main");
+        if (view !== "main") setView("main");
         else onClose();
     }
 
-    function handleOpenCargo() {
-        setInfoHint(null);
-        setView("cargo");
+    function handleCargoAccepted(c: {
+        id: string; from: string; to: string;
+        weight: number; destinationPortId: string;
+        speedSetting: number; loadingDurationSeconds?: number;
+    }) {
+        if (!selectedShip) return;
+        const entry: AssignedCargoEntry = {
+            cargoId: c.id,
+            shipId: selectedShip.id,
+            shipName: selectedShip.name,
+            shipIconUrl: selectedShip.iconUrl,
+            from: c.from,
+            to: c.to,
+            weight: c.weight,
+            maxCargoCapacity: selectedShip.maxCargoCapacity ?? c.weight,
+            destinationPortId: c.destinationPortId,
+            speedSetting: c.speedSetting,
+            loadingDurationSeconds: c.loadingDurationSeconds ?? 10,
+            loadingStartedAt: Date.now(),
+            loadingDone: false,
+            phase: "loading",
+        };
+        onCargoAssigned(entry);
+        onClose(); // zurück zur Karte – Ladevorgang läuft im Hintergrund
     }
-
-    async function handleStartTravel() {
-        if (!selectedCargo || !selectedShip || !playerId || !sessionId) return;
-        setStarting(true);
-        setStartError(null);
-        try {
-            const response = await fetch(`/api/travels/start/${playerId}?sessionId=${sessionId}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({
-                    playerShipId: selectedShip.id,
-                    destinationPortId: selectedCargo.destinationPortId,
-                    sessionCargoId: selectedCargo.id,
-                    speedSetting: selectedCargo.speedSetting,
-                    pilotageService: pilotageSelected,
-                }),
-            });
-            if (response.ok) {
-                window.dispatchEvent(new CustomEvent('player-balance-updated'));
-                setShowDeparture(true);
-            } else {
-                const text = await response.text();
-                let msg = "Reise konnte nicht gestartet werden.";
-                try {
-                    const data = JSON.parse(text) as { error?: string; message?: string };
-                    if (data.error === "CARGO_TAKEN") msg = "Fracht wurde bereits vergeben.";
-                    else if (data.error === "CAPACITY_EXCEEDED") msg = "Schiff zu klein für diese Fracht.";
-                    else if (data.error === "INSUFFICIENT_FUEL") msg = data.message ?? "Nicht genug Treibstoff.";
-                    else if (data.error === "INSUFFICIENT_BALANCE") msg = data.message ?? "Nicht genug Taler für den Lotsendienst.";
-                    else msg = data.message ?? msg;
-                } catch { /* noop */ }
-                setStartError(msg);
-            }
-        } catch {
-            setStartError("Verbindungsfehler.");
-        } finally {
-            setStarting(false);
-        }
-    }
-
-    const overCapacity = !!(selectedShip && selectedCargo &&
-        selectedCargo.weight > (selectedShip.maxCargoCapacity ?? Infinity));
-
 
     return (
         <div className="scene">
             <img src={background} className="background" alt="" />
-
             <div className="back-icon-btn" onClick={handleBack}>
                 <img src={backIcon} alt="Zurück" />
             </div>
@@ -151,81 +106,47 @@ export default function HarborScene({ onClose }: { onClose: () => void }) {
             {view === "main" && (
                 <>
                     <Sailor />
-                    <DialogBubble
-                        onOpenCargo={handleOpenCargo}
-                        onOpenShip={() => setView("ship")}
-                        onStartTravel={loadingDone && !overCapacity && pilotageSelected ? handleStartTravel : undefined}
-                        startTravelDisabled={starting}
-                        pilotageSelected={pilotageSelected}
-                        onTogglePilotage={(isLoadingShip || loadingDone) ? () => setPilotageSelected(v => !v) : undefined}
-                    />
 
-                    <div className="right-side-panels">
-                        {(selectedCargo || selectedShip) && (
-                            <InfoPanel ship={selectedShip ?? undefined} />
-                        )}
-                        {(isLoadingShip || loadingDone) && selectedShip && selectedCargo && (
-                            <LoadingScreen
-                                ship={selectedShip}
-                                cargo={selectedCargo}
-                                done={loadingDone}
-                                onComplete={() => { setIsLoadingShip(false); setLoadingDone(true); }}
-                            />
-                        )}
-                    </div>
-
-                    {overCapacity && selectedShip && selectedCargo && (
-                        <div style={{
-                            position: "absolute",
-                            bottom: "20px",
-                            left: "50%",
-                            transform: "translateX(-50%)",
-                            background: "rgba(180,30,30,0.93)",
-                            color: "white",
-                            padding: "10px 20px",
-                            borderRadius: "8px",
-                            fontSize: "14px",
-                            border: "2px solid #f44336",
-                            whiteSpace: "nowrap",
-                        }}>
-                            Fracht ({selectedCargo.weight}t) übersteigt die Kapazität des Schiffs ({selectedShip.maxCargoCapacity}t)!
+                    {/* Port-Auswahl oben, wenn mehrere Häfen verfügbar */}
+                    {myPorts.length > 1 && (
+                        <div className="harbor-port-selector">
+                            <span className="harbor-port-selector-label">Hafen wählen:</span>
+                            {myPorts.map(p => (
+                                <button
+                                    key={p.id}
+                                    className={`harbor-port-btn ${selectedPortId === p.id ? "active" : ""}`}
+                                    onClick={() => {
+                                        setSelectedPortId(p.id);
+                                        setSelectedShip(null); // Schiff-Auswahl zurücksetzen bei Port-Wechsel
+                                    }}
+                                >
+                                    {p.name}
+                                </button>
+                            ))}
                         </div>
                     )}
 
-                    {(infoHint || startError) && (
-                        <div className="harbor-error-toast">{startError ?? infoHint}</div>
-                    )}
-
-                    {showDeparture && selectedShip && (
-                        <DepartureAnimation
-                            shipIconUrl={selectedShip.iconUrl ?? "/fallback-ship.png"}
-                            onComplete={onClose}
-                        />
-                    )}
+                    <DialogBubble
+                        onOpenCargo={() => setView("cargo")}
+                        onOpenShip={() => setView("ship")}
+                        selectedShipName={selectedShip?.name}
+                    />
                 </>
+            )}
+
+            {view === "ship" && (
+                <ShipScreen
+                    onSelect={handleShipSelect}
+                    filterByPortId={selectedPortId ?? undefined}
+                />
             )}
 
             {view === "cargo" && (
                 <CargoScreen
-                    currentPortId={currentPortId}
+                    currentPortId={selectedPortId}
                     playerShipId={selectedShip?.id ?? null}
-                    onCargoAccepted={(c) => {
-                        setSelectedCargo(c);
-                        setLoadingDone(false);
-                        setPilotageSelected(false);
-                        const shipCap = selectedShip?.maxCargoCapacity ?? Infinity;
-                        if (selectedShip && c.weight <= shipCap) {
-                            setIsLoadingShip(true);
-                        } else {
-                            setIsLoadingShip(false);
-                        }
-                        setView("main");
-                    }}
+                    onCargoAccepted={handleCargoAccepted}
                 />
-            )}
-
-            {view === "ship" && (
-                <ShipScreen onSelect={handleShipSelect} />
             )}
         </div>
     );

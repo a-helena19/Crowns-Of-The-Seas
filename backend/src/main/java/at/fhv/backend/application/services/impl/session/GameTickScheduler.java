@@ -1,6 +1,8 @@
 package at.fhv.backend.application.services.impl.session;
 
 import at.fhv.backend.application.init.CargoSessionInitializer;
+import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
+import at.fhv.backend.application.services.travel.TravelArrivalService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
 import at.fhv.backend.domain.model.cargo.CargoType;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
@@ -15,6 +17,7 @@ import at.fhv.backend.domain.model.ship.ShipStatus;
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.application.services.port.PortQueryService;
+import at.fhv.backend.domain.model.travel.TravelStatus;
 import at.fhv.backend.rest.CargoWebSocketController;
 import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.GameSessionWebSocketController;
@@ -24,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import jakarta.annotation.PreDestroy;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -44,6 +48,8 @@ public class GameTickScheduler {
     private final SessionCargoRepository sessionCargoRepository;
     private final CargoWebSocketController cargoWebSocketController;
     private final GameSessionWebSocketController webSocketController;
+    private final TravelArrivalService travelArrivalService;
+    private final CargoUnloadingPhaseService cargoUnloadingPhaseService;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
     private final Map<UUID, ScheduledFuture<?>> runningTasks = new ConcurrentHashMap<>();
@@ -60,7 +66,9 @@ public class GameTickScheduler {
                              PortQueryService portQueryService,
                              SessionCargoRepository sessionCargoRepository,
                              CargoWebSocketController cargoWebSocketController,
-                             GameSessionWebSocketController webSocketController) {
+                             GameSessionWebSocketController webSocketController,
+                             TravelArrivalService travelArrivalService,
+                             CargoUnloadingPhaseService cargoUnloadingPhaseService) {
         this.gameSessionRepository = gameSessionRepository;
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
@@ -69,7 +77,10 @@ public class GameTickScheduler {
         this.sessionCargoRepository = sessionCargoRepository;
         this.cargoWebSocketController = cargoWebSocketController;
         this.webSocketController = webSocketController;
+        this.travelArrivalService = travelArrivalService;
+        this.cargoUnloadingPhaseService = cargoUnloadingPhaseService;
     }
+
 
     public void startForSession(UUID sessionId, int tickRateSeconds) {
         runningTasks.computeIfAbsent(sessionId, ignored ->
@@ -87,6 +98,56 @@ public class GameTickScheduler {
         if (task != null) task.cancel(false);
         lastTickProcessedAtMs.remove(sessionId);
         tickLocks.remove(sessionId);
+    }
+
+    private void checkLoadingCompletion(UUID sessionId, int currentTick) {
+        List<PlayerShip> allShips = playerShipRepository.findAllBySessionId(sessionId);
+
+        for (PlayerShip ship : allShips) {
+            if (ship.getStatus() == ShipStatus.LOADING
+                    && ship.getLoadingCompletedAtTick() > 0
+                    && currentTick >= ship.getLoadingCompletedAtTick()) {
+
+                ship.completeLoading();
+                playerShipRepository.save(ship);
+
+                System.out.println("[GameTick] Ship " + ship.getId()
+                        + " loading completed at tick " + currentTick + " → READY_TO_DEPART");
+            }
+        }
+    }
+
+    @Transactional
+    public void handleUnloadingPhase(UUID sessionId, int currentTick) {
+        List<Travel> arrivedTravels = travelRepository
+                .findAllBySessionIdAndStatus(sessionId, TravelStatus.ARRIVED);
+
+        for (Travel travel : arrivedTravels) {
+            PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
+            if (ship == null) continue;
+
+            if (ship.getStatus() != ShipStatus.UNLOADING) continue;
+
+            if (ship.getUnloadingCompletedAtTick() != null
+                    && currentTick >= ship.getUnloadingCompletedAtTick()) {
+                handleUnloadingComplete(travel, currentTick);
+            }
+        }
+    }
+
+    @Transactional
+    public void handleUnloadingComplete(Travel travel, int currentTick) {
+        PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
+
+        if (ship == null || ship.getStatus() != ShipStatus.UNLOADING) {
+            return;
+        }
+
+        List<SessionCargo> cargos = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
+        BigDecimal reward = cargoUnloadingPhaseService.completeUnloadingPhase(travel, cargos);
+
+        System.out.println("[GameTick] Unloading complete for travel " + travel.getTravelId());
+        System.out.println("[GameTick] Reward: " + reward);
     }
 
     @Transactional
@@ -149,16 +210,18 @@ public class GameTickScheduler {
             return;
         }
 
-        // Ankunft und Schiffspositionen separat — Fehler hier blockieren den Tick nicht
         try {
             GameSession session = gameSessionRepository.findById(sessionId).orElse(null);
             if (session == null) return;
             int currentTick = session.getCurrentTick();
 
+            checkLoadingCompletion(sessionId, currentTick);
+            handleUnloadingPhase(sessionId, currentTick);
+
             List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
             for (Travel travel : activeTravels) {
                 if (currentTick >= travel.getArrivalTick()) {
-                    handleArrival(travel);
+                    travelArrivalService.handleArrival(travel);
                 }
             }
 
@@ -181,30 +244,6 @@ public class GameTickScheduler {
         lastTickProcessedAtMs.clear();
         tickLocks.clear();
         executor.shutdownNow();
-    }
-
-    private void handleArrival(Travel travel) {
-        travel.markAsArrived(0.0, travel.getTravelStatus());
-        travelRepository.save(travel);
-
-        PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
-        if (ship != null) {
-            ship.arriveAtPort(travel.getDestinationPortId());
-            playerShipRepository.save(ship);
-        }
-
-        List<SessionCargo> assignedCargos = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
-        for (SessionCargo cargo : assignedCargos) {
-            if (cargo.getAssignedPlayerShipId() != null
-                    && cargo.getAssignedPlayerShipId().equals(travel.getPlayerShipId())
-                    && cargo.getDestinationPortId().equals(travel.getDestinationPortId())
-                    && cargo.getCargoStatus() == CargoStatus.ASSIGNED) {
-                cargo.deliver();
-                int cooldown = CargoSessionInitializer.randomizedCooldownFor(cargo.getCargoType(), rng);
-                cargo.startCooldown(travel.getArrivalTick() + cooldown);
-                sessionCargoRepository.save(cargo);
-            }
-        }
     }
 
     public void triggerImmediateBroadcast(UUID sessionId) {
@@ -265,16 +304,31 @@ public class GameTickScheduler {
                     positions.add(new ShipPositionsUpdateEvent.ShipPosition(
                             playerShip.getId(), playerShip.getPlayerId(), playerName,
                             iconUrl, x, y, "EN_ROUTE", travel.getArrivalTick(),
-                            origin.x(), origin.y(), dest.x(), dest.y(), travel.getStartTick()
+                            origin.x(), origin.y(), dest.x(), dest.y(), travel.getStartTick(), null
                     ));
                 }
             } else if (playerShip.getCurrentPortId() != null) {
                 PortResponseDTO port = portMap.get(playerShip.getCurrentPortId());
                 if (port != null) {
+                    String status = switch (playerShip.getStatus()) {
+                        case LOADING         -> "LOADING";
+                        case READY_TO_DEPART -> "READY_TO_DEPART";
+                        case UNLOADING       -> "UNLOADING";
+                        default              -> "AT_PORT";
+                    };
+
+                    Integer completionTick = null;
+                    if (playerShip.getStatus() == ShipStatus.UNLOADING) {
+                        completionTick = playerShip.getUnloadingCompletedAtTick();
+                    } else if (playerShip.getStatus() == ShipStatus.LOADING) {
+                        completionTick = playerShip.getLoadingCompletedAtTick();
+                    }
+
                     positions.add(new ShipPositionsUpdateEvent.ShipPosition(
                             playerShip.getId(), playerShip.getPlayerId(), playerName,
-                            iconUrl, port.x(), port.y(), "AT_PORT", null,
-                            null, null, null, null, null
+                            iconUrl, port.x(), port.y(), status, completionTick,
+                            null, null, null, null, null,
+                            playerShip.getCurrentPortId()
                     ));
                 }
             }
@@ -330,6 +384,9 @@ public class GameTickScheduler {
                 if ((isInitialSpawn || isRespawn) && activeCount < MAX_ACTIVE_CARGOS_PER_PORT) {
                     double spawnChance = spawnChanceFor(sc.getCargoType());
                     if (rng.nextDouble() < spawnChance) {
+                        System.out.println("[CargoRespawn] Cargo " + sc.getId() + " respawning at port " + entry.getKey()
+                                + " (status=" + sc.getCargoStatus() + ", cooldownUntil=" + sc.getCooldownUntilTick()
+                                + ", currentTick=" + currentTick + ")");
                         sc.activate();
                         sessionCargoRepository.save(sc);
                         activeCount++;
