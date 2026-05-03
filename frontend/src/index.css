@@ -28,7 +28,7 @@ html, body, #root {
 body {
     font-family: var(--font-body);
     color: #fff;
-    background: #091426;
+    background: #0c1b33;
 }
 
 /* Lobby/Login/Register kriegen Pixel-Font */

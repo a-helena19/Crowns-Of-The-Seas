@@ -1,7 +1,6 @@
 package at.fhv.backend.application.services.impl.cargo;
 
 
-import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.application.services.cargo.AcceptCargoService;
 import at.fhv.backend.application.services.cargo.PortDistanceForCargoService;
 import at.fhv.backend.application.services.port.PortQueryService;

@@ -54,8 +54,8 @@ public class SessionCargoEntity {
     @Column(name = "spawn_tick", nullable = false)
     private int spawnTick;
 
-    @Column(name = "cooldown_until_tick", nullable = false)
-    private int cooldownUntilTick;
+    @Column(name = "permanent", nullable = false)
+    private int permanent;
 
     @Column(name = "expires_at_tick", nullable = false)
     private int expiresAtTick;
@@ -177,12 +177,12 @@ public class SessionCargoEntity {
         this.spawnTick = spawnTick;
     }
 
-    public int getCooldownUntilTick() {
-        return cooldownUntilTick;
+    public int getPermanent() {
+        return permanent;
     }
 
-    public void setCooldownUntilTick(int cooldownUntilTick) {
-        this.cooldownUntilTick = cooldownUntilTick;
+    public void setPermanent(int permanent) {
+        this.permanent = permanent;
     }
 
     public int getExpiresAtTick() {

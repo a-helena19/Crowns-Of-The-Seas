@@ -48,6 +48,10 @@ export default class MainScene extends Phaser.Scene {
     private dragStartX: number = 0;
     private dragStartY: number = 0;
     private harborSprites: Phaser.GameObjects.Image[] = [];
+    private harborLabels: Phaser.GameObjects.Text[] = [];
+    private harborHitZones: Phaser.GameObjects.Zone[] = [];
+    private harborPortData: PortData[] = [];
+    private mapImage!: Phaser.GameObjects.Image;
 
     private onShipPosition!: (e: Event) => void;
     private onPorts!: (e: Event) => void;
@@ -66,7 +70,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     create() {
-        this.add.image(0, 0, 'map').setOrigin(0, 0)
+        this.mapImage = this.add.image(0, 0, 'map').setOrigin(0, 0)
             .setDisplaySize(this.scale.width, this.scale.height);
         this.lastSceneWidth = this.scale.width;
         this.lastSceneHeight = this.scale.height;
@@ -235,7 +239,6 @@ export default class MainScene extends Phaser.Scene {
         const spawnX = (shipData.x / 100) * this.scale.width;
         const spawnY = (shipData.y / 100) * this.scale.height;
 
-        // Sprite sofort mit gecachter oder Fallback-Textur erstellen — kein Delay
         const initialTexture = this.textures.exists(textureKey) ? textureKey : 'ship';
         const sprite = this.add.sprite(spawnX, spawnY, initialTexture)
             .setScale(0.065).setInteractive().setDepth(5);
@@ -304,6 +307,30 @@ export default class MainScene extends Phaser.Scene {
             return;
         }
 
+        if (this.mapImage) {
+            this.mapImage.setDisplaySize(this.scale.width, this.scale.height);
+        }
+
+        for (let i = 0; i < this.harborSprites.length; i++) {
+            const port = this.harborPortData[i];
+            if (!port) continue;
+            const px = (port.x / 100) * this.scale.width;
+            const py = (port.y / 100) * this.scale.height;
+            this.harborSprites[i].setPosition(px, py);
+            if (this.harborHitZones[i]) {
+                this.harborHitZones[i].setPosition(px, py);
+            }
+            if (this.harborLabels[i]) {
+                const LABEL_OFFSETS: Record<string, { dx: number; dy: number }> = {
+                    'Rotterdam': { dx: -80, dy: 10 },
+                };
+                const offset = LABEL_OFFSETS[port.name] ?? { dx: 10, dy: -10 };
+                this.harborLabels[i].setPosition(px + offset.dx, py + offset.dy);
+            }
+        }
+
+        this.cameras.main.setBounds(0, 0, this.scale.width, this.scale.height);
+
         const currentTick = window.__latestShipPositionsTick ?? window.__latestTick?.currentTick ?? 0;
         for (const entry of this.shipSprites.values()) {
             const shipData = entry.lastShipData;
@@ -322,10 +349,7 @@ export default class MainScene extends Phaser.Scene {
         this.lastSceneHeight = this.scale.height;
     }
 
-    /**
-     * Smoothed WS measurement when sane; otherwise session tick interval.
-     * Avoids 30_000 default which inflates elapsedMs along EN_ROUTE and jumps the ship ahead.
-     */
+
     private resolveTickRateMs(): number {
         const smoothed = window.__tickRateMs;
         if (typeof smoothed === 'number' && Number.isFinite(smoothed) && smoothed >= 250 && smoothed <= 120_000) {
@@ -402,20 +426,25 @@ export default class MainScene extends Phaser.Scene {
             'Rotterdam': { dx: -80, dy: 10 },
         };
 
+        this.harborPortData = ports;
+
         ports.forEach(port => {
             const px = (port.x / 100) * this.scale.width;
             const py = (port.y / 100) * this.scale.height;
             const img = this.add.image(px, py, 'harbor')
                 .setScale(0.01)
-                .setInteractive(new Phaser.Geom.Circle(0, 0, 2000), Phaser.Geom.Circle.Contains)
                 .setDepth(6);
 
-            img.on('pointerdown', () => {
+            const hitZone = this.add.zone(px, py, 20, 20)
+                .setInteractive()
+                .setDepth(7);
+
+            hitZone.on('pointerdown', () => {
                 window.dispatchEvent(new CustomEvent('port-clicked', { detail: port }));
             });
 
             const offset = LABEL_OFFSETS[port.name] ?? { dx: 10, dy: -10 };
-            this.add.text(px + offset.dx, py + offset.dy, port.name, {
+            const label = this.add.text(px + offset.dx, py + offset.dy, port.name, {
                 fontSize: '14px',
                 color: '#ffffff',
                 backgroundColor: '#000000cc',
@@ -423,6 +452,8 @@ export default class MainScene extends Phaser.Scene {
             }).setDepth(10);
 
             this.harborSprites.push(img);
+            this.harborLabels.push(label);
+            this.harborHitZones.push(hitZone);
         });
     }
 
