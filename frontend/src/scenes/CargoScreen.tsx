@@ -3,6 +3,7 @@ import SockJS from "sockjs-client";
 import Stomp, { Client } from "stompjs";
 import "../style/cargo.css";
 import { useTravelDuration } from "./TravelDurationInfo";
+import CargoGlobeView from "./CargoGlobeView";
 
 interface SessionCargoDTO {
     id: string;
@@ -158,12 +159,12 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
         return () => window.removeEventListener("backend-tick", onTick);
     }, []);
 
-const WeightIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="7" r="3" stroke="currentColor" strokeWidth="1.5"/>
-        <path d="M6.5 20h11l-2-9H8.5l-2 9Z" stroke="currentColor" strokeWidth="1.5"/>
-    </svg>
-);
+    const WeightIcon = () => (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="7" r="3" stroke="currentColor" strokeWidth="1.5"/>
+            <path d="M6.5 20h11l-2-9H8.5l-2 9Z" stroke="currentColor" strokeWidth="1.5"/>
+        </svg>
+    );
     const [acceptError, setAcceptError] = useState<string | null>(null);
 
     const sessionData = sessionStorage.getItem("currentSession");
@@ -465,8 +466,8 @@ const WeightIcon = () => (
                                         <span>⚠️</span>
                                         <span>
                                             {selected.cargoType === "FOOD"
-                                            ? "Verderbliche Ware - schnelle Lieferung erforderlich!"
-                                            : "Gefährliches Material - wird bei Ablauf entsorgt!"}
+                                                ? "Verderbliche Ware - schnelle Lieferung erforderlich!"
+                                                : "Gefährliches Material - wird bei Ablauf entsorgt!"}
                                         </span>
                                     </div>
                                 )}
@@ -518,6 +519,15 @@ const WeightIcon = () => (
                                             {TYPE_LABELS[selected.cargoType]}
                                         </strong>
                                     </div>
+                                </div>
+
+                                {/* 3D globe with the precomputed sea route */}
+                                <div className="cargo-globe-section">
+                                    <div className="cargo-globe-label">Seeroute</div>
+                                    <CargoGlobeView
+                                        fromPortName={selected.originPortName}
+                                        toPortName={selected.destinationPortName}
+                                    />
                                 </div>
 
                                 {(() => {

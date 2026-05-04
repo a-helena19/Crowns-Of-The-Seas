@@ -1,0 +1,57 @@
+.topbar-container {
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    background: linear-gradient(180deg, #0c1b33, #091426);
+    border-bottom: 3px solid #0a165e;
+    box-shadow: inset 0 -2px 8px rgba(0, 0, 0, 0.7);
+    z-index: 100;
+    position: relative;
+}
+
+.topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.topbar-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.topbar-right {
+    margin-left: auto;
+}
+
+.topbar-panel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: url('../assets/panel.png') center / 100% 100% no-repeat;
+    padding: 4px 17px;
+    max-height: 35px;
+    min-width: 120px;
+    justify-content: center;
+    image-rendering: pixelated;
+}
+
+.topbar-icon {
+    width: 24px;
+    height: 40px;
+    image-rendering: pixelated;
+    object-fit: contain;
+}
+
+.topbar-value {
+    color: #3a2410;
+    font-weight: bold;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.topbar-total {
+    opacity: 0.6;
+    font-size: 15px;
+}

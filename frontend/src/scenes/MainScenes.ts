@@ -52,6 +52,8 @@ export default class MainScene extends Phaser.Scene {
     private harborHitZones: Phaser.GameObjects.Zone[] = [];
     private harborPortData: PortData[] = [];
     private mapImage!: Phaser.GameObjects.Image;
+    private routeGraphics!: Phaser.GameObjects.Graphics;
+    private routeData: Array<{ originPortId: string; destinationPortId: string; waypoints: Array<{ x: number; y: number }> }> = [];
 
     private onShipPosition!: (e: Event) => void;
     private onPorts!: (e: Event) => void;
@@ -72,6 +74,8 @@ export default class MainScene extends Phaser.Scene {
     create() {
         this.mapImage = this.add.image(0, 0, 'map').setOrigin(0, 0)
             .setDisplaySize(this.scale.width, this.scale.height);
+        // Route lines sit just above the map, below ships/harbors (depth 5+)
+        this.routeGraphics = this.add.graphics().setDepth(2);
         this.lastSceneWidth = this.scale.width;
         this.lastSceneHeight = this.scale.height;
 
@@ -144,6 +148,157 @@ export default class MainScene extends Phaser.Scene {
             this.dragStartX = pointer.x;
             this.dragStartY = pointer.y;
         });
+
+        // Fetch precomputed sea routes from the backend and draw them on the map
+        this.fetchAndRenderRoutes();
+    }
+
+    private fetchAndRenderRoutes() {
+        const token = localStorage.getItem('auth_token') ?? '';
+        fetch('/api/routes', {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+            .then(r => (r.ok ? r.json() : null))
+            .then((routes: Array<{ originPortId: string; destinationPortId: string; waypoints: Array<{ x: number; y: number }> }> | null) => {
+                if (!routes) return;
+                this.routeData = routes;
+                this.renderRoutes();
+            })
+            .catch(() => {
+                // silent failure — map still works without routes
+            });
+    }
+
+    private renderRoutes() {
+        if (!this.routeGraphics || this.routeData.length === 0) return;
+        this.routeGraphics.clear();
+
+        const ports = this.harborPortData.length > 0
+            ? this.harborPortData
+            : (window.__latestPorts ?? []);
+        const portMap = new Map<string, { x: number; y: number }>();
+        for (const p of ports) {
+            portMap.set(p.id, { x: p.x, y: p.y });
+        }
+
+        // Build the set of port-id pairs that currently have a ship en route on them
+        const activePairs = new Set<string>();
+        const ships = window.__latestShips ?? [];
+        for (const ship of ships) {
+            if (ship.status !== 'EN_ROUTE') continue;
+            if (ship.originX == null || ship.originY == null
+                || ship.destX == null || ship.destY == null) continue;
+            const originPort = this.findPortAt(ports, ship.originX, ship.originY);
+            const destPort = this.findPortAt(ports, ship.destX, ship.destY);
+            if (originPort && destPort) {
+                activePairs.add(this.pairKey(originPort.id, destPort.id));
+            }
+        }
+
+        // Pass 1: faint hairlines for all routes (background detail)
+        this.routeGraphics.lineStyle(1, 0x3a2410, 0.12);
+        for (const route of this.routeData) {
+            if (activePairs.has(this.pairKey(route.originPortId, route.destinationPortId))) continue;
+            this.drawRoutePath(route, portMap);
+        }
+
+        // Pass 2: visible lines for active routes (ships in transit)
+        this.routeGraphics.lineStyle(2.5, 0xc04040, 0.7);
+        for (const route of this.routeData) {
+            if (!activePairs.has(this.pairKey(route.originPortId, route.destinationPortId))) continue;
+            this.drawRoutePath(route, portMap);
+        }
+    }
+
+    private pairKey(a: string, b: string): string {
+        return a < b ? `${a}|${b}` : `${b}|${a}`;
+    }
+
+    /** Find the port whose coordinates match (within a small tolerance) */
+    private findPortAt(ports: PortData[], x: number, y: number): PortData | undefined {
+        const TOLERANCE = 0.5; // percent
+        return ports.find(p =>
+            Math.abs(p.x - x) < TOLERANCE && Math.abs(p.y - y) < TOLERANCE
+        );
+    }
+
+    private drawRoutePath(
+        route: { originPortId: string; destinationPortId: string; waypoints: Array<{ x: number; y: number }> },
+        portMap: Map<string, { x: number; y: number }>,
+    ) {
+        const origin = portMap.get(route.originPortId);
+        const dest = portMap.get(route.destinationPortId);
+        if (!origin || !dest) return;
+
+        const points: Array<{ x: number; y: number }> = [
+            origin,
+            ...(route.waypoints ?? []),
+            dest,
+        ];
+
+        this.routeGraphics.beginPath();
+        this.routeGraphics.moveTo(
+            (points[0].x / 100) * this.scale.width,
+            (points[0].y / 100) * this.scale.height,
+        );
+        for (let i = 1; i < points.length; i++) {
+            this.routeGraphics.lineTo(
+                (points[i].x / 100) * this.scale.width,
+                (points[i].y / 100) * this.scale.height,
+            );
+        }
+        this.routeGraphics.strokePath();
+    }
+
+    /**
+     * Build the pixel-space polyline a ship should follow between two ports.
+     * Looks up the matching backend route by matching origin/dest coordinates
+     * to ports, then converts the waypoints from percentages to pixels.
+     * Falls back to a straight line if no matching route is found.
+     */
+    private buildShipPolyline(
+        originX: number, originY: number,
+        destX: number, destY: number,
+    ): Array<{ x: number; y: number }> {
+        const ports = this.harborPortData.length > 0
+            ? this.harborPortData
+            : (window.__latestPorts ?? []);
+        const originPort = this.findPortAt(ports, originX, originY);
+        const destPort = this.findPortAt(ports, destX, destY);
+
+        let waypointsPct: Array<{ x: number; y: number }> = [];
+        if (originPort && destPort) {
+            // Search routes in both directions; if reversed, reverse waypoints
+            const direct = this.routeData.find(r =>
+                r.originPortId === originPort.id && r.destinationPortId === destPort.id);
+            if (direct) {
+                waypointsPct = direct.waypoints ?? [];
+            } else {
+                const reversed = this.routeData.find(r =>
+                    r.originPortId === destPort.id && r.destinationPortId === originPort.id);
+                if (reversed) {
+                    waypointsPct = [...(reversed.waypoints ?? [])].reverse();
+                }
+            }
+        }
+
+        // Build the full polyline in pixel space
+        const polyline: Array<{ x: number; y: number }> = [];
+        polyline.push({
+            x: (originX / 100) * this.scale.width,
+            y: (originY / 100) * this.scale.height,
+        });
+        for (const wp of waypointsPct) {
+            polyline.push({
+                x: (wp.x / 100) * this.scale.width,
+                y: (wp.y / 100) * this.scale.height,
+            });
+        }
+        polyline.push({
+            x: (destX / 100) * this.scale.width,
+            y: (destY / 100) * this.scale.height,
+        });
+        return polyline;
     }
 
     private updateShipSprites(ships: ShipPositionData[], currentTick: number) {
@@ -178,15 +333,12 @@ export default class MainScene extends Phaser.Scene {
 
                     if (hasRouteData && !isSameTravel) {
                         const routeTiming = this.getRouteTiming(shipData, currentTick, tickRateMs);
-                        const originPx = (shipData.originX / 100) * this.scale.width;
-                        const originPy = (shipData.originY / 100) * this.scale.height;
-                        const destPx = (shipData.destX / 100) * this.scale.width;
-                        const destPy = (shipData.destY / 100) * this.scale.height;
+                        const polyline = this.buildShipPolyline(
+                            shipData.originX, shipData.originY,
+                            shipData.destX, shipData.destY,
+                        );
                         entry.controller.setRoute(
-                            originPx,
-                            originPy,
-                            destPx,
-                            destPy,
+                            polyline,
                             routeTiming.elapsedMs,
                             routeTiming.totalMs,
                             true,
@@ -225,6 +377,9 @@ export default class MainScene extends Phaser.Scene {
         if (ships.length > 0) {
             this.ship.setVisible(false);
         }
+
+        // Update which routes are highlighted as "active" — depends on which ships are en route
+        this.renderRoutes();
     }
 
     private createShipSprite(
@@ -239,6 +394,7 @@ export default class MainScene extends Phaser.Scene {
         const spawnX = (shipData.x / 100) * this.scale.width;
         const spawnY = (shipData.y / 100) * this.scale.height;
 
+        // Sprite sofort mit gecachter oder Fallback-Textur erstellen — kein Delay
         const initialTexture = this.textures.exists(textureKey) ? textureKey : 'ship';
         const sprite = this.add.sprite(spawnX, spawnY, initialTexture)
             .setScale(0.065).setInteractive().setDepth(5);
@@ -307,10 +463,15 @@ export default class MainScene extends Phaser.Scene {
             return;
         }
 
+        // Resize map image to fill new canvas
         if (this.mapImage) {
             this.mapImage.setDisplaySize(this.scale.width, this.scale.height);
         }
 
+        // Routes are pixel-positioned, so redraw them at the new scale
+        this.renderRoutes();
+
+        // Reposition harbors and labels
         for (let i = 0; i < this.harborSprites.length; i++) {
             const port = this.harborPortData[i];
             if (!port) continue;
@@ -329,6 +490,7 @@ export default class MainScene extends Phaser.Scene {
             }
         }
 
+        // Update camera bounds
         this.cameras.main.setBounds(0, 0, this.scale.width, this.scale.height);
 
         const currentTick = window.__latestShipPositionsTick ?? window.__latestTick?.currentTick ?? 0;
@@ -349,7 +511,10 @@ export default class MainScene extends Phaser.Scene {
         this.lastSceneHeight = this.scale.height;
     }
 
-
+    /**
+     * Smoothed WS measurement when sane; otherwise session tick interval.
+     * Avoids 30_000 default which inflates elapsedMs along EN_ROUTE and jumps the ship ahead.
+     */
     private resolveTickRateMs(): number {
         const smoothed = window.__tickRateMs;
         if (typeof smoothed === 'number' && Number.isFinite(smoothed) && smoothed >= 250 && smoothed <= 120_000) {
@@ -435,7 +600,8 @@ export default class MainScene extends Phaser.Scene {
                 .setScale(0.01)
                 .setDepth(6);
 
-            const hitZone = this.add.zone(px, py, 20, 20)
+            // Fixed-size invisible hit zone so ports are easy to click
+            const hitZone = this.add.zone(px, py, 30, 30)
                 .setInteractive()
                 .setDepth(7);
 
@@ -455,6 +621,11 @@ export default class MainScene extends Phaser.Scene {
             this.harborLabels.push(label);
             this.harborHitZones.push(hitZone);
         });
+
+        // Routes depend on knowing port positions — redraw now that we have them
+        if (this.routeData.length > 0) {
+            this.renderRoutes();
+        }
     }
 
     update(_time: number, delta: number) {
