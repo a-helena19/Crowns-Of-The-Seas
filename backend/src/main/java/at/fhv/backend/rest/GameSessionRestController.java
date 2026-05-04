@@ -27,10 +27,8 @@ public class GameSessionRestController {
     public ResponseEntity<SessionDTO> create(
             HttpServletRequest request,
             @RequestBody CreateSessionRequest req) {
-        // Get userId from JWT (set by JwtFilter)
         UUID userId = (UUID) request.getAttribute("userId");
 
-        // Check if userId is present
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(null);  // or throw exception

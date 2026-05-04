@@ -44,8 +44,6 @@ public class RouteDataInitializer implements ApplicationRunner {
                 Coordinates destCoords = b.getCoordinates();
                 List<Coordinates> waypoints = RoutePathfinder.findRoute(originCoords, destCoords);
 
-                // No waypoints = no hand-authored route exists. Skip the pair so we
-                // don't store a straight line that would cut across continents.
                 if (waypoints.isEmpty()) {
                     continue;
                 }

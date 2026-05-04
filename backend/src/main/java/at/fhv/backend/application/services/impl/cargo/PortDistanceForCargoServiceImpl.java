@@ -28,7 +28,6 @@ public class PortDistanceForCargoServiceImpl implements PortDistanceForCargoServ
             return route.get().getDistance();
         }
 
-        // Fallback: straight-line distance (used until routes are seeded)
         PortResponseDTO origin = portQueryService.findById(originPortId);
         PortResponseDTO destination = portQueryService.findById(destinationPortId);
         return Coordinates.of(origin.x(), origin.y())

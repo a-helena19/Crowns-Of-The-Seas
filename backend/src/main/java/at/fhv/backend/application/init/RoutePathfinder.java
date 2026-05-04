@@ -4,38 +4,13 @@ import at.fhv.backend.domain.model.port.Coordinates;
 
 import java.util.*;
 
-/**
- * Returns sea routes between any two ports based on a small, hand-authored
- * graph of direct connections (edges) plus their waypoints. For port pairs
- * that aren't directly connected, A* finds the shortest path through the
- * graph and concatenates the waypoints along that path.
- *
- * Why this approach? An A* over a generic sea-lane mesh produced edges that
- * cut across continents. Authoring the *direct* edges by hand (i.e. only the
- * routes that are visually sensible) and letting the algorithm chain them
- * gives both correctness and full coverage with very little code.
- */
 public final class RoutePathfinder {
-
-    /** Edge: from-port -> to-port, with the waypoints from -> waypoints -> to. */
     private record Edge(String to, List<double[]> waypoints, double weight) {}
-
-    /** Adjacency: port name -> outgoing edges. Built bidirectionally. */
     private static final Map<String, List<Edge>> GRAPH = new HashMap<>();
-
-    /** Cached port positions for distance heuristic. */
     private static final Map<String, double[]> PORTS = new HashMap<>();
-
-    /**
-     * Virtual hub positions — internal A* nodes that are NOT real ports. Hubs
-     * let multiple routes share a common waypoint (e.g. an Atlantic crossroads)
-     * without storing them as separate ports in the DB. Hubs disappear from the
-     * final waypoint list — only their coordinates show up.
-     */
     private static final Map<String, double[]> HUBS = new HashMap<>();
 
     static {
-        // Port positions (must match PortDataInitializer)
         port("Hamburg",     47.1, 28.6);
         port("Rotterdam",   46.3, 29.5);
         port("New York",    26.1, 37.7);
@@ -93,7 +68,6 @@ public final class RoutePathfinder {
         HUBS.put(name, new double[]{x, y});
     }
 
-    /** Look up the position of a port OR a hub. */
     private static double[] nodePos(String name) {
         double[] p = PORTS.get(name);
         return p != null ? p : HUBS.get(name);
@@ -103,16 +77,10 @@ public final class RoutePathfinder {
         return new double[]{x, y};
     }
 
-    /**
-     * Add an undirected edge with the given waypoints. The waypoints are stored
-     * in the from→to direction; the reverse direction reuses the same list and
-     * reverses it at lookup time.
-     */
     private static void edge(String a, String b, double[]... waypoints) {
         List<double[]> wpList = Arrays.asList(waypoints);
         double weight = pathLength(nodePos(a), wpList, nodePos(b));
         GRAPH.computeIfAbsent(a, k -> new ArrayList<>()).add(new Edge(b, wpList, weight));
-        // Reverse direction with reversed waypoints
         List<double[]> reversed = new ArrayList<>(wpList);
         Collections.reverse(reversed);
         GRAPH.computeIfAbsent(b, k -> new ArrayList<>()).add(new Edge(a, reversed, weight));
@@ -132,12 +100,6 @@ public final class RoutePathfinder {
     private RoutePathfinder() {
     }
 
-    /**
-     * Find the route between two ports as a list of waypoints (excluding the
-     * origin and destination themselves). Uses A* over the hand-authored
-     * graph: direct edges return their waypoints unchanged; indirect pairs
-     * traverse intermediate ports, and those ports become waypoints too.
-     */
     public static List<Coordinates> findRoute(Coordinates origin, Coordinates destination) {
         String originName = nameOf(origin);
         String destName = nameOf(destination);
@@ -150,9 +112,6 @@ public final class RoutePathfinder {
             return List.of();
         }
 
-        // Walk the node path. For each edge, append its waypoints, then the
-        // intermediate node's position itself (so the line bends through it).
-        // The final destination is excluded — the consumer adds it.
         List<Coordinates> result = new ArrayList<>();
         for (int i = 0; i < nodePath.size() - 1; i++) {
             String a = nodePath.get(i);
@@ -162,9 +121,7 @@ public final class RoutePathfinder {
             for (double[] wp : edge.waypoints) {
                 result.add(Coordinates.of(wp[0], wp[1]));
             }
-            // Add the intermediate node's position as a waypoint, except the final destination.
-            // This works for both ports AND hubs — hubs are treated as plain waypoints in the
-            // resulting route (the DB never sees them as port stops).
+
             if (i < nodePath.size() - 2) {
                 double[] pos = nodePos(b);
                 result.add(Coordinates.of(pos[0], pos[1]));

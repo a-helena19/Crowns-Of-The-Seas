@@ -27,11 +27,8 @@ public class RouteRestController {
     }
 
     @GetMapping("/{originPortId}/{destinationPortId}")
-    public ResponseEntity<RouteResponseDTO> getByPorts(
-            @PathVariable UUID originPortId,
-            @PathVariable UUID destinationPortId) {
-        return routeQueryService.findByPorts(originPortId, destinationPortId)
-                .map(ResponseEntity::ok)
+    public ResponseEntity<RouteResponseDTO> getByPorts(@PathVariable UUID originPortId, @PathVariable UUID destinationPortId) {
+        return routeQueryService.findByPorts(originPortId, destinationPortId).map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

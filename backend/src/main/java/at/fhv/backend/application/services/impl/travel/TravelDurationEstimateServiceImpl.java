@@ -24,7 +24,7 @@ public class TravelDurationEstimateServiceImpl implements TravelDurationEstimate
 
     private static final double[] SPEED_SETTINGS = {0.25, 0.4, 0.6, 0.8, 1.0};
     private static final String[] SPEED_LABELS   = {"Langsam", "Gemütlich", "Normal", "Schnell", "Volldampf"};
-    private static final double GLOBAL_TRAVEL_SPEED_FACTOR = 0.75; // keep in sync with StartTravelServiceImpl
+    private static final double GLOBAL_TRAVEL_SPEED_FACTOR = 0.75;
 
     private final PlayerShipRepository playerShipRepository;
     private final ShipRepository shipRepository;
@@ -71,8 +71,6 @@ public class TravelDurationEstimateServiceImpl implements TravelDurationEstimate
         List<TravelDurationEstimateDTO.SpeedDurationOption> options = new ArrayList<>();
         for (int i = 0; i < SPEED_SETTINGS.length; i++) {
             double speedSetting = SPEED_SETTINGS[i];
-            // Formel identisch zu StartTravelServiceImpl: effectiveSpeed = maxSpeed * speedSetting * GLOBAL_TRAVEL_SPEED_FACTOR
-            // durationTicks = ceil(distance / effectiveSpeed) — exakt der Wert der als totalTicks in Phaser landet
             double effectiveSpeed = ship.getMaxSpeed() * speedSetting * GLOBAL_TRAVEL_SPEED_FACTOR;
             int durationTicks = (int) Math.ceil(distance / Math.max(effectiveSpeed, 0.01));
             options.add(new TravelDurationEstimateDTO.SpeedDurationOption(

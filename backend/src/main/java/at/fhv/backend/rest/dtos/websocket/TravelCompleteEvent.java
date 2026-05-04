@@ -12,7 +12,6 @@ public class TravelCompleteEvent {
     private BigDecimal previousBalance;
     private BigDecimal newBalance;
 
-    // Constructor
     public TravelCompleteEvent(String travelId, String playerId,
                                List<CargoRewardBreakdown> cargoRewards,
                                BigDecimal baseReward, BigDecimal totalReward,
@@ -26,7 +25,6 @@ public class TravelCompleteEvent {
         this.newBalance = newBalance;
     }
 
-    // Getters
     public String getTravelId() {
         return travelId;
     }

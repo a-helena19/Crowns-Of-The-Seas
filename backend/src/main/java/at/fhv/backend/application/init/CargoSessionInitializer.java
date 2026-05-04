@@ -49,7 +49,6 @@ public class CargoSessionInitializer {
 
             List<SessionCargo> portOffers = new ArrayList<>();
 
-            // One permanent cargo per port (never expires)
             portOffers.addAll(pickOffers(byType, CargoType.GENERAL_GOODS, PERMANENT_PER_PORT, origin, destinations, sessionId, rng, true));
 
             portOffers.addAll(pickOffers(byType, CargoType.GENERAL_GOODS, 1, origin, destinations, sessionId, rng, false));
