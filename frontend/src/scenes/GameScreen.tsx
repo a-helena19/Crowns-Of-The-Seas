@@ -1,10 +1,11 @@
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import TopBar from "../components/TopBar.tsx";
 import Game from "../Game.tsx";
 import BottomBar from "../components/BottomBar.tsx";
 import SideBar from "../components/SideBar";
 import HarborScene from "../scenes/HarborScene.tsx";
 import ShipBrokerScene from "../scenes/ShipBrokerScene.tsx";
+import OfficeScene from "../scenes/OfficeScene.tsx";
 import PortProfileScreen from "../scenes/PortProfileScreen.tsx";
 import { useGameSessionWebSocket } from "../hooks/useGameSessionWebSocket.ts";
 import CargoManagementScreen from "../scenes/CargoManagementScreen";
@@ -15,7 +16,8 @@ export const TOP_BAR_HEIGHT = '8vh';
 export const BOTTOM_BAR_HEIGHT = '25vh';
 
 export default function GameScreen() {
-    const [view, setView] = useState<"map" | "harbor" | "broker" | "portProfile" | "cargoManagement">("map");
+    const [view, setView] = useState<"map" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office">("map");
+    const viewRef = useRef(view);
     const [selectedPort, setSelectedPort] = useState<{ id: string; name: string; x: number; y: number } | null>(null);
 
     const sessionData = sessionStorage.getItem('currentSession');
@@ -54,6 +56,11 @@ export default function GameScreen() {
     }
 
     useEffect(() => {
+        viewRef.current = view;
+        window.__activeGameView = view;
+    }, [view]);
+
+    useEffect(() => {
         if (typeof window.__tickRateMs !== 'number' || !Number.isFinite(window.__tickRateMs) || window.__tickRateMs <= 0) {
             window.__tickRateMs = tickRateSeconds * 1000;
         }
@@ -61,6 +68,7 @@ export default function GameScreen() {
 
     useEffect(() => {
         const onPortClicked = (e: Event) => {
+            if (viewRef.current !== "map") return;
             const port = (e as CustomEvent).detail;
             setSelectedPort(port);
             setView("portProfile");
@@ -178,7 +186,7 @@ export default function GameScreen() {
             <div className="top"><TopBar /></div>
             <div className="game"><Game view={view} /></div>
             <div className={`fullscreen-overlay ${
-                (view === "harbor" || view === "broker" || view === "cargoManagement") ? "open" : "closed"
+                (view === "harbor" || view === "broker" || view === "cargoManagement" || view === "office") ? "open" : "closed"
             }`}>
                 {view === "harbor" && (
                     <HarborScene
@@ -187,6 +195,7 @@ export default function GameScreen() {
                     />
                 )}
                 {view === "broker" && <ShipBrokerScene onClose={() => setView("map")} />}
+                {view === "office" && <OfficeScene onClose={() => setView("map")} />}
                 {view === "cargoManagement" && (
                     <CargoManagementScreen
                         assignedCargos={assignedCargos}
@@ -204,6 +213,7 @@ export default function GameScreen() {
                 <div className="sidebar">
                     <SideBar
                         currentView={view}
+                        onOpenOffice={() => setView("office")}
                         onStartAction={() => setView("harbor")}
                         onOpenBroker={() => setView("broker")}
                         onOpenCargoManagement={() => setView("cargoManagement")}

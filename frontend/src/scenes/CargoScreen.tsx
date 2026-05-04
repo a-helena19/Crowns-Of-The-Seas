@@ -47,7 +47,7 @@ interface ShipPositionEventPayload {
     currentTick: number;
     ships: Array<{
         playerShipId: string;
-        status: "EN_ROUTE" | "AT_PORT";
+        status: "EN_ROUTE" | "AT_PORT" | "LOADING" | "UNLOADING" | "READY_TO_DEPART";
     }>;
 }
 
@@ -178,7 +178,7 @@ const WeightIcon = () => (
             return;
         }
 
-        const readTransitState = (ships: Array<{ playerShipId: string; status: "EN_ROUTE" | "AT_PORT" | "LOADING" }>) => {
+        const readTransitState = (ships: Array<{ playerShipId: string; status: "EN_ROUTE" | "AT_PORT" | "LOADING" | "UNLOADING" | "READY_TO_DEPART" }>) => {
             const me = ships.find((s) => s.playerShipId === playerShipId);
             setShipInTransit(me?.status === "EN_ROUTE" || me?.status === "LOADING");
         };

@@ -31,6 +31,11 @@ public class PlayerShipRepositoryImpl implements PlayerShipRepository {
     }
 
     @Override
+    public void deleteById(UUID id) {
+        playerShipJpaRepository.deleteById(id);
+    }
+
+    @Override
     public Optional<PlayerShip> findById(UUID id) {
         return playerShipJpaRepository.findById(id)
                 .map(playerShipMapper::toDomainModel);

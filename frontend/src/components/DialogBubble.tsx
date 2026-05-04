@@ -15,15 +15,15 @@ export default function DialogBubble({
             <p>Wohin geht's hin, Captain?</p>
             {selectedShipName && (
                 <div className="harbor-selected-ship-hint">
-                    🚢 {selectedShipName} ausgewählt
+                    {selectedShipName} ausgewaehlt
                 </div>
             )}
             <div className="options">
                 <GameButton onClick={onOpenShip}>
-                    {selectedShipName ? "Schiff wechseln" : "Schiff auswählen"}
+                    {selectedShipName ? "Schiff wechseln" : "Schiff auswaehlen"}
                 </GameButton>
                 <GameButton onClick={onOpenCargo ?? (() => {})}>
-                    Frachtbörse öffnen
+                    Frachtboerse oeffnen
                 </GameButton>
             </div>
         </PixelPanel>
