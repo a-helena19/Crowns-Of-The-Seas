@@ -22,6 +22,9 @@ public class RouteEntity {
     @Column(nullable = false)
     private double distance;
 
+    @Column
+    private String description;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
             name = "route_waypoints",
@@ -68,5 +71,13 @@ public class RouteEntity {
 
     public void setWaypoints(List<WaypointEmbeddable> waypoints) {
         this.waypoints = waypoints;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 }

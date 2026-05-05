@@ -15,7 +15,6 @@ import java.util.List;
 @Component
 @Order(2)
 public class RouteDataInitializer implements ApplicationRunner {
-
     private final PortRepository portRepository;
     private final RouteRepository routeRepository;
 
@@ -48,12 +47,16 @@ public class RouteDataInitializer implements ApplicationRunner {
                     continue;
                 }
 
+                String description = RoutePathfinder.getRouteDescription(a.getName(), b.getName());
+
+
                 Route route = Route.create(
                         a.getId().getValue(),
                         b.getId().getValue(),
                         originCoords,
                         destCoords,
-                        waypoints
+                        waypoints,
+                        description
                 );
                 routeRepository.save(route);
             }

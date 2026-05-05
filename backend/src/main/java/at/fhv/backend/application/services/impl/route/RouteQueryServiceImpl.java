@@ -41,7 +41,9 @@ public class RouteQueryServiceImpl implements RouteQueryService {
                 route.getOriginPortId(),
                 route.getDestinationPortId(),
                 wps,
-                route.getDistance()
+                route.getDistance(),
+                route.getDescription()
+
         );
     }
 }

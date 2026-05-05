@@ -178,7 +178,6 @@ export default class MainScene extends Phaser.Scene {
             portMap.set(p.id, { x: p.x, y: p.y });
         }
 
-        // Build the set of port-id pairs that currently have a ship en route on them
         const activePairs = new Set<string>();
         const ships = window.__latestShips ?? [];
         for (const ship of ships) {
@@ -192,13 +191,13 @@ export default class MainScene extends Phaser.Scene {
             }
         }
 
-        this.routeGraphics.lineStyle(1, 0x3a2410, 0.12);
+        this.routeGraphics.lineStyle(0.8, 0xffffff, 0.04);
         for (const route of this.routeData) {
             if (activePairs.has(this.pairKey(route.originPortId, route.destinationPortId))) continue;
             this.drawRoutePath(route, portMap);
         }
 
-        this.routeGraphics.lineStyle(2.5, 0xc04040, 0.7);
+        this.routeGraphics.lineStyle(1.9, 0xcc2020, 0.7);
         for (const route of this.routeData) {
             if (!activePairs.has(this.pairKey(route.originPortId, route.destinationPortId))) continue;
             this.drawRoutePath(route, portMap);
@@ -403,15 +402,12 @@ export default class MainScene extends Phaser.Scene {
 
         if (status === 'EN_ROUTE' && this.hasRouteData(shipData)) {
             const routeTiming = this.getRouteTiming(shipData, currentTick, tickRateMs);
-            const originPx = (shipData.originX / 100) * this.scale.width;
-            const originPy = (shipData.originY / 100) * this.scale.height;
-            const destPx = (shipData.destX / 100) * this.scale.width;
-            const destPy = (shipData.destY / 100) * this.scale.height;
+            const polyline = this.buildShipPolyline(
+                shipData.originX, shipData.originY,
+                shipData.destX, shipData.destY,
+            );
             controller.setRoute(
-                originPx,
-                originPy,
-                destPx,
-                destPy,
+                polyline,
                 routeTiming.elapsedMs,
                 routeTiming.totalMs,
                 true,
@@ -504,6 +500,7 @@ export default class MainScene extends Phaser.Scene {
                 }
             }
         } catch {
+            // ignore
         }
         return 5000;
     }

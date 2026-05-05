@@ -56,6 +56,7 @@ public class RouteRepositoryImpl implements RouteRepository {
         e.setOriginPortId(route.getOriginPortId());
         e.setDestinationPortId(route.getDestinationPortId());
         e.setDistance(route.getDistance());
+        e.setDescription(route.getDescription());
         List<WaypointEmbeddable> wps = new ArrayList<>();
         for (Coordinates c : route.getWaypoints()) {
             wps.add(new WaypointEmbeddable(c.getX(), c.getY()));
@@ -74,7 +75,8 @@ public class RouteRepositoryImpl implements RouteRepository {
                 e.getOriginPortId(),
                 e.getDestinationPortId(),
                 wps,
-                e.getDistance()
+                e.getDistance(),
+                e.getDescription()
         );
     }
 
@@ -89,7 +91,8 @@ public class RouteRepositoryImpl implements RouteRepository {
                 e.getDestinationPortId(),
                 e.getOriginPortId(),
                 wps,
-                e.getDistance()
+                e.getDistance(),
+                e.getDescription()
         );
     }
 }

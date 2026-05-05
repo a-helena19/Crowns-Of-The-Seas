@@ -8,7 +8,8 @@ public record RouteResponseDTO(
         UUID originPortId,
         UUID destinationPortId,
         List<WaypointDTO> waypoints,
-        double distance
+        double distance,
+        String description
 ) {
     public record WaypointDTO(double x, double y) {}
 }

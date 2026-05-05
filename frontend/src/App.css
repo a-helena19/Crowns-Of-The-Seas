@@ -33,7 +33,6 @@ html, body, #root {
     grid-area: game;
     overflow: hidden;
     border-bottom: 3px solid #104075;
-
 }
 
 .game canvas {

@@ -49,6 +49,7 @@
     padding: 0 20px 20px;
     flex: 1;
     min-height: 0;
+    overflow: hidden;
 }
 
 
@@ -158,7 +159,8 @@
     flex: 1;
     min-width: 0;
     max-width: 1170px;
-    min-height: 580px;
+    min-height: 0px;
+    max-height: 100%;
     background: #f5edda;
     border: 1px solid rgba(140,106,58,0.35);
     display: flex;
@@ -393,7 +395,7 @@
     display: flex;
     gap: 20px;
     align-items: flex-start;
-    margin-top: 18px;
+    margin-top: 5px;
     flex: 1;
 }
 
@@ -401,12 +403,13 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    min-width: 180px;
-    max-width: 260px;
+    min-width: 400px;
+    margin-top: 7px;
+    max-width: 300px;
 }
 
 .cs-route-section-label {
-    font-size: 10px;
+    font-size: 12px;
     letter-spacing: 2.5px;
     color: #8a6a30;
     text-transform: uppercase;
@@ -415,7 +418,7 @@
 }
 
 .cs-route-desc {
-    font-size: 12px;
+    font-size: 15px;
     color: #6a5030;
     line-height: 1.6;
     margin: 0;
@@ -464,9 +467,11 @@
 
 .cargo-route-map-canvas {
     display: block;
-    width: 58%;
+    width: 61%;
     height: auto;
-    margin-left: 350px;
+    margin-left: 260px;
+    margin-top: 8px;
+    margin-bottom: 15px;
 }
 
 .cargo-route-map-loading {
@@ -479,6 +484,34 @@
     color: #7a5a2a;
     font-style: italic;
     z-index: 2;
+}
+
+.cs-header-badges {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.cs-perishable-badge {
+    font-size: 11px;
+    font-weight: bold;
+    padding: 6px 10px;
+    background: rgba(176, 64, 64, 0.1);
+    border: 1px solid #b04040;
+    color: #b04040;
+    white-space: nowrap;
+}
+
+.cs-expired-badge {
+    font-size: 11px;
+    font-weight: bold;
+    padding: 6px 10px;
+    background: rgba(255, 87, 34, 0.1);
+    border: 1px solid #ff5722;
+    color: #c04020;
+    white-space: nowrap;
 }
 
 .cs-expired-warn {

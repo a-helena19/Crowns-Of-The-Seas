@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getSmallMapPort, getSmallMapRoute } from "../game/SmallMapRouteData";
 
 interface CargoRouteMapViewProps {
     fromPortName: string;
@@ -7,64 +8,22 @@ interface CargoRouteMapViewProps {
     toPortId?: string;
 }
 
+
 interface RouteWaypoint {
     x: number;
     y: number;
 }
 
-interface RouteResponse {
-    waypoints: RouteWaypoint[];
-    distance: number;
-}
-
-
 export default function CargoRouteMapView({
                                               fromPortName,
                                               toPortName,
-                                              fromPortId,
-                                              toPortId,
                                           }: CargoRouteMapViewProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [waypoints, setWaypoints] = useState<RouteWaypoint[]>([]);
-    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const ports = window.__latestPorts ?? [];
-        const from = fromPortId
-            ? ports.find((p) => p.id === fromPortId)
-            : ports.find((p) => p.name === fromPortName);
-        const to = toPortId
-            ? ports.find((p) => p.id === toPortId)
-            : ports.find((p) => p.name === toPortName);
-
-        if (!from || !to) {
-            setWaypoints([]);
-            return;
-        }
-
-        const token = localStorage.getItem("auth_token") ?? "";
-        let cancelled = false;
-        setLoading(true);
-
-        fetch(`/api/routes/${from.id}/${to.id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-        })
-            .then((r) => (r.ok ? (r.json() as Promise<RouteResponse>) : null))
-            .then((data) => {
-                if (cancelled) return;
-                setWaypoints(data?.waypoints ?? []);
-            })
-            .catch(() => {
-                if (!cancelled) setWaypoints([]);
-            })
-            .finally(() => {
-                if (!cancelled) setLoading(false);
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [fromPortName, toPortName, fromPortId, toPortId]);
+        setWaypoints(getSmallMapRoute(fromPortName, toPortName));
+    }, [fromPortName, toPortName]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -72,13 +31,8 @@ export default function CargoRouteMapView({
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        const ports = window.__latestPorts ?? [];
-        const from = fromPortId
-            ? ports.find((p) => p.id === fromPortId)
-            : ports.find((p) => p.name === fromPortName);
-        const to = toPortId
-            ? ports.find((p) => p.id === toPortId)
-            : ports.find((p) => p.name === toPortName);
+        const from = getSmallMapPort(fromPortName);
+        const to = getSmallMapPort(toPortName);
 
         const W = canvas.width;
         const H = canvas.height;
@@ -98,14 +52,14 @@ export default function CargoRouteMapView({
             if (!from || !to) return;
 
             const fullPath: RouteWaypoint[] = [
-                { x: from.x, y: from.y },
+                from,
                 ...waypoints,
-                { x: to.x, y: to.y },
+                to,
             ];
 
             if (fullPath.length < 2) return;
 
-
+            // Gerade Linien (kein Bezier)
             ctx.save();
             ctx.shadowColor = "rgba(180, 30, 30, 0.55)";
             ctx.shadowBlur = 6;
@@ -115,106 +69,22 @@ export default function CargoRouteMapView({
             ctx.lineJoin = "round";
             ctx.setLineDash([]);
             ctx.beginPath();
-
-            const p0 = fullPath[0];
-            ctx.moveTo(px(p0.x), py(p0.y));
-
-            function drawSmoothPath(ctx: CanvasRenderingContext2D, points: RouteWaypoint[]) {
-                if (points.length < 2) return;
-
-                const get = (i: number) => points[Math.max(0, Math.min(points.length - 1, i))];
-                ctx.beginPath();
-                ctx.moveTo(px(points[0].x), py(points[0].y));
-
-                for (let i = 0; i < points.length - 1; i++) {
-                    const p0 = get(i - 1);
-                    const p1 = get(i);
-                    const p2 = get(i + 1);
-                    const p3 = get(i + 2);
-
-                    const cp1x = px(p1.x + (p2.x - p0.x) / 6);
-                    const cp1y = py(p1.y + (p2.y - p0.y) / 6);
-
-                    const cp2x = px(p2.x - (p3.x - p1.x) / 6);
-                    const cp2y = py(p2.y - (p3.y - p1.y) / 6);
-
-                    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, px(p2.x), py(p2.y));
-                }
-
-                ctx.stroke();
+            ctx.moveTo(px(fullPath[0].x), py(fullPath[0].y));
+            for (let i = 1; i < fullPath.length; i++) {
+                ctx.lineTo(px(fullPath[i].x), py(fullPath[i].y));
             }
-            drawSmoothPath(ctx, fullPath);
-            const last = fullPath[fullPath.length - 1];
-            ctx.lineTo(px(last.x), py(last.y));
-
             ctx.stroke();
             ctx.restore();
 
-            const drawPin = (
-                xPct: number,
-                yPct: number,
-                label: string,
-                isOrigin: boolean,
-            ) => {
-                const cx = px(xPct);
-                const cy = py(yPct);
-                const r = 5;
-
-                ctx.save();
-                ctx.shadowColor = "rgba(0,0,0,0.5)";
-                ctx.shadowBlur = 4;
-                ctx.beginPath();
-                ctx.arc(cx, cy, r + 1.5, 0, Math.PI * 2);
-                ctx.fillStyle = "#fff";
-                ctx.fill();
-                ctx.restore();
-
-                ctx.beginPath();
-                ctx.arc(cx, cy, r, 0, Math.PI * 2);
-                ctx.fillStyle = isOrigin ? "#2a6e2a" : "#c02828";
-                ctx.fill();
-
-                const fontSize = Math.max(9, Math.round(W / 38));
-                ctx.font = `bold ${fontSize}px Georgia, serif`;
-                const textW = ctx.measureText(label).width;
-                const padX = 5;
-                const padY = 3;
-                const boxW = textW + padX * 2;
-                const boxH = fontSize + padY * 2;
-
-                let lx = cx - boxW / 2;
-                let ly = cy - r - 4 - boxH;
-                if (lx < 2) lx = 2;
-                if (lx + boxW > W - 2) lx = W - boxW - 2;
-                if (ly < 2) ly = cy + r + 4;
-
-                ctx.save();
-                ctx.fillStyle = "rgba(245, 235, 200, 0.92)";
-                ctx.strokeStyle = isOrigin ? "#2a6e2a" : "#c02828";
-                ctx.lineWidth = 1;
-                roundRect(ctx, lx, ly, boxW, boxH, 3);
-                ctx.fill();
-                ctx.stroke();
-
-                ctx.fillStyle = "#1a1208";
-                ctx.fillText(label, lx + padX, ly + padY + fontSize - 1);
-                ctx.restore();
-            };
-
-            drawPin(from.x, from.y, fromPortName, true);
-            drawPin(to.x, to.y, toPortName, false);
+            drawPin(ctx, px, py, from.x, from.y, fromPortName, true, W);
+            drawPin(ctx, px, py, to.x, to.y, toPortName, false, W);
         };
 
         if (img.complete) img.onload?.(new Event("load"));
-    }, [waypoints, fromPortName, toPortName, fromPortId, toPortId]);
+    }, [waypoints, fromPortName, toPortName]);
 
     return (
         <div className="cargo-route-map-wrapper">
-            {loading && (
-                <div className="cargo-route-map-loading">
-                    <span>Berechne Route…</span>
-                </div>
-            )}
             <canvas
                 ref={canvasRef}
                 className="cargo-route-map-canvas"
@@ -225,12 +95,65 @@ export default function CargoRouteMapView({
     );
 }
 
+function drawPin(
+    ctx: CanvasRenderingContext2D,
+    px: (v: number) => number,
+    py: (v: number) => number,
+    xPct: number,
+    yPct: number,
+    label: string,
+    isOrigin: boolean,
+    canvasW: number,
+) {
+    const cx = px(xPct);
+    const cy = py(yPct);
+    const r = 5;
+
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.5)";
+    ctx.shadowBlur = 4;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = "#fff";
+    ctx.fill();
+    ctx.restore();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = isOrigin ? "#2a6e2a" : "#c02828";
+    ctx.fill();
+
+    const fontSize = Math.max(9, Math.round(canvasW / 38));
+    ctx.font = `bold ${fontSize}px Georgia, serif`;
+    const textW = ctx.measureText(label).width;
+    const padX = 5;
+    const padY = 3;
+    const boxW = textW + padX * 2;
+    const boxH = fontSize + padY * 2;
+
+    let lx = cx - boxW / 2;
+    let ly = cy - r - 4 - boxH;
+    if (lx < 2) lx = 2;
+    if (lx + boxW > canvasW - 2) lx = canvasW - boxW - 2;
+    if (ly < 2) ly = cy + r + 4;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(245, 235, 200, 0.92)";
+    ctx.strokeStyle = isOrigin ? "#2a6e2a" : "#c02828";
+    ctx.lineWidth = 1;
+    roundRect(ctx, lx, ly, boxW, boxH, 3);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#1a1208";
+    ctx.fillText(label, lx + padX, ly + padY + fontSize - 1);
+    ctx.restore();
+}
+
 function roundRect(
     ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
+    x: number, y: number,
+    w: number, h: number,
     r: number,
 ) {
     ctx.beginPath();

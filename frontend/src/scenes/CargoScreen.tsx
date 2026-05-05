@@ -39,7 +39,7 @@ const TYPE_COLORS: Record<string, string> = {
     GENERAL_GOODS: "#7a9b6a", FOOD: "#c0874a", INDUSTRIAL_GOODS: "#6a7fa0",
     ELECTRONICS: "#6a5fb0", FRAGILE: "#b08060", HAZARDOUS: "#b04040", LUXURY_GOODS: "#a07030",
 };
-const SPEED_SETTINGS = [0.5, 0.625, 0.75, 0.875, 1.0];
+const SPEED_SETTINGS = [0.25, 0.4, 0.6, 0.8, 1.0];
 interface AcceptedCargo {
     id: string; from: string; to: string; weight: number;
     destinationPortId: string; speedSetting: number; loadingDurationSeconds?: number;
@@ -47,32 +47,6 @@ interface AcceptedCargo {
 const getExpiredRewardPercent = (t: string) =>
     ({ FOOD:0, HAZARDOUS:0, FRAGILE:10, ELECTRONICS:15, LUXURY_GOODS:20, GENERAL_GOODS:40, INDUSTRIAL_GOODS:50 }[t] ?? 0);
 
-
-/** wird im backend noch eingefügt **/
-function getRouteFlavor(from: string, to: string): string {
-    const key = [from, to].sort().join("|");
-    const flavors: Record<string, string> = {
-        "Hamburg|Mumbai":     "Reise über den Suezkanal. Oft erlebt man hier schlechte Wetterbedingungen.",
-        "Mumbai|Rotterdam":   "Reise über den Suezkanal. Oft erlebt man hier schlechte Wetterbedingungen.",
-        "Hamburg|Singapur":   "Lange Passage durch Mittelmeer und Suezkanal. Erfahrene Kapitäne empfohlen.",
-        "Rotterdam|Singapur": "Lange Passage durch Mittelmeer und Suezkanal. Erfahrene Kapitäne empfohlen.",
-        "Hamburg|Shanghai":   "Klassische Ostasien-Route über Suezkanal und Indischen Ozean.",
-        "Hamburg|Sydney":     "Eine der längsten Strecken — durch Suez und über den Indischen Ozean.",
-        "Hamburg|New York":   "Bewährte Atlantikroute. Stabile Winde, vorhersehbare Reisedauer.",
-        "New York|Rotterdam": "Bewährte Atlantikroute. Stabile Winde, vorhersehbare Reisedauer.",
-        "Los Angeles|New York": "Über die Karibik und durch den Panamakanal.",
-        "Los Angeles|Santos": "Lange Strecke entlang der pazifischen Küste, vorbei am Panamakanal.",
-        "Kapstadt|Santos":    "Direkter Atlantikübergang, oft begleitet von rauer See.",
-        "Kapstadt|Singapur":  "Reise durch den Indischen Ozean — Vorsicht vor Monsunwinden.",
-        "Kapstadt|Sydney":    "Südliche Passage entlang des 40. Breitengrads. Kalt aber zuverlässig.",
-        "Mumbai|Singapur":    "Kurze Passage durch den Golf von Bengalen.",
-        "Singapur|Shanghai":  "Geschäftige Route durch das Südchinesische Meer.",
-        "Shanghai|Sydney":    "Pazifische Inselroute mit traumhaften Sonnenuntergängen.",
-        "Singapur|Sydney":    "Reise durch die indonesische Inselwelt nach Australien.",
-    };
-    return flavors[key]
-        ?? `Seeroute von ${from} nach ${to}. Eine ruhige, gut befahrene Strecke.`;
-}
 
 interface Props {
     onCargoAccepted: (cargo: AcceptedCargo) => void;
@@ -93,6 +67,31 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
     const starting = false;
     const [shipInTransit, setShipInTransit] = useState(false);
     const [currentTick, setCurrentTick] = useState<number>(window.__latestTick?.currentTick ?? 0);
+    const [routeDescription, setRouteDescription] = useState<string>("");
+
+    useEffect(() => {
+        if (!selected || !currentPortId) {
+            setRouteDescription("");
+            return;
+        }
+        const token = localStorage.getItem("auth_token") ?? "";
+        let cancelled = false;
+
+        fetch(`/api/routes/${selected.originPortId}/${selected.destinationPortId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+            .then(r => r.ok ? r.json() as Promise<{ description?: string }> : null)
+            .then(data => {
+                if (!cancelled) {
+                    setRouteDescription(data?.description ?? `Seeroute von ${selected.originPortName} nach ${selected.destinationPortName}.`);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setRouteDescription(`Seeroute von ${selected.originPortName} nach ${selected.destinationPortName}.`);
+            });
+
+        return () => { cancelled = true; };
+    }, [selected?.id, selected?.originPortId, selected?.destinationPortId, currentPortId]);
 
     useEffect(() => {
         const onTick = (e: Event) => setCurrentTick((e as CustomEvent<{currentTick:number}>).detail.currentTick);
@@ -183,7 +182,8 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
         playerShipId: currentPortId && !shipInTransit ? playerShipId : null,
         sessionCargoId: selected?.id ?? null, playerId, sessionId, token,
     });
-    const durationBySpeed = Object.fromEntries(durationOptions.map(o => [o.speedSetting, o.durationTicks]));
+    const findDuration = (speed: number) =>
+        durationOptions.find(o => Math.abs(o.speedSetting - speed) < 0.001)?.durationTicks ?? null;
     const currentSpeedOpt = fuelEstimate?.speedOptions[speedIndex] ?? null;
     const canAfford = !fuelEstimate || (currentSpeedOpt?.canAfford ?? false);
     const hasNoAffordableOption = fuelEstimate != null && fuelEstimate.speedOptions.every(o => !o.canAfford);
@@ -222,8 +222,8 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
     if (loading) return <div className="cs-screen"><p className="cs-loading">Lade Frachtbörse…</p></div>;
 
     const startBtnDisabled = !selected || !playerShipId || !currentPortId || shipInTransit || !canAfford || hasNoAffordableOption || starting;
-    const selectedDurationTicks = fuelEstimate && durationBySpeed[SPEED_SETTINGS[speedIndex]] != null
-        ? durationBySpeed[SPEED_SETTINGS[speedIndex]] : null;
+    const selectedDurationTicks = fuelEstimate ? findDuration(SPEED_SETTINGS[speedIndex]) : null;
+
 
     return (
         <div className="cs-screen">
@@ -283,21 +283,35 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
                                             || `${TYPE_LABELS[selected.cargoType]} – Standardfracht ohne besondere Anforderungen.`}
                                     </p>
                                 </div>
-                                {(() => {
-                                    const tl = ticksUntilExpiry(selected);
-                                    if (tl == null) return null;
-                                    return (
-                                        <div className={`cs-expiry-badge ${expiryClass(tl)}`}>
-                                            <div className="cs-expiry-label">VERFÜGBAR NOCH</div>
-                                            <div className="cs-expiry-row">
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/>
-                                                </svg>
-                                                <strong>{tl} {tl === 1 ? "Tag" : "Tage"}</strong>
-                                            </div>
+                                <div className="cs-header-badges">
+                                    {(selected.cargoType === "FOOD" || selected.cargoType === "HAZARDOUS") && (
+                                        <div className="cs-perishable-badge">
+                                            ⚠ {selected.cargoType === "FOOD"
+                                            ? "Verderbliche Ware – schnelle Lieferung erforderlich!"
+                                            : "Gefährliches Material – wird bei Ablauf entsorgt!"}
                                         </div>
-                                    );
-                                })()}
+                                    )}
+                                    {selected.cargoStatus === "EXPIRED" && (
+                                        <div className="cs-expired-badge">
+                                            ⚠ Abgelaufen – nur noch {getExpiredRewardPercent(selected.cargoType)}% Belohnung.
+                                        </div>
+                                    )}
+                                    {(() => {
+                                        const tl = ticksUntilExpiry(selected);
+                                        if (tl == null) return null;
+                                        return (
+                                            <div className={`cs-expiry-badge ${expiryClass(tl)}`}>
+                                                <div className="cs-expiry-label">VERFÜGBAR NOCH</div>
+                                                <div className="cs-expiry-row">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/>
+                                                    </svg>
+                                                    <strong>{tl} {tl === 1 ? "Tag" : "Tage"}</strong>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
                             </div>
 
                             <div className="cs-route-bar">
@@ -331,19 +345,6 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
                                 </div>
                             </div>
 
-                            {(selected.cargoType === "FOOD" || selected.cargoType === "HAZARDOUS") && (
-                                <div className="cs-perishable-warn">
-                                    ⚠ {selected.cargoType === "FOOD"
-                                    ? "Verderbliche Ware – schnelle Lieferung erforderlich!"
-                                    : "Gefährliches Material – wird bei Ablauf entsorgt!"}
-                                </div>
-                            )}
-
-                            {selected.cargoStatus === "EXPIRED" && (
-                                <div className="cs-expired-warn">
-                                    ⚠ Diese Fracht ist abgelaufen. Die Belohnung beträgt nur noch {getExpiredRewardPercent(selected.cargoType)}% des ursprünglichen Wertes.
-                                </div>
-                            )}
 
                             {!playerShipId && <div className="cs-hint">Wähle zuerst ein Schiff aus, um eine Fracht anzunehmen.</div>}
                             {playerShipId && (!currentPortId || shipInTransit) && (
@@ -373,7 +374,7 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
                                             <div className="cs-speed-buttons">
                                                 {fuelEstimate.speedOptions.map((opt, idx) => {
                                                     const dis = !opt.possible || !opt.canAfford;
-                                                    const ticks = durationBySpeed[opt.speedSetting];
+                                                    const ticks = findDuration(opt.speedSetting);
                                                     return (
                                                         <button key={idx} type="button"
                                                                 className={`cs-speed-btn${speedIndex===idx?" cs-speed-btn--active":""}${!opt.possible?" cs-speed-btn--impossible":!opt.canAfford?" cs-speed-btn--unaffordable":""}`}
@@ -381,6 +382,7 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
                                                                 disabled={dis}>
                                                             <span className="cs-speed-name">{opt.label}</span>
                                                             <span className="cs-speed-fuel">−{opt.fuelRequiredAbsolute.toFixed(0)}</span>
+                                                            {ticks != null && <span className="cs-speed-days">{ticks}d</span>}
                                                         </button>
                                                     );
                                                 })}
@@ -396,7 +398,7 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
                                 <div className="cs-bottom-left">
                                     <div className="cs-route-section-label">ROUTE</div>
                                     <p className="cs-route-desc">
-                                        {getRouteFlavor(selected.originPortName, selected.destinationPortName)}
+                                        {routeDescription}
                                     </p>
                                     {selectedDurationTicks != null && (
                                         <div className="cs-duration">{selectedDurationTicks} Tage</div>

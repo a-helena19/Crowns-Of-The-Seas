@@ -189,11 +189,7 @@ export default class Ship {
         this.routeTotalLength = cumulative;
     }
 
-    /**
-     * Map a 0-1 progress value to a position along the polyline.
-     * Progress is proportional to distance, so the ship moves at constant speed
-     * even when segment lengths differ.
-     */
+
     private positionAtProgress(progress: number): Point {
         if (this.routeSegments.length === 0 || this.routeTotalLength <= 0) {
             return { x: this.sprite.x, y: this.sprite.y };

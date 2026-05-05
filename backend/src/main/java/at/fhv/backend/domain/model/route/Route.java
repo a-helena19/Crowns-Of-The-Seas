@@ -1,5 +1,6 @@
 package at.fhv.backend.domain.model.route;
 
+import at.fhv.backend.domain.model.exception.SamePortException;
 import at.fhv.backend.domain.model.port.Coordinates;
 
 import java.util.Collections;
@@ -13,29 +14,31 @@ public class Route {
     private final UUID destinationPortId;
     private final List<Coordinates> waypoints;
     private final double distance;
+    private final String description;
 
     private Route(RouteId id, UUID originPortId, UUID destinationPortId,
-                  List<Coordinates> waypoints, double distance) {
+                  List<Coordinates> waypoints, double distance, String description) {
         this.id = Objects.requireNonNull(id);
         this.originPortId = Objects.requireNonNull(originPortId);
         this.destinationPortId = Objects.requireNonNull(destinationPortId);
         this.waypoints = List.copyOf(Objects.requireNonNull(waypoints));
         this.distance = distance;
+        this.description = description;
     }
 
     public static Route create(UUID originPortId, UUID destinationPortId,
                                Coordinates origin, Coordinates destination,
-                               List<Coordinates> waypoints) {
+                               List<Coordinates> waypoints, String description) {
         if (originPortId.equals(destinationPortId)) {
-            throw new IllegalArgumentException("Origin and destination must differ");
+            throw new SamePortException("Same origin and destination port", originPortId);
         }
         double distance = computeDistance(origin, destination, waypoints);
-        return new Route(RouteId.generate(), originPortId, destinationPortId, waypoints, distance);
+        return new Route(RouteId.generate(), originPortId, destinationPortId, waypoints, distance, description);
     }
 
     public static Route reconstruct(RouteId id, UUID originPortId, UUID destinationPortId,
-                                    List<Coordinates> waypoints, double distance) {
-        return new Route(id, originPortId, destinationPortId, waypoints, distance);
+                                    List<Coordinates> waypoints, double distance, String description) {
+        return new Route(id, originPortId, destinationPortId, waypoints, distance, description);
     }
 
     private static double computeDistance(Coordinates origin, Coordinates destination,
@@ -69,5 +72,9 @@ public class Route {
 
     public double getDistance() {
         return distance;
+    }
+
+    public String getDescription() {
+        return description;
     }
 }
