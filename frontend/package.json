@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@types/stompjs": "^2.3.10",
+    "three": "^0.169.0",
     "axios": "^1.15.0",
     "phaser": "^3.90.0",
     "react": "^19.2.4",
@@ -25,6 +26,7 @@
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.169.0",
     "@types/sockjs-client": "^1.5.4",
     "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^9.39.4",

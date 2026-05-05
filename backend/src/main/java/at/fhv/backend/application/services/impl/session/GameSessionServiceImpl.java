@@ -63,7 +63,6 @@ public class GameSessionServiceImpl implements GameSessionService {
         session.addPlayer(player);
         SessionDTO savedSession = sessionDTOMapper.sessionToDTO(gameSessionRepository.save(session));
 
-        // Broadcast update to all connected clients
         SessionUpdateEvent event = new SessionUpdateEvent(
                 session.getId(),
                 session.getGameCode(),

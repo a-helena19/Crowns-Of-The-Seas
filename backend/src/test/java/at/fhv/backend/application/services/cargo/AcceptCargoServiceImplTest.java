@@ -64,15 +64,13 @@ class AcceptCargoServiceImplTest {
     }
 
     private SessionCargo buildAvailableSessionCargo(UUID sessionId, int spawnTick) {
-        SessionCargo cargo = SessionCargo.create(
+        return SessionCargo.create(
                 UUID.randomUUID(), sessionId,
                 UUID.randomUUID(), UUID.randomUUID(),
                 BigDecimal.valueOf(1000), false,
                 50, CargoType.GENERAL_GOODS, 0.1,
-                spawnTick, 100
+                spawnTick, 100, false
         );
-        cargo.activate();
-        return cargo;
     }
 
     private Ship buildShip(int maxCargoCapacity, double maxSpeed) {

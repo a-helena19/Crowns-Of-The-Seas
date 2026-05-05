@@ -9,10 +9,9 @@ public class CargoRewardBreakdown {
     private BigDecimal baseReward;
     private BigDecimal actualReward;
     private int percentage;
-    private String status;  // "DELIVERED" oder "EXPIRED"
+    private String status;
     private String cargoType;
 
-    // Constructor
     public CargoRewardBreakdown(String cargoId, String cargoName,
                                 String destinationPort, BigDecimal baseReward,
                                 BigDecimal actualReward, int percentage,
@@ -27,7 +26,6 @@ public class CargoRewardBreakdown {
         this.cargoType = cargoType;
     }
 
-    // Getters
     public String getCargoId() {
         return cargoId;
     }

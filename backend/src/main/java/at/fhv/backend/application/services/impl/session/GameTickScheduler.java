@@ -4,7 +4,6 @@ import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.TravelArrivalService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
-import at.fhv.backend.domain.model.cargo.CargoType;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
 import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
 import at.fhv.backend.domain.model.session.GameSession;
@@ -50,6 +49,7 @@ public class GameTickScheduler {
     private final GameSessionWebSocketController webSocketController;
     private final TravelArrivalService travelArrivalService;
     private final CargoUnloadingPhaseService cargoUnloadingPhaseService;
+    private final CargoSessionInitializer cargoSessionInitializer;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
     private final Map<UUID, ScheduledFuture<?>> runningTasks = new ConcurrentHashMap<>();
@@ -68,7 +68,8 @@ public class GameTickScheduler {
                              CargoWebSocketController cargoWebSocketController,
                              GameSessionWebSocketController webSocketController,
                              TravelArrivalService travelArrivalService,
-                             CargoUnloadingPhaseService cargoUnloadingPhaseService) {
+                             CargoUnloadingPhaseService cargoUnloadingPhaseService,
+                             CargoSessionInitializer cargoSessionInitializer) {
         this.gameSessionRepository = gameSessionRepository;
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
@@ -79,6 +80,7 @@ public class GameTickScheduler {
         this.webSocketController = webSocketController;
         this.travelArrivalService = travelArrivalService;
         this.cargoUnloadingPhaseService = cargoUnloadingPhaseService;
+        this.cargoSessionInitializer = cargoSessionInitializer;
     }
 
 
@@ -350,8 +352,7 @@ public class GameTickScheduler {
 
         for (SessionCargo sc : all) {
             if (sc.isExpiredAt(currentTick)) {
-                int cooldown = CargoSessionInitializer.randomizedCooldownFor(sc.getCargoType(), rng);
-                sc.expire(currentTick + cooldown);
+                sc.expire();
                 sessionCargoRepository.save(sc);
                 changed = true;
                 System.out.println("[CargoExpiry] Cargo " + sc.getId() + " expired at tick " + currentTick);
@@ -368,49 +369,49 @@ public class GameTickScheduler {
         }
 
         for (Map.Entry<UUID, List<SessionCargo>> entry : byPort.entrySet()) {
+            UUID portId = entry.getKey();
             List<SessionCargo> portCargos = entry.getValue();
 
-            long activeCount = portCargos.stream()
-                    .filter(sc -> sc.getCargoStatus() == CargoStatus.AVAILABLE)
-                    .count();
-
+            long activeCount = 0;
+            boolean hasPermanent = false;
             for (SessionCargo sc : portCargos) {
-                boolean isInitialSpawn = sc.getCargoStatus() == CargoStatus.INACTIVE
-                        && sc.getSpawnTick() <= currentTick
-                        && sc.getCooldownUntilTick() < 0;
-
-                boolean isRespawn = sc.shouldRespawnAt(currentTick);
-
-                if ((isInitialSpawn || isRespawn) && activeCount < MAX_ACTIVE_CARGOS_PER_PORT) {
-                    double spawnChance = spawnChanceFor(sc.getCargoType());
-                    if (rng.nextDouble() < spawnChance) {
-                        System.out.println("[CargoRespawn] Cargo " + sc.getId() + " respawning at port " + entry.getKey()
-                                + " (status=" + sc.getCargoStatus() + ", cooldownUntil=" + sc.getCooldownUntilTick()
-                                + ", currentTick=" + currentTick + ")");
-                        sc.activate();
-                        sessionCargoRepository.save(sc);
-                        activeCount++;
-                        changed = true;
+                if (sc.getCargoStatus() == CargoStatus.AVAILABLE) {
+                    activeCount++;
+                    if (sc.isPermanent()) {
+                        hasPermanent = true;
                     }
                 }
+            }
+
+            if (!hasPermanent && activeCount < MAX_ACTIVE_CARGOS_PER_PORT) {
+                SessionCargo newPermanent = cargoSessionInitializer.createNewCargo(sessionId, portId, currentTick, rng, true);
+                if (newPermanent != null) {
+                    sessionCargoRepository.save(newPermanent);
+                    activeCount++;
+                    changed = true;
+                    System.out.println("[CargoSpawn] New permanent cargo " + newPermanent.getId()
+                            + " spawned at port " + portId + " at tick " + currentTick);
+                }
+            }
+
+            // Spawn new disposable cargos to fill up
+            while (activeCount < MAX_ACTIVE_CARGOS_PER_PORT) {
+                double spawnChance = 0.25;
+                if (rng.nextDouble() >= spawnChance) {
+                    break;
+                }
+                SessionCargo newCargo = cargoSessionInitializer.createNewCargo(sessionId, portId, currentTick, rng, false);
+                if (newCargo == null) break;
+                sessionCargoRepository.save(newCargo);
+                activeCount++;
+                changed = true;
+                System.out.println("[CargoSpawn] New cargo " + newCargo.getId()
+                        + " spawned at port " + portId + " at tick " + currentTick);
             }
         }
 
         if (changed) {
             cargoWebSocketController.broadcastMarketUpdate(sessionId);
         }
-    }
-
-
-    private double spawnChanceFor(CargoType type) {
-        return switch (type) {
-            case GENERAL_GOODS -> 0.35;
-            case FOOD -> 0.30;
-            case INDUSTRIAL_GOODS -> 0.25;
-            case FRAGILE -> 0.20;
-            case ELECTRONICS -> 0.15;
-            case HAZARDOUS -> 0.12;
-            case LUXURY_GOODS -> 0.08;
-        };
     }
 }

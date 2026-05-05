@@ -86,8 +86,7 @@ class CargoSessionIntegrationTest {
         SessionCargo sc = SessionCargo.create(
                 cargoId, sessionId, originPortId, destPortId,
                 BigDecimal.valueOf(800), false, capacity,
-                CargoType.GENERAL_GOODS, 0.1, 0, 200);
-        sc.activate();
+                CargoType.GENERAL_GOODS, 0.1, 0, 200, false);
         return sessionCargoRepository.save(sc);
     }
 

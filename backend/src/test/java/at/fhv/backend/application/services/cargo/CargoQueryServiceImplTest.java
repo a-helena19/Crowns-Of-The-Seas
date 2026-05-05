@@ -64,12 +64,10 @@ class CargoQueryServiceImplTest {
     }
 
     private SessionCargo buildAvailableSessionCargo(UUID sessionId, UUID originPortId, UUID destPortId) {
-        SessionCargo cargo = SessionCargo.create(
+        return SessionCargo.create(
                 UUID.randomUUID(), sessionId, originPortId, destPortId,
                 BigDecimal.valueOf(800), false, 40,
-                CargoType.FOOD, 0.2, 0, 100);
-        cargo.activate();
-        return cargo;
+                CargoType.FOOD, 0.2, 0, 100, false);
     }
 
     @Test

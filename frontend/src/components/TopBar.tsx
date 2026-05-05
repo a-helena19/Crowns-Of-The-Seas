@@ -1,5 +1,10 @@
 import { TOP_BAR_HEIGHT } from '../scenes/GameScreen';
 import { useEffect, useState } from 'react';
+import '../style/topbar.css';
+import moneyIcon from "../assets/icon-money.png";
+import timeIcon from "../assets/icon-clock.png";
+import shipIcon from "../assets/icon-ship.png";
+
 
 export default function TopBar() {
     const [balance, setBalance] = useState<number | null>(null);
@@ -55,45 +60,35 @@ export default function TopBar() {
     }, []);
 
     return (
-        <div style={{
-            height: TOP_BAR_HEIGHT,
-            flexShrink: 0,
-            background: 'linear-gradient(135deg, #0a1628 0%, #132744 50%, #0d1f3c 100%)',
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 16px',
-            justifyContent: 'space-between',
-            boxShadow: '0 4px 12px 4px rgba(0,0,0,0.6)',
-            zIndex: 1,
-        }}>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                <span>💵 {balance !== null ? balance.toLocaleString('de') : '...'}</span>
-                <span>🚢 {shipCount !== null ? `${shipCount} Schiff${shipCount !== 1 ? 'e' : ''}` : '...'}</span>
-                <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
-                    Tag {currentTick !== null ? currentTick : '1'}
-                    {totalTicks !== null && (
-                        <span style={{ opacity: 0.6, fontSize: '12px', marginLeft: '4px' }}>
-                            / {totalTicks}
-                        </span>
-                    )}
-                </span>
+        <div className="topbar-container" style={{ height: TOP_BAR_HEIGHT }}>
+            <div className="topbar-left">
+                <div className="topbar-panel">
+                    <img src={moneyIcon} alt="" className="topbar-icon" />
+                    <span className="topbar-value">
+                        {balance !== null ? balance.toLocaleString('de') : '...'} T
+                    </span>
+                </div>
+                <div className="topbar-panel">
+                    <img src={shipIcon} alt="" className="topbar-icon" />
+                    <span className="topbar-value">
+                        {shipCount !== null ? `${shipCount} Schiffe` : '...'}
+                    </span>
+                </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <button style={{ ...btnStyle, fontSize: '18px', padding: '6px 10px' }}>⚙️</button>
+            <div className="topbar-center">
+                <div className="topbar-panel">
+                    <img src={timeIcon} alt="" className="topbar-icon" />
+                    <span className="topbar-value">
+                        Tag {currentTick !== null ? currentTick : '1'}
+                        {totalTicks !== null && (
+                            <span className="topbar-total"> / {totalTicks}</span>
+                        )}
+                    </span>
+                </div>
             </div>
+
+            <div className="topbar-right" />
         </div>
     );
 }
-
-const btnStyle: React.CSSProperties = {
-    background: 'transparent',
-    border: '1px solid white',
-    borderRadius: '20px',
-    padding: '6px 18px',
-    fontSize: '14px',
-    cursor: 'pointer',
-    fontWeight: 500,
-};

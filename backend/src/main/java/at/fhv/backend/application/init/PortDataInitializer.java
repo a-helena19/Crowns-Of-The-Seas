@@ -5,11 +5,13 @@ import at.fhv.backend.domain.model.port.Port;
 import at.fhv.backend.domain.model.port.PortRepository;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
+@Order(1)
 public class PortDataInitializer implements ApplicationRunner {
 
     private final PortRepository portRepository;

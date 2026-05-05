@@ -1,6 +1,5 @@
 package at.fhv.backend.application.services.impl.travel;
 
-import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.RewardCalculationService;
 import at.fhv.backend.domain.model.cargo.Cargo;
@@ -25,12 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 
 @Service
 public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseService {
-
     private final SessionCargoRepository sessionCargoRepository;
     private final PlayerShipRepository playerShipRepository;
     private final GameSessionRepository gameSessionRepository;
@@ -38,7 +35,6 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
     private final GameSessionWebSocketController webSocketController;
     private final PortRepository portRepository;
     private final CargoRepository cargoRepository;
-    private final Random rng = new Random();
 
     public CargoUnloadingPhaseServiceImpl(
             SessionCargoRepository sessionCargoRepository,
@@ -63,7 +59,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         // Two-phase unloading so the reward calculation sees the correct cargo statuses:
         // 1) Mark ASSIGNED cargos as DELIVERED (EXPIRED stays EXPIRED).
         // 2) Calculate the reward — RewardCalculationService filters by DELIVERED/EXPIRED.
-        // 3) Pay out, send event, then start the cooldown (status -> INACTIVE).
+        // 3) Pay out, send event. Cargos stay DELIVERED/EXPIRED (no recycling).
         markCargosAsDelivered(travel, cargosForPlayer);
 
         BigDecimal totalReward = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
@@ -89,11 +85,13 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             }
         }
 
-        // Send the event while cargos are still DELIVERED/EXPIRED so the breakdown is correct.
         sendUnloadingCompleteEvent(travel, playerId, cargosForPlayer, previousBalance, newBalance);
 
-        // Now move cargos into INACTIVE (cooldown).
-        startCargoCooldowns(travel, cargosForPlayer);
+        for (SessionCargo cargo : cargosForPlayer) {
+            if (isCargoForThisTravel(cargo, travel)) {
+                sessionCargoRepository.save(cargo);
+            }
+        }
 
         PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
         if (ship != null) {
@@ -119,27 +117,6 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                 cargo.deliver();
                 System.out.println("[CargoUnloading] Cargo " + cargo.getId()
                         + " delivered at port " + travel.getDestinationPortId());
-            }
-        }
-    }
-
-    private void startCargoCooldowns(Travel travel, List<SessionCargo> cargosForPlayer) {
-        for (SessionCargo cargo : cargosForPlayer) {
-            // After delivery the cargo is DELIVERED; expired cargos that were unloaded stay EXPIRED.
-            // Both should now go into the cooldown (INACTIVE) phase.
-            boolean isForThisShipAndPort = cargo.getAssignedPlayerShipId() != null
-                    && cargo.getAssignedPlayerShipId().equals(travel.getPlayerShipId())
-                    && cargo.getDestinationPortId().equals(travel.getDestinationPortId());
-            boolean isDeliveredOrExpired = cargo.getCargoStatus() == CargoStatus.DELIVERED
-                    || cargo.getCargoStatus() == CargoStatus.EXPIRED;
-
-            if (isForThisShipAndPort && isDeliveredOrExpired) {
-                int cooldown = CargoSessionInitializer.randomizedCooldownFor(cargo.getCargoType(), rng);
-                cargo.startCooldown(travel.getArrivalTick() + cooldown);
-                System.out.println("[CargoUnloading] Cargo " + cargo.getId()
-                        + " set to INACTIVE with cooldown until tick "
-                        + (travel.getArrivalTick() + cooldown));
-                sessionCargoRepository.save(cargo);
             }
         }
     }

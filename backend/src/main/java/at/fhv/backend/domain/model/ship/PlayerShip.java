@@ -4,7 +4,6 @@ import at.fhv.backend.domain.model.exception.InvalidShipStatusTransition;
 
 import java.util.UUID;
 
-//session id, x, y
 public class PlayerShip {
     private final UUID id;
     private final UUID shipId;
