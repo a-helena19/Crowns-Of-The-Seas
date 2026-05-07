@@ -12,8 +12,8 @@ import CargoManagementScreen from "../scenes/CargoManagementScreen";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
 import RewardToast from "../components/RewardToast.tsx";
 
-export const TOP_BAR_HEIGHT = '8vh';
-export const BOTTOM_BAR_HEIGHT = '25vh';
+export const TOP_BAR_HEIGHT = '9vh';
+export const BOTTOM_BAR_HEIGHT = '20vh';
 
 export default function GameScreen() {
     const [view, setView] = useState<"map" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office">("map");

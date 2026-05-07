@@ -21,7 +21,6 @@ public record ShipPositionsUpdateEvent(
             double y,
             String status,
             Integer arrivalTick,
-            // Routen-Daten für client-seitige Echtzeit-Interpolation
             Double originX,
             Double originY,
             Double destX,

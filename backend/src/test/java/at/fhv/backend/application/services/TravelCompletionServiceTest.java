@@ -61,7 +61,7 @@ class TravelCompletionServiceTest {
                     UUID.randomUUID(), destinationPortId,
                     reward, false, 50,
                     type, 0.1,
-                    CargoStatus.ASSIGNED, UUID.randomUUID(), UUID.randomUUID(), 0, 5, -1, -1
+                    CargoStatus.ASSIGNED, UUID.randomUUID(), UUID.randomUUID(), 0, 0, -1, -1
             );
             cargo.deliver();
             return cargo;
@@ -74,7 +74,7 @@ class TravelCompletionServiceTest {
                     UUID.randomUUID(), destinationPortId,
                     reward, false, 50,
                     type, 0.1,
-                    CargoStatus.EXPIRED, UUID.randomUUID(), UUID.randomUUID(), 0, 3, 3, -1
+                    CargoStatus.EXPIRED, UUID.randomUUID(), UUID.randomUUID(), 0, 0, 3, -1
             );
         }
 
@@ -381,9 +381,7 @@ class TravelCompletionServiceTest {
         }
 
         @Test
-        void givenAssignedCargo_whenCompleteUnloadingPhase_thenCargoEndsAsInactive() {
-            // Confirms the unload still happens after reward calculation:
-            // cargo must be INACTIVE (cooldown) once the phase is done.
+        void givenAssignedCargo_whenCompleteUnloadingPhase_thenCargoEndsAsDelivered() {
             UUID userId = UUID.randomUUID();
             UUID sessionId = UUID.randomUUID();
             UUID playerShipId = UUID.randomUUID();
@@ -401,7 +399,7 @@ class TravelCompletionServiceTest {
                     UUID.randomUUID(), destinationPortId,
                     BigDecimal.valueOf(1000), false, 50,
                     CargoType.GENERAL_GOODS, 0.1,
-                    CargoStatus.ASSIGNED, userId, playerShipId, 0, 5, -1, -1
+                    CargoStatus.ASSIGNED, userId, playerShipId, 0, 0, -1, -1
             );
 
             when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
@@ -414,9 +412,8 @@ class TravelCompletionServiceTest {
 
             service.completeUnloadingPhase(travel, List.of(cargo));
 
-            // Reward got paid (1000) AND cargo is now in cooldown.
             assertThat(player.getBalance()).isEqualByComparingTo(new BigDecimal("41000.00"));
-            assertThat(cargo.getCargoStatus()).isEqualTo(CargoStatus.INACTIVE);
+            assertThat(cargo.getCargoStatus()).isEqualTo(CargoStatus.DELIVERED);
         }
     }
 }

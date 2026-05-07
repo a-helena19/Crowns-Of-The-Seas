@@ -28,13 +28,13 @@ export default function Sidebar({
             />
 
             <SidebarButton
-                label="Ship Broker"
+                label="Schiffsmarkt"
                 active={currentView === "broker"}
                 onClick={onOpenBroker}
             />
 
             <SidebarButton
-                label="Start Travel"
+                label="Reise starten"
                 onClick={onStartAction}
             />
 
