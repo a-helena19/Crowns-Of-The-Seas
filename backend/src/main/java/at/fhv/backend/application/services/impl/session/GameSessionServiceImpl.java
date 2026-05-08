@@ -5,6 +5,10 @@ import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.application.services.session.GameSessionService;
 import at.fhv.backend.domain.model.player.BaseSessionPlayer;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
+import at.fhv.backend.domain.model.player.PlayerFaction;
+import at.fhv.backend.domain.model.player.exception.FactionAlreadyAssignedException;
+import at.fhv.backend.domain.model.player.exception.InvalidFactionException;
+import at.fhv.backend.domain.model.player.exception.PlayerNotFoundException;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.session.exception.SessionNotFoundException;
@@ -18,6 +22,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -183,15 +188,27 @@ public class GameSessionServiceImpl implements GameSessionService {
         return savedSession;
     }
 
-    /*
-    // TODO: remove this commented out code once faction is needed in sprint2
     @Override
-    public SessionDTO assignFaction(UUID sessionId, UUID userId,
-                                    PlayerFaction faction) {
+    public void assignPlayerFaction(UUID sessionId, UUID userId, String factionName) {
         GameSession session = gameSessionRepository.findById(sessionId)
-            .orElseThrow(() -> new SessionNotFoundException(sessionId));
-        session.assignPlayerFaction(userId, faction);
-        return sessionDTOMapper.sessionToDTO(gameSessionRepository.save(session));
+                .orElseThrow(() -> new SessionNotFoundException(sessionId));
+
+        try {
+            PlayerFaction faction = PlayerFaction.valueOf(factionName.toUpperCase());
+
+            session.assignPlayerFaction(userId, faction);
+
+            gameSessionRepository.save(session);
+
+        } catch (IllegalArgumentException e) {
+            throw new InvalidFactionException(factionName);
+        }
     }
-     */
+
+    @Override
+    public Optional<PlayerFaction> getPlayerFaction(UUID sessionId, UUID userId) {
+        GameSession session = gameSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new SessionNotFoundException(sessionId));
+        return session.getPlayerFaction(userId);
+    }
 }

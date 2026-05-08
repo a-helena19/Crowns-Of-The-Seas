@@ -1,9 +1,11 @@
 package at.fhv.backend.application.services.session;
 
+import at.fhv.backend.domain.model.player.PlayerFaction;
 import at.fhv.backend.rest.dtos.session.response.SessionDTO;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface GameSessionService {
@@ -13,7 +15,6 @@ public interface GameSessionService {
     SessionDTO changeTickRate(UUID sessionId, UUID hostUserId, int tickRateSeconds);
     List<SessionDTO> getActiveSessionsForUser(UUID userId);
     SessionDTO leaveSession(UUID sessionId, UUID userId);
-
-    // TODO: Implement assignFaction methods in the future
-    // SessionDTO assignFaction(UUID sessionId, UUID userId, PlayerFaction faction)
+    void assignPlayerFaction(UUID sessionId, UUID userId, String factionName);
+    Optional<PlayerFaction> getPlayerFaction(UUID sessionId, UUID userId);
 }

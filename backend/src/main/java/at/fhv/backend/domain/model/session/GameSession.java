@@ -123,19 +123,21 @@ public class GameSession {
         }
     }
 
-    // TODO: assignPlayerFaction in sprint2
-    /*
     public void assignPlayerFaction(UUID userId, PlayerFaction faction) {
-        boolean exists = players.stream()
+        boolean playerExists = players.stream()
                 .anyMatch(p -> p.getUserId().equals(userId));
-        if (!exists)
+        if (!playerExists)
             throw new PlayerNotFoundException(userId);
+
         if (playerFactions.containsKey(userId))
             throw new FactionAlreadyAssignedException(userId);
+
         playerFactions.put(userId, faction);
     }
 
-     */
+    public Optional<PlayerFaction> getPlayerFaction(UUID userId) {
+        return Optional.ofNullable(playerFactions.get(userId));
+    }
 
     public void tick() {
         if (status != SessionStatus.RUNNING) return;
