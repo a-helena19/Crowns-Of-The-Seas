@@ -5,6 +5,7 @@ import at.fhv.backend.rest.dtos.session.response.SessionDTO;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,4 +18,6 @@ public interface GameSessionService {
     SessionDTO leaveSession(UUID sessionId, UUID userId);
     void assignPlayerFaction(UUID sessionId, UUID userId, String factionName);
     Optional<PlayerFaction> getPlayerFaction(UUID sessionId, UUID userId);
+    void markPlayerReady(UUID sessionId, UUID userId);
+    Map<String, Object> getSessionReadyStatus(UUID sessionId);
 }

@@ -1,7 +1,6 @@
 package at.fhv.backend.application.services.cargo;
 
 
-import at.fhv.backend.application.services.cargo.PortDistanceForCargoService;
 import at.fhv.backend.application.services.impl.cargo.AcceptCargoServiceImpl;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.domain.model.cargo.*;
@@ -136,7 +135,7 @@ class AcceptCargoServiceImplTest {
 
         SessionCargo cargo = SessionCargo.create(
                 UUID.randomUUID(), sessionId, UUID.randomUUID(), UUID.randomUUID(),
-                BigDecimal.valueOf(500), false, 30, CargoType.FOOD, 0.1, 10, 100);
+                BigDecimal.valueOf(500), false, 30, CargoType.FOOD, 0.1, 10, 100, false);
 
         when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
         when(sessionCargoRepository.findByIdForUpdate(cargo.getId())).thenReturn(Optional.of(cargo));

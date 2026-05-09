@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -108,12 +109,11 @@ public class GameSessionServiceImpl implements GameSessionService {
                                 p.getPlayerName(),
                                 p.isHost()))
                         .collect(Collectors.toList()),
-                "GAME_STARTED"
+                "GAME_TRANSITION_STARTED"  // Animation startet jetzt im Frontend
         );
         webSocketController.broadcastSessionUpdate(session.getId().toString(), event);
 
         cargoSessionInitializer.initializeForSession(sessionId);
-        gameTickScheduler.startForSession(session.getId(), session.getTickRateSeconds());
 
         List<PortResponseDTO> ports = portQueryService.findAll();
         PortsUpdateEvent portsEvent = new PortsUpdateEvent(
@@ -195,10 +195,25 @@ public class GameSessionServiceImpl implements GameSessionService {
 
         try {
             PlayerFaction faction = PlayerFaction.valueOf(factionName.toUpperCase());
-
             session.assignPlayerFaction(userId, faction);
-
             gameSessionRepository.save(session);
+
+            // Broadcast zum Frontend
+            SessionUpdateEvent event = new SessionUpdateEvent(
+                    session.getId(),
+                    session.getGameCode(),
+                    session.getStatus().toString(),
+                    session.getPlayers().size(),
+                    session.getMaxPlayers(),
+                    session.getPlayers().stream()
+                            .map(p -> new SessionUpdateEvent.PlayerInfo(
+                                    p.getUserId(),
+                                    p.getPlayerName(),
+                                    p.isHost()))
+                            .collect(Collectors.toList()),
+                    "PLAYER_FACTION_ASSIGNED"
+            );
+            webSocketController.broadcastSessionUpdate(session.getId().toString(), event);
 
         } catch (IllegalArgumentException e) {
             throw new InvalidFactionException(factionName);
@@ -210,5 +225,70 @@ public class GameSessionServiceImpl implements GameSessionService {
         GameSession session = gameSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new SessionNotFoundException(sessionId));
         return session.getPlayerFaction(userId);
+    }
+
+    @Override
+    public void markPlayerReady(UUID sessionId, UUID userId) {
+        GameSession session = gameSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new SessionNotFoundException(sessionId));
+
+        session.markPlayerReady(userId);
+        gameSessionRepository.save(session);
+
+        SessionUpdateEvent event = new SessionUpdateEvent(
+                session.getId(),
+                session.getGameCode(),
+                session.getStatus().toString(),
+                session.getPlayers().size(),
+                session.getMaxPlayers(),
+                session.getPlayers().stream()
+                        .map(p -> new SessionUpdateEvent.PlayerInfo(
+                                p.getUserId(),
+                                p.getPlayerName(),
+                                p.isHost()))
+                        .collect(Collectors.toList()),
+                "PLAYER_READY"
+        );
+        webSocketController.broadcastSessionUpdate(session.getId().toString(), event);
+
+        if (session.areAllPlayersReady()) {
+            startGameAutomatically(sessionId);
+        }
+    }
+
+    private void startGameAutomatically(UUID sessionId) {
+        GameSession session = gameSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new SessionNotFoundException(sessionId));
+
+        gameTickScheduler.startForSession(session.getId(), session.getTickRateSeconds());
+
+        SessionUpdateEvent event = new SessionUpdateEvent(
+                session.getId(),
+                session.getGameCode(),
+                session.getStatus().toString(),
+                session.getPlayers().size(),
+                session.getMaxPlayers(),
+                session.getPlayers().stream()
+                        .map(p -> new SessionUpdateEvent.PlayerInfo(
+                                p.getUserId(),
+                                p.getPlayerName(),
+                                p.isHost()))
+                        .collect(Collectors.toList()),
+                "GAME_STARTED"
+        );
+        webSocketController.broadcastSessionUpdate(session.getId().toString(), event);
+    }
+
+    @Override
+    public Map<String, Object> getSessionReadyStatus(UUID sessionId) {
+        GameSession session = gameSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new SessionNotFoundException(sessionId));
+
+        return Map.of(
+                "sessionId", sessionId,
+                "readyPlayers", session.getReadyPlayers(),
+                "totalPlayers", session.getPlayers().size(),
+                "allReady", session.areAllPlayersReady()
+        );
     }
 }

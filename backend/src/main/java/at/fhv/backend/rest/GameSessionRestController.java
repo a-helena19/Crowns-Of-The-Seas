@@ -92,9 +92,6 @@ public class GameSessionRestController {
         return ResponseEntity.ok(gameSessionService.leaveSession(id, userId));
     }
 
-    /**
-     * Weist einem Spieler in einer Session eine Faction zu.
-     */
     @PostMapping("/{sessionId}/players/{userId}/faction")
     public ResponseEntity<?> assignPlayerFaction(
             @PathVariable UUID sessionId,
@@ -104,12 +101,10 @@ public class GameSessionRestController {
         try {
             gameSessionService.assignPlayerFaction(sessionId, userId, request.faction());
             return ResponseEntity.ok().build();
-        } catch (SessionNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        } catch (PlayerNotFoundException e) {
-            return ResponseEntity.badRequest().body("Player not found in session");
+        } catch (SessionNotFoundException | PlayerNotFoundException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (FactionAlreadyAssignedException e) {
-            return ResponseEntity.badRequest().body("Faction already assigned");
+            return ResponseEntity.badRequest().body("Faction already assigned for this player");
         } catch (InvalidFactionException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -125,6 +120,31 @@ public class GameSessionRestController {
             return ResponseEntity.ok(Map.of("faction", faction.get()));
         } else {
             return ResponseEntity.ok(Map.of("faction", (String) null));
+        }
+    }
+
+    @PostMapping("/{sessionId}/players/{userId}/ready")
+    public ResponseEntity<?> markPlayerReady(
+            @PathVariable UUID sessionId,
+            @PathVariable UUID userId) {
+
+        try {
+            gameSessionService.markPlayerReady(sessionId, userId);
+            return ResponseEntity.ok().build();
+        } catch (SessionNotFoundException | PlayerNotFoundException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (InvalidFactionException e) {
+            return ResponseEntity.badRequest().body("Player must select faction first");
+        }
+    }
+
+    @GetMapping("/{sessionId}/ready-status")
+    public ResponseEntity<?> getReadyStatus(@PathVariable UUID sessionId) {
+        try {
+            Map<String, Object> status = gameSessionService.getSessionReadyStatus(sessionId);
+            return ResponseEntity.ok(status);
+        } catch (SessionNotFoundException e) {
+            return ResponseEntity.notFound().build();
         }
     }
 

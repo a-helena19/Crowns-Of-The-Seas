@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class GameSession {
 
@@ -25,6 +26,7 @@ public class GameSession {
     private final Map<UUID, PlayerFaction> playerFactions;
     private LocalDateTime startTime;
     private final Duration duration;
+    private final Map<UUID, Boolean> playerReadyStatus = new HashMap<>();
 
     public GameSession(UUID hostUserId, int maxPlayers, int tickRateSeconds, int totalTicks, Duration duration) {
         this.id = UUID.randomUUID();
@@ -137,6 +139,38 @@ public class GameSession {
 
     public Optional<PlayerFaction> getPlayerFaction(UUID userId) {
         return Optional.ofNullable(playerFactions.get(userId));
+    }
+
+    public void markPlayerReady(UUID userId) {
+        if (!players.stream().anyMatch(p -> p.getUserId().equals(userId)))
+            throw new PlayerNotFoundException(userId);
+
+        if (!playerFactions.containsKey(userId))
+            throw new InvalidFactionException("Player must select faction first");
+
+        playerReadyStatus.put(userId, true);
+    }
+
+    public boolean areAllPlayersReady() {
+        if (playerFactions.size() != players.size())
+            return false;
+
+        if (playerReadyStatus.size() != players.size())
+            return false;
+
+        return playerReadyStatus.values().stream().allMatch(b -> b);
+    }
+
+    public void resetReadyStatus() {
+        playerReadyStatus.clear();
+    }
+
+
+    public List<UUID> getReadyPlayers() {
+        return playerReadyStatus.entrySet().stream()
+                .filter(Map.Entry::getValue)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
     }
 
     public void tick() {
