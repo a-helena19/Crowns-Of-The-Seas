@@ -79,7 +79,10 @@ public class GameSessionServiceImpl implements GameSessionService {
                         .map(p -> new SessionUpdateEvent.PlayerInfo(
                                 p.getUserId(),
                                 p.getPlayerName(),
-                                p.isHost()))
+                                p.isHost(),
+                                session.getPlayerFactions().get(p.getUserId()) != null
+                                        ? session.getPlayerFactions().get(p.getUserId()).name()
+                                        : null))
                         .collect(Collectors.toList()),
                 "PLAYER_JOINED"
         );
@@ -107,7 +110,10 @@ public class GameSessionServiceImpl implements GameSessionService {
                         .map(p -> new SessionUpdateEvent.PlayerInfo(
                                 p.getUserId(),
                                 p.getPlayerName(),
-                                p.isHost()))
+                                p.isHost(),
+                                session.getPlayerFactions().get(p.getUserId()) != null
+                                        ? session.getPlayerFactions().get(p.getUserId()).name()
+                                        : null))
                         .collect(Collectors.toList()),
                 "GAME_TRANSITION_STARTED"  // Animation startet jetzt im Frontend
         );
@@ -179,7 +185,10 @@ public class GameSessionServiceImpl implements GameSessionService {
                         .map(p -> new SessionUpdateEvent.PlayerInfo(
                                 p.getUserId(),
                                 p.getPlayerName(),
-                                p.isHost()))
+                                p.isHost(),
+                                session.getPlayerFactions().get(p.getUserId()) != null
+                                        ? session.getPlayerFactions().get(p.getUserId()).name()
+                                        : null))
                         .collect(Collectors.toList()),
                 "PLAYER_LEFT"
         );
@@ -209,7 +218,10 @@ public class GameSessionServiceImpl implements GameSessionService {
                             .map(p -> new SessionUpdateEvent.PlayerInfo(
                                     p.getUserId(),
                                     p.getPlayerName(),
-                                    p.isHost()))
+                                    p.isHost(),
+                                    session.getPlayerFactions().get(p.getUserId()) != null
+                                            ? session.getPlayerFactions().get(p.getUserId()).name()
+                                            : null))
                             .collect(Collectors.toList()),
                     "PLAYER_FACTION_ASSIGNED"
             );
@@ -245,7 +257,10 @@ public class GameSessionServiceImpl implements GameSessionService {
                         .map(p -> new SessionUpdateEvent.PlayerInfo(
                                 p.getUserId(),
                                 p.getPlayerName(),
-                                p.isHost()))
+                                p.isHost(),
+                                session.getPlayerFactions().get(p.getUserId()) != null
+                                        ? session.getPlayerFactions().get(p.getUserId()).name()
+                                        : null))
                         .collect(Collectors.toList()),
                 "PLAYER_READY"
         );
@@ -260,7 +275,21 @@ public class GameSessionServiceImpl implements GameSessionService {
         GameSession session = gameSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new SessionNotFoundException(sessionId));
 
+        session.start(session.getHostUserId());
+        gameSessionRepository.save(session);
+
         gameTickScheduler.startForSession(session.getId(), session.getTickRateSeconds());
+
+        cargoSessionInitializer.initializeForSession(sessionId);
+
+        List<PortResponseDTO> ports = portQueryService.findAll();
+        PortsUpdateEvent portsEvent = new PortsUpdateEvent(
+                "PORTS_UPDATE",
+                ports.stream()
+                        .map(p -> new PortsUpdateEvent.PortInfo(p.id(), p.name(), p.x(), p.y()))
+                        .toList()
+        );
+        webSocketController.broadcastPortsUpdate(session.getId().toString(), portsEvent);
 
         SessionUpdateEvent event = new SessionUpdateEvent(
                 session.getId(),
@@ -272,7 +301,10 @@ public class GameSessionServiceImpl implements GameSessionService {
                         .map(p -> new SessionUpdateEvent.PlayerInfo(
                                 p.getUserId(),
                                 p.getPlayerName(),
-                                p.isHost()))
+                                p.isHost(),
+                                session.getPlayerFactions().get(p.getUserId()) != null
+                                        ? session.getPlayerFactions().get(p.getUserId()).name()
+                                        : null))
                         .collect(Collectors.toList()),
                 "GAME_STARTED"
         );

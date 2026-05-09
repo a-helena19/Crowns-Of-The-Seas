@@ -89,15 +89,15 @@ export default function SessionWaitingScreen() {
             console.log('Session update received:', event);
 
             if (event.type === 'GAME_TRANSITION_STARTED') {
-                console.log('Game transition started - showing faction dialog');
+                console.log('Game transition started - showing intro');
                 setShowFactionDialog(true);
                 return;
             }
 
             if (event.type === 'GAME_STARTED') {
-                console.log('Game started - navigating to intro');
+                console.log('Game started - navigating to game');
                 setTimeout(() => {
-                    navigate('/intro');
+                    navigate('/game');
                 }, 500);
                 return;
             }

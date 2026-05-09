@@ -230,4 +230,13 @@ public class GameSession {
     public Duration getDuration(){
         return duration;
     }
+
+
+    public Map<UUID, Boolean> getReadyStatus() {
+        return Collections.unmodifiableMap(playerReadyStatus);
+    }
+
+    public void setReadyStatus(Map<UUID, Boolean> readyStatus) {
+        this.playerReadyStatus.putAll(readyStatus);
+    }
 }
