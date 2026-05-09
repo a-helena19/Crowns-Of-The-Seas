@@ -16,6 +16,13 @@ const apiClient = axios.create({
     }
 });
 
+interface ReadyStatusResponse {
+    sessionId: string;
+    readyPlayers: string[];
+    totalPlayers: number;
+    allReady: boolean;
+}
+
 // Add JWT token to every request
 apiClient.interceptors.request.use((config) => {
     const token = localStorage.getItem('auth_token');
@@ -77,6 +84,34 @@ export const sessionApi = {
 
     async leaveSession(sessionId: string): Promise<SessionDTO> {
         const response = await apiClient.post<SessionDTO>(`/${sessionId}/leave`, {});
+        return response.data;
+    },
+
+    async assignPlayerFaction(
+        sessionId: string,
+        userId: string,
+        faction: string
+    ): Promise<void> {
+        await apiClient.post(
+            `/${sessionId}/players/${userId}/faction`,
+            { faction }
+        );
+    },
+
+    async markPlayerReady(
+        sessionId: string,
+        userId: string
+    ): Promise<void> {
+        await apiClient.post(
+            `/${sessionId}/players/${userId}/ready`,
+            {}
+        );
+    },
+
+    async getReadyStatus(sessionId: string): Promise<ReadyStatusResponse> {
+        const response = await apiClient.get<ReadyStatusResponse>(
+            `/${sessionId}/ready-status`
+        );
         return response.data;
     }
 };

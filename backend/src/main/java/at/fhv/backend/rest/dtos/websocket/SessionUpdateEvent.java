@@ -10,7 +10,7 @@ public record SessionUpdateEvent(
         int playerCount,
         int maxPlayers,
         List<PlayerInfo> players,
-        String eventType
+        String type
 ) {
     public record PlayerInfo(
             UUID userId,

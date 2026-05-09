@@ -1,0 +1,362 @@
+.faction-selection-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(3px);
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.faction-selection-dialog {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 3px solid #0f3460;
+    border-radius: 12px;
+    padding: 30px;
+    max-width: 1000px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.faction-dialog-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.faction-dialog-header h2 {
+    color: #e0e0e0;
+    font-size: 28px;
+    margin: 0 0 10px 0;
+    font-weight: bold;
+}
+
+.faction-dialog-header .player-name {
+    color: #a0a0a0;
+    font-size: 14px;
+    margin: 0;
+}
+
+/* Timer Section */
+.timer-section {
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid #0f3460;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.timer-label {
+    font-size: 18px;
+    color: #e0e0e0;
+    margin-bottom: 12px;
+    font-weight: 500;
+}
+
+.timer-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #4caf50;
+    animation: pulse-timer 1s ease-in-out infinite;
+}
+
+@keyframes pulse-timer {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.progress-bar {
+    height: 100%;
+    transition: width 0.1s linear;
+    border-radius: 4px;
+}
+
+.timer-info {
+    font-size: 12px;
+    color: #a0a0a0;
+    margin: 0;
+    font-style: italic;
+}
+
+.faction-error-message {
+    background-color: rgba(255, 107, 107, 0.2);
+    border-left: 4px solid #FF6B6B;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    color: #ffcccc;
+    font-size: 13px;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.factions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.faction-card {
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid #444;
+    border-radius: 8px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 180px;
+}
+
+.faction-card:hover:not(.disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+}
+
+.faction-card.selected {
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 20px currentColor;
+    animation: glow 0.6s ease-in-out;
+}
+
+@keyframes glow {
+    0%, 100% {
+        box-shadow: 0 0 10px currentColor;
+    }
+    50% {
+        box-shadow: 0 0 25px currentColor;
+    }
+}
+
+.faction-card.submitted {
+    border-color: #4caf50;
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.faction-card.disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+.faction-icon {
+    font-size: 48px;
+    text-align: center;
+    line-height: 1;
+}
+
+.faction-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: #e0e0e0;
+}
+
+.faction-description {
+    font-size: 13px;
+    color: #a0a0a0;
+    flex-grow: 1;
+    line-height: 1.4;
+}
+
+.faction-checkmark {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 24px;
+    animation: popIn 0.3s ease-out;
+}
+
+.faction-submitted-badge {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background-color: rgba(76, 175, 80, 0.9);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+@keyframes popIn {
+    from {
+        transform: scale(0);
+    }
+    to {
+        transform: scale(1);
+    }
+}
+
+.faction-dialog-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+}
+
+.ready-status-info {
+    text-align: center;
+    color: #a0a0a0;
+    font-size: 14px;
+}
+
+.ready-status-info p {
+    margin: 5px 0;
+}
+
+.all-ready-message {
+    color: #4caf50 !important;
+    font-weight: bold;
+    animation: pulse 0.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.ready-button {
+    background: linear-gradient(135deg, #4caf50, #45a049);
+    color: white;
+    border: none;
+    padding: 12px 40px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 200px;
+}
+
+.ready-button:hover:not(:disabled) {
+    background: linear-gradient(135deg, #45a049, #3d8b40);
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+}
+
+.ready-button:disabled {
+    background: #999;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.ready-button.active {
+    background: linear-gradient(135deg, #2196F3, #1976D2);
+    cursor: default;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .faction-selection-dialog {
+        padding: 20px;
+        width: 95%;
+        max-height: 95vh;
+    }
+
+    .faction-dialog-header h2 {
+        font-size: 22px;
+    }
+
+    .factions-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .faction-card {
+        padding: 15px;
+    }
+
+    .faction-icon {
+        font-size: 36px;
+    }
+
+    .faction-name {
+        font-size: 16px;
+    }
+
+    .faction-description {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .faction-selection-dialog {
+        padding: 15px;
+    }
+
+    .faction-icon {
+        font-size: 32px;
+    }
+
+    .faction-name {
+        font-size: 14px;
+    }
+
+    .faction-description {
+        font-size: 11px;
+    }
+
+    .ready-button {
+        padding: 10px 30px;
+        font-size: 14px;
+        min-width: 150px;
+    }
+}

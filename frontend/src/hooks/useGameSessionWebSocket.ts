@@ -13,7 +13,8 @@ interface SessionUpdateEvent {
         playerName: string;
         isHost: boolean;
     }>;
-    eventType: string;
+    type: string;
+    message?: string;
 }
 
 interface PortInfo {
@@ -83,6 +84,16 @@ interface UseGameSessionWebSocketProps {
     onTickUpdate?: (event: TickUpdateEvent) => void;
 }
 
+declare global {
+    interface Window {
+        __latestPorts?: PortInfo[];
+        __latestTick?: { currentTick: number; totalTicks: number };
+        __tickRateMs?: number;
+        __latestShips?: ShipPosition[];
+        __latestShipPositionsTick?: number;
+    }
+}
+
 export function useGameSessionWebSocket({
     sessionId,
     onSessionUpdate,
@@ -133,6 +144,7 @@ export function useGameSessionWebSocket({
                         console.log('Received session update:', message.body);
                         try {
                             const event = JSON.parse(message.body) as SessionUpdateEvent;
+                            console.log('Event type:', event.type);  // Log für Debugging
                             onSessionUpdate(event);
                         } catch (error) {
                             console.error('Error parsing session update:', error);
