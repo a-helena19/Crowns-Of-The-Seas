@@ -13,7 +13,7 @@ public class SessionCargo {
     private final UUID originPortId;
     private final UUID destinationPortId;
     private final BigDecimal reward;
-    private final boolean containsIllegal;
+    private boolean containsIllegal;
     private final int capacity;
     private final CargoType cargoType;
     private final double risk;
@@ -156,6 +156,10 @@ public class SessionCargo {
         if (permanent) return false;
         return cargoStatus == CargoStatus.AVAILABLE
                 && expiresAtTick >= 0 && currentTick > expiresAtTick;
+    }
+
+    public void markAsIllegal() {
+        this.containsIllegal = true;
     }
 
     public UUID getId() {

@@ -39,5 +39,9 @@ public class GameSessionWebSocketController {
     public void broadcastTravelComplete(String sessionId, TravelCompleteEvent event) {
         messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/travel-complete", event);
     }
+
+    public void broadcastSmuggleOffer(String sessionId, SmuggleOfferEvent event) {
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/smuggle-offer", event);
+    }
 }
 

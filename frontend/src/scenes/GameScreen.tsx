@@ -10,6 +10,7 @@ import { useGameSessionWebSocket } from "../hooks/useGameSessionWebSocket.ts";
 import CargoManagementScreen from "../scenes/CargoManagementScreen";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
 import RewardToast from "../components/RewardToast.tsx";
+import SmuggleOfferDialog from "../components/SmuggleOfferDialog.tsx";
 
 export const TOP_BAR_HEIGHT = '9vh';
 export const BOTTOM_BAR_HEIGHT = '20vh';
@@ -29,6 +30,9 @@ export default function GameScreen() {
     const [rewardToasts, setRewardToasts] = useState<{
         id: string; shipName: string; from: string; to: string; reward: number;
     }[]>([]);
+    const [smuggleOffer, setSmuggleOffer] = useState<{
+        offerId: string; portId: string; reward: number; cargoDescription: string;
+    } | null>(null);
 
     function handleCargoAssigned(entry: AssignedCargoEntry) {
         setAssignedCargos(prev => {
@@ -148,6 +152,53 @@ export default function GameScreen() {
         return () => window.removeEventListener("travel-complete", handler);
     }, [playerId]);
 
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const data = (e as CustomEvent<{
+                offerId: string; playerId: string; portId: string;
+                reward: number; cargoDescription: string;
+            }>).detail;
+            if (data.playerId !== playerId) return;
+            setSmuggleOffer({
+                offerId: data.offerId,
+                portId: data.portId,
+                reward: data.reward,
+                cargoDescription: data.cargoDescription,
+            });
+        };
+        window.addEventListener("smuggle-offer", handler);
+        return () => window.removeEventListener("smuggle-offer", handler);
+    }, [playerId]);
+
+    async function handleSmuggleAccept() {
+        if (!smuggleOffer) return;
+        const token = localStorage.getItem("auth_token") ?? "";
+        try {
+            const res = await fetch(
+                `/api/smuggle/accept?playerId=${playerId}&sessionId=${sessionId}&offerId=${smuggleOffer.offerId}`,
+                { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (res.ok) {
+                setSmuggleOffer(null);
+                setView("map");
+            } else {
+                setSmuggleOffer(null);
+            }
+        } catch {
+            setSmuggleOffer(null);
+        }
+    }
+
+    function handleSmuggleDecline() {
+        if (!smuggleOffer) return;
+        const token = localStorage.getItem("auth_token") ?? "";
+        fetch(
+            `/api/smuggle/decline?playerId=${playerId}&offerId=${smuggleOffer.offerId}`,
+            { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+        ).catch(() => {});
+        setSmuggleOffer(null);
+    }
+
     const handleSessionUpdate = useCallback(() => {}, []);
 
     const { isConnected, stompClient } = useGameSessionWebSocket({
@@ -227,6 +278,17 @@ export default function GameScreen() {
                     onDismiss={() => setRewardToasts(prev => prev.filter(t => t.id !== toast.id))}
                 />
             ))}
+
+            {smuggleOffer && (
+                <SmuggleOfferDialog
+                    offerId={smuggleOffer.offerId}
+                    portId={smuggleOffer.portId}
+                    reward={smuggleOffer.reward}
+                    cargoDescription={smuggleOffer.cargoDescription}
+                    onAccept={handleSmuggleAccept}
+                    onDecline={handleSmuggleDecline}
+                />
+            )}
         </div>
     );
 }

@@ -1,5 +1,6 @@
 package at.fhv.backend.application.services.impl.travel;
 
+import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.RewardCalculationService;
 import at.fhv.backend.domain.model.cargo.Cargo;
@@ -14,6 +15,7 @@ import at.fhv.backend.domain.model.port.PortRepository;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
+import at.fhv.backend.domain.model.smuggle.SmuggleOffer;
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.rest.GameSessionWebSocketController;
 import at.fhv.backend.rest.dtos.websocket.CargoRewardBreakdown;
@@ -35,6 +37,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
     private final GameSessionWebSocketController webSocketController;
     private final PortRepository portRepository;
     private final CargoRepository cargoRepository;
+    private final SmuggleService smuggleService;
 
     public CargoUnloadingPhaseServiceImpl(
             SessionCargoRepository sessionCargoRepository,
@@ -43,7 +46,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             RewardCalculationService rewardCalculationService,
             GameSessionWebSocketController webSocketController,
             PortRepository portRepository,
-            CargoRepository cargoRepository) {
+            CargoRepository cargoRepository,
+            SmuggleService smuggleService) {
         this.sessionCargoRepository = sessionCargoRepository;
         this.playerShipRepository = playerShipRepository;
         this.gameSessionRepository = gameSessionRepository;
@@ -51,6 +55,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         this.webSocketController = webSocketController;
         this.portRepository = portRepository;
         this.cargoRepository = cargoRepository;
+        this.smuggleService = smuggleService;
     }
 
     @Override
@@ -62,7 +67,14 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         // 3) Pay out, send event. Cargos stay DELIVERED/EXPIRED (no recycling).
         markCargosAsDelivered(travel, cargosForPlayer);
 
-        BigDecimal totalReward = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
+        BigDecimal cargoReward = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
+        BigDecimal smuggleReward = BigDecimal.ZERO;
+        SmuggleOffer smuggleOffer = smuggleService.getAcceptedOffer(travel.getPlayerId());
+        if (smuggleOffer != null) {
+            smuggleReward = smuggleOffer.getReward();
+        }
+
+        BigDecimal totalReward = cargoReward.add(smuggleReward);
 
         BigDecimal previousBalance = BigDecimal.ZERO;
         BigDecimal newBalance = BigDecimal.ZERO;
@@ -85,7 +97,11 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             }
         }
 
-        sendUnloadingCompleteEvent(travel, playerId, cargosForPlayer, previousBalance, newBalance);
+        sendUnloadingCompleteEvent(travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffer);
+
+        if (smuggleOffer != null) {
+            smuggleService.clearAcceptedOffer(playerId);
+        }
 
         for (SessionCargo cargo : cargosForPlayer) {
             if (isCargoForThisTravel(cargo, travel)) {
@@ -132,9 +148,11 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         return isForThisShipAndPort && isAssignedOrExpired;
     }
 
+    private static final String SMUGGLE_DISPLAY_NAME = "Mysteriöse Kiste";
+
     private void sendUnloadingCompleteEvent(Travel travel, UUID playerId,
                                             List<SessionCargo> cargosForPlayer,
-                                            BigDecimal previousBalance, BigDecimal newBalance) {
+                                            BigDecimal previousBalance, BigDecimal newBalance, SmuggleOffer smuggleOffer) {
         try {
             PortId destinationPortId = PortId.of(travel.getDestinationPortId());
             Port destinationPort = portRepository.findById(destinationPortId).orElse(null);
@@ -171,8 +189,25 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                     })
                     .toList();
 
+            if (smuggleOffer != null) {
+                String displayName = SMUGGLE_DISPLAY_NAME;
+                cargoRewards.add(new CargoRewardBreakdown(
+                        smuggleOffer.getId().toString(),
+                        displayName,
+                        destinationPortName,
+                        smuggleOffer.getReward(),
+                        smuggleOffer.getReward(),
+                        100,
+                        "DELIVERED",
+                        "SMUGGLE"
+                ));
+            }
+
             BigDecimal baseReward = travel.getBaseReward() != null ? travel.getBaseReward() : BigDecimal.ZERO;
-            BigDecimal totalReward = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
+            BigDecimal cargoTotal = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
+            BigDecimal smuggleAmount = smuggleOffer != null ? smuggleOffer.getReward() : BigDecimal.ZERO;
+            BigDecimal totalReward = cargoTotal.add(smuggleAmount);
+
 
             TravelCompleteEvent event = new TravelCompleteEvent(
                     travel.getTravelId().toString(),

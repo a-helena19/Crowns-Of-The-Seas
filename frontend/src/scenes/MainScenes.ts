@@ -58,6 +58,7 @@ export default class MainScene extends Phaser.Scene {
     private onShipPosition!: (e: Event) => void;
     private onPorts!: (e: Event) => void;
     private onShipPositions!: (e: Event) => void;
+    private onBlinkPortPin!: (e: Event) => void;
     private lastSceneWidth: number = 0;
     private lastSceneHeight: number = 0;
 
@@ -111,6 +112,31 @@ export default class MainScene extends Phaser.Scene {
         window.addEventListener('backend-ports', this.onPorts);
         window.addEventListener('backend-ship-positions', this.onShipPositions);
         this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this);
+
+        this.onBlinkPortPin = (e: Event) => {
+            const { portId } = (e as CustomEvent<{ portId: string }>).detail;
+            for (let i = 0; i < this.harborPortData.length; i++) {
+                if (this.harborPortData[i].id === portId) {
+                    const sprite = this.harborSprites[i];
+                    if (!sprite) break;
+                    let blinks = 0;
+                    const blinkTimer = this.time.addEvent({
+                        delay: 300,
+                        repeat: 7,
+                        callback: () => {
+                            sprite.setAlpha(blinks % 2 === 0 ? 0.2 : 1.0);
+                            blinks++;
+                            if (blinks > 7) {
+                                sprite.setAlpha(1.0);
+                                blinkTimer.destroy();
+                            }
+                        },
+                    });
+                    break;
+                }
+            }
+        };
+        window.addEventListener('blink-port-pin', this.onBlinkPortPin);
 
         const latestPorts = window.__latestPorts;
         if (latestPorts && this.harborSprites.length === 0) {
@@ -609,6 +635,7 @@ export default class MainScene extends Phaser.Scene {
         window.removeEventListener('backend-ship-position', this.onShipPosition);
         window.removeEventListener('backend-ports', this.onPorts);
         window.removeEventListener('backend-ship-positions', this.onShipPositions);
+        window.removeEventListener('blink-port-pin', this.onBlinkPortPin);
         this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this);
     }
 }

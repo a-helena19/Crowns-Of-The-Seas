@@ -34,7 +34,6 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
     const sessionId = sessionData ? JSON.parse(sessionData).id : null;
     const token = localStorage.getItem("auth_token") ?? "";
 
-    // Häfen laden, in denen der Spieler Schiffe hat (Status AT_PORT)
     useEffect(() => {
         if (!playerId || !sessionId) return;
         fetch(`/api/ships/player/${playerId}?sessionId=${sessionId}`, {
@@ -93,7 +92,7 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
             phase: "loading",
         };
         onCargoAssigned(entry);
-        onClose(); // zurück zur Karte – Ladevorgang läuft im Hintergrund
+        onClose();
     }
 
     return (
