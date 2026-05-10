@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import '../style/intro.css';
 import skipIcon from "../assets/intro/skip.png";
 import introMusic from "../assets/audio/intro-music.mp3";
+import Stomp from "stompjs";
+import SockJS from 'sockjs-client';
 
 export default function IntroAnimation() {
     const navigate = useNavigate();
@@ -63,6 +65,7 @@ export default function IntroAnimation() {
                 sessionStorage.removeItem('gameStarted');
                 navigate('/game');
             } else {
+                sessionStorage.setItem('showFactionDialog', 'true');
                 navigate('/session-waiting', { state: { showFactionDialog: true } });
             }
         }, 6000); // 6 seconds total
@@ -78,11 +81,38 @@ export default function IntroAnimation() {
         };
     }, [navigate]);
 
+    useEffect(() => {
+        const sessionData = sessionStorage.getItem('currentSession');
+        if (!sessionData) return;
+        const session = JSON.parse(sessionData);
+
+        let connected = false;
+
+        const socket = new SockJS('http://localhost:8080/ws');
+        const client = Stomp.over(socket);
+        client.connect({}, () => {
+            connected = true;
+            client.subscribe(`/topic/session/${session.id}`, (msg) => {
+                const event = JSON.parse(msg.body);
+                if (event.type === 'GAME_STARTED') {
+                    sessionStorage.setItem('gameStarted', 'true');
+                    navigate('/game');
+                }
+            });
+        });
+        return () => {
+            if (connected) {
+                client.disconnect(() => {});
+            }
+        };
+    }, [navigate])
+
     const handleSkip = () => {
         if (sessionStorage.getItem('gameStarted') === 'true') {
             sessionStorage.removeItem('gameStarted');
             navigate('/game');
         } else {
+            sessionStorage.setItem('showFactionDialog', 'true');
             navigate('/session-waiting', { state: { showFactionDialog: true } });
         }
     };

@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import {useState, useEffect, useMemo} from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGameSessionWebSocket } from '../hooks/useGameSessionWebSocket';
 import '../style/sessionWaiting.css';
 import FactionSelectionDialog from '../components/FactionSelectionDialog';
-import { useSessionContext } from '../context/useSessionContext';
 import type { PlayerFaction } from '../types/faction';
 import { sessionApi } from '../api/sessionApi';
 
@@ -34,6 +33,7 @@ interface SessionUpdateEvent {
         playerName: string;
         isHost: boolean;
         faction?: PlayerFaction | null;
+        ready?: boolean;
     }>;
     type: string;
 }
@@ -47,9 +47,10 @@ export default function SessionWaitingScreen() {
     const [playerList, setPlayerList] = useState<Array<{ playerName: string; isHost: boolean; faction?: PlayerFaction | null; }>>([]);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    const [showFactionDialog] = useState(
-        () => !!(location.state as any)?.showFactionDialog
-    );
+    const [showFactionDialog] = useState(() => {
+        return !!(location.state as any)?.showFactionDialog
+            || sessionStorage.getItem('showFactionDialog') === 'true';
+    });
     const [selectedFaction, setSelectedFaction] = useState<PlayerFaction | null>(null);
     const [isPlayerReady, setIsPlayerReady] = useState(false);
     const [readyStatus, setReadyStatus] = useState<{
@@ -57,7 +58,6 @@ export default function SessionWaitingScreen() {
         totalPlayers: number;
         allReady: boolean;
     } | null>(null);
-    const { getReadyStatus } = useSessionContext();
 
     useEffect(() => {
         // Load session from sessionStorage
@@ -92,9 +92,22 @@ export default function SessionWaitingScreen() {
         console.log('SessionWaitingScreen mounted:', { sessionData, role });
     }, []);
 
+    useEffect(() => {
+        return () => {
+            if (sessionStorage.getItem('gameStarted') !== 'true') {
+                sessionStorage.removeItem('showFactionDialog');
+            }
+        };
+    }, []);
+
+    const sessionId = useMemo(() => {
+        const data = sessionStorage.getItem('currentSession');
+        return data ? JSON.parse(data).id : null;
+    }, []);
+
     // WebSocket for real-time updates
     const { isConnected } = useGameSessionWebSocket({
-        sessionId: session?.id || null,
+        sessionId: sessionId,
         onSessionUpdate: (event: SessionUpdateEvent) => {
             console.log('Session update received:', event);
 
@@ -107,10 +120,22 @@ export default function SessionWaitingScreen() {
             if (event.type === 'GAME_STARTED') {
                 console.log('Game started - navigating to game');
                 sessionStorage.setItem('gameStarted', 'true');
+                sessionStorage.removeItem('showFactionDialog');
                 setTimeout(() => {
                     navigate('/game');
                 }, 500);
                 return;
+            }
+
+            if (event.type === 'PLAYER_READY') {
+                const readyCount = event.players.filter((p: any) => p.ready).length;
+                setReadyStatus({
+                    readyPlayers: event.players
+                        .filter((p: any) => p.ready)
+                        .map((p: any) => p.userId),
+                    totalPlayers: event.playerCount,
+                    allReady: readyCount === event.playerCount
+                });
             }
 
             // Update player list
@@ -137,6 +162,7 @@ export default function SessionWaitingScreen() {
                 sessionStorage.removeItem('currentSession');
                 sessionStorage.removeItem('userRole');
                 sessionStorage.removeItem('playerName');
+                sessionStorage.removeItem('showFactionDialog');
                 navigate('/lobby');
             }
 
@@ -154,28 +180,6 @@ export default function SessionWaitingScreen() {
             }
         }
     });
-
-    useEffect(() => {
-        if (!showFactionDialog || !session) return;
-
-        const pollInterval = setInterval(async () => {
-            try {
-                const status = await getReadyStatus(session.id);
-                setReadyStatus(status);
-
-                // Wenn alle ready, wird automatisch GAME_STARTED Event gesendet
-                // Aber als fallback auch hier checken
-                if (status.allReady) {
-                    console.log('All players ready!');
-                    // Backend sollte automatisch starten, aber wir zeigen auch visuelles Feedback
-                }
-            } catch (error) {
-                console.error('Error polling ready status:', error);
-            }
-        }, 2000); // Alle 2 Sekunden
-
-        return () => clearInterval(pollInterval);
-    }, [showFactionDialog, session, getReadyStatus]);
 
     const handleFactionSelected = (faction: PlayerFaction) => {
         console.log('Faction selected:', faction);
@@ -219,6 +223,7 @@ export default function SessionWaitingScreen() {
         sessionStorage.removeItem('currentSession');
         sessionStorage.removeItem('userRole');
         sessionStorage.removeItem('playerName');
+        sessionStorage.removeItem('showFactionDialog');
         navigate('/login');
     };
 
@@ -243,14 +248,15 @@ export default function SessionWaitingScreen() {
         sessionStorage.removeItem('currentSession');
         sessionStorage.removeItem('userRole');
         sessionStorage.removeItem('playerName');
+        sessionStorage.removeItem('showFactionDialog');
         navigate('/lobby');
     };
 
     return (
         <div className="session-waiting-page">
-            {showFactionDialog && session && user && (
+            {showFactionDialog && sessionId && user && (
                 <FactionSelectionDialog
-                    sessionId={session.id}
+                    sessionId={sessionId}
                     userId={user.id}
                     playerName={user.username}
                     onFactionSelected={handleFactionSelected}

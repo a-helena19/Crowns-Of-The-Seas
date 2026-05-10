@@ -16,7 +16,8 @@ public record SessionUpdateEvent(
             UUID userId,
             String playerName,
             boolean isHost,
-            String faction
+            String faction,
+            boolean ready
     ) {}
 }
 

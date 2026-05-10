@@ -19,6 +19,7 @@ import at.fhv.backend.rest.dtos.session.response.SessionDTO;
 import at.fhv.backend.rest.dtos.websocket.PortsUpdateEvent;
 import at.fhv.backend.rest.dtos.websocket.SessionUpdateEvent;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
@@ -82,7 +83,8 @@ public class GameSessionServiceImpl implements GameSessionService {
                                 p.isHost(),
                                 session.getPlayerFactions().get(p.getUserId()) != null
                                         ? session.getPlayerFactions().get(p.getUserId()).name()
-                                        : null))
+                                        : null,
+                                session.getReadyPlayers().contains(p.getUserId())))
                         .collect(Collectors.toList()),
                 "PLAYER_JOINED"
         );
@@ -113,7 +115,8 @@ public class GameSessionServiceImpl implements GameSessionService {
                                 p.isHost(),
                                 session.getPlayerFactions().get(p.getUserId()) != null
                                         ? session.getPlayerFactions().get(p.getUserId()).name()
-                                        : null))
+                                        : null,
+                                session.getReadyPlayers().contains(p.getUserId())))
                         .collect(Collectors.toList()),
                 "GAME_TRANSITION_STARTED"
         );
@@ -177,7 +180,8 @@ public class GameSessionServiceImpl implements GameSessionService {
                                 p.isHost(),
                                 session.getPlayerFactions().get(p.getUserId()) != null
                                         ? session.getPlayerFactions().get(p.getUserId()).name()
-                                        : null))
+                                        : null,
+                                session.getReadyPlayers().contains(p.getUserId())))
                         .collect(Collectors.toList()),
                 "PLAYER_LEFT"
         );
@@ -210,7 +214,8 @@ public class GameSessionServiceImpl implements GameSessionService {
                                     p.isHost(),
                                     session.getPlayerFactions().get(p.getUserId()) != null
                                             ? session.getPlayerFactions().get(p.getUserId()).name()
-                                            : null))
+                                            : null,
+                                    session.getReadyPlayers().contains(p.getUserId())))
                             .collect(Collectors.toList()),
                     "PLAYER_FACTION_ASSIGNED"
             );
@@ -229,8 +234,9 @@ public class GameSessionServiceImpl implements GameSessionService {
     }
 
     @Override
+    @Transactional
     public void markPlayerReady(UUID sessionId, UUID userId) {
-        GameSession session = gameSessionRepository.findById(sessionId)
+        GameSession session = gameSessionRepository.findByIdWithLock(sessionId)
                 .orElseThrow(() -> new SessionNotFoundException(sessionId));
 
         session.markPlayerReady(userId);
@@ -249,7 +255,8 @@ public class GameSessionServiceImpl implements GameSessionService {
                                 p.isHost(),
                                 session.getPlayerFactions().get(p.getUserId()) != null
                                         ? session.getPlayerFactions().get(p.getUserId()).name()
-                                        : null))
+                                        : null,
+                                session.getReadyPlayers().contains(p.getUserId())))
                         .collect(Collectors.toList()),
                 "PLAYER_READY"
         );
@@ -293,7 +300,8 @@ public class GameSessionServiceImpl implements GameSessionService {
                                 p.isHost(),
                                 session.getPlayerFactions().get(p.getUserId()) != null
                                         ? session.getPlayerFactions().get(p.getUserId()).name()
-                                        : null))
+                                        : null,
+                                session.getReadyPlayers().contains(p.getUserId())))
                         .collect(Collectors.toList()),
                 "GAME_STARTED"
         );
