@@ -122,7 +122,7 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
 
     useEffect(() => {
         if (!sessionId || !currentPortId) { setLoading(false); return; }
-        fetch(`/api/cargo/${sessionId}/available?portId=${currentPortId}`, { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`/api/cargo/${sessionId}/available?portId=${currentPortId}&playerId=${playerId}`, { headers: { Authorization: `Bearer ${token}` } })
             .then(r => r.json() as Promise<SessionCargoDTO[]>)
             .then(data => {
                 const f = filterByPort(data);

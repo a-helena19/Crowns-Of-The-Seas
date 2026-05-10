@@ -49,8 +49,9 @@ public class CargoRestController {
     @GetMapping("/{sessionId}/available")
     public ResponseEntity<List<SessionCargoDTO>> getAvailable(
             @PathVariable UUID sessionId,
-            @RequestParam UUID portId) {
-        return ResponseEntity.ok(cargoQueryService.getAvailableCargos(sessionId, portId));
+            @RequestParam UUID portId,
+            @RequestParam UUID playerId) {
+        return ResponseEntity.ok(cargoQueryService.getAvailableCargos(sessionId, portId, playerId));
     }
 
     @GetMapping("/offer/{sessionCargoId}")
