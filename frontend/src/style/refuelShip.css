@@ -1,0 +1,162 @@
+.refuel-scene {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.refuel-panel {
+    background: #fff1e9;
+    border: 6px solid #5a3a0a;
+    border-radius: 12px;
+    box-shadow: 4px 4px 0 #2a1408;
+    padding: 28px 32px;
+    min-width: 380px;
+    max-width: 460px;
+    width: 100%;
+    color: #2a1a05;
+    font-family: var(--font-body);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.refuel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 2px solid #c89b3c;
+    padding-bottom: 10px;
+}
+
+.refuel-icon {
+    font-size: 28px;
+}
+
+.refuel-title {
+    font-family: var(--font-game);
+    font-size: 22px;
+    color: #3d1f0a;
+    margin: 0;
+}
+
+.refuel-ship-name {
+    font-family: var(--font-game);
+    font-size: 17px;
+    color: #5a3a0a;
+    text-align: center;
+}
+
+.refuel-fuel-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.refuel-fuel-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 15px;
+    font-weight: 600;
+    color: #3d1f0a;
+}
+
+.refuel-fuel-value {
+    font-family: var(--font-game);
+    font-size: 15px;
+}
+
+.refuel-fuel-value.fuel-ok  { color: #3a8a3a; }
+.refuel-fuel-value.fuel-mid { color: #b07a10; }
+.refuel-fuel-value.fuel-low { color: #b03020; }
+
+.refuel-bar-track {
+    width: 100%;
+    height: 18px;
+    background: #d4c8a8;
+    border: 2px solid #8b5a2b;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.refuel-bar-fill {
+    height: 100%;
+    width: var(--fuel-start, 0%);
+    border-radius: 2px;
+    transition: none;
+}
+
+.refuel-bar-fill.fuel-ok  { background: #4caf50; }
+.refuel-bar-fill.fuel-mid { background: #f0a020; }
+.refuel-bar-fill.fuel-low { background: #e05030; }
+
+@keyframes fuel-fill {
+    from { width: var(--fuel-start, 0%); }
+    to   { width: 100%; }
+}
+
+.refuel-bar-fill.animating {
+    animation: fuel-fill 1.4s ease-out forwards;
+    background: #4caf50;
+}
+
+.refuel-cost-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #f5e8d0;
+    border: 2px solid #c89b3c;
+    border-radius: 6px;
+    padding: 12px 14px;
+}
+
+.refuel-info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 15px;
+    color: #3d1f0a;
+}
+
+.refuel-cost-row {
+    border-top: 1px solid #c89b3c;
+    padding-top: 8px;
+    margin-top: 4px;
+}
+
+.refuel-cost-value {
+    font-family: var(--font-game);
+    font-size: 16px;
+    color: #8b3a10;
+    font-weight: bold;
+}
+
+.refuel-balance-ok  { color: #3a8a3a; font-family: var(--font-game); }
+.refuel-balance-low { color: #b03020; font-family: var(--font-game); }
+
+.refuel-full-msg {
+    text-align: center;
+    font-style: italic;
+    color: #3a8a3a;
+    font-size: 15px;
+}
+
+.refuel-error {
+    color: #b03020;
+    font-size: 13px;
+    text-align: center;
+}
+
+.refuel-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.refuel-loading {
+    text-align: center;
+    color: #5a3a0a;
+    font-family: var(--font-game);
+    padding: 20px;
+}

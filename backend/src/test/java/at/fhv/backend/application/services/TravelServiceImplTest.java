@@ -5,7 +5,6 @@ import at.fhv.backend.application.services.cargo.PortDistanceForCargoService;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.rest.CargoWebSocketController;
-import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
 import at.fhv.backend.rest.dtos.ship.response.TravelDTO;
 import at.fhv.backend.application.services.impl.session.GameTickScheduler;
@@ -71,6 +70,8 @@ class TravelServiceImplTest {
         private PlayerShip buildAtPortShip(UUID playerId) {
             PlayerShip ps = PlayerShip.createFromPurchase(UUID.randomUUID(), playerId, UUID.randomUUID(), UUID.randomUUID());
             ps.completeRegistration();
+            ps.startLoading(UUID.randomUUID(), 1);
+            ps.completeLoading();
             return ps;
         }
 
@@ -189,6 +190,8 @@ class TravelServiceImplTest {
         private PlayerShip buildAtPortShip(UUID playerId, UUID sessionId, UUID shipId) {
             PlayerShip ps = PlayerShip.createFromPurchase(shipId, playerId, sessionId, UUID.randomUUID());
             ps.completeRegistration();
+            ps.startLoading(UUID.randomUUID(), 1);
+            ps.completeLoading();
             return ps;
         }
 
@@ -211,20 +214,13 @@ class TravelServiceImplTest {
             return new GameSession(hostId, 4, 5, 100, Duration.ofMinutes(30));
         }
 
-        private void stubPortQueryService(UUID originPortId, UUID destinationPortId) {
-            when(portQueryService.findById(originPortId))
-                    .thenReturn(new PortResponseDTO(originPortId, "Origin", 0.0, 0.0));
-            when(portQueryService.findById(destinationPortId))
-                    .thenReturn(new PortResponseDTO(destinationPortId, "Destination", 3.0, 4.0));
-        }
-
         private SessionCargo buildAvailableCargo(UUID sessionCargoId, UUID destinationPortId, UUID sessionId, int capacity) {
             return SessionCargo.reconstruct(
                     sessionCargoId, UUID.randomUUID(), sessionId,
                     UUID.randomUUID(), destinationPortId,
                     BigDecimal.valueOf(1000), false, capacity,
                     CargoType.GENERAL_GOODS, 0.1,
-                    CargoStatus.AVAILABLE, null, null,
+                    CargoStatus.ASSIGNED, UUID.randomUUID(), UUID.randomUUID(),
                     0, -1, -1, -1
             );
         }
@@ -246,7 +242,6 @@ class TravelServiceImplTest {
             when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
             when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(new at.fhv.backend.domain.model.player.BaseSessionPlayer(playerId, sessionId, "TestPlayer", false)));
             when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
-            stubPortQueryService(playerShip.getCurrentPortId(), destinationPortId);
             when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(10.0);
             doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
             when(playerShipRepository.save(any())).thenReturn(playerShip);
@@ -275,7 +270,6 @@ class TravelServiceImplTest {
             when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
             when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(new at.fhv.backend.domain.model.player.BaseSessionPlayer(playerId, sessionId, "TestPlayer", false)));
             when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
-            stubPortQueryService(playerShip.getCurrentPortId(), destinationPortId);
             when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(10.0);
             doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
             when(playerShipRepository.save(any())).thenReturn(playerShip);
@@ -305,7 +299,6 @@ class TravelServiceImplTest {
             when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
             when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(new at.fhv.backend.domain.model.player.BaseSessionPlayer(playerId, sessionId, "TestPlayer", false)));
             when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
-            stubPortQueryService(playerShip.getCurrentPortId(), destinationPortId);
             when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(15.0);
             doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
             when(playerShipRepository.save(any())).thenReturn(playerShip);
@@ -315,6 +308,134 @@ class TravelServiceImplTest {
             service.startTravel(playerId, sessionId, buildStartTravelDTO(playerShip.getId(), destinationPortId, sessionCargoId));
 
             assertThat(playerShip.getFuel()).isLessThan(fuelBefore);
+        }
+
+        @Test
+        void givenValidRequest_whenStartTravel_thenConditionIsReduced() {
+            UUID playerId = UUID.randomUUID();
+            UUID sessionId = UUID.randomUUID();
+            Ship ship = buildShip();
+            PlayerShip playerShip = buildAtPortShip(playerId, sessionId, ship.getId());
+            UUID destinationPortId = UUID.randomUUID();
+            UUID sessionCargoId = UUID.randomUUID();
+            SessionCargo cargo = buildAvailableCargo(sessionCargoId, destinationPortId, sessionId, 50);
+            Travel travel = buildTravel(playerShip.getId(), playerId, sessionId);
+            double conditionBefore = playerShip.getCondition();
+
+            when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(buildGameSession(playerId)));
+            when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId)).thenReturn(Optional.of(playerShip));
+            when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
+            when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
+            when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(new at.fhv.backend.domain.model.player.BaseSessionPlayer(playerId, sessionId, "TestPlayer", false)));
+            when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
+            when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(15.0);
+            doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
+            when(playerShipRepository.save(any())).thenReturn(playerShip);
+            when(travelRepository.save(any())).thenReturn(travel);
+            when(travelResponseMapper.toResponse(any())).thenReturn(new TravelDTO());
+
+            service.startTravel(playerId, sessionId, buildStartTravelDTO(playerShip.getId(), destinationPortId, sessionCargoId));
+
+            assertThat(playerShip.getCondition()).isLessThan(conditionBefore);
+        }
+
+        @Test
+        void givenValidRequest_whenStartTravel_thenConditionWearIsLowerThanFuelLoss() {
+            UUID playerId = UUID.randomUUID();
+            UUID sessionId = UUID.randomUUID();
+            Ship ship = buildShip();
+            PlayerShip playerShip = buildAtPortShip(playerId, sessionId, ship.getId());
+            UUID destinationPortId = UUID.randomUUID();
+            UUID sessionCargoId = UUID.randomUUID();
+            SessionCargo cargo = buildAvailableCargo(sessionCargoId, destinationPortId, sessionId, 50);
+            Travel travel = buildTravel(playerShip.getId(), playerId, sessionId);
+            double fuelBefore = playerShip.getFuel();
+            double conditionBefore = playerShip.getCondition();
+
+            when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(buildGameSession(playerId)));
+            when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId)).thenReturn(Optional.of(playerShip));
+            when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
+            when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
+            when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(new at.fhv.backend.domain.model.player.BaseSessionPlayer(playerId, sessionId, "TestPlayer", false)));
+            when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
+            when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(120.0);
+            doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
+            when(playerShipRepository.save(any())).thenReturn(playerShip);
+            when(travelRepository.save(any())).thenReturn(travel);
+            when(travelResponseMapper.toResponse(any())).thenReturn(new TravelDTO());
+
+            service.startTravel(playerId, sessionId, buildStartTravelDTO(playerShip.getId(), destinationPortId, sessionCargoId));
+
+            double fuelLoss = fuelBefore - playerShip.getFuel();
+            double conditionLoss = conditionBefore - playerShip.getCondition();
+            assertThat(conditionLoss).isGreaterThan(0);
+            assertThat(conditionLoss).isLessThan(fuelLoss);
+        }
+
+        @Test
+        void givenHigherFuelConsumption_whenStartTravel_thenConditionWearIsHigher() {
+            UUID playerId = UUID.randomUUID();
+            UUID sessionId = UUID.randomUUID();
+            Ship ship = buildShip();
+            PlayerShip lowWearShip = buildAtPortShip(playerId, sessionId, ship.getId());
+            PlayerShip highWearShip = buildAtPortShip(playerId, sessionId, ship.getId());
+            UUID destinationPortId = UUID.randomUUID();
+            UUID lowCargoId = UUID.randomUUID();
+            UUID highCargoId = UUID.randomUUID();
+            SessionCargo lowCargo = buildAvailableCargo(lowCargoId, destinationPortId, sessionId, 50);
+            SessionCargo highCargo = buildAvailableCargo(highCargoId, destinationPortId, sessionId, 50);
+            Travel lowTravel = buildTravel(lowWearShip.getId(), playerId, sessionId);
+            Travel highTravel = buildTravel(highWearShip.getId(), playerId, sessionId);
+
+            when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(buildGameSession(playerId)));
+            when(playerShipRepository.findByIdAndPlayerIdAndSessionId(lowWearShip.getId(), playerId, sessionId)).thenReturn(Optional.of(lowWearShip));
+            when(playerShipRepository.findByIdAndPlayerIdAndSessionId(highWearShip.getId(), playerId, sessionId)).thenReturn(Optional.of(highWearShip));
+            when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
+            when(sessionCargoRepository.findByIdForUpdate(lowCargoId)).thenReturn(Optional.of(lowCargo));
+            when(sessionCargoRepository.findByIdForUpdate(highCargoId)).thenReturn(Optional.of(highCargo));
+            when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(new at.fhv.backend.domain.model.player.BaseSessionPlayer(playerId, sessionId, "TestPlayer", false)));
+            when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
+            when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(15.0, 120.0);
+            doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
+            when(playerShipRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(travelRepository.save(any())).thenReturn(lowTravel, highTravel);
+            when(travelResponseMapper.toResponse(any())).thenReturn(new TravelDTO());
+
+            service.startTravel(playerId, sessionId, buildStartTravelDTO(lowWearShip.getId(), destinationPortId, lowCargoId));
+            service.startTravel(playerId, sessionId, buildStartTravelDTO(highWearShip.getId(), destinationPortId, highCargoId));
+
+            double lowConditionLoss = 100.0 - lowWearShip.getCondition();
+            double highConditionLoss = 100.0 - highWearShip.getCondition();
+            assertThat(highConditionLoss).isGreaterThan(lowConditionLoss);
+        }
+
+        @Test
+        void givenVeryWornShip_whenStartTravel_thenConditionDoesNotFallBelowZero() {
+            UUID playerId = UUID.randomUUID();
+            UUID sessionId = UUID.randomUUID();
+            Ship ship = buildShip();
+            PlayerShip playerShip = buildAtPortShip(playerId, sessionId, ship.getId());
+            playerShip.applyWear(99.0);
+            UUID destinationPortId = UUID.randomUUID();
+            UUID sessionCargoId = UUID.randomUUID();
+            SessionCargo cargo = buildAvailableCargo(sessionCargoId, destinationPortId, sessionId, 50);
+            Travel travel = buildTravel(playerShip.getId(), playerId, sessionId);
+
+            when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(buildGameSession(playerId)));
+            when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId)).thenReturn(Optional.of(playerShip));
+            when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
+            when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
+            when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(new at.fhv.backend.domain.model.player.BaseSessionPlayer(playerId, sessionId, "TestPlayer", false)));
+            when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
+            when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(1000.0);
+            doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
+            when(playerShipRepository.save(any())).thenReturn(playerShip);
+            when(travelRepository.save(any())).thenReturn(travel);
+            when(travelResponseMapper.toResponse(any())).thenReturn(new TravelDTO());
+
+            service.startTravel(playerId, sessionId, buildStartTravelDTO(playerShip.getId(), destinationPortId, sessionCargoId));
+
+            assertThat(playerShip.getCondition()).isZero();
         }
 
         @Test
@@ -341,19 +462,18 @@ class TravelServiceImplTest {
             UUID destinationPortId = UUID.randomUUID();
             UUID sessionCargoId = UUID.randomUUID();
 
-            SessionCargo assignedCargo = SessionCargo.reconstruct(
+            SessionCargo unavailableCargo = SessionCargo.reconstruct(
                     sessionCargoId, UUID.randomUUID(), sessionId,
                     UUID.randomUUID(), destinationPortId,
                     BigDecimal.valueOf(1000), false, 50,
                     CargoType.GENERAL_GOODS, 0.1,
-                    CargoStatus.ASSIGNED, UUID.randomUUID(), UUID.randomUUID(), 0, 5, -1, -1
+                    CargoStatus.AVAILABLE, null, null, 0, 5, -1, -1
             );
 
             when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId))
                     .thenReturn(Optional.of(playerShip));
             when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
-            when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(assignedCargo));
-            when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(buildGameSession(playerId)));
+            when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(unavailableCargo));
 
             assertThatThrownBy(() ->
                     service.startTravel(playerId, sessionId,
@@ -378,7 +498,6 @@ class TravelServiceImplTest {
             when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
             when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(new at.fhv.backend.domain.model.player.BaseSessionPlayer(playerId, sessionId, "TestPlayer", false)));
             when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
-            stubPortQueryService(playerShip.getCurrentPortId(), destinationPortId);
             when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(10.0);
             doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
             when(playerShipRepository.save(any())).thenReturn(playerShip);
@@ -408,7 +527,6 @@ class TravelServiceImplTest {
             when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
             when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(new at.fhv.backend.domain.model.player.BaseSessionPlayer(playerId, sessionId, "TestPlayer", false)));
             when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
-            stubPortQueryService(playerShip.getCurrentPortId(), destinationPortId);
             when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(10.0);
             doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
             when(playerShipRepository.save(any())).thenReturn(playerShip);

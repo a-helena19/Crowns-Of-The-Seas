@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import CargoScreen from "./CargoScreen";
 import ShipScreen from "./ShipScreen";
 import Sailor from "../components/Sailor";
@@ -34,7 +34,6 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
     const sessionId = sessionData ? JSON.parse(sessionData).id : null;
     const token = localStorage.getItem("auth_token") ?? "";
 
-    // Häfen laden, in denen der Spieler Schiffe hat (Status AT_PORT)
     useEffect(() => {
         if (!playerId || !sessionId) return;
         fetch(`/api/ships/player/${playerId}?sessionId=${sessionId}`, {
@@ -60,7 +59,6 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
 
     function handleShipSelect(ship: any) {
         setSelectedShip(ship);
-        // Port automatisch auf den Hafen des Schiffs setzen
         if (ship.currentPortId) setSelectedPortId(ship.currentPortId);
         setView("main");
     }
@@ -93,31 +91,30 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
             phase: "loading",
         };
         onCargoAssigned(entry);
-        onClose(); // zurück zur Karte – Ladevorgang läuft im Hintergrund
+        onClose();
     }
 
     return (
         <div className="scene">
             <img src={background} className="background" alt="" />
             <div className="back-icon-btn" onClick={handleBack}>
-                <img src={backIcon} alt="Zurück" />
+                <img src={backIcon} alt="Zurueck" />
             </div>
 
             {view === "main" && (
                 <>
                     <Sailor />
 
-                    {/* Port-Auswahl oben, wenn mehrere Häfen verfügbar */}
                     {myPorts.length > 1 && (
                         <div className="harbor-port-selector">
-                            <span className="harbor-port-selector-label">Hafen wählen:</span>
+                            <span className="harbor-port-selector-label">Hafen waehlen:</span>
                             {myPorts.map(p => (
                                 <button
                                     key={p.id}
                                     className={`harbor-port-btn ${selectedPortId === p.id ? "active" : ""}`}
                                     onClick={() => {
                                         setSelectedPortId(p.id);
-                                        setSelectedShip(null); // Schiff-Auswahl zurücksetzen bei Port-Wechsel
+                                        setSelectedShip(null);
                                     }}
                                 >
                                     {p.name}

@@ -4,6 +4,7 @@ interface Window {
     __latestTick?: { currentTick: number; totalTicks: number };
     __latestShipPositionsTick?: number;
     __tickRateMs?: number;
+    __activeGameView?: "map" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office";
     __latestShips?: Array<{
         playerShipId: string;
         playerId: string;
@@ -11,7 +12,7 @@ interface Window {
         iconUrl: string;
         x: number;
         y: number;
-        status: 'EN_ROUTE' | 'AT_PORT';
+        status: 'EN_ROUTE' | 'AT_PORT' | 'LOADING' | 'UNLOADING' | 'READY_TO_DEPART';
         arrivalTick: number | null;
         originX: number | null;
         originY: number | null;

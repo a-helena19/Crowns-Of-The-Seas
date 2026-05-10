@@ -18,6 +18,8 @@ import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.ship.Ship;
 import at.fhv.backend.domain.model.ship.ShipClass;
 import at.fhv.backend.domain.model.ship.ShipRepository;
+import at.fhv.backend.domain.model.ship.UsedShipListingRepository;
+import at.fhv.backend.domain.model.ship.UsedShipListingStatus;
 import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,6 +49,7 @@ class PurchaseShipServiceImplTest {
     @Mock private SessionPlayerRepository sessionPlayerRepository;
     @Mock private at.fhv.backend.application.services.impl.session.GameTickScheduler gameTickScheduler;
     @Mock private at.fhv.backend.rest.ShipMarketWebSocketController shipMarketWebSocketController;
+    @Mock private UsedShipListingRepository usedShipListingRepository;
 
     private PurchaseShipServiceImpl service;
 
@@ -56,7 +59,8 @@ class PurchaseShipServiceImplTest {
                 validateShipService, shipRepository, playerShipRepository,
                 playerShipResponseMapper, shipResponseMapper,
                 portQueryService, sessionPlayerRepository,
-                gameTickScheduler, shipMarketWebSocketController
+                gameTickScheduler, shipMarketWebSocketController,
+                usedShipListingRepository
         );
     }
 
@@ -81,6 +85,9 @@ class PurchaseShipServiceImplTest {
                                         UUID playerId, UUID sessionId) {
         UUID startPortId = UUID.randomUUID();
         when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
+        when(playerShipRepository.countByShipIdAndSessionId(ship.getId(), sessionId)).thenReturn(0L);
+        when(usedShipListingRepository.countByShipIdAndSessionIdAndStatus(ship.getId(), sessionId, UsedShipListingStatus.AVAILABLE))
+                .thenReturn(0L);
         when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId))
                 .thenReturn(Optional.of(player));
         when(validateShipService.validatePurchase(eq(ship), any())).thenReturn(ship.getPrice());
@@ -137,6 +144,9 @@ class PurchaseShipServiceImplTest {
         UUID sessionId = UUID.randomUUID();
         Ship ship = buildShip(BigDecimal.valueOf(1000));
         when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
+        when(playerShipRepository.countByShipIdAndSessionId(ship.getId(), sessionId)).thenReturn(0L);
+        when(usedShipListingRepository.countByShipIdAndSessionIdAndStatus(ship.getId(), sessionId, UsedShipListingStatus.AVAILABLE))
+                .thenReturn(0L);
         when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId))
                 .thenReturn(Optional.empty());
 
@@ -152,6 +162,9 @@ class PurchaseShipServiceImplTest {
         Ship ship = buildShip(BigDecimal.valueOf(99999));
         ISessionPlayer player = buildPlayer(playerId, sessionId, BigDecimal.valueOf(100));
         when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
+        when(playerShipRepository.countByShipIdAndSessionId(ship.getId(), sessionId)).thenReturn(0L);
+        when(usedShipListingRepository.countByShipIdAndSessionIdAndStatus(ship.getId(), sessionId, UsedShipListingStatus.AVAILABLE))
+                .thenReturn(0L);
         when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId))
                 .thenReturn(Optional.of(player));
         when(validateShipService.validatePurchase(ship, player.getBalance()))
@@ -171,6 +184,9 @@ class PurchaseShipServiceImplTest {
 
         UUID startPortId = UUID.randomUUID();
         when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
+        when(playerShipRepository.countByShipIdAndSessionId(ship.getId(), sessionId)).thenReturn(0L);
+        when(usedShipListingRepository.countByShipIdAndSessionIdAndStatus(ship.getId(), sessionId, UsedShipListingStatus.AVAILABLE))
+                .thenReturn(0L);
         when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId))
                 .thenReturn(Optional.of(player));
         when(validateShipService.validatePurchase(eq(ship), any())).thenReturn(ship.getPrice());

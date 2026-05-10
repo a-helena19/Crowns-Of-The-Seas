@@ -18,6 +18,8 @@ import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.ship.Ship;
 import at.fhv.backend.domain.model.ship.ShipRepository;
+import at.fhv.backend.domain.model.ship.UsedShipListingRepository;
+import at.fhv.backend.domain.model.ship.UsedShipListingStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +38,7 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
     private final SessionPlayerRepository sessionPlayerRepository;
     private final GameTickScheduler gameTickScheduler;
     private final ShipMarketWebSocketController shipMarketWebSocketController;
+    private final UsedShipListingRepository usedShipListingRepository;
 
     public PurchaseShipServiceImpl(ValidateShipService validateShipService,
                                    ShipRepository shipRepository,
@@ -45,7 +48,8 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
                                    PortQueryService portQueryService,
                                    SessionPlayerRepository sessionPlayerRepository,
                                    GameTickScheduler gameTickScheduler,
-                                   ShipMarketWebSocketController shipMarketWebSocketController) {
+                                   ShipMarketWebSocketController shipMarketWebSocketController,
+                                   UsedShipListingRepository usedShipListingRepository) {
         this.validateShipService = validateShipService;
         this.shipRepository = shipRepository;
         this.playerShipRepository = playerShipRepository;
@@ -55,6 +59,7 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
         this.sessionPlayerRepository = sessionPlayerRepository;
         this.gameTickScheduler = gameTickScheduler;
         this.shipMarketWebSocketController = shipMarketWebSocketController;
+        this.usedShipListingRepository = usedShipListingRepository;
     }
 
     @Override
@@ -64,7 +69,12 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
                 .orElseThrow(() -> new ShipNotFoundException("shipId", request.getShipId()));
 
         long owned = playerShipRepository.countByShipIdAndSessionId(ship.getId(), sessionId);
-        if (owned >= ship.getStock()) {
+        long usedListings = usedShipListingRepository.countByShipIdAndSessionIdAndStatus(
+                ship.getId(),
+                sessionId,
+                UsedShipListingStatus.AVAILABLE
+        );
+        if (owned + usedListings >= ship.getStock()) {
             throw new at.fhv.backend.domain.model.exception.ShipNotAvailableException(
                     "Schiff ist in dieser Session ausverkauft (Stock " + ship.getStock() + " erreicht).",
                     "shipId",
