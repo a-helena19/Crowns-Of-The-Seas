@@ -57,8 +57,14 @@ public class CargoQueryServiceImpl implements CargoQueryService {
         if (player != null) {
             double modifier = player.getEarlyOrderDetectionModifier();
             int tickBonus = (int) Math.round((1.0 - modifier) * EARLY_DETECTION_TICK_SCALE);
-            effectiveTick = currentTick + tickBonus;
+            effectiveTick = Math.max(0, currentTick + tickBonus);
         }
+
+        System.out.println("[CargoQuery] playerId=" + playerId
+                + " currentTick=" + currentTick
+                + " modifier=" + (player != null ? player.getEarlyOrderDetectionModifier() : "NO_PLAYER")
+                + " effectiveTick=" + effectiveTick
+                + " results=" + sessionCargoRepository.findAvailableBySessionIdAndPort(sessionId, portId, effectiveTick).size());
 
         return sessionCargoRepository.findAvailableBySessionIdAndPort(sessionId, portId, effectiveTick)
                 .stream()

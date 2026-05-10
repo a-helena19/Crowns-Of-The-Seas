@@ -23,7 +23,7 @@ interface FuelEstimate {
     currentFuelPercent: number; currentFuelAbsolute: number;
     maxFuel: number; distance: number; speedOptions: SpeedOption[];
 }
-interface CargoMarketEvent { availableCargos?: SessionCargoDTO[]; }
+// interface CargoMarketEvent { availableCargos?: SessionCargoDTO[]; }
 interface ShipPositionEventPayload {
     currentTick: number;
     ships: Array<{ playerShipId: string; status: "EN_ROUTE" | "AT_PORT" }>;
@@ -120,6 +120,7 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
     const filterByPort = useCallback((list: SessionCargoDTO[]) =>
         currentPortId ? list.filter(c => c.originPortId === currentPortId) : list, [currentPortId]);
 
+    console.log ("Filtering cargos for port", currentPortId, "player: ", playerId );
     useEffect(() => {
         if (!sessionId || !currentPortId) { setLoading(false); return; }
         fetch(`/api/cargo/${sessionId}/available?portId=${currentPortId}&playerId=${playerId}`, { headers: { Authorization: `Bearer ${token}` } })
@@ -141,15 +142,23 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
         if (token) headers["Authorization"] = `Bearer ${token}`;
         client.connect(headers, () => {
             stompRef.current = client;
-            client.subscribe(`/topic/session/${sessionId}/cargo`, msg => {
-                const ev = JSON.parse(msg.body) as CargoMarketEvent;
-                const f = filterByPort(ev.availableCargos ?? []);
-                setCargos(f);
-                setSelected(prev => {
-                    if (prev && f.some(c => c.id === prev.id)) return prev;
-                    if (prev) setAcceptError("Diese Fracht wurde gerade von einem anderen Kapitän übernommen.");
-                    return f[0] ?? null;
-                });
+            client.subscribe(`/topic/session/${sessionId}/cargo`, () => {
+                // Markt hat sich geändert — Cargos neu laden (mit playerId-Modifier)
+                if (!currentPortId) return;
+                fetch(`/api/cargo/${sessionId}/available?portId=${currentPortId}&playerId=${playerId}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                })
+                    .then(r => r.json())
+                    .then((data: SessionCargoDTO[]) => {
+                        const f = filterByPort(data);
+                        setCargos(f);
+                        setSelected(prev => {
+                            if (prev && f.some(c => c.id === prev.id)) return prev;
+                            if (prev) setAcceptError("Diese Fracht wurde gerade von einem anderen Kapitän übernommen.");
+                            return f[0] ?? null;
+                        });
+                    })
+                    .catch(console.error);
             });
         }, () => {});
         return () => { if (client.connected) client.disconnect(() => {}); };

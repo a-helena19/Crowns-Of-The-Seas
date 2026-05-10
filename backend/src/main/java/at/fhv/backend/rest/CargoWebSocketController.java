@@ -21,10 +21,9 @@ public class CargoWebSocketController {
 
     public void broadcastMarketUpdate(UUID sessionId) {
         try {
-            List<SessionCargoDTO> available = cargoQueryService.getAvailableCargosBySession(sessionId);
             messaging.convertAndSend(
                     "/topic/session/" + sessionId + "/cargo",
-                    new CargoMarketUpdateEvent(available)
+                    new CargoMarketUpdateEvent()
             );
         } catch (Exception e) {
             System.err.println("Failed to broadcast cargo update for session " + sessionId + ": " + e.getMessage());
