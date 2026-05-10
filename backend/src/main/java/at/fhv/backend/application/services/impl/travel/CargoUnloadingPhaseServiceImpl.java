@@ -17,6 +17,7 @@ import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.smuggle.SmuggleOffer;
 import at.fhv.backend.domain.model.travel.Travel;
+import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.rest.GameSessionWebSocketController;
 import at.fhv.backend.rest.dtos.websocket.CargoRewardBreakdown;
 import at.fhv.backend.rest.dtos.websocket.PlayerInfo;
@@ -38,6 +39,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
     private final PortRepository portRepository;
     private final CargoRepository cargoRepository;
     private final SmuggleService smuggleService;
+    private final TravelRepository travelRepository;
 
     public CargoUnloadingPhaseServiceImpl(
             SessionCargoRepository sessionCargoRepository,
@@ -47,7 +49,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             GameSessionWebSocketController webSocketController,
             PortRepository portRepository,
             CargoRepository cargoRepository,
-            SmuggleService smuggleService) {
+            SmuggleService smuggleService,
+            TravelRepository travelRepository) {
         this.sessionCargoRepository = sessionCargoRepository;
         this.playerShipRepository = playerShipRepository;
         this.gameSessionRepository = gameSessionRepository;
@@ -56,6 +59,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         this.portRepository = portRepository;
         this.cargoRepository = cargoRepository;
         this.smuggleService = smuggleService;
+        this.travelRepository = travelRepository;
     }
 
     @Override
@@ -114,6 +118,9 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             ship.completeUnloading();
             playerShipRepository.save(ship);
         }
+
+        travel.markAsCompleted();
+        travelRepository.save(travel);
 
         return totalReward;
     }
@@ -207,7 +214,6 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             BigDecimal cargoTotal = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
             BigDecimal smuggleAmount = smuggleOffer != null ? smuggleOffer.getReward() : BigDecimal.ZERO;
             BigDecimal totalReward = cargoTotal.add(smuggleAmount);
-
 
             TravelCompleteEvent event = new TravelCompleteEvent(
                     travel.getTravelId().toString(),

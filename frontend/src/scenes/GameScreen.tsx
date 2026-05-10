@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import TopBar from "../components/TopBar.tsx";
 import Game from "../Game.tsx";
 import BottomBar from "../components/BottomBar.tsx";
@@ -33,6 +33,12 @@ export default function GameScreen() {
     const [smuggleOffer, setSmuggleOffer] = useState<{
         offerId: string; portId: string; reward: number; cargoDescription: string;
     } | null>(null);
+
+    // Puffer: Offer der während der Departure-Animation ankam
+    const pendingSmuggleRef = useRef<{
+        offerId: string; portId: string; reward: number; cargoDescription: string;
+    } | null>(null);
+    const departureActiveRef = useRef(false);
 
     function handleCargoAssigned(entry: AssignedCargoEntry) {
         setAssignedCargos(prev => {
@@ -159,16 +165,38 @@ export default function GameScreen() {
                 reward: number; cargoDescription: string;
             }>).detail;
             if (data.playerId !== playerId) return;
-            setSmuggleOffer({
+            const offer = {
                 offerId: data.offerId,
                 portId: data.portId,
                 reward: data.reward,
                 cargoDescription: data.cargoDescription,
-            });
+            };
+            if (departureActiveRef.current) {
+                // Animation läuft noch → puffern, wird nach Animation+2s gezeigt
+                pendingSmuggleRef.current = offer;
+            } else {
+                setSmuggleOffer(offer);
+            }
         };
         window.addEventListener("smuggle-offer", handler);
         return () => window.removeEventListener("smuggle-offer", handler);
     }, [playerId]);
+
+    // Callback für CargoManagementScreen: wird nach Ende der Departure-Animation aufgerufen
+    const handleDepartureComplete = useCallback(() => {
+        departureActiveRef.current = false;
+        const pending = pendingSmuggleRef.current;
+        if (pending) {
+            pendingSmuggleRef.current = null;
+            setTimeout(() => setSmuggleOffer(pending), 2000);
+        }
+    }, []);
+
+    // Callback: wird aufgerufen wenn Reise startet (Animation beginnt)
+    const handleDepartureStarted = useCallback(() => {
+        departureActiveRef.current = true;
+        pendingSmuggleRef.current = null;
+    }, []);
 
     async function handleSmuggleAccept() {
         if (!smuggleOffer) return;
@@ -180,7 +208,6 @@ export default function GameScreen() {
             );
             if (res.ok) {
                 setSmuggleOffer(null);
-                setView("map");
             } else {
                 setSmuggleOffer(null);
             }
@@ -245,6 +272,8 @@ export default function GameScreen() {
                         onCargoRemoved={handleCargoRemoved}
                         onCargoPhaseChange={handleCargoPhaseChange}
                         onClose={() => setView("map")}
+                        onDepartureStarted={handleDepartureStarted}
+                        onDepartureComplete={handleDepartureComplete}
                     />
                 )}
             </div>

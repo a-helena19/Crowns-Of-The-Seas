@@ -1,18 +1,37 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import LoadingScreen from "./LoadingScreen";
+import backIcon from "../assets/goback.png";
+import background from "../assets/background.jpg";
+import "../style/harbor.css";
+import "../style/cargoManagement.css";
+import type { AssignedCargoEntry } from "../types/assignedCargo";
+import DepartureAnimation from "./DepartureAnimation";
 
 // Fließender Fortschrittsbalken: interpoliert zwischen Tick-Updates mit CSS-Transition.
 function SmoothProgressBar({ targetPct, color }: { targetPct: number; color: string }) {
     const [displayPct, setDisplayPct] = useState(targetPct);
     const [transitionMs, setTransitionMs] = useState(0);
     const prevTargetRef = useRef(targetPct);
+    const isFirstRender = useRef(true);
 
     useEffect(() => {
+        // Ersten Render überspringen — kein Transition beim initialen Mount
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            prevTargetRef.current = targetPct;
+            return;
+        }
         if (targetPct === prevTargetRef.current) return;
-        // Transition-Dauer = Tick-Rate des Backends (oder 5 s als Fallback)
+
         const tickMs = (window as unknown as { __tickRateMs?: number }).__tickRateMs ?? 5000;
-        setTransitionMs(tickMs * 0.95);
-        setDisplayPct(targetPct);
         prevTargetRef.current = targetPct;
+
+        // State-Updates in einem einzigen flushSync-ähnlichen Batch via queueMicrotask
+        // vermeidet das synchrone setState-in-Effect Problem
+        queueMicrotask(() => {
+            setTransitionMs(tickMs * 0.95);
+            setDisplayPct(targetPct);
+        });
     }, [targetPct]);
 
     return (
@@ -31,21 +50,12 @@ function SmoothProgressBar({ targetPct, color }: { targetPct: number; color: str
 
 // Wrapper der sich die erste bekannte Restdauer merkt, um Prozent korrekt zu berechnen.
 function TravelProgressBar({ remaining, color }: { remaining: number; color: string }) {
-    const initialRef = useRef<number | null>(null);
-    if (initialRef.current === null && remaining > 0) {
-        initialRef.current = remaining;
-    }
-    const total = initialRef.current ?? remaining;
+    // Initialwert per useState statt Ref-Schreiben im Render
+    const [initialRemaining] = useState<number>(() => (remaining > 0 ? remaining : null) as unknown as number);
+    const total = initialRemaining ?? remaining;
     const pct = total > 0 ? Math.min(100, (1 - remaining / total) * 100) : 100;
     return <SmoothProgressBar targetPct={pct} color={color} />;
 }
-import LoadingScreen from "./LoadingScreen";
-import backIcon from "../assets/goback.png";
-import background from "../assets/background.jpg";
-import "../style/harbor.css";
-import "../style/cargoManagement.css";
-import type { AssignedCargoEntry } from "../types/assignedCargo";
-import DepartureAnimation from "./DepartureAnimation";
 
 interface CargoManagementScreenProps {
     assignedCargos: AssignedCargoEntry[];
@@ -53,6 +63,8 @@ interface CargoManagementScreenProps {
     onCargoRemoved: (cargoId: string) => void;
     onCargoPhaseChange: (cargoId: string, phase: AssignedCargoEntry["phase"], travelId?: string) => void;
     onClose: () => void;
+    onDepartureStarted?: () => void;
+    onDepartureComplete?: () => void;
 }
 
 export default function CargoManagementScreen({
@@ -61,6 +73,8 @@ export default function CargoManagementScreen({
                                                   onCargoRemoved,
                                                   onCargoPhaseChange,
                                                   onClose,
+                                                  onDepartureStarted,
+                                                  onDepartureComplete,
                                               }: CargoManagementScreenProps) {
     const [selectedCargoId, setSelectedCargoId] = useState<string | null>(
         assignedCargos[0]?.cargoId ?? null
@@ -86,18 +100,11 @@ export default function CargoManagementScreen({
         return Math.max(0, entry.loadingDurationSeconds - getElapsedSeconds(entry));
     }
 
-    async function handleStartTravel(entry: AssignedCargoEntry) {
+    const handleStartTravel = useCallback(async (entry: AssignedCargoEntry) => {
         if (!playerId || !sessionId) return;
         setStartingMap(m => ({ ...m, [entry.cargoId]: true }));
         setErrorMap(m => ({ ...m, [entry.cargoId]: "" }));
 
-        // Das Backend setzt den Schiffsstatus erst beim nächsten Tick auf
-        // READY_TO_DEPART. Falls das Frontend-Timer schon abgelaufen ist,
-        // aber das Backend noch nicht bereit ist (SHIP_NOT_READY), warten
-        // wir still mit ansteigendem Delay — kein Fehler wird angezeigt,
-        // der Nutzer sieht nur "Reise wird gestartet…".
-        //
-        // Maximale Wartezeit ≈ 2 volle Tick-Zyklen (Fallback: 5 s pro Tick).
         const tickMs = (window as unknown as { __tickRateMs?: number }).__tickRateMs ?? 5000;
         const MAX_WAIT_MS = tickMs * 2.5;
         const BASE_RETRY_DELAY_MS = Math.max(500, Math.min(tickMs * 0.4, 2000));
@@ -120,6 +127,7 @@ export default function CargoManagementScreen({
                 if (response.ok) {
                     const data = await response.json() as { travelId?: string };
                     window.dispatchEvent(new CustomEvent("player-balance-updated"));
+                    onDepartureStarted?.();
                     setShowDeparture(entry);
                     onCargoPhaseChange(entry.cargoId, "en_route", data.travelId);
                     return;
@@ -138,19 +146,14 @@ export default function CargoManagementScreen({
                     else msg = errData.message ?? msg;
                 } catch { /* noop */ }
 
-                // SHIP_NOT_READY bedeutet: Backend-Tick hat die Beladung noch nicht
-                // abgeschlossen. Wir warten still und versuchen es automatisch erneut.
-                // Der Nutzer sieht "Reise wird gestartet…" — kein sichtbarer Fehler.
                 if (errorCode === "SHIP_NOT_READY" && retriesLeft > 0) {
                     await new Promise<void>(resolve => setTimeout(resolve, delayMs));
-                    // Leicht ansteigendes Delay (max. 1 Tick-Länge), um nicht zu spammen
                     const nextDelay = Math.min(delayMs * 1.3, tickMs);
                     return attemptStart(retriesLeft - 1, nextDelay);
                 }
 
                 setErrorMap(m => ({ ...m, [entry.cargoId]: msg }));
             } catch {
-                // Netzwerkfehler: auch kurz warten und nochmal versuchen
                 if (retriesLeft > 0) {
                     await new Promise<void>(resolve => setTimeout(resolve, delayMs));
                     return attemptStart(retriesLeft - 1, delayMs);
@@ -164,7 +167,12 @@ export default function CargoManagementScreen({
         } finally {
             setStartingMap(m => ({ ...m, [entry.cargoId]: false }));
         }
-    }
+    }, [playerId, sessionId, token, pilotageMap, onDepartureStarted, onCargoPhaseChange]);
+
+    const handleDepartureComplete = useCallback(() => {
+        setShowDeparture(null);
+        onDepartureComplete?.();
+    }, [onDepartureComplete]);
 
     return (
         <div className="scene">
@@ -208,7 +216,6 @@ export default function CargoManagementScreen({
                     })}
                 </div>
 
-                {/* Rechte Spalte: Detail-Ansicht der ausgewählten Fracht */}
                 {selectedEntry && (
                     <div className="cm-detail-panel">
                         {selectedEntry.phase === "loading" && (
@@ -337,7 +344,6 @@ export default function CargoManagementScreen({
                             const details = selectedEntry.rewardDetails;
                             return (
                                 <div className="cm-reward-panel">
-                                    {/* Header */}
                                     <div className="cm-reward-header">
                                         <span>{isPerfect ? '🌟' : '⚓'}</span>
                                         <div className="cm-reward-title">
@@ -351,7 +357,6 @@ export default function CargoManagementScreen({
                                         </div>
                                     )}
 
-                                    {/* Frachtbilanz */}
                                     <div className="cm-reward-section-label">
                                         Frachtbilanz (1)
                                     </div>
@@ -365,7 +370,6 @@ export default function CargoManagementScreen({
                                         </span>
                                     </div>
 
-                                    {/* Summary */}
                                     {details && (
                                         <div className="cm-reward-breakdown">
                                             <div className="cm-reward-row">
@@ -393,7 +397,6 @@ export default function CargoManagementScreen({
                                         </div>
                                     )}
 
-                                    {/* Weiter-Button */}
                                     <button
                                         className="cm-reward-btn"
                                         onClick={() => onCargoRemoved(selectedEntry.cargoId)}
@@ -410,9 +413,7 @@ export default function CargoManagementScreen({
             {showDeparture && (
                 <DepartureAnimation
                     shipIconUrl={showDeparture.shipIconUrl ?? "/fallback-ship.png"}
-                    onComplete={() => {
-                        setShowDeparture(null);
-                    }}
+                    onComplete={handleDepartureComplete}
                 />
             )}
         </div>

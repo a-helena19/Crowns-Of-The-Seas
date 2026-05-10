@@ -3,6 +3,7 @@ package at.fhv.backend.application.services;
 import at.fhv.backend.application.services.impl.travel.CargoUnloadingPhaseServiceImpl;
 import at.fhv.backend.application.services.impl.travel.RewardCalculationServiceImpl;
 import at.fhv.backend.application.services.impl.travel.TravelArrivalServiceImpl;
+import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.domain.model.cargo.*;
 import at.fhv.backend.domain.model.player.BaseSessionPlayer;
@@ -191,6 +192,7 @@ class TravelCompletionServiceTest {
         @Mock private GameSessionRepository gameSessionRepository;
         @Mock private CargoUnloadingPhaseService cargoUnloadingPhaseService;
         @Mock private SessionCargoRepository sessionCargoRepository;
+        @Mock private SmuggleService smuggleService;
 
         private TravelArrivalServiceImpl service;
 
@@ -198,7 +200,7 @@ class TravelCompletionServiceTest {
         void setUp() {
             service = new TravelArrivalServiceImpl(
                     travelRepository, playerShipRepository, sessionCargoRepository,
-                    cargoUnloadingPhaseService, gameSessionRepository
+                    cargoUnloadingPhaseService, gameSessionRepository, smuggleService
             );
         }
 
@@ -284,6 +286,8 @@ class TravelCompletionServiceTest {
         @Mock private GameSessionWebSocketController webSocketController;
         @Mock private PortRepository portRepository;
         @Mock private CargoRepository cargoRepository;
+        @Mock private SmuggleService smuggleService;
+        @Mock private TravelRepository travelRepository;
 
         private CargoUnloadingPhaseServiceImpl service;
 
@@ -297,7 +301,9 @@ class TravelCompletionServiceTest {
                     new RewardCalculationServiceImpl(),
                     webSocketController,
                     portRepository,
-                    cargoRepository
+                    cargoRepository,
+                    smuggleService,
+                    travelRepository
             );
         }
 
