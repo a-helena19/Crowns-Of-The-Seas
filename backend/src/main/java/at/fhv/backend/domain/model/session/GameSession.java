@@ -8,7 +8,6 @@ import at.fhv.backend.domain.model.player.exception.*;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -78,7 +77,6 @@ public class GameSession {
             throw new SessionNotInLobbyException(id);
         if (players.size() >= maxPlayers)
             throw new SessionFullException(id);
-        // Check if player already in session
         if (players.stream().anyMatch(p -> p.getUserId().equals(player.getUserId())))
             throw new PlayerAlreadyInSessionException(id, player.getUserId());
         players.add(player);
@@ -118,11 +116,12 @@ public class GameSession {
         if (!removed)
             throw new PlayerNotFoundException(userId);
         playerFactions.remove(userId);
+        playerReadyStatus.remove(userId);
     }
 
     public void makePlayerHost(UUID userId) {
         for (ISessionPlayer player : this.players) {
-            player.setHost(true);
+            player.setHost(false);
         }
         for (ISessionPlayer player : this.players) {
             if (player.getUserId().equals(userId)) {
@@ -134,13 +133,15 @@ public class GameSession {
     }
 
     public void assignPlayerFaction(UUID userId, PlayerFaction faction) {
+        if (status != SessionStatus.FACTION_SELECTION)
+            throw new SessionNotInLobbyException(id);
+
         boolean playerExists = players.stream()
                 .anyMatch(p -> p.getUserId().equals(userId));
         if (!playerExists)
             throw new PlayerNotFoundException(userId);
 
-        // Idempotent: if same faction already set, that's fine
-        if (playerFactions.containsKey(userId) && !playerFactions.get(userId).equals(faction))
+        if (Boolean.TRUE.equals(playerReadyStatus.get(userId)))
             throw new FactionAlreadyAssignedException(userId);
 
         playerFactions.put(userId, faction);
@@ -151,6 +152,9 @@ public class GameSession {
     }
 
     public void markPlayerReady(UUID userId) {
+        if (status != SessionStatus.FACTION_SELECTION)
+            throw new SessionNotInLobbyException(id);
+
         if (!players.stream().anyMatch(p -> p.getUserId().equals(userId)))
             throw new PlayerNotFoundException(userId);
 
@@ -161,6 +165,9 @@ public class GameSession {
     }
 
     public boolean areAllPlayersReady() {
+        if (players.isEmpty())
+            return false;
+
         if (playerFactions.size() != players.size())
             return false;
 

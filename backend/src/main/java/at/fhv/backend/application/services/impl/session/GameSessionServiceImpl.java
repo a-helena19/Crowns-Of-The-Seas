@@ -6,11 +6,10 @@ import at.fhv.backend.application.services.session.GameSessionService;
 import at.fhv.backend.domain.model.player.BaseSessionPlayer;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.player.PlayerFaction;
-import at.fhv.backend.domain.model.player.exception.FactionAlreadyAssignedException;
 import at.fhv.backend.domain.model.player.exception.InvalidFactionException;
-import at.fhv.backend.domain.model.player.exception.PlayerNotFoundException;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
+import at.fhv.backend.domain.model.session.SessionStatus;
 import at.fhv.backend.domain.model.session.exception.SessionNotFoundException;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.rest.dtos.port.PortResponseDTO;
@@ -52,11 +51,33 @@ public class GameSessionServiceImpl implements GameSessionService {
         this.cargoSessionInitializer = cargoSessionInitializer;
     }
 
+    private void broadcastSessionUpdate(GameSession session, String type) {
+        SessionUpdateEvent event = new SessionUpdateEvent(
+                session.getId(),
+                session.getGameCode(),
+                session.getStatus().toString(),
+                session.getPlayers().size(),
+                session.getMaxPlayers(),
+                session.getPlayers().stream()
+                        .map(p -> new SessionUpdateEvent.PlayerInfo(
+                                p.getUserId(),
+                                p.getPlayerName(),
+                                p.isHost(),
+                                session.getPlayerFactions().get(p.getUserId()) != null
+                                        ? session.getPlayerFactions().get(p.getUserId()).name()
+                                        : null,
+                                session.getReadyPlayers().contains(p.getUserId())))
+                        .collect(Collectors.toList()),
+                type
+        );
+        webSocketController.broadcastSessionUpdate(session.getId().toString(), event);
+    }
+
     @Override
-    public SessionDTO createSession(UUID hostUserId, String hostName, int maxPlayers, int tickRateSeconds, int totalTicks, Duration duration) {
+    public SessionDTO createSession(UUID hostUserId, String hostName, int maxPlayers,
+                                    int tickRateSeconds, int totalTicks, Duration duration) {
         GameSession session = new GameSession(hostUserId, maxPlayers, tickRateSeconds, totalTicks, duration);
-        ISessionPlayer host = new BaseSessionPlayer(
-                hostUserId, session.getId(), hostName, true);
+        ISessionPlayer host = new BaseSessionPlayer(hostUserId, session.getId(), hostName, true);
         session.addPlayer(host);
         return sessionDTOMapper.sessionToDTO(gameSessionRepository.save(session));
     }
@@ -65,69 +86,37 @@ public class GameSessionServiceImpl implements GameSessionService {
     public SessionDTO joinSession(String gameCode, UUID userId, String playerName) {
         GameSession session = gameSessionRepository.findByGameCode(gameCode)
                 .orElseThrow(() -> new SessionNotFoundException(gameCode));
-        ISessionPlayer player = new BaseSessionPlayer(
-                userId, session.getId(), playerName, false);
+        ISessionPlayer player = new BaseSessionPlayer(userId, session.getId(), playerName, false);
         session.addPlayer(player);
         SessionDTO savedSession = sessionDTOMapper.sessionToDTO(gameSessionRepository.save(session));
 
-        SessionUpdateEvent event = new SessionUpdateEvent(
-                session.getId(),
-                session.getGameCode(),
-                session.getStatus().toString(),
-                session.getPlayers().size(),
-                session.getMaxPlayers(),
-                session.getPlayers().stream()
-                        .map(p -> new SessionUpdateEvent.PlayerInfo(
-                                p.getUserId(),
-                                p.getPlayerName(),
-                                p.isHost(),
-                                session.getPlayerFactions().get(p.getUserId()) != null
-                                        ? session.getPlayerFactions().get(p.getUserId()).name()
-                                        : null,
-                                session.getReadyPlayers().contains(p.getUserId())))
-                        .collect(Collectors.toList()),
-                "PLAYER_JOINED"
-        );
-        // Use sessionId (UUID) not gameCode for WebSocket topic!
-        webSocketController.broadcastSessionUpdate(session.getId().toString(), event);
+        broadcastSessionUpdate(session, "PLAYER_JOINED");
 
         return savedSession;
     }
 
     @Override
+    @Transactional
     public SessionDTO startGame(UUID sessionId, UUID hostUserId) {
-        GameSession session = gameSessionRepository.findById(sessionId)
+        GameSession session = gameSessionRepository.findByIdWithLock(sessionId)
                 .orElseThrow(() -> new SessionNotFoundException(sessionId));
+
+        if (session.getStatus() == SessionStatus.FACTION_SELECTION) {
+            return sessionDTOMapper.sessionToDTO(session);
+        }
+
         session.beginFactionSelection(hostUserId);
         SessionDTO savedSession = sessionDTOMapper.sessionToDTO(gameSessionRepository.save(session));
 
-        // Broadcast to all clients: intro animation + faction selection begins
-        SessionUpdateEvent event = new SessionUpdateEvent(
-                session.getId(),
-                session.getGameCode(),
-                session.getStatus().toString(),
-                session.getPlayers().size(),
-                session.getMaxPlayers(),
-                session.getPlayers().stream()
-                        .map(p -> new SessionUpdateEvent.PlayerInfo(
-                                p.getUserId(),
-                                p.getPlayerName(),
-                                p.isHost(),
-                                session.getPlayerFactions().get(p.getUserId()) != null
-                                        ? session.getPlayerFactions().get(p.getUserId()).name()
-                                        : null,
-                                session.getReadyPlayers().contains(p.getUserId())))
-                        .collect(Collectors.toList()),
-                "GAME_TRANSITION_STARTED"
-        );
-        webSocketController.broadcastSessionUpdate(session.getId().toString(), event);
+        broadcastSessionUpdate(session, "GAME_TRANSITION_STARTED");
 
         return savedSession;
     }
 
     @Override
+    @Transactional
     public SessionDTO changeTickRate(UUID sessionId, UUID hostUserId, int tickRateSeconds) {
-        GameSession session = gameSessionRepository.findById(sessionId)
+        GameSession session = gameSessionRepository.findByIdWithLock(sessionId)
                 .orElseThrow(() -> new SessionNotFoundException(sessionId));
         session.changeTickRate(hostUserId, tickRateSeconds);
         return sessionDTOMapper.sessionToDTO(gameSessionRepository.save(session));
@@ -142,57 +131,37 @@ public class GameSessionServiceImpl implements GameSessionService {
     }
 
     @Override
+    @Transactional
     public SessionDTO leaveSession(UUID sessionId, UUID userId) {
-        GameSession session = gameSessionRepository.findById(sessionId)
+        GameSession session = gameSessionRepository.findByIdWithLock(sessionId)
                 .orElseThrow(() -> new SessionNotFoundException(sessionId));
 
-        // Check if leaving player is host
         boolean wasHost = session.getPlayers().stream()
                 .anyMatch(p -> p.getUserId().equals(userId) && p.isHost());
 
         session.removePlayer(userId);
 
-        // If session is now empty, delete it
         if (session.getPlayers().isEmpty()) {
             gameSessionRepository.deleteById(session.getId());
-            return null; // or throw exception
+            return null;
         }
 
-        // If host left and other players remain, transfer host to next player
-        if (wasHost && !session.getPlayers().isEmpty()) {
+        if (wasHost) {
             ISessionPlayer newHost = session.getPlayers().get(0);
             session.makePlayerHost(newHost.getUserId());
         }
 
         SessionDTO savedSession = sessionDTOMapper.sessionToDTO(gameSessionRepository.save(session));
 
-        // Broadcast update
-        SessionUpdateEvent event = new SessionUpdateEvent(
-                session.getId(),
-                session.getGameCode(),
-                session.getStatus().toString(),
-                session.getPlayers().size(),
-                session.getMaxPlayers(),
-                session.getPlayers().stream()
-                        .map(p -> new SessionUpdateEvent.PlayerInfo(
-                                p.getUserId(),
-                                p.getPlayerName(),
-                                p.isHost(),
-                                session.getPlayerFactions().get(p.getUserId()) != null
-                                        ? session.getPlayerFactions().get(p.getUserId()).name()
-                                        : null,
-                                session.getReadyPlayers().contains(p.getUserId())))
-                        .collect(Collectors.toList()),
-                "PLAYER_LEFT"
-        );
-        webSocketController.broadcastSessionUpdate(session.getId().toString(), event);
+        broadcastSessionUpdate(session, "PLAYER_LEFT");
 
         return savedSession;
     }
 
     @Override
+    @Transactional
     public void assignPlayerFaction(UUID sessionId, UUID userId, String factionName) {
-        GameSession session = gameSessionRepository.findById(sessionId)
+        GameSession session = gameSessionRepository.findByIdWithLock(sessionId)
                 .orElseThrow(() -> new SessionNotFoundException(sessionId));
 
         try {
@@ -200,26 +169,7 @@ public class GameSessionServiceImpl implements GameSessionService {
             session.assignPlayerFaction(userId, faction);
             gameSessionRepository.save(session);
 
-            // Broadcast zum Frontend
-            SessionUpdateEvent event = new SessionUpdateEvent(
-                    session.getId(),
-                    session.getGameCode(),
-                    session.getStatus().toString(),
-                    session.getPlayers().size(),
-                    session.getMaxPlayers(),
-                    session.getPlayers().stream()
-                            .map(p -> new SessionUpdateEvent.PlayerInfo(
-                                    p.getUserId(),
-                                    p.getPlayerName(),
-                                    p.isHost(),
-                                    session.getPlayerFactions().get(p.getUserId()) != null
-                                            ? session.getPlayerFactions().get(p.getUserId()).name()
-                                            : null,
-                                    session.getReadyPlayers().contains(p.getUserId())))
-                            .collect(Collectors.toList()),
-                    "PLAYER_FACTION_ASSIGNED"
-            );
-            webSocketController.broadcastSessionUpdate(session.getId().toString(), event);
+            broadcastSessionUpdate(session, "PLAYER_FACTION_ASSIGNED");
 
         } catch (IllegalArgumentException e) {
             throw new InvalidFactionException(factionName);
@@ -240,42 +190,28 @@ public class GameSessionServiceImpl implements GameSessionService {
                 .orElseThrow(() -> new SessionNotFoundException(sessionId));
 
         session.markPlayerReady(userId);
+
+        boolean shouldAutoStart = session.areAllPlayersReady()
+                && session.getStatus() == SessionStatus.FACTION_SELECTION;
+
+        if (shouldAutoStart) {
+            session.start(session.getHostUserId());
+        }
+
         gameSessionRepository.save(session);
 
-        SessionUpdateEvent event = new SessionUpdateEvent(
-                session.getId(),
-                session.getGameCode(),
-                session.getStatus().toString(),
-                session.getPlayers().size(),
-                session.getMaxPlayers(),
-                session.getPlayers().stream()
-                        .map(p -> new SessionUpdateEvent.PlayerInfo(
-                                p.getUserId(),
-                                p.getPlayerName(),
-                                p.isHost(),
-                                session.getPlayerFactions().get(p.getUserId()) != null
-                                        ? session.getPlayerFactions().get(p.getUserId()).name()
-                                        : null,
-                                session.getReadyPlayers().contains(p.getUserId())))
-                        .collect(Collectors.toList()),
-                "PLAYER_READY"
-        );
-        webSocketController.broadcastSessionUpdate(session.getId().toString(), event);
+        broadcastSessionUpdate(session, "PLAYER_READY");
 
-        if (session.areAllPlayersReady()) {
-            startGameAutomatically(sessionId);
+        if (shouldAutoStart) {
+            finalizeGameStart(session);
         }
     }
 
-    private void startGameAutomatically(UUID sessionId) {
-        GameSession session = gameSessionRepository.findById(sessionId)
-                .orElseThrow(() -> new SessionNotFoundException(sessionId));
 
-        session.start(session.getHostUserId());
-        gameSessionRepository.save(session);
+    private void finalizeGameStart(GameSession session) {
+        UUID sessionId = session.getId();
 
-        gameTickScheduler.startForSession(session.getId(), session.getTickRateSeconds());
-
+        gameTickScheduler.startForSession(sessionId, session.getTickRateSeconds());
         cargoSessionInitializer.initializeForSession(sessionId);
 
         List<PortResponseDTO> ports = portQueryService.findAll();
@@ -285,27 +221,9 @@ public class GameSessionServiceImpl implements GameSessionService {
                         .map(p -> new PortsUpdateEvent.PortInfo(p.id(), p.name(), p.x(), p.y()))
                         .toList()
         );
-        webSocketController.broadcastPortsUpdate(session.getId().toString(), portsEvent);
+        webSocketController.broadcastPortsUpdate(sessionId.toString(), portsEvent);
 
-        SessionUpdateEvent event = new SessionUpdateEvent(
-                session.getId(),
-                session.getGameCode(),
-                session.getStatus().toString(),
-                session.getPlayers().size(),
-                session.getMaxPlayers(),
-                session.getPlayers().stream()
-                        .map(p -> new SessionUpdateEvent.PlayerInfo(
-                                p.getUserId(),
-                                p.getPlayerName(),
-                                p.isHost(),
-                                session.getPlayerFactions().get(p.getUserId()) != null
-                                        ? session.getPlayerFactions().get(p.getUserId()).name()
-                                        : null,
-                                session.getReadyPlayers().contains(p.getUserId())))
-                        .collect(Collectors.toList()),
-                "GAME_STARTED"
-        );
-        webSocketController.broadcastSessionUpdate(session.getId().toString(), event);
+        broadcastSessionUpdate(session, "GAME_STARTED");
     }
 
     @Override
