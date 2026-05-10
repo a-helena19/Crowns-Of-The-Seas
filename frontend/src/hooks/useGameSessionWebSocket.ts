@@ -107,6 +107,10 @@ export function useGameSessionWebSocket({
     const lastTickNumberRef = useRef<number | null>(null);
     const lastTickAtMsRef = useRef<number | null>(null);
     const smoothedTickMsRef = useRef<number | null>(null);
+    const onSessionUpdateRef = useRef(onSessionUpdate);
+    useEffect(() => {
+        onSessionUpdateRef.current = onSessionUpdate;
+    }, [onSessionUpdate]);
 
     const connect = useCallback(() => {
         if (!sessionId) {
@@ -114,7 +118,7 @@ export function useGameSessionWebSocket({
             return;
         }
 
-        if (connectAttemptedRef.current && isConnected) {
+        if (connectAttemptedRef.current) {
             console.log('Already connected');
             return;
         }
@@ -145,7 +149,7 @@ export function useGameSessionWebSocket({
                         try {
                             const event = JSON.parse(message.body) as SessionUpdateEvent;
                             console.log('Event type:', event.type);  // Log für Debugging
-                            onSessionUpdate(event);
+                            onSessionUpdateRef.current(event);
                         } catch (error) {
                             console.error('Error parsing session update:', error);
                         }
@@ -236,7 +240,7 @@ export function useGameSessionWebSocket({
             setIsConnected(false);
             connectAttemptedRef.current = false; // Reset so we can try again
         }
-    }, [sessionId, onSessionUpdate, isConnected]);
+    }, [sessionId]);
 
     const disconnect = useCallback(() => {
         if (stompClientRef.current) {
@@ -263,10 +267,14 @@ export function useGameSessionWebSocket({
             return () => clearTimeout(timer);
         }
 
+        return undefined
+    }, [sessionId, connect]);
+
+    useEffect(() => {
         return () => {
             disconnect();
         };
-    }, [sessionId, isConnected, connect, disconnect]);
+    }, []);
 
     return {
         isConnected,

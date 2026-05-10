@@ -60,13 +60,10 @@ export default function SessionWaitingScreen() {
     } | null>(null);
 
     useEffect(() => {
-        // Load session from sessionStorage
         const sessionData = sessionStorage.getItem('currentSession');
         const role = sessionStorage.getItem('userRole') as 'host' | 'guest';
 
-        // If GAME_STARTED arrived while we were on the intro screen, redirect now
         if (sessionStorage.getItem('gameStarted') === 'true') {
-            sessionStorage.removeItem('gameStarted');
             navigate('/game');
             return;
         }
@@ -118,12 +115,14 @@ export default function SessionWaitingScreen() {
             }
 
             if (event.type === 'GAME_STARTED') {
-                console.log('Game started - navigating to game');
-                sessionStorage.setItem('gameStarted', 'true');
                 sessionStorage.removeItem('showFactionDialog');
-                setTimeout(() => {
-                    navigate('/game');
-                }, 500);
+                const sessionData = sessionStorage.getItem('currentSession');
+                if (sessionData) {
+                    const session = JSON.parse(sessionData);
+                    session.status = 'RUNNING';
+                    sessionStorage.setItem('currentSession', JSON.stringify(session));
+                }
+                navigate('/game');
                 return;
             }
 

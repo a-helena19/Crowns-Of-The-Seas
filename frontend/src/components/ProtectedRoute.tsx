@@ -28,7 +28,8 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
             return <Navigate to="/lobby" replace />;
         }
         const session = JSON.parse(sessionData);
-        if (session.status !== 'RUNNING') {
+        const gameStarted = sessionStorage.getItem('gameStarted') === 'true';
+        if (session.status !== 'RUNNING' && !gameStarted) {
             return <Navigate to="/session-waiting" replace />;
         }
     }
