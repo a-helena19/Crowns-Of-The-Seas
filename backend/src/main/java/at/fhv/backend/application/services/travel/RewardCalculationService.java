@@ -9,4 +9,5 @@ import java.util.List;
 public interface RewardCalculationService {
     BigDecimal calculateTotalReward(Travel travel, List<SessionCargo> cargos);
     BigDecimal calculateCargoReward(SessionCargo cargo);
+    BigDecimal calculateBonus(BigDecimal cargoReward);
 }

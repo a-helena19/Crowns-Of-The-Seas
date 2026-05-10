@@ -8,19 +8,21 @@ public class CargoRewardBreakdown {
     private String destinationPort;
     private BigDecimal baseReward;
     private BigDecimal actualReward;
+    private BigDecimal bonusReward;
     private int percentage;
     private String status;
     private String cargoType;
 
     public CargoRewardBreakdown(String cargoId, String cargoName,
                                 String destinationPort, BigDecimal baseReward,
-                                BigDecimal actualReward, int percentage,
+                                BigDecimal actualReward, BigDecimal bonusReward, int percentage,
                                 String status, String cargoType) {
         this.cargoId = cargoId;
         this.cargoName = cargoName;
         this.destinationPort = destinationPort;
         this.baseReward = baseReward;
         this.actualReward = actualReward;
+        this.bonusReward = bonusReward;
         this.percentage = percentage;
         this.status = status;
         this.cargoType = cargoType;
@@ -44,6 +46,10 @@ public class CargoRewardBreakdown {
 
     public BigDecimal getActualReward() {
         return actualReward;
+    }
+
+    public BigDecimal getBonusReward() {
+        return bonusReward;
     }
 
     public int getPercentage() {

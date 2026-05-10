@@ -1,6 +1,5 @@
 package at.fhv.backend.application.services.impl.travel;
 
-import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.TravelArrivalService;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
@@ -25,7 +24,6 @@ public class TravelArrivalServiceImpl implements TravelArrivalService {
     private final SessionCargoRepository sessionCargoRepository;
     private final CargoUnloadingPhaseService cargoUnloadingPhaseService;
     private final GameSessionRepository gameSessionRepository;
-    private final SmuggleService smuggleService;
 
     private static final int BASE_UNLOADING_TICKS = 5;
 
@@ -34,14 +32,12 @@ public class TravelArrivalServiceImpl implements TravelArrivalService {
             PlayerShipRepository playerShipRepository,
             SessionCargoRepository sessionCargoRepository,
             CargoUnloadingPhaseService cargoUnloadingPhaseService,
-            GameSessionRepository gameSessionRepository,
-            SmuggleService smuggleService) {
+            GameSessionRepository gameSessionRepository) {
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
         this.sessionCargoRepository = sessionCargoRepository;
         this.cargoUnloadingPhaseService = cargoUnloadingPhaseService;
         this.gameSessionRepository = gameSessionRepository;
-        this.smuggleService = smuggleService;
     }
 
     @Override
@@ -62,12 +58,6 @@ public class TravelArrivalServiceImpl implements TravelArrivalService {
 
             System.out.println("[TravelArrival] Ship " + ship.getId() + " arrived at port " + travel.getDestinationPortId());
             System.out.println("[TravelArrival] Ship set to UNLOADING status for " + unloadingDuration + " ticks (until tick " + unloadingCompletedAtTick + ")");
-        }
-
-        try {
-            smuggleService.tryGenerateSmuggleOffer(travel.getPlayerId(), travel.getSessionId(), travel.getDestinationPortId());
-        } catch (Exception e) {
-            System.err.println("[TravelArrival] Error generating smuggle offer: " + e.getMessage());
         }
 
         System.out.println("[TravelArrival] Found " + cargosForPlayer.size() + " cargos for player " + travel.getPlayerId());

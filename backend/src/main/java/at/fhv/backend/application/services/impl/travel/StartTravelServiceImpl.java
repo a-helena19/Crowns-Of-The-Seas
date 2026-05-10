@@ -16,6 +16,7 @@ import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
 import at.fhv.backend.rest.dtos.ship.response.TravelDTO;
 import at.fhv.backend.application.services.impl.session.GameTickScheduler;
+import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CalculateFuelConsumptionService;
 import at.fhv.backend.application.services.travel.StartTravelService;
 import at.fhv.backend.application.services.travel.ValidateTravelService;
@@ -58,6 +59,7 @@ public class StartTravelServiceImpl implements StartTravelService {
     private final CargoWebSocketController cargoWebSocketController;
     private final PortDistanceForCargoService portDistanceForCargoService;
     private final SessionPlayerRepository sessionPlayerRepository;
+    private final SmuggleService smuggleService;
 
     public StartTravelServiceImpl(PlayerShipRepository playerShipRepository,
                                   ShipRepository shipRepository,
@@ -71,7 +73,8 @@ public class StartTravelServiceImpl implements StartTravelService {
                                   SessionCargoRepository sessionCargoRepository,
                                   CargoWebSocketController cargoWebSocketController,
                                   PortDistanceForCargoService portDistanceForCargoService,
-                                  SessionPlayerRepository sessionPlayerRepository) {
+                                  SessionPlayerRepository sessionPlayerRepository,
+                                  SmuggleService smuggleService) {
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
         this.portQueryService = portQueryService;
@@ -85,6 +88,7 @@ public class StartTravelServiceImpl implements StartTravelService {
         this.cargoWebSocketController = cargoWebSocketController;
         this.portDistanceForCargoService = portDistanceForCargoService;
         this.sessionPlayerRepository = sessionPlayerRepository;
+        this.smuggleService = smuggleService;
     }
 
     @Override
@@ -176,6 +180,12 @@ public class StartTravelServiceImpl implements StartTravelService {
 
             gameTickScheduler.triggerImmediateBroadcast(sessionId);
             cargoWebSocketController.broadcastMarketUpdate(sessionId);
+
+            try {
+                smuggleService.tryGenerateSmuggleOffer(playerId, sessionId, originPortId);
+            } catch (Exception e) {
+                System.err.println("[StartTravel] Error generating smuggle offer: " + e.getMessage());
+            }
 
             return travelResponseMapper.toResponse(saved);
         } catch (Exception e) {

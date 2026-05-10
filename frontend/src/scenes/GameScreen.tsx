@@ -110,7 +110,7 @@ export default function GameScreen() {
                 playerId: string;
                 totalReward: number;
                 baseReward: number;
-                cargoRewards: { actualReward: number; percentage: number; baseReward: number }[];
+                cargoRewards: { cargoId: string; cargoName: string; destinationPort: string; baseReward: number; bonusReward: number; actualReward: number; percentage: number; status: string; cargoType: string }[];
             }>).detail;
             if (data.playerId !== playerId) return;
 
@@ -119,17 +119,19 @@ export default function GameScreen() {
             setAssignedCargos(prev => {
                 const updated = prev.map(entry => {
                     if (entry.travelId !== data.travelId) return entry;
+                    const firstCargo = data.cargoRewards.find(r => r.cargoType !== "SMUGGLE");
                     return {
                         ...entry,
                         phase: "completed" as const,
                         reward: data.totalReward,
-                        rewardDetails: data.cargoRewards[0]
+                        rewardDetails: firstCargo
                             ? {
-                                baseReward: data.cargoRewards[0].baseReward,
-                                actualReward: data.cargoRewards[0].actualReward,
-                                percentage: data.cargoRewards[0].percentage
+                                baseReward: firstCargo.baseReward,
+                                actualReward: firstCargo.actualReward,
+                                percentage: firstCargo.percentage
                             }
                             : undefined,
+                        cargoRewards: data.cargoRewards,
                     };
                 });
                 return updated;
@@ -182,17 +184,15 @@ export default function GameScreen() {
         return () => window.removeEventListener("smuggle-offer", handler);
     }, [playerId]);
 
-    // Callback für CargoManagementScreen: wird nach Ende der Departure-Animation aufgerufen
     const handleDepartureComplete = useCallback(() => {
         departureActiveRef.current = false;
         const pending = pendingSmuggleRef.current;
         if (pending) {
             pendingSmuggleRef.current = null;
-            setTimeout(() => setSmuggleOffer(pending), 2000);
+            setTimeout(() => setSmuggleOffer(pending), 1000);
         }
     }, []);
 
-    // Callback: wird aufgerufen wenn Reise startet (Animation beginnt)
     const handleDepartureStarted = useCallback(() => {
         departureActiveRef.current = true;
         pendingSmuggleRef.current = null;

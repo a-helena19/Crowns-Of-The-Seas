@@ -39,7 +39,7 @@ public class SmuggleServiceImpl implements SmuggleService {
     private final SessionCargoRepository sessionCargoRepository;
     private final GameSessionWebSocketController webSocketController;
     private final Map<UUID, SmuggleOffer> activeOffers = new ConcurrentHashMap<>();
-    private final Map<UUID, SmuggleOffer> acceptedOffers = new ConcurrentHashMap<>();
+    private final Map<UUID, List<SmuggleOffer>> acceptedOffers = new ConcurrentHashMap<>();
 
     private final Random random = new Random();
 
@@ -107,7 +107,7 @@ public class SmuggleServiceImpl implements SmuggleService {
         }
 
         activeOffers.remove(offerId);
-        acceptedOffers.put(playerId, offer);
+        acceptedOffers.computeIfAbsent(playerId, k -> new java.util.concurrent.CopyOnWriteArrayList<>()).add(offer);
 
         System.out.println("[Smuggle] Player " + playerId + " accepted smuggle offer "
                 + offerId + " — reward pending: " + offer.getReward() + " T");
@@ -115,7 +115,20 @@ public class SmuggleServiceImpl implements SmuggleService {
 
     @Override
     public SmuggleOffer getAcceptedOffer(UUID playerId) {
-        return acceptedOffers.get(playerId);
+        List<SmuggleOffer> offers = acceptedOffers.get(playerId);
+        if (offers == null || offers.isEmpty()) {
+            return null;
+        }
+        return offers.get(0);
+    }
+
+    @Override
+    public List<SmuggleOffer> getAllAcceptedOffers(UUID playerId) {
+        List<SmuggleOffer> offers = acceptedOffers.get(playerId);
+        if (offers == null) {
+            return List.of();
+        }
+        return List.copyOf(offers);
     }
 
     @Override

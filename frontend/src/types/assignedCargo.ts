@@ -1,3 +1,15 @@
+export interface CargoRewardEntry {
+    cargoId: string;
+    cargoName: string;
+    destinationPort: string;
+    baseReward: number;
+    actualReward: number;
+    bonusReward: number;
+    percentage: number;
+    status: string;
+    cargoType: string;
+}
+
 export interface AssignedCargoEntry {
     cargoId: string;
     shipId: string;
@@ -22,5 +34,6 @@ export interface AssignedCargoEntry {
         actualReward: number;
         percentage: number;
     };
+    cargoRewards?: CargoRewardEntry[];
     unloadingCompletedAtTick?: number;
 }

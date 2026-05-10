@@ -112,6 +112,13 @@ export default function CargoManagementScreen({
 
         const attemptStart = async (retriesLeft: number, delayMs: number): Promise<void> => {
             try {
+                // Signal departure BEFORE the API call so the smuggle-offer
+                // WebSocket event (sent by the backend during this request)
+                // is correctly buffered instead of shown immediately.
+                if (retriesLeft === MAX_RETRIES) {
+                    onDepartureStarted?.();
+                }
+
                 const response = await fetch(`/api/travels/start/${playerId}?sessionId=${sessionId}`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -127,7 +134,6 @@ export default function CargoManagementScreen({
                 if (response.ok) {
                     const data = await response.json() as { travelId?: string };
                     window.dispatchEvent(new CustomEvent("player-balance-updated"));
-                    onDepartureStarted?.();
                     setShowDeparture(entry);
                     onCargoPhaseChange(entry.cargoId, "en_route", data.travelId);
                     return;
@@ -153,12 +159,14 @@ export default function CargoManagementScreen({
                 }
 
                 setErrorMap(m => ({ ...m, [entry.cargoId]: msg }));
+                onDepartureComplete?.();
             } catch {
                 if (retriesLeft > 0) {
                     await new Promise<void>(resolve => setTimeout(resolve, delayMs));
                     return attemptStart(retriesLeft - 1, delayMs);
                 }
                 setErrorMap(m => ({ ...m, [entry.cargoId]: "Verbindungsfehler." }));
+                onDepartureComplete?.();
             }
         };
 
@@ -167,7 +175,7 @@ export default function CargoManagementScreen({
         } finally {
             setStartingMap(m => ({ ...m, [entry.cargoId]: false }));
         }
-    }, [playerId, sessionId, token, pilotageMap, onDepartureStarted, onCargoPhaseChange]);
+    }, [playerId, sessionId, token, pilotageMap, onDepartureStarted, onDepartureComplete, onCargoPhaseChange]);
 
     const handleDepartureComplete = useCallback(() => {
         setShowDeparture(null);
@@ -340,8 +348,10 @@ export default function CargoManagementScreen({
                         )}
 
                         {selectedEntry.phase === "completed" && (() => {
-                            const isPerfect = !selectedEntry.rewardDetails || selectedEntry.rewardDetails.percentage >= 100;
-                            const details = selectedEntry.rewardDetails;
+                            const allRewards = selectedEntry.cargoRewards ?? [];
+                            const cargoItems = allRewards.filter(r => r.cargoType !== "SMUGGLE");
+                            const smuggleItem = allRewards.find(r => r.cargoType === "SMUGGLE");
+                            const isPerfect = cargoItems.every(r => r.percentage >= 100);
                             return (
                                 <div className="cm-reward-panel">
                                     <div className="cm-reward-header">
@@ -351,51 +361,71 @@ export default function CargoManagementScreen({
                                         </div>
                                     </div>
 
-                                    {isPerfect && (
+                                    {isPerfect && !smuggleItem && (
                                         <div className="cm-reward-perfect-badge">
                                             100% Lieferquote — alle Frachten erfolgreich abgeliefert!
                                         </div>
                                     )}
 
                                     <div className="cm-reward-section-label">
-                                        Frachtbilanz (1)
-                                    </div>
-                                    <div className={`cm-reward-cargo-item${!isPerfect ? " expired" : ""}`}>
-                                        <div style={{ flex: 1 }}>
-                                            <div className="cm-reward-cargo-name">{selectedEntry.from} → {selectedEntry.to}</div>
-                                            <div className="cm-reward-cargo-sub">→ {selectedEntry.to}</div>
-                                        </div>
-                                        <span className={`cm-reward-cargo-amount${!isPerfect ? " expired" : ""}`}>
-                                            +{(details?.actualReward ?? selectedEntry.reward ?? 0).toLocaleString("de-DE")}T
-                                        </span>
+                                        Frachtbilanz ({cargoItems.length + (smuggleItem ? 1 : 0)})
                                     </div>
 
-                                    {details && (
-                                        <div className="cm-reward-breakdown">
-                                            <div className="cm-reward-row">
-                                                <span>Cargo Belohnung</span>
-                                                <span className="cm-reward-row-value">+{details.actualReward.toLocaleString("de-DE")}T</span>
-                                            </div>
-                                            {isPerfect && (
-                                                <div className="cm-reward-row bonus">
-                                                    <span>🎁 Reise Bonus</span>
-                                                    <span>+{details.actualReward.toLocaleString("de-DE")}T</span>
+                                    {cargoItems.map((item, i) => {
+                                        const isExpired = item.percentage < 100;
+                                        return (
+                                            <div key={i} className={`cm-reward-cargo-item${isExpired ? " expired" : ""}`}>
+                                                <div style={{ flex: 1 }}>
+                                                    <div className="cm-reward-cargo-name">{item.cargoName}</div>
+                                                    <div className="cm-reward-cargo-sub">→ {item.destinationPort}</div>
                                                 </div>
-                                            )}
-                                            {!isPerfect && (
-                                                <div className="cm-reward-row warn">
-                                                    <span>⚠ Fracht war abgelaufen ({details.percentage.toFixed(0)}%)</span>
-                                                    <span>−{(details.baseReward - details.actualReward).toLocaleString("de-DE")}T</span>
-                                                </div>
-                                            )}
-                                            <div className="cm-reward-row total">
-                                                <span>Gesamt</span>
-                                                <span className="cm-reward-row-value">
-                                                    +{(selectedEntry.reward ?? 0).toLocaleString("de-DE")}T
+                                                <span className={`cm-reward-cargo-amount${isExpired ? " expired" : ""}`}>
+                                                    +{item.actualReward.toLocaleString("de-DE")}T
                                                 </span>
                                             </div>
+                                        );
+                                    })}
+
+                                    {smuggleItem && (
+                                        <div className="cm-reward-cargo-item">
+                                            <div style={{ flex: 1 }}>
+                                                <div className="cm-reward-cargo-name">🏴‍☠️ {smuggleItem.cargoName}</div>
+                                                <div className="cm-reward-cargo-sub">Schmuggelware</div>
+                                            </div>
+                                            <span className="cm-reward-cargo-amount">
+                                                +{smuggleItem.actualReward.toLocaleString("de-DE")}T
+                                            </span>
                                         </div>
                                     )}
+
+                                    <div className="cm-reward-breakdown">
+                                        {cargoItems.map((item, i) => (
+                                            <div key={`cargo-${i}`}>
+                                                <div className={`cm-reward-row${item.percentage < 100 ? " warn" : ""}`}>
+                                                    <span>{item.percentage < 100 ? `⚠ ${item.cargoName} (${item.percentage}%)` : item.cargoName}</span>
+                                                    <span className="cm-reward-row-value">+{(item.actualReward - (item.bonusReward ?? 0)).toLocaleString("de-DE")}T</span>
+                                                </div>
+                                                {item.bonusReward > 0 && (
+                                                    <div className="cm-reward-row bonus">
+                                                        <span>🎁 Reise Bonus</span>
+                                                        <span>+{item.bonusReward.toLocaleString("de-DE")}T</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {smuggleItem && (
+                                            <div className="cm-reward-row bonus">
+                                                <span>🏴‍☠️ {smuggleItem.cargoName}</span>
+                                                <span>+{smuggleItem.actualReward.toLocaleString("de-DE")}T</span>
+                                            </div>
+                                        )}
+                                        <div className="cm-reward-row total">
+                                            <span>Gesamt</span>
+                                            <span className="cm-reward-row-value">
+                                                +{(selectedEntry.reward ?? 0).toLocaleString("de-DE")}T
+                                            </span>
+                                        </div>
+                                    </div>
 
                                     <button
                                         className="cm-reward-btn"

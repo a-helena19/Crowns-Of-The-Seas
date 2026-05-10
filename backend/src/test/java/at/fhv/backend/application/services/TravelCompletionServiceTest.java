@@ -192,7 +192,6 @@ class TravelCompletionServiceTest {
         @Mock private GameSessionRepository gameSessionRepository;
         @Mock private CargoUnloadingPhaseService cargoUnloadingPhaseService;
         @Mock private SessionCargoRepository sessionCargoRepository;
-        @Mock private SmuggleService smuggleService;
 
         private TravelArrivalServiceImpl service;
 
@@ -200,7 +199,7 @@ class TravelCompletionServiceTest {
         void setUp() {
             service = new TravelArrivalServiceImpl(
                     travelRepository, playerShipRepository, sessionCargoRepository,
-                    cargoUnloadingPhaseService, gameSessionRepository, smuggleService
+                    cargoUnloadingPhaseService, gameSessionRepository
             );
         }
 
