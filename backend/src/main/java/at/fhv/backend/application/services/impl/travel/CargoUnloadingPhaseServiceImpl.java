@@ -64,10 +64,6 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
     @Override
     @Transactional
     public BigDecimal completeUnloadingPhase(Travel travel, List<SessionCargo> cargosForPlayer) {
-        markCargosAsDelivered(travel, cargosForPlayer);
-
-        BigDecimal cargoReward = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
-
         BigDecimal totalBonus = BigDecimal.ZERO;
         Map<UUID, BigDecimal> bonusPerCargo = new HashMap<>();
         for (SessionCargo cargo : cargosForPlayer) {
@@ -77,6 +73,10 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                 totalBonus = totalBonus.add(bonus);
             }
         }
+
+        markCargosAsDelivered(travel, cargosForPlayer);
+
+        BigDecimal cargoReward = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
 
         BigDecimal smuggleReward = BigDecimal.ZERO;
         List<SmuggleOffer> smuggleOffers = smuggleService.getAllAcceptedOffers(travel.getPlayerId());
