@@ -6,8 +6,11 @@ import at.fhv.backend.domain.model.exception.ErrorCode;
 import java.util.UUID;
 
 public class FactionAlreadyAssignedException extends DomainException {
-    public FactionAlreadyAssignedException(UUID userId) {
-        super("Player " + userId + " has already chosen a faction",
-                ErrorCode.FACTION_ALREADY_ASSIGNED);
+
+    public FactionAlreadyAssignedException(UUID playerId) {
+        super(
+                String.format("Faction already assigned for player: %s", playerId),
+                ErrorCode.FACTION_ALREADY_ASSIGNED
+        );
     }
 }

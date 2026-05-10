@@ -55,3 +55,132 @@
     opacity: 0.6;
     font-size: 15px;
 }
+
+.topbar-faction-wrapper {
+    position: relative;
+}
+
+.topbar-faction-btn {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.topbar-faction-btn:hover {
+    filter: brightness(1.1);
+}
+
+.topbar-faction-btn:active {
+    transform: translateY(1px);
+}
+
+.topbar-faction-btn.is-open {
+    filter: brightness(1.15);
+}
+
+.topbar-faction-icon {
+    font-size: 18px;
+    line-height: 1;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4));
+}
+
+.topbar-faction-name {
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 12px;
+}
+
+.faction-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+
+    width: 320px;
+    z-index: 200;
+
+    background: linear-gradient(160deg, #f4ecd2 0%, #f9f3df 50%, #ebe2c2 100%);
+    border: 1px solid rgba(120, 90, 40, 0.5);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+
+    color: #2b2418;
+    font-family: 'Crimson Pro', Georgia, serif;
+
+    padding: 14px 16px 16px;
+
+    animation: faction-popover-fade 0.15s ease-out;
+}
+
+@keyframes faction-popover-fade {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.faction-popover-accent {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+}
+
+.faction-popover-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(120, 90, 40, 0.25);
+}
+
+.faction-popover-icon {
+    font-size: 32px;
+    line-height: 1;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2));
+}
+
+.faction-popover-titles {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.faction-popover-name {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: #3a2f1a;
+    margin: 0;
+    letter-spacing: 1px;
+}
+
+.faction-popover-label {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: #7a6a4a;
+}
+
+.faction-popover-desc {
+    font-family: 'Crimson Pro', Georgia, serif;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #4a3f28;
+    margin: 0;
+    font-style: italic;
+}
+
+@media (max-width: 720px) {
+    .faction-popover {
+        width: 260px;
+    }
+    .topbar-faction-name {
+        display: none;
+    }
+}

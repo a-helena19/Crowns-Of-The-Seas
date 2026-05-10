@@ -11,4 +11,5 @@ public interface GameSessionRepository {
     List<GameSession> findAll();
     List<GameSession> findActiveSessionsByUserId(UUID userId);
     void deleteById(UUID id);
+    Optional<GameSession> findByIdWithLock(UUID id);
 }

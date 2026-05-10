@@ -5,7 +5,7 @@ import Stomp, { Client } from 'stompjs';
 interface SessionUpdateEvent {
     sessionId: string;
     gameCode: string;
-    status: 'LOBBY' | 'RUNNING' | 'FINISHED';
+    status: 'LOBBY' | 'FACTION_SELECTION' | 'RUNNING' | 'FINISHED';
     playerCount: number;
     maxPlayers: number;
     players: Array<{
@@ -107,6 +107,10 @@ export function useGameSessionWebSocket({
     const lastTickNumberRef = useRef<number | null>(null);
     const lastTickAtMsRef = useRef<number | null>(null);
     const smoothedTickMsRef = useRef<number | null>(null);
+    const onSessionUpdateRef = useRef(onSessionUpdate);
+    useEffect(() => {
+        onSessionUpdateRef.current = onSessionUpdate;
+    }, [onSessionUpdate]);
 
     const connect = useCallback(() => {
         if (!sessionId) {
@@ -114,7 +118,7 @@ export function useGameSessionWebSocket({
             return;
         }
 
-        if (connectAttemptedRef.current && isConnected) {
+        if (connectAttemptedRef.current) {
             console.log('Already connected');
             return;
         }
@@ -144,6 +148,8 @@ export function useGameSessionWebSocket({
                         console.log('Received session update:', message.body);
                         try {
                             const event = JSON.parse(message.body) as SessionUpdateEvent;
+                            console.log('Event type:', event.type);  // Log für Debugging
+                            onSessionUpdateRef.current(event);
                             console.log('Event type:', event.type);  // Log für Debugging
                             onSessionUpdate(event);
                         } catch (error) {
@@ -246,7 +252,7 @@ export function useGameSessionWebSocket({
             setIsConnected(false);
             connectAttemptedRef.current = false; // Reset so we can try again
         }
-    }, [sessionId, onSessionUpdate, isConnected]);
+    }, [sessionId]);
 
     const disconnect = useCallback(() => {
         if (stompClientRef.current) {
@@ -273,10 +279,14 @@ export function useGameSessionWebSocket({
             return () => clearTimeout(timer);
         }
 
+        return undefined
+    }, [sessionId, connect]);
+
+    useEffect(() => {
         return () => {
             disconnect();
         };
-    }, [sessionId, isConnected, connect, disconnect]);
+    }, []);
 
     return {
         isConnected,

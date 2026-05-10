@@ -8,8 +8,8 @@ import at.fhv.backend.domain.model.player.exception.*;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class GameSession {
 
@@ -25,6 +25,7 @@ public class GameSession {
     private final Map<UUID, PlayerFaction> playerFactions;
     private LocalDateTime startTime;
     private final Duration duration;
+    private final Map<UUID, Boolean> playerReadyStatus = new HashMap<>();
 
     public GameSession(UUID hostUserId, int maxPlayers, int tickRateSeconds, int totalTicks, Duration duration) {
         this.id = UUID.randomUUID();
@@ -76,10 +77,17 @@ public class GameSession {
             throw new SessionNotInLobbyException(id);
         if (players.size() >= maxPlayers)
             throw new SessionFullException(id);
-        // Check if player already in session
         if (players.stream().anyMatch(p -> p.getUserId().equals(player.getUserId())))
             throw new PlayerAlreadyInSessionException(id, player.getUserId());
         players.add(player);
+    }
+
+    public void beginFactionSelection(UUID requestingUserId) {
+        if (!requestingUserId.equals(hostUserId))
+            throw new OnlyHostCanStartException(requestingUserId);
+        if (!status.canTransitionTo(SessionStatus.FACTION_SELECTION))
+            throw new SessionNotInLobbyException(id);
+        this.status = SessionStatus.FACTION_SELECTION;
     }
 
     public void start(UUID requestingUserId) {
@@ -102,17 +110,18 @@ public class GameSession {
     }
 
     public void removePlayer(UUID userId) {
-        if (status != SessionStatus.LOBBY)
+        if (status != SessionStatus.LOBBY && status != SessionStatus.FACTION_SELECTION)
             throw new SessionNotInLobbyException(id);
         boolean removed = players.removeIf(p -> p.getUserId().equals(userId));
         if (!removed)
             throw new PlayerNotFoundException(userId);
         playerFactions.remove(userId);
+        playerReadyStatus.remove(userId);
     }
 
     public void makePlayerHost(UUID userId) {
         for (ISessionPlayer player : this.players) {
-            player.setHost(true);
+            player.setHost(false);
         }
         for (ISessionPlayer player : this.players) {
             if (player.getUserId().equals(userId)) {
@@ -123,19 +132,62 @@ public class GameSession {
         }
     }
 
-    // TODO: assignPlayerFaction in sprint2
-    /*
     public void assignPlayerFaction(UUID userId, PlayerFaction faction) {
-        boolean exists = players.stream()
+        if (status != SessionStatus.FACTION_SELECTION)
+            throw new SessionNotInLobbyException(id);
+
+        boolean playerExists = players.stream()
                 .anyMatch(p -> p.getUserId().equals(userId));
-        if (!exists)
+        if (!playerExists)
             throw new PlayerNotFoundException(userId);
-        if (playerFactions.containsKey(userId))
+
+        if (Boolean.TRUE.equals(playerReadyStatus.get(userId)))
             throw new FactionAlreadyAssignedException(userId);
+
         playerFactions.put(userId, faction);
     }
 
-     */
+    public Optional<PlayerFaction> getPlayerFaction(UUID userId) {
+        return Optional.ofNullable(playerFactions.get(userId));
+    }
+
+    public void markPlayerReady(UUID userId) {
+        if (status != SessionStatus.FACTION_SELECTION)
+            throw new SessionNotInLobbyException(id);
+
+        if (!players.stream().anyMatch(p -> p.getUserId().equals(userId)))
+            throw new PlayerNotFoundException(userId);
+
+        if (!playerFactions.containsKey(userId))
+            throw new InvalidFactionException("Player must select faction first");
+
+        playerReadyStatus.put(userId, true);
+    }
+
+    public boolean areAllPlayersReady() {
+        if (players.isEmpty())
+            return false;
+
+        if (playerFactions.size() != players.size())
+            return false;
+
+        if (playerReadyStatus.size() != players.size())
+            return false;
+
+        return playerReadyStatus.values().stream().allMatch(b -> b);
+    }
+
+    public void resetReadyStatus() {
+        playerReadyStatus.clear();
+    }
+
+
+    public List<UUID> getReadyPlayers() {
+        return playerReadyStatus.entrySet().stream()
+                .filter(Map.Entry::getValue)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+    }
 
     public void tick() {
         if (status != SessionStatus.RUNNING) return;
@@ -193,5 +245,14 @@ public class GameSession {
 
     public Duration getDuration(){
         return duration;
+    }
+
+
+    public Map<UUID, Boolean> getReadyStatus() {
+        return Collections.unmodifiableMap(playerReadyStatus);
+    }
+
+    public void setReadyStatus(Map<UUID, Boolean> readyStatus) {
+        this.playerReadyStatus.putAll(readyStatus);
     }
 }

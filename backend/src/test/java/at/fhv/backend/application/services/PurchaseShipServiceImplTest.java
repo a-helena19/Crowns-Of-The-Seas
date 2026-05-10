@@ -68,7 +68,7 @@ class PurchaseShipServiceImplTest {
 
     private ISessionPlayer buildPlayer(UUID userId, UUID sessionId, BigDecimal balance) {
         return BaseSessionPlayer.reconstruct(
-                UUID.randomUUID(), userId, sessionId, "TestPlayer", false, balance);
+                UUID.randomUUID(), userId, sessionId, "TestPlayer", false, balance, null);
     }
 
     private BuyShipDTO buildBuyShipDTO(UUID shipId) {

@@ -39,7 +39,15 @@ public class GameSessionMapperImpl implements GameSessionMapper {
                         SessionPlayerEntity::getFaction
                 ));
 
-        return GameSession.reconstruct(
+        Map<UUID, Boolean> readyStatus = entity.getPlayers()
+                .stream()
+                .filter(p -> p.isReady())
+                .collect(Collectors.toMap(
+                        SessionPlayerEntity::getUserId,
+                        p -> true
+                ));
+
+        GameSession session = GameSession.reconstruct(
                 entity.getId(),
                 SessionStatus.valueOf(entity.getStatus().name()),
                 entity.getHostUserId(),
@@ -53,6 +61,11 @@ public class GameSessionMapperImpl implements GameSessionMapper {
                 entity.getStartTime(),
                 entity.getDuration()
         );
+
+        session.setReadyStatus(readyStatus);
+
+        return session;
+
     }
 
     @Override
@@ -71,8 +84,15 @@ public class GameSessionMapperImpl implements GameSessionMapper {
 
         List<SessionPlayerEntity> playerEntities = domain.getPlayers()
                 .stream()
-                .map(p -> sessionPlayerMapper.toEntity(
-                        p, domain.getPlayerFactions().get(p.getUserId())))
+                .map(p -> {
+                    SessionPlayerEntity playerEntity = sessionPlayerMapper.toEntity(
+                            p, domain.getPlayerFactions().get(p.getUserId()));
+
+                    boolean isReady = domain.getReadyPlayers().contains(p.getUserId());
+                    playerEntity.setReady(isReady);
+
+                    return playerEntity;
+                })
                 .toList();
         entity.setPlayers(playerEntities);
 

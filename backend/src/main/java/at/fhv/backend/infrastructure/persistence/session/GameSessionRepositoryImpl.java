@@ -62,4 +62,11 @@ public class GameSessionRepositoryImpl implements GameSessionRepository {
     }
 
 
+    @Override
+    @Transactional
+    public Optional<GameSession> findByIdWithLock(UUID id) {
+        return jpaRepository.findByIdWithLock(id).map(mapper::toDomain);
+    }
+
+
 }
