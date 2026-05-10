@@ -12,6 +12,7 @@ import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.ship.Ship;
 import at.fhv.backend.domain.model.ship.ShipClass;
 import at.fhv.backend.domain.model.ship.ShipRepository;
+import at.fhv.backend.domain.model.ship.UsedShipListingRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,12 +38,14 @@ class ShipQueryServiceImplTest {
     private PlayerShipRepository playerShipRepository;
     @Mock
     private PlayerShipResponseMapper playerShipResponseMapper;
+    @Mock
+    private UsedShipListingRepository usedShipListingRepository;
 
     private ShipQueryServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new ShipQueryServiceImpl(shipRepository, shipResponseMapper, playerShipRepository, playerShipResponseMapper);
+        service = new ShipQueryServiceImpl(shipRepository, shipResponseMapper, playerShipRepository, playerShipResponseMapper, usedShipListingRepository);
     }
 
     private Ship buildShip(ShipClass shipClass) {

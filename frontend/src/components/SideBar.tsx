@@ -1,9 +1,10 @@
 import "../style/Sidebar.css";
 
-type View = "map" | "harbor" | "broker" | "portProfile" | "cargoManagement";
+type View = "map" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office";
 
 interface Props {
     currentView: View;
+    onOpenOffice: () => void;
     onStartAction: () => void;
     onOpenBroker: () => void;
     onOpenCargoManagement: () => void;
@@ -12,6 +13,7 @@ interface Props {
 
 export default function Sidebar({
                                     currentView,
+                                    onOpenOffice,
                                     onStartAction,
                                     onOpenBroker,
                                     onOpenCargoManagement,
@@ -19,7 +21,11 @@ export default function Sidebar({
                                 }: Props) {
     return (
         <div className="sidebar">
-            <SidebarButton label="Office" />
+            <SidebarButton
+                label="Office"
+                active={currentView === "office"}
+                onClick={onOpenOffice}
+            />
 
             <SidebarButton
                 label="Schiffsmarkt"
