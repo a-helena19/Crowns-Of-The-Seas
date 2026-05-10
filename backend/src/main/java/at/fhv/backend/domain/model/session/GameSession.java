@@ -84,6 +84,14 @@ public class GameSession {
         players.add(player);
     }
 
+    public void beginFactionSelection(UUID requestingUserId) {
+        if (!requestingUserId.equals(hostUserId))
+            throw new OnlyHostCanStartException(requestingUserId);
+        if (!status.canTransitionTo(SessionStatus.FACTION_SELECTION))
+            throw new SessionNotInLobbyException(id);
+        this.status = SessionStatus.FACTION_SELECTION;
+    }
+
     public void start(UUID requestingUserId) {
         if (!requestingUserId.equals(hostUserId))
             throw new OnlyHostCanStartException(requestingUserId);
@@ -104,7 +112,7 @@ public class GameSession {
     }
 
     public void removePlayer(UUID userId) {
-        if (status != SessionStatus.LOBBY)
+        if (status != SessionStatus.LOBBY && status != SessionStatus.FACTION_SELECTION)
             throw new SessionNotInLobbyException(id);
         boolean removed = players.removeIf(p -> p.getUserId().equals(userId));
         if (!removed)
@@ -131,7 +139,8 @@ public class GameSession {
         if (!playerExists)
             throw new PlayerNotFoundException(userId);
 
-        if (playerFactions.containsKey(userId))
+        // Idempotent: if same faction already set, that's fine
+        if (playerFactions.containsKey(userId) && !playerFactions.get(userId).equals(faction))
             throw new FactionAlreadyAssignedException(userId);
 
         playerFactions.put(userId, faction);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useGameSessionWebSocket } from '../hooks/useGameSessionWebSocket';
 import '../style/sessionWaiting.css';
 import FactionSelectionDialog from '../components/FactionSelectionDialog';
@@ -11,7 +11,7 @@ import { sessionApi } from '../api/sessionApi';
 interface GameSession {
     id: string;
     gameCode: string;
-    status: 'LOBBY' | 'RUNNING' | 'FINISHED';
+    status: 'LOBBY' | 'FACTION_SELECTION' | 'RUNNING' | 'FINISHED';
     hostName: string;
     players: number;
     maxPlayers: number;
@@ -26,7 +26,7 @@ interface GameSession {
 interface SessionUpdateEvent {
     sessionId: string;
     gameCode: string;
-    status: 'LOBBY' | 'RUNNING' | 'FINISHED';
+    status: 'LOBBY' | 'FACTION_SELECTION' | 'RUNNING' | 'FINISHED';
     playerCount: number;
     maxPlayers: number;
     players: Array<{
@@ -41,12 +41,15 @@ interface SessionUpdateEvent {
 export default function SessionWaitingScreen() {
     const { logout, user } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [session, setSession] = useState<GameSession | null>(null);
     const [userRole, setUserRole] = useState<'host' | 'guest'>('guest');
     const [playerList, setPlayerList] = useState<Array<{ playerName: string; isHost: boolean; faction?: PlayerFaction | null; }>>([]);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    const [showFactionDialog, setShowFactionDialog] = useState(false);
+    const [showFactionDialog] = useState(
+        () => !!(location.state as any)?.showFactionDialog
+    );
     const [selectedFaction, setSelectedFaction] = useState<PlayerFaction | null>(null);
     const [isPlayerReady, setIsPlayerReady] = useState(false);
     const [readyStatus, setReadyStatus] = useState<{
@@ -60,6 +63,13 @@ export default function SessionWaitingScreen() {
         // Load session from sessionStorage
         const sessionData = sessionStorage.getItem('currentSession');
         const role = sessionStorage.getItem('userRole') as 'host' | 'guest';
+
+        // If GAME_STARTED arrived while we were on the intro screen, redirect now
+        if (sessionStorage.getItem('gameStarted') === 'true') {
+            sessionStorage.removeItem('gameStarted');
+            navigate('/game');
+            return;
+        }
 
         if (sessionData) {
             const parsedSession = JSON.parse(sessionData);
@@ -89,13 +99,14 @@ export default function SessionWaitingScreen() {
             console.log('Session update received:', event);
 
             if (event.type === 'GAME_TRANSITION_STARTED') {
-                console.log('Game transition started - showing intro');
-                setShowFactionDialog(true);
+                console.log('Game transition started - navigating to intro');
+                navigate('/intro');
                 return;
             }
 
             if (event.type === 'GAME_STARTED') {
                 console.log('Game started - navigating to game');
+                sessionStorage.setItem('gameStarted', 'true');
                 setTimeout(() => {
                     navigate('/game');
                 }, 500);
@@ -187,7 +198,7 @@ export default function SessionWaitingScreen() {
                 const updatedSession: GameSession = {
                     id: response.id,
                     gameCode: response.gameCode,
-                    status: response.status as 'LOBBY' | 'RUNNING' | 'FINISHED',
+                    status: response.status as 'LOBBY' | 'FACTION_SELECTION' | 'RUNNING' | 'FINISHED',
                     hostName: session.hostName,
                     players: response.players ? response.players.length : session.players,
                     maxPlayers: response.maxPlayers,
@@ -251,98 +262,97 @@ export default function SessionWaitingScreen() {
                 />
             )}
             {!showFactionDialog && (
-            <div className="session-waiting-panel">
-                <h1>Crown of the Seas</h1>
-                <p className="subtitle">Session Warteraum</p>
+                <div className="session-waiting-panel">
+                    <h1>Crown of the Seas</h1>
+                    <p className="subtitle">Session Warteraum</p>
 
-                {errorMessage && (
-                    <div className="error-message">
-                        <p>{errorMessage}</p>
-                    </div>
-                )}
+                    {errorMessage && (
+                        <div className="error-message">
+                            <p>{errorMessage}</p>
+                        </div>
+                    )}
 
-                {session ? (
-                    <>
-                        <div className="session-info">
-                            <div className="info-box">
-                                <label>Session Code</label>
-                                <code className="code-display">{session.gameCode}</code>
-                            </div>
+                    {session ? (
+                        <>
+                            <div className="session-info">
+                                <div className="info-box">
+                                    <label>Session Code</label>
+                                    <code className="code-display">{session.gameCode}</code>
+                                </div>
 
-                            <div className="info-box join-link-box">
-                                <label>Join-Link:</label>
-                                <div className="link-container">
-                                    <input
-                                        type="text"
-                                        value={`${window.location.origin}/join/${session.gameCode}`}
-                                        readOnly
-                                        className="join-link-input"
-                                    />
-                                    <button
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(`${window.location.origin}/join/${session.gameCode}`);
-                                            alert('Link kopiert!');
-                                        }}
-                                        className="copy-btn"
-                                    >
-                                        Kopieren
-                                    </button>
+                                <div className="info-box join-link-box">
+                                    <label>Join-Link:</label>
+                                    <div className="link-container">
+                                        <input
+                                            type="text"
+                                            value={`${window.location.origin}/join/${session.gameCode}`}
+                                            readOnly
+                                            className="join-link-input"
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(`${window.location.origin}/join/${session.gameCode}`);
+                                                alert('Link kopiert!');
+                                            }}
+                                            className="copy-btn"
+                                        >
+                                            Kopieren
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="players-section">
-                            <h3>Spieler ({session.players}/{session.maxPlayers})</h3>
-                            <div className="players-list">
-                                {playerList && playerList.length > 0 ? (
-                                    playerList.map((player, idx) => (
-                                        <div key={idx} className="player-item">
-                                            <span className="player-name">{player.playerName}</span>
-                                            {player.faction && (
-                                                <span className="player-faction">{player.faction}</span>
-                                            )}
-                                            {player.isHost && <span className="host-badge">HOST</span>}
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p className="empty-players">
-                                        {userRole === 'host' ? 'Warte auf Spieler...' : 'Warte auf Host zum Starten...'}
-                                    </p>
-                                )}
+                            <div className="players-section">
+                                <h3>Spieler ({session.players}/{session.maxPlayers})</h3>
+                                <div className="players-list">
+                                    {playerList && playerList.length > 0 ? (
+                                        playerList.map((player, idx) => (
+                                            <div key={idx} className="player-item">
+                                                <span className="player-name">{player.playerName}</span>
+                                                {player.faction && (
+                                                    <span className="player-faction">{player.faction}</span>
+                                                )}
+                                                {player.isHost && <span className="host-badge">HOST</span>}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="empty-players">
+                                            {userRole === 'host' ? 'Warte auf Spieler...' : 'Warte auf Host zum Starten...'}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="websocket-status">
-                            ● WebSocket: {isConnected ? 'Connected' : 'Connecting...'}
-                        </div>
+                            <div className="websocket-status">
+                                ● WebSocket: {isConnected ? 'Connected' : 'Connecting...'}
+                            </div>
 
-                        <div className="button-group">
-                            {userRole === 'host' && session?.status === 'LOBBY' && (
-                                <button onClick={handleStartGame} className="auth-btn start-btn">
-                                    Spiel Starten
+                            <div className="button-group">
+                                {userRole === 'host' && session?.status === 'LOBBY' && (
+                                    <button onClick={handleStartGame} className="auth-btn start-btn">
+                                        Spiel Starten
+                                    </button>
+                                )}
+
+                                <button onClick={handleBackToLobby} className="auth-btn secondary-btn">
+                                    Zurück
                                 </button>
-                            )}
 
-                            <button onClick={handleBackToLobby} className="auth-btn secondary-btn">
-                                Zurück
-                            </button>
-
-                            <button onClick={handleLogout} className="auth-btn secondary-btn">
-                                Ausloggen
+                                <button onClick={handleLogout} className="auth-btn secondary-btn">
+                                    Ausloggen
+                                </button>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="no-session">
+                            <p>Keine Session gefunden.</p>
+                            <button onClick={handleBackToLobby} className="auth-btn">
+                                Zurück zur Lobby
                             </button>
                         </div>
-                    </>
-                ) : (
-                    <div className="no-session">
-                        <p>Keine Session gefunden.</p>
-                        <button onClick={handleBackToLobby} className="auth-btn">
-                            Zurück zur Lobby
-                        </button>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
             )}
         </div>
     );
 }
-

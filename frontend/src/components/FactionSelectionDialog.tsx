@@ -39,6 +39,8 @@ export default function FactionSelectionDialog({
     const [timeRemaining, setTimeRemaining] = useState(SELECTION_TIME_SECONDS);
     const [hasTimedOut, setHasTimedOut] = useState(false);
     const [currentlySelectedFaction, setCurrentlySelectedFaction] = useState<PlayerFaction | null>(selectedFaction);
+    // Track if faction has been successfully submitted to backend
+    const [factionSubmitted, setFactionSubmitted] = useState(false);
 
     const factions: PlayerFaction[] = [...PLAYER_FACTION_VALUES];
 
@@ -60,10 +62,20 @@ export default function FactionSelectionDialog({
                 const newTime = prev - 1;
 
                 if (newTime <= 0) {
-                    console.log('Time expired - auto-submitting faction');
+                    console.log('Time expired - auto-submitting faction and marking ready');
                     setHasTimedOut(true);
-                    // Auto-submit wenn Zeit vorbei
-                    submitFaction(currentlySelectedFaction);
+                    // Auto-submit faction and mark ready when time expires
+                    (async () => {
+                        const success = await submitFaction(currentlySelectedFaction);
+                        if (success) {
+                            try {
+                                await sessionApi.markPlayerReady(sessionId, userId);
+                                onReadyClicked();
+                            } catch (err) {
+                                console.error('Error auto-marking ready:', err);
+                            }
+                        }
+                    })();
                     return 0;
                 }
 
@@ -74,10 +86,15 @@ export default function FactionSelectionDialog({
         return () => clearInterval(timer);
     }, [isReady, hasTimedOut, currentlySelectedFaction]);
 
-    const submitFaction = async (faction: PlayerFaction | null) => {
+    const submitFaction = async (faction: PlayerFaction | null): Promise<boolean> => {
         if (!faction) {
             setError('Bitte wähle eine Fraktion!');
-            return;
+            return false;
+        }
+
+        // Already submitted to backend - don't send again
+        if (factionSubmitted) {
+            return true;
         }
 
         setError(null);
@@ -86,11 +103,13 @@ export default function FactionSelectionDialog({
         try {
             console.log(`Submitting faction: ${faction}`);
             await sessionApi.assignPlayerFaction(sessionId, userId, faction);
-
+            setFactionSubmitted(true);
             onFactionSelected(faction);
+            return true;
         } catch (err) {
             console.error('Error selecting faction:', err);
             setError('Fehler beim Auswählen der Fraktion. Bitte versuche es erneut.');
+            return false;
         } finally {
             setSelectingFaction(false);
         }
@@ -105,14 +124,15 @@ export default function FactionSelectionDialog({
     };
 
     const handleReadyClicked = async () => {
-        // Submit the faction first if not already submitted
-        if (selectedFaction !== currentlySelectedFaction && !hasTimedOut) {
-            await submitFaction(currentlySelectedFaction);
-        }
-
         if (!currentlySelectedFaction) {
             setError('Bitte wähle eine Fraktion!');
             return;
+        }
+
+        // Submit faction first if not yet sent to backend
+        if (!factionSubmitted) {
+            const success = await submitFaction(currentlySelectedFaction);
+            if (!success) return; // Don't proceed if faction submit failed
         }
 
         setError(null);

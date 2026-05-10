@@ -96,10 +96,10 @@ public class GameSessionServiceImpl implements GameSessionService {
     public SessionDTO startGame(UUID sessionId, UUID hostUserId) {
         GameSession session = gameSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new SessionNotFoundException(sessionId));
-        session.start(hostUserId);
+        session.beginFactionSelection(hostUserId);
         SessionDTO savedSession = sessionDTOMapper.sessionToDTO(gameSessionRepository.save(session));
 
-        // Broadcast update to all connected clients
+        // Broadcast to all clients: intro animation + faction selection begins
         SessionUpdateEvent event = new SessionUpdateEvent(
                 session.getId(),
                 session.getGameCode(),
@@ -115,20 +115,9 @@ public class GameSessionServiceImpl implements GameSessionService {
                                         ? session.getPlayerFactions().get(p.getUserId()).name()
                                         : null))
                         .collect(Collectors.toList()),
-                "GAME_TRANSITION_STARTED"  // Animation startet jetzt im Frontend
+                "GAME_TRANSITION_STARTED"
         );
         webSocketController.broadcastSessionUpdate(session.getId().toString(), event);
-
-        cargoSessionInitializer.initializeForSession(sessionId);
-
-        List<PortResponseDTO> ports = portQueryService.findAll();
-        PortsUpdateEvent portsEvent = new PortsUpdateEvent(
-                "PORTS_UPDATE",
-                ports.stream()
-                        .map(p -> new PortsUpdateEvent.PortInfo(p.id(), p.name(), p.x(), p.y()))
-                        .toList()
-        );
-        webSocketController.broadcastPortsUpdate(session.getId().toString(), portsEvent);
 
         return savedSession;
     }

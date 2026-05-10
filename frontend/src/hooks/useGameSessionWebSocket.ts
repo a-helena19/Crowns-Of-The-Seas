@@ -5,7 +5,7 @@ import Stomp, { Client } from 'stompjs';
 interface SessionUpdateEvent {
     sessionId: string;
     gameCode: string;
-    status: 'LOBBY' | 'RUNNING' | 'FINISHED';
+    status: 'LOBBY' | 'FACTION_SELECTION' | 'RUNNING' | 'FINISHED';
     playerCount: number;
     maxPlayers: number;
     players: Array<{
@@ -95,10 +95,10 @@ declare global {
 }
 
 export function useGameSessionWebSocket({
-    sessionId,
-    onSessionUpdate,
-    onTickUpdate
-}: UseGameSessionWebSocketProps) {
+                                            sessionId,
+                                            onSessionUpdate,
+                                            onTickUpdate
+                                        }: UseGameSessionWebSocketProps) {
     const stompClientRef = useRef<Client | null>(null);
     const [isConnected, setIsConnected] = useState(false);
     const connectAttemptedRef = useRef(false);

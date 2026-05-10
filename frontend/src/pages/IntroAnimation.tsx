@@ -57,9 +57,14 @@ export default function IntroAnimation() {
             setShowSkip(true);
         }, 1000);
 
-        // Redirect to game after animation completes
+        // Redirect to faction selection after animation completes
         const redirectTimer = setTimeout(() => {
-            navigate('/game');
+            if (sessionStorage.getItem('gameStarted') === 'true') {
+                sessionStorage.removeItem('gameStarted');
+                navigate('/game');
+            } else {
+                navigate('/session-waiting', { state: { showFactionDialog: true } });
+            }
         }, 6000); // 6 seconds total
 
         return () => {
@@ -74,7 +79,12 @@ export default function IntroAnimation() {
     }, [navigate]);
 
     const handleSkip = () => {
-        navigate('/game');
+        if (sessionStorage.getItem('gameStarted') === 'true') {
+            sessionStorage.removeItem('gameStarted');
+            navigate('/game');
+        } else {
+            navigate('/session-waiting', { state: { showFactionDialog: true } });
+        }
     };
 
     return (
