@@ -48,6 +48,23 @@ public class PlayerShip {
         );
     }
 
+    public static PlayerShip createFromUsedListing(UUID shipId, UUID playerId, UUID sessionId, UUID currentPortId,
+                                                   double condition, double fuel) {
+        return new PlayerShip(
+                UUID.randomUUID(),
+                shipId,
+                playerId,
+                sessionId,
+                ShipStatus.AT_PORT,
+                condition,
+                fuel,
+                currentPortId,
+                null,
+                -1,
+                -1
+        );
+    }
+
     public static PlayerShip reconstruct(UUID id, UUID shipId, UUID playerId, UUID sessionId, ShipStatus status, double condition, double fuel,
                                          UUID currentPortId, UUID targetPortId, Integer loadingCompletedAtTick, Integer unloadingCompletedAtTick) {
         return new PlayerShip(
@@ -160,8 +177,16 @@ public class PlayerShip {
         this.fuel = Math.max(0.0, this.fuel - amountPercent);
     }
 
+    public void addFuel(double amountPercent) {
+        this.fuel = Math.min(100.0, this.fuel + amountPercent);
+    }
+
     public void applyWear(double amountPercent) {
         this.condition = Math.max(0.0, this.condition - amountPercent);
+    }
+
+    public void applyRepair(double amountPercent) {
+        this.condition = Math.min(100.0, this.condition + amountPercent);
     }
 
     public boolean isOwnedBy(UUID playerId) {

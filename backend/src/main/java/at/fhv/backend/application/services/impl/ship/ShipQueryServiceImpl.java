@@ -10,6 +10,8 @@ import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.ship.Ship;
 import at.fhv.backend.domain.model.ship.ShipRepository;
+import at.fhv.backend.domain.model.ship.UsedShipListingRepository;
+import at.fhv.backend.domain.model.ship.UsedShipListingStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,12 +25,18 @@ public class ShipQueryServiceImpl implements ShipQueryService {
     private final ShipResponseMapper shipResponseMapper;
     private final PlayerShipRepository playerShipRepository;
     private final PlayerShipResponseMapper playerShipResponseMapper;
+    private final UsedShipListingRepository usedShipListingRepository;
 
-    public ShipQueryServiceImpl(ShipRepository shipRepository, ShipResponseMapper shipResponseMapper, PlayerShipRepository playerShipRepository, PlayerShipResponseMapper playerShipResponseMapper) {
+    public ShipQueryServiceImpl(ShipRepository shipRepository,
+                                ShipResponseMapper shipResponseMapper,
+                                PlayerShipRepository playerShipRepository,
+                                PlayerShipResponseMapper playerShipResponseMapper,
+                                UsedShipListingRepository usedShipListingRepository) {
         this.shipRepository = shipRepository;
         this.shipResponseMapper = shipResponseMapper;
         this.playerShipRepository = playerShipRepository;
         this.playerShipResponseMapper = playerShipResponseMapper;
+        this.usedShipListingRepository = usedShipListingRepository;
     }
 
     public List<ShipDTO> getMarketShips(String shipClass, UUID sessionId) {
@@ -47,7 +55,12 @@ public class ShipQueryServiceImpl implements ShipQueryService {
         ShipDTO dto = shipResponseMapper.toResponse(ship);
         if (sessionId != null) {
             long owned = playerShipRepository.countByShipIdAndSessionId(ship.getId(), sessionId);
-            int available = (int) Math.max(0, ship.getStock() - owned);
+            long usedListings = usedShipListingRepository.countByShipIdAndSessionIdAndStatus(
+                    ship.getId(),
+                    sessionId,
+                    UsedShipListingStatus.AVAILABLE
+            );
+            int available = (int) Math.max(0, ship.getStock() - owned - usedListings);
             dto.setAvailableStock(available);
         }
         return dto;
