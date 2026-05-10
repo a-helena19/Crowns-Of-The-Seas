@@ -119,6 +119,40 @@ public class GameTickScheduler {
         }
     }
 
+    private void checkRefuelingCompletion(UUID sessionId, int currentTick) {
+        List<PlayerShip> allShips = playerShipRepository.findAllBySessionId(sessionId);
+
+        for (PlayerShip ship : allShips) {
+            if (ship.getStatus() == ShipStatus.REFUELING
+                    && ship.getRefuelingCompletedAtTick() > 0
+                    && currentTick >= ship.getRefuelingCompletedAtTick()) {
+
+                ship.completeRefueling();
+                playerShipRepository.save(ship);
+
+                System.out.println("[GameTick] Ship " + ship.getId()
+                        + " refueling completed at tick " + currentTick + " → AT_PORT");
+            }
+        }
+    }
+
+    private void checkRepairingCompletion(UUID sessionId, int currentTick) {
+        List<PlayerShip> allShips = playerShipRepository.findAllBySessionId(sessionId);
+
+        for (PlayerShip ship : allShips) {
+            if (ship.getStatus() == ShipStatus.REPAIRING
+                    && ship.getRepairingCompletedAtTick() > 0
+                    && currentTick >= ship.getRepairingCompletedAtTick()) {
+
+                ship.completeRepairing();
+                playerShipRepository.save(ship);
+
+                System.out.println("[GameTick] Ship " + ship.getId()
+                        + " repairing completed at tick " + currentTick + " → AT_PORT");
+            }
+        }
+    }
+
     @Transactional
     public void handleUnloadingPhase(UUID sessionId, int currentTick) {
         List<Travel> arrivedTravels = travelRepository
@@ -218,6 +252,8 @@ public class GameTickScheduler {
             int currentTick = session.getCurrentTick();
 
             checkLoadingCompletion(sessionId, currentTick);
+            checkRefuelingCompletion(sessionId, currentTick);
+            checkRepairingCompletion(sessionId, currentTick);
             handleUnloadingPhase(sessionId, currentTick);
 
             List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
@@ -316,6 +352,8 @@ public class GameTickScheduler {
                         case LOADING         -> "LOADING";
                         case READY_TO_DEPART -> "READY_TO_DEPART";
                         case UNLOADING       -> "UNLOADING";
+                        case REFUELING       -> "REFUELING";
+                        case REPAIRING       -> "REPAIRING";
                         default              -> "AT_PORT";
                     };
 
@@ -324,6 +362,10 @@ public class GameTickScheduler {
                         completionTick = playerShip.getUnloadingCompletedAtTick();
                     } else if (playerShip.getStatus() == ShipStatus.LOADING) {
                         completionTick = playerShip.getLoadingCompletedAtTick();
+                    } else if (playerShip.getStatus() == ShipStatus.REFUELING) {
+                        completionTick = playerShip.getRefuelingCompletedAtTick();
+                    } else if (playerShip.getStatus() == ShipStatus.REPAIRING) {
+                        completionTick = playerShip.getRepairingCompletedAtTick();
                     }
 
                     positions.add(new ShipPositionsUpdateEvent.ShipPosition(

@@ -20,6 +20,10 @@ public class PlayerShipMapper implements EntityMapper<PlayerShip, PlayerShipEnti
         entity.setTargetPortId(playerShip.getTargetPortId());
         entity.setLoadingCompletedAtTick(playerShip.getLoadingCompletedAtTick());
         entity.setUnloadingCompletedAtTick(playerShip.getUnloadingCompletedAtTick());
+        entity.setRefuelingCompletedAtTick(playerShip.getRefuelingCompletedAtTick());
+        entity.setRepairingCompletedAtTick(playerShip.getRepairingCompletedAtTick());
+        entity.setPendingFuelAmount(playerShip.getPendingFuelAmount());
+        entity.setPendingRepairAmount(playerShip.getPendingRepairAmount());
         return entity;
     }
 
@@ -36,7 +40,11 @@ public class PlayerShipMapper implements EntityMapper<PlayerShip, PlayerShipEnti
                 entity.getCurrentPortId(),
                 entity.getTargetPortId(),
                 entity.getLoadingCompletedAtTick(),
-                entity.getUnloadingCompletedAtTick()
+                entity.getUnloadingCompletedAtTick(),
+                entity.getRefuelingCompletedAtTick(),
+                entity.getRepairingCompletedAtTick(),
+                entity.getPendingFuelAmount(),
+                entity.getPendingRepairAmount()
         );
     }
 }

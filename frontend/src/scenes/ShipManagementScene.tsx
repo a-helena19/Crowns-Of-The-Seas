@@ -95,11 +95,10 @@ export default function ShipManagementScene({ playerShipId, onActionComplete, on
                 return;
             }
             const data = await res.json();
-            window.dispatchEvent(new CustomEvent("player-balance-updated"));
-            onActionComplete("refuel", ship.name);
-            // Update local state in case user stays
-            setShip(prev => prev ? { ...prev, fuel: data.newFuelPercent } : prev);
             setBalance(data.newBalance);
+            window.dispatchEvent(new CustomEvent("player-balance-updated"));
+            setError(`Wird betankt… (${data.refuelingDurationTicks} Ticks)`);
+            setTimeout(() => onActionComplete("refuel", ship.name), 1500);
         } catch {
             setError("Verbindungsfehler.");
             setRefueling(false);
@@ -121,10 +120,10 @@ export default function ShipManagementScene({ playerShipId, onActionComplete, on
                 return;
             }
             const data = await res.json();
-            window.dispatchEvent(new CustomEvent("player-balance-updated"));
-            onActionComplete("repair", ship.name);
-            setShip(prev => prev ? { ...prev, condition: data.newConditionPercent } : prev);
             setBalance(data.newBalance);
+            window.dispatchEvent(new CustomEvent("player-balance-updated"));
+            setError(`Wird repariert… (${data.repairingDurationTicks} Ticks)`);
+            setTimeout(() => onActionComplete("repair", ship.name), 1500);
         } catch {
             setError("Verbindungsfehler.");
             setRepairing(false);

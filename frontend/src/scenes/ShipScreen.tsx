@@ -22,6 +22,8 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
     DAMAGED:         { label: "Beschädigt",     color: "#f44336" },
     LOADING:         { label: "Lädt",           color: "#2196f3" },
     UNLOADING:       { label: "Entlädt",        color: "#2196f3" },
+    REFUELING:       { label: "Tankt",          color: "#9c5d0d" },
+    REPAIRING:       { label: "Repariert",      color: "#9c5d0d" },
 };
 
 const CLASS_LABELS: Record<string, { label: string; accent: string }> = {

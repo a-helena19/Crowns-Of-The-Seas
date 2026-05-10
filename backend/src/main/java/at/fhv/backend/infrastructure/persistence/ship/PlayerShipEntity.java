@@ -43,6 +43,18 @@ public class PlayerShipEntity {
     @Column(name = "unloading_completed_at_tick")
     private Integer unloadingCompletedAtTick;
 
+    @Column(name = "refueling_completed_at_tick")
+    private Integer refuelingCompletedAtTick;
+
+    @Column(name = "repairing_completed_at_tick")
+    private Integer repairingCompletedAtTick;
+
+    @Column(name = "pending_fuel_amount")
+    private Double pendingFuelAmount;
+
+    @Column(name = "pending_repair_amount")
+    private Double pendingRepairAmount;
+
     public PlayerShipEntity() {}
 
     public UUID getId() {
@@ -131,5 +143,33 @@ public class PlayerShipEntity {
 
     public void setUnloadingCompletedAtTick(Integer unloadingCompletedAtTick) {
         this.unloadingCompletedAtTick = unloadingCompletedAtTick;
+    }
+
+    public Integer getRefuelingCompletedAtTick() {
+        return refuelingCompletedAtTick;
+    }
+    public void setRefuelingCompletedAtTick(Integer refuelingCompletedAtTick) {
+        this.refuelingCompletedAtTick = refuelingCompletedAtTick;
+    }
+
+    public Integer getRepairingCompletedAtTick() {
+        return repairingCompletedAtTick;
+    }
+    public void setRepairingCompletedAtTick(Integer repairingCompletedAtTick) {
+        this.repairingCompletedAtTick = repairingCompletedAtTick;
+    }
+
+    public Double getPendingFuelAmount() {
+        return pendingFuelAmount;
+    }
+    public void setPendingFuelAmount(Double pendingFuelAmount) {
+        this.pendingFuelAmount = pendingFuelAmount;
+    }
+
+    public Double getPendingRepairAmount() {
+        return pendingRepairAmount;
+    }
+    public void setPendingRepairAmount(Double pendingRepairAmount) {
+        this.pendingRepairAmount = pendingRepairAmount;
     }
 }

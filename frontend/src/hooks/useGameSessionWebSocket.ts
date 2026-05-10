@@ -42,7 +42,7 @@ export interface ShipPosition {
     iconUrl: string;
     x: number;
     y: number;
-    status: 'EN_ROUTE' | 'AT_PORT';
+    status: 'EN_ROUTE' | 'AT_PORT' | 'LOADING' | 'UNLOADING' | 'REFUELING' | 'REPAIRING' | 'READY_TO_DEPART';
     arrivalTick: number | null;
     originX: number | null;
     originY: number | null;
