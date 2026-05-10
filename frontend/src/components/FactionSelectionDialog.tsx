@@ -20,7 +20,7 @@ interface FactionSelectionDialogProps {
     };
 }
 
-const SELECTION_TIME_SECONDS = 15;
+const SELECTION_TIME_SECONDS = 30;
 
 export default function FactionSelectionDialog({
                                                    sessionId,
@@ -39,26 +39,21 @@ export default function FactionSelectionDialog({
     const [busy, setBusy] = useState(false);
     const [timeRemaining, setTimeRemaining] = useState(SELECTION_TIME_SECONDS);
     const [hasTimedOut, setHasTimedOut] = useState(false);
-
     const [currentlySelectedFaction, setCurrentlySelectedFaction] =
         useState<PlayerFaction | null>(selectedFaction);
 
-    const submittedRef = useRef(false);
+    const submittedFactionRef = useRef<PlayerFaction | null>(null);
     const readySubmittedRef = useRef(false);
 
-    const ensureFactionSubmitted = async (
-        faction: PlayerFaction
-    ): Promise<boolean> => {
-        if (submittedRef.current) return true;
-        submittedRef.current = true; // Lock SOFORT — vor await
+    const ensureFactionSubmitted = async (faction: PlayerFaction): Promise<boolean> => {
+        if (submittedFactionRef.current === faction) return true;
         try {
-            console.log(`Submitting faction: ${faction}`);
             await sessionApi.assignPlayerFaction(sessionId, userId, faction);
+            submittedFactionRef.current = faction;
             onFactionSelected(faction);
             return true;
         } catch (err) {
             console.error('Error submitting faction:', err);
-            submittedRef.current = false; // Lock zurücknehmen, damit Retry möglich
             setError('Fehler beim Auswählen der Fraktion. Bitte versuche es erneut.');
             return false;
         }
@@ -74,8 +69,7 @@ export default function FactionSelectionDialog({
         } catch (err: unknown) {
             console.error('Error marking ready:', err);
             readySubmittedRef.current = false;
-            const message =
-                err instanceof Error ? err.message : 'Fehler beim Ready-Status.';
+            const message = err instanceof Error ? err.message : 'Fehler beim Ready-Status.';
             setError(message);
             return false;
         }
@@ -89,13 +83,10 @@ export default function FactionSelectionDialog({
                 if (prev <= 1) {
                     clearInterval(timer);
                     setHasTimedOut(true);
-                    // Auto-submit when time runs out
                     void (async () => {
-                        // Wenn der User keine Faction gewählt hat → wähle Random JETZT
                         const factionToSubmit =
                             currentlySelectedFaction ??
                             factions[Math.floor(Math.random() * factions.length)];
-
                         setCurrentlySelectedFaction(factionToSubmit);
                         const ok = await ensureFactionSubmitted(factionToSubmit);
                         if (ok) await submitReady();
@@ -110,7 +101,7 @@ export default function FactionSelectionDialog({
     }, [isReady, hasTimedOut]);
 
     const handleFactionClick = (faction: PlayerFaction) => {
-        if (isReady || hasTimedOut || submittedRef.current) return;
+        if (isReady || hasTimedOut) return;
         setCurrentlySelectedFaction(faction);
         setError(null);
     };
@@ -125,119 +116,114 @@ export default function FactionSelectionDialog({
         setBusy(true);
         setError(null);
         try {
-            const factionOk = await ensureFactionSubmitted(currentlySelectedFaction);
-            if (!factionOk) return;
+            const ok = await ensureFactionSubmitted(currentlySelectedFaction);
+            if (!ok) return;
             await submitReady();
         } finally {
             setBusy(false);
         }
     };
 
-    const getProgressColor = () => {
-        const percentage = (timeRemaining / SELECTION_TIME_SECONDS) * 100;
-        if (percentage > 50) return '#4caf50';
-        if (percentage > 25) return '#ff9800';
-        return '#f44336';
+    const progressPercentage = (timeRemaining / SELECTION_TIME_SECONDS) * 100;
+    const locked = isReady || hasTimedOut;
+    const submittedFaction = submittedFactionRef.current;
+
+    const getStatusBadge = (
+        faction: PlayerFaction
+    ): { text: string; type: 'available' | 'selected' | 'locked' } => {
+        if (submittedFaction === faction && locked) return { text: 'GEWÄHLT', type: 'locked' };
+        if (currentlySelectedFaction === faction) return { text: 'AUSGEWÄHLT', type: 'selected' };
+        return { text: 'VERFÜGBAR', type: 'available' };
     };
 
-    const progressPercentage = (timeRemaining / SELECTION_TIME_SECONDS) * 100;
-    const locked = isReady || hasTimedOut || submittedRef.current;
-
     return (
-        <div className="faction-selection-overlay">
-            <div className="faction-selection-dialog">
-                <div className="faction-dialog-header">
-                    <h2>Wähle deine Fraktion</h2>
-                    <p className="player-name">Spieler: {playerName}</p>
-                </div>
-
-                <div className="timer-section">
-                    <div className="timer-label">
-                        Zeit verbleibend:{' '}
-                        <span className="timer-value">{timeRemaining}s</span>
+        <div className="fs-overlay">
+            <div className="fs-screen">
+                <header className="fs-header">
+                    <h1 className="fs-title">FRAKTIONSWAHL</h1>
+                    <p className="fs-subtitle">Wähle deine Fraktion · Spieler: {playerName}</p>
+                    <div className="fs-divider">
+                        <span className="fs-divider-diamond">◆</span>
                     </div>
-                    <div className="progress-bar-container">
+                </header>
+
+                <div className="fs-timer-row">
+                    <div className="fs-timer-track">
                         <div
-                            className="progress-bar"
-                            style={{
-                                width: `${progressPercentage}%`,
-                                backgroundColor: getProgressColor(),
-                            }}
+                            className="fs-timer-fill"
+                            style={{ width: `${progressPercentage}%` }}
                         />
                     </div>
-                    <p className="timer-info">
-                        {hasTimedOut
-                            ? '⏱️ Zeit abgelaufen! Fraktion wurde automatisch gespeichert.'
-                            : '💡 Du kannst die Fraktion bis zur Bestätigung noch wechseln.'}
-                    </p>
+                    <div className="fs-timer-label">
+                        {hasTimedOut ? 'ZEIT ABGELAUFEN' : `${timeRemaining}s VERBLEIBEND`}
+                    </div>
                 </div>
 
-                {error && (
-                    <div className="faction-error-message">
-                        <p>⚠️ {error}</p>
-                    </div>
-                )}
+                {error && <div className="fs-error">⚠ {error}</div>}
 
-                <div className="factions-grid">
+                <div className="fs-grid">
                     {factions.map(faction => {
                         const data = FACTION_DATA[faction];
                         const isSelected = currentlySelectedFaction === faction;
-                        const isSubmitted =
-                            submittedRef.current && currentlySelectedFaction === faction;
+                        const status = getStatusBadge(faction);
 
                         return (
                             <div
                                 key={faction}
-                                className={`faction-card ${isSelected ? 'selected' : ''} ${
-                                    isSubmitted ? 'submitted' : ''
-                                } ${locked ? 'disabled' : ''}`}
+                                className={`fs-card ${isSelected ? 'is-selected' : ''} ${
+                                    locked ? 'is-locked' : ''
+                                }`}
                                 onClick={() => handleFactionClick(faction)}
                                 style={{
-                                    borderColor: isSelected ? data.color : 'inherit',
-                                    opacity: locked && !isSubmitted ? 0.4 : 1,
-                                    cursor: locked ? 'not-allowed' : 'pointer',
+                                    ['--card-accent' as string]: data.color,
                                 }}
-                                title={
-                                    locked
-                                        ? 'Fraktion kann nicht mehr geändert werden'
-                                        : ''
-                                }
                             >
-                                <div className="faction-icon">{data.icon}</div>
-                                <div className="faction-name">{data.name}</div>
-                                <div className="faction-description">{data.description}</div>
+                                <div className="fs-card-image-wrap">
+                                    <div className="fs-card-icon">{data.icon}</div>
+                                </div>
 
-                                {isSelected && !isSubmitted && (
-                                    <div className="faction-checkmark">👁️</div>
-                                )}
-
-                                {isSubmitted && (
-                                    <div className="faction-submitted-badge">✓ Gespeichert</div>
-                                )}
+                                <div className="fs-card-body">
+                                    <div className="fs-card-header-row">
+                                        <span className="fs-card-name">{data.name}</span>
+                                        <span
+                                            className={`fs-card-badge fs-card-badge--${status.type}`}
+                                        >
+                                            {status.text}
+                                        </span>
+                                    </div>
+                                    <p className="fs-card-desc">{data.description}</p>
+                                </div>
                             </div>
                         );
                     })}
                 </div>
 
-                <div className="faction-dialog-footer">
-                    {readyStatus && (
-                        <div className="ready-status-info">
-                            <p>
-                                Bereit: {readyStatus.readyPlayers.length}/
-                                {readyStatus.totalPlayers}
-                            </p>
-                            {readyStatus.allReady && (
-                                <p className="all-ready-message">
-                                    ✓ Alle Spieler sind bereit! Spiel startet...
-                                </p>
-                            )}
-                        </div>
-                    )}
+                {/* Reservierter Slot für späteren Heimathafen-Bereich.
+                    Wenn das implementiert wird: aria-hidden entfernen,
+                    Inhalt rendern, .fs-future-slot bekommt Padding/Inhalt. */}
+                <section className="fs-future-slot" aria-hidden="true">
+                    {/* Heimathafen-Wahl folgt */}
+                </section>
+
+                <footer className="fs-footer">
+                    <div className="fs-ready-info">
+                        {readyStatus && (
+                            <>
+                                <span className="fs-ready-label">BEREIT</span>
+                                <span className="fs-ready-count">
+                                    {readyStatus.readyPlayers.length} / {readyStatus.totalPlayers}
+                                </span>
+                                {readyStatus.allReady && (
+                                    <span className="fs-ready-allset">
+                                        · Alle bereit, Spiel startet …
+                                    </span>
+                                )}
+                            </>
+                        )}
+                    </div>
 
                     <button
-                        className={`ready-button ${isReady ? 'active' : ''} ${
-                            !currentlySelectedFaction ? 'disabled' : ''
-                        }`}
+                        className={`fs-ready-btn ${isReady ? 'is-confirmed' : ''}`}
                         onClick={handleReadyClicked}
                         disabled={
                             !currentlySelectedFaction ||
@@ -248,14 +234,14 @@ export default function FactionSelectionDialog({
                         }
                     >
                         {isReady
-                            ? '✓ Bereit!'
+                            ? '✓ BEREIT'
                             : busy
-                                ? 'Wird gespeichert...'
+                                ? 'WIRD GESPEICHERT …'
                                 : hasTimedOut
-                                    ? '⏱️ Automatisch gespeichert'
-                                    : 'Bereit'}
+                                    ? 'AUTOMATISCH GESPEICHERT'
+                                    : 'BEREIT'}
                     </button>
-                </div>
+                </footer>
             </div>
         </div>
     );
