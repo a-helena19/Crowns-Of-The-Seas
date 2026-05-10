@@ -73,18 +73,39 @@ export default function GameScreen() {
         const handler = (e: Event) => {
             const detail = (e as CustomEvent<{
                 currentTick: number;
-                ships: { playerShipId: string; status: string; arrivalTick?: number; currentPortId?: string; travelId?: string }[]
+                ships: {
+                    playerShipId: string;
+                    status: string;
+                    arrivalTick?: number;
+                    startTick?: number;
+                    currentPortId?: string;
+                    travelId?: string;
+                }[]
             }>).detail;
 
             setAssignedCargos(prev => prev.map(entry => {
                 if (entry.phase !== "en_route" && entry.phase !== "unloading") return entry;
                 const ship = detail.ships.find(s => s.playerShipId === entry.shipId);
                 if (!ship) return entry;
+
                 if (ship.status === "UNLOADING") {
-                    return  { ...entry, phase: "unloading", arrivalTick: ship.arrivalTick, currentTick: detail.currentTick, unloadingCompletedAtTick: ship.arrivalTick, };
+                    return {
+                        ...entry,
+                        phase: "unloading",
+                        arrivalTick: ship.arrivalTick,
+                        currentTick: detail.currentTick,
+                        unloadingCompletedAtTick: ship.arrivalTick,
+                        unloadingStartTick: entry.unloadingStartTick ?? detail.currentTick,
+                    };
                 }
+
                 if (ship.status === "EN_ROUTE") {
-                    return { ...entry, currentTick: detail.currentTick, arrivalTick: ship.arrivalTick ?? entry.arrivalTick, };
+                    return {
+                        ...entry,
+                        currentTick: detail.currentTick,
+                        arrivalTick: ship.arrivalTick ?? entry.arrivalTick,
+                        startTick: entry.startTick ?? ship.startTick,
+                    };
                 }
                 return entry;
             }));
@@ -147,6 +168,32 @@ export default function GameScreen() {
         window.addEventListener("travel-complete", handler);
         return () => window.removeEventListener("travel-complete", handler);
     }, [playerId]);
+
+    useEffect(() => {
+        const hasPendingLoading = assignedCargos.some(
+            e => e.phase === "loading" && !e.loadingDone
+        );
+        if (!hasPendingLoading) return;
+
+        const interval = setInterval(() => {
+            setAssignedCargos(prev => {
+                let changed = false;
+                const next = prev.map(entry => {
+                    if (entry.phase !== "loading" || entry.loadingDone) return entry;
+
+                    const elapsed = (Date.now() - entry.loadingStartedAt) / 1000;
+                    if (elapsed >= entry.loadingDurationSeconds) {
+                        changed = true;
+                        return { ...entry, loadingDone: true };
+                    }
+                    return entry;
+                });
+                return changed ? next : prev;
+            });
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [assignedCargos]);
 
     const handleSessionUpdate = useCallback(() => {}, []);
 

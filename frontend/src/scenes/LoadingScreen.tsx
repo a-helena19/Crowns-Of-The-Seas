@@ -1,4 +1,3 @@
-import { useEffect, useRef } from "react";
 import "../style/loading.css";
 
 interface PlayerShip {
@@ -20,32 +19,41 @@ interface LoadingScreenProps {
     done: boolean;
     onComplete: () => void;
     loadingDurationSeconds?: number;
+    elapsedRatio?: number;
 }
 
-export default function LoadingScreen({ ship, cargo, done, onComplete,
-                                          loadingDurationSeconds = 10
+export default function LoadingScreen({
+                                          ship,
+                                          cargo,
+                                          done,
+                                          onComplete,
+                                          loadingDurationSeconds = 10,
+                                          elapsedRatio,
                                       }: LoadingScreenProps) {
-    const progressRef = useRef<HTMLDivElement>(null);
 
-    const animationDuration = loadingDurationSeconds || 10;
+    // ─────────────────────────────────────────────────────────────────
+    // Wenn der Parent uns einen `elapsedRatio` gibt, nutzen wir den.
+    // Damit:
+    //  - startet der Balken nach Re-Mount nicht bei 0%
+    //  - läuft er korrekt weiter, weil der Parent alle 100ms neu rendert
+    //  - ist `done` ableitbar aus elapsedRatio >= 1
+    //
+    // `onComplete` rufen wir hier NICHT mehr auf, weil der Parent
+    // (CargoManagementScreen) bzw. der GameScreen-Hintergrund-Ticker das
+    // ohnehin übernimmt — selbst wenn wir gar nicht gemounted sind.
+    // ─────────────────────────────────────────────────────────────────
 
-    useEffect(() => {
-        if (done) return;
-        const el = progressRef.current;
-        if (!el) return;
-        const onEnd = () => onComplete();
-        el.addEventListener('animationend', onEnd, { once: true });
-        // Fallback in case animationend doesn't fire
-        const fallback = setTimeout(onComplete, animationDuration * 1000);
-
-        return () => {
-            el.removeEventListener('animationend', onEnd);
-            clearTimeout(fallback);
-        };
-    }, [done, onComplete, animationDuration]);
+    const useExternalProgress = typeof elapsedRatio === "number";
+    const pct = useExternalProgress
+        ? Math.min(100, Math.max(0, elapsedRatio! * 100))
+        : 0; // Fallback wird unten als CSS-Animation gerendert
 
     const maxCap = ship.maxCargoCapacity ?? 0;
     const fillPct = maxCap > 0 ? Math.min((cargo.weight / maxCap) * 100, 100) : 100;
+
+    // Falls kein elapsedRatio gegeben ist, behalten wir den alten
+    // CSS-Animations-Pfad bei (für Aufrufer die nicht migriert wurden).
+    const animationDuration = loadingDurationSeconds || 10;
 
     return (
         <div className="loading-panel">
@@ -102,12 +110,31 @@ export default function LoadingScreen({ ship, cargo, done, onComplete,
             <div className="loading-progress-wrap">
                 <div className="loading-progress-label">Beladevorgang</div>
                 <div className="progress-track">
-                    {done
-                        ? <div className="progress-fill-done" />
-                        : <div className="progress-fill" ref={progressRef} style={{
-                            animation: `progressFill ${animationDuration}s linear forwards, shimmer 1.5s linear infinite`
-                        }}/>
-                    }
+                    {done && (
+                        <div className="progress-fill-done" />
+                    )}
+                    {!done && useExternalProgress && (
+                        <div
+                            className="progress-fill"
+                            style={{
+                                // Berechneter Wert vom Parent. Keine CSS-Animation,
+                                // keine Transition — der Parent rendert alle 100ms
+                                // neu und liefert sofort den korrekten Stand.
+                                width: `${pct}%`,
+                                animation: "shimmer 1.5s linear infinite",
+                                transition: "none",
+                            }}
+                        />
+                    )}
+                    {!done && !useExternalProgress && (
+                        <div
+                            className="progress-fill"
+                            style={{
+                                animation: `progressFill ${animationDuration}s linear forwards, shimmer 1.5s linear infinite`,
+                            }}
+                            onAnimationEnd={onComplete}
+                        />
+                    )}
                 </div>
             </div>
         </div>

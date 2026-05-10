@@ -22,6 +22,7 @@ public class FactionDecoratorFactory {
             case SCOUTS         -> new ScoutDecorator(player);
             case TRADERS        -> new TraderDecorator(player);
             case QUICK_SERVICE  -> new QuickServiceDecorator(player);
+            case SMUGGLERS      -> new SmugglerDecorator(player);
             default -> throw new InvalidFactionException(faction.name());
         };
     }
