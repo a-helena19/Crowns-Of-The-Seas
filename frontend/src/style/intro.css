@@ -36,8 +36,22 @@
     background-size: contain;
     background-repeat: no-repeat;
     image-rendering: pixelated;
-    filter: drop-shadow(0 0 20px rgba(253, 240, 213, 0.4));
     z-index: 1;
+    opacity: 0;
+    animation: moonReveal 1.8s ease-out 0.3s forwards;
+}
+
+@keyframes moonReveal {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+        filter: drop-shadow(0 0 5px rgba(253, 240, 213, 0.1));
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        filter: drop-shadow(0 0 20px rgba(253, 240, 213, 0.4));
+    }
 }
 
 /* Sterne (Behalten wir als kleine Akzente bei) */
