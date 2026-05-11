@@ -11,6 +11,8 @@ import { useGameSessionWebSocket } from "../hooks/useGameSessionWebSocket.ts";
 import CargoManagementScreen from "../scenes/CargoManagementScreen";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
 import RewardToast from "../components/RewardToast.tsx";
+import LeaderboardOverlay from "../components/LeaderboardOverlay";
+
 
 export const TOP_BAR_HEIGHT = '9vh';
 export const BOTTOM_BAR_HEIGHT = '20vh';
@@ -237,6 +239,13 @@ export default function GameScreen() {
                     onDismiss={() => setRewardToasts(prev => prev.filter(t => t.id !== toast.id))}
                 />
             ))}
+
+            {sessionId && (
+                <LeaderboardOverlay
+                    sessionId={sessionId}
+                    currentUserId={playerId}
+                />
+            )}
         </div>
     );
 }
