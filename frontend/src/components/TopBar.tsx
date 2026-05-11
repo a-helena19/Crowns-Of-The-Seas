@@ -136,12 +136,13 @@ export default function TopBar() {
                             aria-haspopup="dialog"
                             title={`Fraktion: ${factionData.name}`}
                         >
-                            <span
-                                className="topbar-faction-icon"
-                                style={{ color: factionData.color }}
-                            >
-                                {factionData.icon}
-                            </span>
+                            <div className="topbar-faction-icon">
+                                <img
+                                    src={factionData.icon1}
+                                    alt={factionData.name}
+                                    className="topbar-faction-icon-img"
+                                />
+                            </div>
                             <span className="topbar-value topbar-faction-name">
                                 {factionData.name}
                             </span>
@@ -158,12 +159,19 @@ export default function TopBar() {
                                     style={{ background: factionData.color }}
                                 />
                                 <div className="faction-popover-header">
-                                    <span
-                                        className="faction-popover-icon"
-                                        style={{ color: factionData.color }}
-                                    >
-                                        {factionData.icon}
-                                    </span>
+                                    <div className="faction-popover-icon">
+                                        <img
+                                            src={factionData.icon1}
+                                            alt=""
+                                            className="faction-popover-icon-img frame1"
+                                        />
+
+                                        <img
+                                            src={factionData.icon2}
+                                            alt=""
+                                            className="faction-popover-icon-img frame2"
+                                        />
+                                    </div>
                                     <div className="faction-popover-titles">
                                         <h3 className="faction-popover-name">
                                             {factionData.name}

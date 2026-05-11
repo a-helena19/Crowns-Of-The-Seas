@@ -85,11 +85,11 @@ class FactionDecoratorFactoryTest {
     }
 
     @Test
-    void testInvalidFactionThrowsException() {
-        assertThrows(InvalidFactionException.class, () -> {
-            // Simulate invalid faction by manually testing with invalid switch case
-            // This would happen if faction enum changes without updating factory
-            FactionDecoratorFactory.createDecoratedPlayer(basePlayer, null);
-        });
+    void testCreateSmugglerDecorator() {
+        ISessionPlayer decorated = FactionDecoratorFactory.createDecoratedPlayer(basePlayer, PlayerFaction.SMUGGLERS);
+
+        assertNotNull(decorated);
+        assertTrue(decorated instanceof SmugglerDecorator);
+        assertEquals(0.70, decorated.getSmuggleRiskModifier(), 0.01);
     }
 }

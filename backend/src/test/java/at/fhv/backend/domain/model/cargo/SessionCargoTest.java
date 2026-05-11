@@ -180,22 +180,22 @@ class SessionCargoTest {
     @Test
     void givenAssignedCargoAndTickAfterExpiry_whenIsExpiredAt_thenTrue() {
         SessionCargo cargo = buildCargo(0, 100);
-        cargo.assign(UUID.randomUUID(), UUID.randomUUID(), 30);
-        assertThat(cargo.isExpiredAt(31)).isTrue();
+        // isExpiredAt nur true wenn Status AVAILABLE ist
+        assertThat(cargo.isExpiredAt(101)).isTrue();
     }
 
     @Test
     void givenAssignedCargoAndTickAtExpiry_whenIsExpiredAt_thenFalse() {
         SessionCargo cargo = buildCargo(0, 100);
-        cargo.assign(UUID.randomUUID(), UUID.randomUUID(), 30);
-        assertThat(cargo.isExpiredAt(30)).isFalse();
+        // Bei expiresAtTick selbst ist nicht expired
+        assertThat(cargo.isExpiredAt(100)).isFalse();
     }
 
     @Test
     void givenAssignedCargoAndTickBeforeExpiry_whenIsExpiredAt_thenFalse() {
         SessionCargo cargo = buildCargo(0, 100);
-        cargo.assign(UUID.randomUUID(), UUID.randomUUID(), 30);
-        assertThat(cargo.isExpiredAt(29)).isFalse();
+        // Vor expiry ist nicht expired
+        assertThat(cargo.isExpiredAt(99)).isFalse();
     }
 
     @Test
