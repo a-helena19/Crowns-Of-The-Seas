@@ -1,3 +1,4 @@
+import { useEffect, useCallback, useRef, useState } from "react";
 import { useEffect, useCallback, useState, useRef } from "react";
 import TopBar from "../components/TopBar.tsx";
 import Game from "../Game.tsx";
@@ -5,6 +6,7 @@ import BottomBar from "../components/BottomBar.tsx";
 import SideBar from "../components/SideBar";
 import HarborScene from "../scenes/HarborScene.tsx";
 import ShipBrokerScene from "../scenes/ShipBrokerScene.tsx";
+import OfficeScene from "../scenes/OfficeScene.tsx";
 import PortProfileScreen from "../scenes/PortProfileScreen.tsx";
 import { useGameSessionWebSocket } from "../hooks/useGameSessionWebSocket.ts";
 import CargoManagementScreen from "../scenes/CargoManagementScreen";
@@ -16,7 +18,8 @@ export const TOP_BAR_HEIGHT = '9vh';
 export const BOTTOM_BAR_HEIGHT = '20vh';
 
 export default function GameScreen() {
-    const [view, setView] = useState<"map" | "harbor" | "broker" | "portProfile" | "cargoManagement">("map");
+    const [view, setView] = useState<"map" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office">("map");
+    const viewRef = useRef(view);
     const [selectedPort, setSelectedPort] = useState<{ id: string; name: string; x: number; y: number } | null>(null);
 
     const sessionData = sessionStorage.getItem('currentSession');
@@ -64,6 +67,11 @@ export default function GameScreen() {
     }
 
     useEffect(() => {
+        viewRef.current = view;
+        window.__activeGameView = view;
+    }, [view]);
+
+    useEffect(() => {
         if (typeof window.__tickRateMs !== 'number' || !Number.isFinite(window.__tickRateMs) || window.__tickRateMs <= 0) {
             window.__tickRateMs = tickRateSeconds * 1000;
         }
@@ -71,6 +79,7 @@ export default function GameScreen() {
 
     useEffect(() => {
         const onPortClicked = (e: Event) => {
+            if (viewRef.current !== "map") return;
             const port = (e as CustomEvent).detail;
             setSelectedPort(port);
             setView("portProfile");
@@ -83,6 +92,14 @@ export default function GameScreen() {
         const handler = (e: Event) => {
             const detail = (e as CustomEvent<{
                 currentTick: number;
+                ships: {
+                    playerShipId: string;
+                    status: string;
+                    arrivalTick?: number;
+                    startTick?: number;
+                    currentPortId?: string;
+                    travelId?: string;
+                }[]
                 ships: { playerShipId: string; status: string; arrivalTick?: number; currentPortId?: string; travelId?: string; paused?: boolean }[]
             }>).detail;
 
@@ -92,6 +109,14 @@ export default function GameScreen() {
                 if (!ship) return entry;
                 if (ship.status === "UNLOADING") {
                     return  { ...entry, phase: "unloading", arrivalTick: ship.arrivalTick, currentTick: detail.currentTick, unloadingCompletedAtTick: ship.arrivalTick, paused: false };
+                    return {
+                        ...entry,
+                        phase: "unloading",
+                        arrivalTick: ship.arrivalTick,
+                        currentTick: detail.currentTick,
+                        unloadingCompletedAtTick: ship.arrivalTick,
+                        unloadingStartTick: entry.unloadingStartTick ?? detail.currentTick,
+                    };
                 }
                 if (ship.status === "EN_ROUTE") {
                     const isPaused = ship.paused === true;
@@ -100,6 +125,12 @@ export default function GameScreen() {
                         currentTick: isPaused ? (entry.currentTick ?? detail.currentTick) : detail.currentTick,
                         arrivalTick: ship.arrivalTick ?? entry.arrivalTick,
                         paused: isPaused,
+                    };
+                    return {
+                        ...entry,
+                        currentTick: detail.currentTick,
+                        arrivalTick: ship.arrivalTick ?? entry.arrivalTick,
+                        startTick: entry.startTick ?? ship.startTick,
                     };
                 }
                 return entry;
@@ -235,6 +266,32 @@ export default function GameScreen() {
         setSmuggleOffer(null);
     }
 
+    useEffect(() => {
+        const hasPendingLoading = assignedCargos.some(
+            e => e.phase === "loading" && !e.loadingDone
+        );
+        if (!hasPendingLoading) return;
+
+        const interval = setInterval(() => {
+            setAssignedCargos(prev => {
+                let changed = false;
+                const next = prev.map(entry => {
+                    if (entry.phase !== "loading" || entry.loadingDone) return entry;
+
+                    const elapsed = (Date.now() - entry.loadingStartedAt) / 1000;
+                    if (elapsed >= entry.loadingDurationSeconds) {
+                        changed = true;
+                        return { ...entry, loadingDone: true };
+                    }
+                    return entry;
+                });
+                return changed ? next : prev;
+            });
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [assignedCargos]);
+
     const handleSessionUpdate = useCallback(() => {}, []);
 
     const { isConnected, stompClient } = useGameSessionWebSocket({
@@ -265,7 +322,7 @@ export default function GameScreen() {
             <div className="top"><TopBar /></div>
             <div className="game"><Game view={view} /></div>
             <div className={`fullscreen-overlay ${
-                (view === "harbor" || view === "broker" || view === "cargoManagement") ? "open" : "closed"
+                (view === "harbor" || view === "broker" || view === "cargoManagement" || view === "office") ? "open" : "closed"
             }`}>
                 {view === "harbor" && (
                     <HarborScene
@@ -274,6 +331,7 @@ export default function GameScreen() {
                     />
                 )}
                 {view === "broker" && <ShipBrokerScene onClose={() => setView("map")} />}
+                {view === "office" && <OfficeScene onClose={() => setView("map")} />}
                 {view === "cargoManagement" && (
                     <CargoManagementScreen
                         assignedCargos={assignedCargos}
@@ -293,6 +351,7 @@ export default function GameScreen() {
                 <div className="sidebar">
                     <SideBar
                         currentView={view}
+                        onOpenOffice={() => setView("office")}
                         onStartAction={() => setView("harbor")}
                         onOpenBroker={() => setView("broker")}
                         onOpenCargoManagement={() => setView("cargoManagement")}

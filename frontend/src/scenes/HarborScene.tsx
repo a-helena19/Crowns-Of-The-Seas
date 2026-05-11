@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import CargoScreen from "./CargoScreen";
 import ShipScreen from "./ShipScreen";
 import Sailor from "../components/Sailor";
@@ -43,15 +43,24 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
             .then((ships: any[]) => {
                 const portsMap = new Map<string, string>();
                 ships
-                    .filter(s => s.status === "AT_PORT" && s.currentPortId)
+                    .filter(s => ["AT_PORT", "REFUELING", "REPAIRING", "LOADING", "UNLOADING", "READY_TO_DEPART"].includes(s.status) && s.currentPortId)
                     .forEach(s => {
                         const portName = window.__latestPorts?.find((p: any) => p.id === s.currentPortId)?.name ?? s.currentPortId;
                         portsMap.set(s.currentPortId, portName);
                     });
+
+                // Wenn keine Schiffe im Hafen → Default-Port (Hamburg) verwenden
+                if (portsMap.size === 0) {
+                    const hamburg = window.__latestPorts?.find((p: any) => p.name === "Hamburg");
+                    if (hamburg) {
+                        portsMap.set(hamburg.id, hamburg.name);
+                    }
+                }
+
                 const portList = Array.from(portsMap.entries()).map(([id, name]) => ({ id, name }));
                 setMyPorts(portList);
-                if (portList.length === 1) {
-                    setSelectedPortId(portList[0].id);
+                if (portList.length >= 1) {
+                    setSelectedPortId(prev => prev ?? portList[0].id);
                 }
             })
             .catch(console.error);
@@ -59,7 +68,6 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
 
     function handleShipSelect(ship: any) {
         setSelectedShip(ship);
-        // Port automatisch auf den Hafen des Schiffs setzen
         if (ship.currentPortId) setSelectedPortId(ship.currentPortId);
         setView("main");
     }
@@ -99,24 +107,23 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
         <div className="scene">
             <img src={background} className="background" alt="" />
             <div className="back-icon-btn" onClick={handleBack}>
-                <img src={backIcon} alt="Zurück" />
+                <img src={backIcon} alt="Zurueck" />
             </div>
 
             {view === "main" && (
                 <>
                     <Sailor />
 
-                    {/* Port-Auswahl oben, wenn mehrere Häfen verfügbar */}
                     {myPorts.length > 1 && (
                         <div className="harbor-port-selector">
-                            <span className="harbor-port-selector-label">Hafen wählen:</span>
+                            <span className="harbor-port-selector-label">Hafen waehlen:</span>
                             {myPorts.map(p => (
                                 <button
                                     key={p.id}
                                     className={`harbor-port-btn ${selectedPortId === p.id ? "active" : ""}`}
                                     onClick={() => {
                                         setSelectedPortId(p.id);
-                                        setSelectedShip(null); // Schiff-Auswahl zurücksetzen bei Port-Wechsel
+                                        setSelectedShip(null);
                                     }}
                                 >
                                     {p.name}

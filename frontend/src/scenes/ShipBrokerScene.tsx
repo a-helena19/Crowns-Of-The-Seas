@@ -2,6 +2,7 @@ import { useState } from "react";
 import PixelPanel from "../components/PixelPanel";
 import GameButton from "../components/GameButton";
 import ShipClassScreen from "./ShipClassScreen";
+import UsedShipMarketScreen from "./UsedShipMarketScreen";
 import background from "../assets/shipmarket.png";
 import "../style/harbor.css";
 import "../style/shipbroker.css";
@@ -15,12 +16,21 @@ interface Props {
 
 export default function ShipBrokerScene({ onClose }: Props) {
     const [selectedClass, setSelectedClass] = useState<ShipClass | null>(null);
+    const [showUsedShips, setShowUsedShips] = useState(false);
 
     if (selectedClass) {
         return (
             <ShipClassScreen
                 shipClass={selectedClass}
                 onBack={() => setSelectedClass(null)}
+            />
+        );
+    }
+
+    if (showUsedShips) {
+        return (
+            <UsedShipMarketScreen
+                onBack={() => setShowUsedShips(false)}
             />
         );
     }
@@ -48,6 +58,10 @@ export default function ShipBrokerScene({ onClose }: Props) {
 
                         <GameButton onClick={() => setSelectedClass("PREMIUM")}>
                             Premium Ships
+                        </GameButton>
+
+                        <GameButton onClick={() => setShowUsedShips(true)}>
+                            Gebrauchte Schiffe
                         </GameButton>
                     </div>
                 </PixelPanel>

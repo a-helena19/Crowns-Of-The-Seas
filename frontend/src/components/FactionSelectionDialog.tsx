@@ -179,7 +179,14 @@ export default function FactionSelectionDialog({
                                 }}
                             >
                                 <div className="fs-card-image-wrap">
-                                    <div className="fs-card-icon">{data.icon}</div>
+                                    <img
+                                        src={data.image}
+                                        alt={data.name}
+                                        className="fs-card-image"
+                                    />
+                                    <div className="fs-card-icon-circle">
+                                        <span className="fs-card-icon">{data.icon}</span>
+                                    </div>
                                 </div>
 
                                 <div className="fs-card-body">

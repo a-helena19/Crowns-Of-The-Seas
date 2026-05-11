@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import MainScene from "./scenes/MainScenes";
 
-export default function Game({view}: {view: "map" | "harbor" | "broker" | "portProfile" | "cargoManagement"}) {
+export default function Game({view}: {view: "map" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office"}) {
 
     const gameRef = useRef<HTMLDivElement>(null);
     const gameInstance = useRef<Phaser.Game | null>(null);

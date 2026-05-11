@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public interface PlayerShipRepository {
     PlayerShip save(PlayerShip playerShip);
+    void deleteById(UUID id);
 
     Optional<PlayerShip> findById(UUID id);
 

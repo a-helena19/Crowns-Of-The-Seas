@@ -20,6 +20,8 @@ public class CargoSessionInitializer {
     private static final int GENERAL_FILL_TARGET = 4;
     private static final int PERMANENT_PER_PORT = 1;
 
+    private static final int CARGO_VISIBILITY_DELAY = 3;
+
     public CargoSessionInitializer(CargoRepository cargoRepository, SessionCargoRepository sessionCargoRepository, PortRepository portRepository) {
         this.cargoRepository = cargoRepository;
         this.sessionCargoRepository = sessionCargoRepository;
@@ -123,7 +125,7 @@ public class CargoSessionInitializer {
                 originPortId, dest.getId().getValue(),
                 reward, false,
                 template.getCapacity(), type, template.getRisk(),
-                currentTick,
+                currentTick + CARGO_VISIBILITY_DELAY,
                 cfg.lifetimeTicks,
                 permanent
         );

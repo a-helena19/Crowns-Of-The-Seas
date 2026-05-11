@@ -42,6 +42,7 @@ import java.util.stream.Collectors;
 @Service
 public class StartTravelServiceImpl implements StartTravelService {
     private static final double GLOBAL_TRAVEL_SPEED_FACTOR = 0.75;
+    private static final double CONDITION_WEAR_FACTOR = 0.08;
     private static final BigDecimal PILOTAGE_COST = new BigDecimal("600");
     private static final int DEPARTURE_ANIMATION_MS = 3000;
     private static final int DEPARTURE_START_BUFFER_TICKS = 0;
@@ -102,6 +103,20 @@ public class StartTravelServiceImpl implements StartTravelService {
             Ship ship = shipRepository.findById(playerShip.getShipId())
                     .orElseThrow(() -> new ShipNotFoundException("Ship", playerShip.getShipId()));
 
+            // Session einmal laden — wird mehrfach gebraucht (Loading-Check, currentTick, tickRateSeconds)
+            GameSession session = gameSessionRepository.findById(sessionId)
+                    .orElseThrow(() -> new SessionNotFoundException(sessionId));
+
+            // FIX: Wenn die Beladezeit inhaltlich abgelaufen ist, das Schiff
+            // sofort selbst auf READY_TO_DEPART setzen — statt auf den
+            // nächsten Tick zu warten. Behebt SHIP_NOT_READY-Race.
+            if (playerShip.getStatus() == ShipStatus.LOADING) {
+                if (!playerShip.isStillLoading(session.getCurrentTick())) {
+                    playerShip.completeLoading();
+                    playerShipRepository.save(playerShip);
+                }
+            }
+
             if (playerShip.getStatus() != ShipStatus.READY_TO_DEPART) {
                 throw new InvalidShipStatusTransition(
                         "Ship must be in READY_TO_DEPART status to start travel",
@@ -121,8 +136,6 @@ public class StartTravelServiceImpl implements StartTravelService {
                 throw new CargoNotAvailableException(cargo.getId());
             }
 
-            GameSession session = gameSessionRepository.findById(sessionId)
-                    .orElseThrow(() -> new SessionNotFoundException(sessionId));
             int currentTick = session.getCurrentTick();
 
             ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
@@ -143,8 +156,10 @@ public class StartTravelServiceImpl implements StartTravelService {
                     originPortId, destinationPortId, requiredFuelAbsolute);
 
             double requiredFuelPercent = (requiredFuelAbsolute / ship.getMaxFuel().doubleValue()) * 100.0;
+            double conditionWearPercent = requiredFuelPercent * CONDITION_WEAR_FACTOR;
 
             playerShip.consumeFuel(requiredFuelPercent);
+            playerShip.applyWear(conditionWearPercent);
             playerShip.depart();
             playerShipRepository.save(playerShip);
 
