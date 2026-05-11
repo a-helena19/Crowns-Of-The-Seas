@@ -184,3 +184,43 @@
         display: none;
     }
 }
+
+.faction-popover-pros,
+.faction-popover-cons {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.faction-popover-pros {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(120, 90, 40, 0.25);
+}
+
+.faction-popover-cons {
+    margin-top: 4px;
+}
+
+.faction-popover-pros li,
+.faction-popover-cons li {
+    font-family: 'Crimson Pro', Georgia, serif;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #4a3f28;
+    padding: 1px 0;
+}
+
+.faction-popover-pros li::before {
+    content: '▲ ';
+    color: #4a7c3a;
+    font-size: 8px;
+    vertical-align: middle;
+}
+
+.faction-popover-cons li::before {
+    content: '▼ ';
+    color: #8b2e1f;
+    font-size: 8px;
+    vertical-align: middle;
+}

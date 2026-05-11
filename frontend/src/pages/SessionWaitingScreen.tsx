@@ -26,7 +26,7 @@ interface SessionUpdateEvent {
 }
 
 export default function SessionWaitingScreen() {
-    const { logout, user } = useAuth();
+    const { user } = useAuth();
     const navigate = useNavigate();
 
     const sessionId = useMemo(() => {
@@ -169,12 +169,6 @@ export default function SessionWaitingScreen() {
         if (sessionId) sessionStorage.removeItem(`intro_seen_${sessionId}`);
     };
 
-    const handleLogout = () => {
-        logout();
-        cleanupSessionStorage();
-        navigate('/login');
-    };
-
     const handleBackToLobby = async () => {
         if (sessionId) {
             try {
@@ -289,10 +283,6 @@ export default function SessionWaitingScreen() {
 
                             <button onClick={handleBackToLobby} className="auth-btn secondary-btn">
                                 Zurück
-                            </button>
-
-                            <button onClick={handleLogout} className="auth-btn secondary-btn">
-                                Ausloggen
                             </button>
                         </div>
                     </>

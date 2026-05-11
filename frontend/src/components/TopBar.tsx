@@ -176,6 +176,12 @@ export default function TopBar() {
                                 <p className="faction-popover-desc">
                                     {factionData.description}
                                 </p>
+                                <ul className="faction-popover-pros">
+                                    {factionData.pros.map((p, i) => <li key={i}>{p}</li>)}
+                                </ul>
+                                <ul className="faction-popover-cons">
+                                    {factionData.cons.map((c, i) => <li key={i}>{c}</li>)}
+                                </ul>
                             </div>
                         )}
                     </div>

@@ -130,10 +130,10 @@ export default function FactionSelectionDialog({
 
     const getStatusBadge = (
         faction: PlayerFaction
-    ): { text: string; type: 'available' | 'selected' | 'locked' } => {
+    ): { text: string; type: 'selected' | 'locked' } | null => {
         if (submittedFaction === faction && locked) return { text: 'GEWÄHLT', type: 'locked' };
         if (currentlySelectedFaction === faction) return { text: 'AUSGEWÄHLT', type: 'selected' };
-        return { text: 'VERFÜGBAR', type: 'available' };
+        return null;
     };
 
     return (
@@ -192,13 +192,21 @@ export default function FactionSelectionDialog({
                                 <div className="fs-card-body">
                                     <div className="fs-card-header-row">
                                         <span className="fs-card-name">{data.name}</span>
-                                        <span
-                                            className={`fs-card-badge fs-card-badge--${status.type}`}
-                                        >
-                                            {status.text}
-                                        </span>
+                                        {status && (
+                                            <span className={`fs-card-badge fs-card-badge--${status.type}`}>
+                                                {status.text}
+                                            </span>
+                                        )}
                                     </div>
-                                    <p className="fs-card-desc">{data.description}</p>
+                                    <div className="fs-card-desc">
+                                        <p className="fs-card-flavor">{data.description}</p>
+                                        <ul className="fs-card-pros">
+                                            {data.pros.map((p, i) => <li key={i}>{p}</li>)}
+                                        </ul>
+                                        <ul className="fs-card-cons">
+                                            {data.cons.map((c, i) => <li key={i}>{c}</li>)}
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
                         );

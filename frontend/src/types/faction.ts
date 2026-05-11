@@ -30,6 +30,8 @@ export interface FactionDetails {
     name: string;
     icon: string;
     description: string;
+    pros: string[];
+    cons: string[];
     color: string;
     image: string;
 }
@@ -39,7 +41,9 @@ export const FACTION_DATA: Record<PlayerFaction, FactionDetails> = {
         id: 'ENGINEERS',
         name: 'Ingenieure',
         icon: '⚙️',
-        description: 'Spezialisiert auf Schiffe. Besserer Treibstoffverbrauch.',
+        description: 'Meister der Mechanik – kein Schiff ist vor ihnen sicher.',
+        pros: ['+25% günstigere Reparaturen'],
+        cons: ['+20% langsameres Laden/Entladen'],
         color: '#FF6B6B',
         image: ingenieureBg
     },
@@ -47,7 +51,9 @@ export const FACTION_DATA: Record<PlayerFaction, FactionDetails> = {
         id: 'REFINERIES',
         name: 'Raffinerien',
         icon: '🏭',
-        description: 'Kontrollieren Rohstoff-Märkte. Günstigere Cargo-Preise.',
+        description: 'Kontrollieren die Rohstoffe, kontrollieren die See.',
+        pros: ['+25% günstigerer Treibstoff'],
+        cons: ['+15% längere Reparaturzeit'],
         color: '#4ECDC4',
         image: raffinerienBg
     },
@@ -55,7 +61,9 @@ export const FACTION_DATA: Record<PlayerFaction, FactionDetails> = {
         id: 'HARBOR_MASTERS',
         name: 'Hafenmeister',
         icon: '⚓',
-        description: 'Dominieren Häfen. Schnelleres Laden/Entladen.',
+        description: 'Jeder Hafen ist ihr Zuhause.',
+        pros: ['+30% schnelleres Laden/Entladen'],
+        cons: ['+15% teurerer Treibstoff'],
         color: '#45B7D1',
         image: hafenmeisterBg
     },
@@ -63,7 +71,9 @@ export const FACTION_DATA: Record<PlayerFaction, FactionDetails> = {
         id: 'SMUGGLERS',
         name: 'Schmuggler',
         icon: '🏴‍☠️',
-        description: 'Risiko-Spieler. Höhere Belohnungen aber höheres Risiko.',
+        description: 'Hohes Risiko, hohe Beute – nichts für schwache Nerven.',
+        pros: ['+30% bessere Marktpreise', '−30% Schmuggel-Risiko'],
+        cons: ['+40% höheres Zoll-Risiko'],
         color: '#FFA502',
         image: schmugglerBg
     },
@@ -71,7 +81,9 @@ export const FACTION_DATA: Record<PlayerFaction, FactionDetails> = {
         id: 'SCOUTS',
         name: 'Scouts',
         icon: '🔭',
-        description: 'Erkunder. Besseres Kartenwissen.',
+        description: 'Immer einen Schritt voraus – sie sehen, was andere nicht sehen.',
+        pros: ['+50% frühere Auftragserkennung'],
+        cons: ['+20% längere Tank-/Reparaturzeit'],
         color: '#95E1D3',
         image: scoutsBg
     },
@@ -79,7 +91,9 @@ export const FACTION_DATA: Record<PlayerFaction, FactionDetails> = {
         id: 'TRADERS',
         name: 'Händler',
         icon: '💰',
-        description: 'Handels-Experten. Bessere Verkaufspreise.',
+        description: 'Wo andere handeln, verdienen sie doppelt.',
+        pros: ['+20% bessere Marktpreise', '+20% mehr Angebotsmenge'],
+        cons: ['+20% höheres Schmuggel-Risiko'],
         color: '#F38181',
         image: haendlerBg
     },
@@ -87,7 +101,9 @@ export const FACTION_DATA: Record<PlayerFaction, FactionDetails> = {
         id: 'QUICK_SERVICE',
         name: 'Express-Service',
         icon: '⚡',
-        description: 'Schnell und effizient. Schnellere Reisen.',
+        description: 'Zeit ist Geld – und sie verschwenden keins davon.',
+        pros: ['−30% Tankzeit', '−30% Reparaturzeit'],
+        cons: ['+30% spätere Auftragserkennung'],
         color: '#AA96DA',
         image: expressServiceBg
     }
