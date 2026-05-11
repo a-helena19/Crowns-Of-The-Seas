@@ -23,4 +23,6 @@ export interface AssignedCargoEntry {
         percentage: number;
     };
     unloadingCompletedAtTick?: number;
+    startTick?: number;
+    unloadingStartTick?: number;
 }

@@ -16,9 +16,17 @@ public class PlayerShip {
     private UUID targetPortId;
     private int loadingCompletedAtTick = -1;
     private int unloadingCompletedAtTick = -1;
+    private int refuelingCompletedAtTick = -1;
+    private int repairingCompletedAtTick = -1;
+    private double pendingFuelAmount = 0.0;
+    private double pendingRepairAmount = 0.0;
 
-    private PlayerShip(UUID id, UUID shipId, UUID playerId, UUID sessionId, ShipStatus status, double condition, double fuel,
-                       UUID currentPortId, UUID targetPortId, int loadingCompletedAtTick, int unloadingCompletedAtTick) {
+    private PlayerShip(UUID id, UUID shipId, UUID playerId, UUID sessionId,
+                       ShipStatus status, double condition, double fuel,
+                       UUID currentPortId, UUID targetPortId,
+                       int loadingCompletedAtTick, int unloadingCompletedAtTick,
+                       int refuelingCompletedAtTick, int repairingCompletedAtTick,
+                       double pendingFuelAmount, double pendingRepairAmount) {
         this.id = id;
         this.shipId = shipId;
         this.playerId = playerId;
@@ -30,6 +38,10 @@ public class PlayerShip {
         this.targetPortId = targetPortId;
         this.loadingCompletedAtTick = loadingCompletedAtTick;
         this.unloadingCompletedAtTick = unloadingCompletedAtTick;
+        this.refuelingCompletedAtTick = refuelingCompletedAtTick;
+        this.repairingCompletedAtTick = repairingCompletedAtTick;
+        this.pendingFuelAmount = pendingFuelAmount;
+        this.pendingRepairAmount = pendingRepairAmount;
     }
 
     public static PlayerShip createFromPurchase(UUID shipId, UUID playerId, UUID sessionId, UUID startPortId) {
@@ -44,7 +56,11 @@ public class PlayerShip {
                 startPortId,
                 null,
                 -1,
-                -1
+                -1,
+                -1,
+                -1,
+                0.0,
+                0.0
         );
     }
 
@@ -61,12 +77,17 @@ public class PlayerShip {
                 currentPortId,
                 null,
                 -1,
-                -1
+                -1,
+                -1,
+                -1,
+                0.0,
+                0.0
         );
     }
 
     public static PlayerShip reconstruct(UUID id, UUID shipId, UUID playerId, UUID sessionId, ShipStatus status, double condition, double fuel,
-                                         UUID currentPortId, UUID targetPortId, Integer loadingCompletedAtTick, Integer unloadingCompletedAtTick) {
+                                         UUID currentPortId, UUID targetPortId, Integer loadingCompletedAtTick, Integer unloadingCompletedAtTick,
+                                         Integer refuelingCompletedAtTick, Integer repairingCompletedAtTick,Double pendingFuelAmount, Double pendingRepairAmount) {
         return new PlayerShip(
                 id,
                 shipId,
@@ -78,7 +99,11 @@ public class PlayerShip {
                 currentPortId,
                 targetPortId,
                 loadingCompletedAtTick==null ? -1 : loadingCompletedAtTick,
-                unloadingCompletedAtTick == null ? -1 : unloadingCompletedAtTick);
+                unloadingCompletedAtTick == null ? -1 : unloadingCompletedAtTick,
+                refuelingCompletedAtTick == null ? -1 : refuelingCompletedAtTick,
+                repairingCompletedAtTick == null ? -1 : repairingCompletedAtTick,
+                pendingFuelAmount == null ? 0.0 : pendingFuelAmount,
+                pendingRepairAmount == null ? 0.0 : pendingRepairAmount);
     }
 
     public void completeRegistration() {
@@ -167,6 +192,80 @@ public class PlayerShip {
         }
         this.status = ShipStatus.AT_PORT;
         this.unloadingCompletedAtTick = -1;
+    }
+
+    public void startRefueling(int refuelingCompletedAtTick, double fuelAmount) {
+        if (this.status != ShipStatus.AT_PORT) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status AT_PORT to start refueling",
+                    "shipId", shipId);
+        }
+        this.status = ShipStatus.REFUELING;
+        this.refuelingCompletedAtTick = refuelingCompletedAtTick;
+        this.pendingFuelAmount = fuelAmount;
+    }
+
+    public boolean isStillRefueling(int currentTick) {
+        return status == ShipStatus.REFUELING
+                && refuelingCompletedAtTick > 0
+                && currentTick < refuelingCompletedAtTick;
+    }
+
+    public void completeRefueling() {
+        if (this.status != ShipStatus.REFUELING) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status REFUELING to complete refueling",
+                    "shipId", shipId);
+        }
+        addFuel(pendingFuelAmount);
+        this.status = ShipStatus.AT_PORT;
+        this.refuelingCompletedAtTick = -1;
+        this.pendingFuelAmount = 0.0;
+    }
+
+    public int getRefuelingCompletedAtTick() {
+        return refuelingCompletedAtTick;
+    }
+
+    public double getPendingFuelAmount() {
+        return pendingFuelAmount;
+    }
+
+    public void startRepairing(int repairingCompletedAtTick, double repairAmount) {
+        if (this.status != ShipStatus.AT_PORT) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status AT_PORT to start repairing",
+                    "shipId", shipId);
+        }
+        this.status = ShipStatus.REPAIRING;
+        this.repairingCompletedAtTick = repairingCompletedAtTick;
+        this.pendingRepairAmount = repairAmount;
+    }
+
+    public boolean isStillRepairing(int currentTick) {
+        return status == ShipStatus.REPAIRING
+                && repairingCompletedAtTick > 0
+                && currentTick < repairingCompletedAtTick;
+    }
+
+    public void completeRepairing() {
+        if (this.status != ShipStatus.REPAIRING) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status REPAIRING to complete repairing",
+                    "shipId", shipId);
+        }
+        applyRepair(pendingRepairAmount);
+        this.status = ShipStatus.AT_PORT;
+        this.repairingCompletedAtTick = -1;
+        this.pendingRepairAmount = 0.0;
+    }
+
+    public int getRepairingCompletedAtTick() {
+        return repairingCompletedAtTick;
+    }
+
+    public double getPendingRepairAmount() {
+        return pendingRepairAmount;
     }
 
     public Integer getUnloadingCompletedAtTick() {

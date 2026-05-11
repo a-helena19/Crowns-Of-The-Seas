@@ -276,3 +276,53 @@
         grid-template-columns: 1fr;
     }
 }
+
+.office-status-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.office-tick-progress {
+    flex: 1;
+    min-width: 160px;
+}
+
+.office-tick-progress-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-family: 'Cinzel', serif;
+    margin-bottom: 3px;
+    color: #6b5a3e;
+}
+
+.office-tick-progress-label {
+    font-weight: 600;
+}
+
+.office-tick-progress-remaining {
+    color: #9a7b4f;
+}
+
+.office-tick-progress-track {
+    height: 6px;
+    background: #d4c8a8;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.office-tick-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #c89b3c, #e8c55a);
+    border-radius: 3px;
+    transition: width 0.6s ease;
+    animation: shimmer 1.5s linear infinite;
+}
+
+@keyframes shimmer {
+    0%   { filter: brightness(1); }
+    50%  { filter: brightness(1.15); }
+    100% { filter: brightness(1); }
+}

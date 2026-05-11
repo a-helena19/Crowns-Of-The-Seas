@@ -5,6 +5,7 @@ import at.fhv.backend.application.services.impl.cargo.CargoQueryServiceImpl;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.domain.model.cargo.*;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
+import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.session.exception.SessionNotFoundException;
@@ -40,12 +41,15 @@ class CargoQueryServiceImplTest {
     @Mock
     private PortQueryService portQueryService;
 
+    @Mock
+    private SessionPlayerRepository sessionPlayerRepository;
+
     private CargoQueryServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new CargoQueryServiceImpl(
-                sessionCargoRepository, cargoRepository, gameSessionRepository, portQueryService);
+                sessionCargoRepository, cargoRepository, gameSessionRepository, portQueryService, sessionPlayerRepository);
     }
 
     private GameSession buildRunningSession(UUID sessionId) {
@@ -73,9 +77,10 @@ class CargoQueryServiceImplTest {
     @Test
     void givenUnknownSessionId_whenGetAvailableCargos_thenThrowsSessionNotFoundException() {
         UUID sessionId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
         when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getAvailableCargos(sessionId, UUID.randomUUID()))
+        assertThatThrownBy(() -> service.getAvailableCargos(sessionId, UUID.randomUUID(), playerId))
                 .isInstanceOf(SessionNotFoundException.class);
     }
 
@@ -83,12 +88,14 @@ class CargoQueryServiceImplTest {
     void givenSessionWithNoCargos_whenGetAvailableCargos_thenReturnsEmptyList() {
         UUID sessionId = UUID.randomUUID();
         UUID portId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
         GameSession session = buildRunningSession(sessionId);
         when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.empty());
         when(sessionCargoRepository.findAvailableBySessionIdAndPort(sessionId, portId, session.getCurrentTick()))
                 .thenReturn(List.of());
 
-        List<SessionCargoDTO> result = service.getAvailableCargos(sessionId, portId);
+        List<SessionCargoDTO> result = service.getAvailableCargos(sessionId, portId, playerId);
 
         assertThat(result).isEmpty();
     }
@@ -97,15 +104,17 @@ class CargoQueryServiceImplTest {
     void givenSessionWithOneCargo_whenGetAvailableCargos_thenReturnsOneDTO() {
         UUID sessionId = UUID.randomUUID();
         UUID portId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
         GameSession session = buildRunningSession(sessionId);
         SessionCargo cargo = buildAvailableSessionCargo(sessionId, portId, UUID.randomUUID());
 
         when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.empty());
         when(sessionCargoRepository.findAvailableBySessionIdAndPort(sessionId, portId, session.getCurrentTick()))
                 .thenReturn(List.of(cargo));
         when(portQueryService.findById(any())).thenThrow(new RuntimeException("not found"));
 
-        List<SessionCargoDTO> result = service.getAvailableCargos(sessionId, portId);
+        List<SessionCargoDTO> result = service.getAvailableCargos(sessionId, portId, playerId);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getId()).isEqualTo(cargo.getId());
@@ -115,15 +124,17 @@ class CargoQueryServiceImplTest {
     void givenSessionWithCargo_whenGetAvailableCargos_thenDTOHasCorrectStatus() {
         UUID sessionId = UUID.randomUUID();
         UUID portId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
         GameSession session = buildRunningSession(sessionId);
         SessionCargo cargo = buildAvailableSessionCargo(sessionId, portId, UUID.randomUUID());
 
         when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.empty());
         when(sessionCargoRepository.findAvailableBySessionIdAndPort(sessionId, portId, session.getCurrentTick()))
                 .thenReturn(List.of(cargo));
         when(portQueryService.findById(any())).thenThrow(new RuntimeException("not found"));
 
-        List<SessionCargoDTO> result = service.getAvailableCargos(sessionId, portId);
+        List<SessionCargoDTO> result = service.getAvailableCargos(sessionId, portId, playerId);
 
         assertThat(result.get(0).getCargoStatus()).isEqualTo(CargoStatus.AVAILABLE);
     }
@@ -133,10 +144,12 @@ class CargoQueryServiceImplTest {
         UUID sessionId = UUID.randomUUID();
         UUID portId = UUID.randomUUID();
         UUID destPortId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
         GameSession session = buildRunningSession(sessionId);
         SessionCargo cargo = buildAvailableSessionCargo(sessionId, portId, destPortId);
 
         when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.empty());
         when(sessionCargoRepository.findAvailableBySessionIdAndPort(sessionId, portId, session.getCurrentTick()))
                 .thenReturn(List.of(cargo));
         when(portQueryService.findById(portId))
@@ -144,7 +157,7 @@ class CargoQueryServiceImplTest {
         when(portQueryService.findById(destPortId))
                 .thenReturn(new PortResponseDTO(destPortId, "Rotterdam", 3.0, 4.0));
 
-        List<SessionCargoDTO> result = service.getAvailableCargos(sessionId, portId);
+        List<SessionCargoDTO> result = service.getAvailableCargos(sessionId, portId, playerId);
 
         assertThat(result.get(0).getOriginPortName()).isEqualTo("Hamburg");
         assertThat(result.get(0).getDestinationPortName()).isEqualTo("Rotterdam");
@@ -154,15 +167,17 @@ class CargoQueryServiceImplTest {
     void givenPortQueryServiceFails_whenGetAvailableCargos_thenPortNamesAreFallback() {
         UUID sessionId = UUID.randomUUID();
         UUID portId = UUID.randomUUID();
+        UUID playerId = UUID.randomUUID();
         GameSession session = buildRunningSession(sessionId);
         SessionCargo cargo = buildAvailableSessionCargo(sessionId, portId, UUID.randomUUID());
 
         when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+        when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.empty());
         when(sessionCargoRepository.findAvailableBySessionIdAndPort(sessionId, portId, session.getCurrentTick()))
                 .thenReturn(List.of(cargo));
         when(portQueryService.findById(any())).thenThrow(new RuntimeException("DB down"));
 
-        List<SessionCargoDTO> result = service.getAvailableCargos(sessionId, portId);
+        List<SessionCargoDTO> result = service.getAvailableCargos(sessionId, portId, playerId);
 
         assertThat(result.get(0).getOriginPortName()).isEqualTo("Unknown");
         assertThat(result.get(0).getDestinationPortName()).isEqualTo("Unknown");

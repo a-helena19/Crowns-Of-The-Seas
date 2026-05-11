@@ -1,44 +1,4 @@
-import { useState, useEffect, useRef } from "react";
-
-// Fließender Fortschrittsbalken: interpoliert zwischen Tick-Updates mit CSS-Transition.
-function SmoothProgressBar({ targetPct, color }: { targetPct: number; color: string }) {
-    const [displayPct, setDisplayPct] = useState(targetPct);
-    const [transitionMs, setTransitionMs] = useState(0);
-    const prevTargetRef = useRef(targetPct);
-
-    useEffect(() => {
-        if (targetPct === prevTargetRef.current) return;
-        // Transition-Dauer = Tick-Rate des Backends (oder 5 s als Fallback)
-        const tickMs = (window as unknown as { __tickRateMs?: number }).__tickRateMs ?? 5000;
-        setTransitionMs(tickMs * 0.95);
-        setDisplayPct(targetPct);
-        prevTargetRef.current = targetPct;
-    }, [targetPct]);
-
-    return (
-        <div className="progress-track" style={{ marginTop: 12 }}>
-            <div
-                className="progress-fill-smooth"
-                style={{
-                    width: `${Math.min(100, Math.max(0, displayPct))}%`,
-                    transition: transitionMs > 0 ? `width ${transitionMs}ms linear` : "none",
-                    background: `linear-gradient(90deg, ${color}, ${color}bb)`,
-                }}
-            />
-        </div>
-    );
-}
-
-// Wrapper der sich die erste bekannte Restdauer merkt, um Prozent korrekt zu berechnen.
-function TravelProgressBar({ remaining, color }: { remaining: number; color: string }) {
-    const initialRef = useRef<number | null>(null);
-    if (initialRef.current === null && remaining > 0) {
-        initialRef.current = remaining;
-    }
-    const total = initialRef.current ?? remaining;
-    const pct = total > 0 ? Math.min(100, (1 - remaining / total) * 100) : 100;
-    return <SmoothProgressBar targetPct={pct} color={color} />;
-}
+import { useState, useEffect } from "react";
 import LoadingScreen from "./LoadingScreen";
 import backIcon from "../assets/goback.png";
 import background from "../assets/background.jpg";
@@ -53,6 +13,22 @@ interface CargoManagementScreenProps {
     onCargoRemoved: (cargoId: string) => void;
     onCargoPhaseChange: (cargoId: string, phase: AssignedCargoEntry["phase"], travelId?: string) => void;
     onClose: () => void;
+}
+
+function StaticProgressBar({ pct, color }: { pct: number; color: string }) {
+    const clamped = Math.min(100, Math.max(0, pct));
+    return (
+        <div className="progress-track" style={{ marginTop: 12 }}>
+            <div
+                className="progress-fill-smooth"
+                style={{
+                    width: `${clamped}%`,
+                    background: `linear-gradient(90deg, ${color}, ${color}bb)`,
+                    transition: "none",
+                }}
+            />
+        </div>
+    );
 }
 
 export default function CargoManagementScreen({
@@ -70,11 +46,32 @@ export default function CargoManagementScreen({
     const [errorMap, setErrorMap] = useState<Record<string, string>>({});
     const [showDeparture, setShowDeparture] = useState<AssignedCargoEntry | null>(null);
 
+    const [, setRenderTick] = useState(0);
+    useEffect(() => {
+        const hasRunningProgress = assignedCargos.some(
+            e => e.phase === "loading" && !e.loadingDone
+        );
+        if (!hasRunningProgress) return; // Nichts zu animieren → kein Tick
+
+        const interval = setInterval(() => {
+            setRenderTick(t => (t + 1) % 1_000_000);
+        }, 100);
+        return () => clearInterval(interval);
+    }, [assignedCargos]);
+
     const userData = localStorage.getItem("crowns_user");
     const playerId = userData ? JSON.parse(userData).id : null;
     const sessionData = sessionStorage.getItem("currentSession");
     const sessionId = sessionData ? JSON.parse(sessionData).id : null;
     const token = localStorage.getItem("auth_token") ?? "";
+
+    useEffect(() => {
+        if (selectedCargoId && !assignedCargos.find(e => e.cargoId === selectedCargoId)) {
+            setSelectedCargoId(assignedCargos[0]?.cargoId ?? null);
+        } else if (!selectedCargoId && assignedCargos.length > 0) {
+            setSelectedCargoId(assignedCargos[0].cargoId);
+        }
+    }, [assignedCargos, selectedCargoId]);
 
     const selectedEntry = assignedCargos.find(e => e.cargoId === selectedCargoId) ?? null;
 
@@ -86,18 +83,31 @@ export default function CargoManagementScreen({
         return Math.max(0, entry.loadingDurationSeconds - getElapsedSeconds(entry));
     }
 
+    function getLoadingPct(entry: AssignedCargoEntry): number {
+        if (entry.loadingDone) return 100;
+        if (entry.loadingDurationSeconds <= 0) return 100;
+        return Math.min(100, (getElapsedSeconds(entry) / entry.loadingDurationSeconds) * 100);
+    }
+
+    function getTickPct(currentTick: number | undefined, arrivalTick: number | undefined,
+                        startTick: number | undefined): number {
+        if (currentTick == null || arrivalTick == null) return 0;
+        if (arrivalTick <= currentTick) return 100;
+
+        if (startTick != null && arrivalTick > startTick) {
+            const elapsed = currentTick - startTick;
+            const total = arrivalTick - startTick;
+            return Math.min(100, Math.max(0, (elapsed / total) * 100));
+        }
+
+        return 0;
+    }
+
     async function handleStartTravel(entry: AssignedCargoEntry) {
         if (!playerId || !sessionId) return;
         setStartingMap(m => ({ ...m, [entry.cargoId]: true }));
         setErrorMap(m => ({ ...m, [entry.cargoId]: "" }));
 
-        // Das Backend setzt den Schiffsstatus erst beim nächsten Tick auf
-        // READY_TO_DEPART. Falls das Frontend-Timer schon abgelaufen ist,
-        // aber das Backend noch nicht bereit ist (SHIP_NOT_READY), warten
-        // wir still mit ansteigendem Delay — kein Fehler wird angezeigt,
-        // der Nutzer sieht nur "Reise wird gestartet…".
-        //
-        // Maximale Wartezeit ≈ 2 volle Tick-Zyklen (Fallback: 5 s pro Tick).
         const tickMs = (window as unknown as { __tickRateMs?: number }).__tickRateMs ?? 5000;
         const MAX_WAIT_MS = tickMs * 2.5;
         const BASE_RETRY_DELAY_MS = Math.max(500, Math.min(tickMs * 0.4, 2000));
@@ -138,19 +148,14 @@ export default function CargoManagementScreen({
                     else msg = errData.message ?? msg;
                 } catch { /* noop */ }
 
-                // SHIP_NOT_READY bedeutet: Backend-Tick hat die Beladung noch nicht
-                // abgeschlossen. Wir warten still und versuchen es automatisch erneut.
-                // Der Nutzer sieht "Reise wird gestartet…" — kein sichtbarer Fehler.
                 if (errorCode === "SHIP_NOT_READY" && retriesLeft > 0) {
                     await new Promise<void>(resolve => setTimeout(resolve, delayMs));
-                    // Leicht ansteigendes Delay (max. 1 Tick-Länge), um nicht zu spammen
                     const nextDelay = Math.min(delayMs * 1.3, tickMs);
                     return attemptStart(retriesLeft - 1, nextDelay);
                 }
 
                 setErrorMap(m => ({ ...m, [entry.cargoId]: msg }));
             } catch {
-                // Netzwerkfehler: auch kurz warten und nochmal versuchen
                 if (retriesLeft > 0) {
                     await new Promise<void>(resolve => setTimeout(resolve, delayMs));
                     return attemptStart(retriesLeft - 1, delayMs);
@@ -174,7 +179,7 @@ export default function CargoManagementScreen({
             </div>
 
             <div className="cm-layout">
-                {/* Linke Spalte: Liste der zugewiesenen Frachten */}
+                {/* Linke Spalte */}
                 <div className="cm-list-panel">
                     <div className="cm-panel-title">Zugewiesene Frachten</div>
                     {assignedCargos.length === 0 && (
@@ -208,7 +213,7 @@ export default function CargoManagementScreen({
                     })}
                 </div>
 
-                {/* Rechte Spalte: Detail-Ansicht der ausgewählten Fracht */}
+                {/* Rechte Spalte */}
                 {selectedEntry && (
                     <div className="cm-detail-panel">
                         {selectedEntry.phase === "loading" && (
@@ -227,9 +232,8 @@ export default function CargoManagementScreen({
                                     }}
                                     done={selectedEntry.loadingDone || getRemainingSeconds(selectedEntry) <= 0}
                                     onComplete={() => onCargoLoadingDone(selectedEntry.cargoId)}
-                                    loadingDurationSeconds={getRemainingSeconds(selectedEntry) > 0
-                                        ? getRemainingSeconds(selectedEntry)
-                                        : 0}
+                                    loadingDurationSeconds={selectedEntry.loadingDurationSeconds}
+                                    elapsedRatio={getLoadingPct(selectedEntry) / 100}
                                 />
                                 {(selectedEntry.loadingDone || getRemainingSeconds(selectedEntry) <= 0) && (
                                     <div className="cm-actions">
@@ -269,19 +273,28 @@ export default function CargoManagementScreen({
                             </>
                         )}
 
-                        {selectedEntry.phase === "en_route" && (
-                            <div className="cm-travel-panel">
-                                <div className="cm-travel-title">⛵ Auf Reise</div>
-                                <div className="cm-travel-route">{selectedEntry.from} → {selectedEntry.to}</div>
-                                <div className="cm-travel-ticks">
-                                    Ankunft in {Math.max(0, (selectedEntry.arrivalTick ?? 0) - (selectedEntry.currentTick ?? 0))} Tagen
+                        {selectedEntry.phase === "en_route" && (() => {
+                            const startTick = (selectedEntry as AssignedCargoEntry & { startTick?: number }).startTick;
+                            const pct = getTickPct(
+                                selectedEntry.currentTick,
+                                selectedEntry.arrivalTick,
+                                startTick
+                            );
+                            const remainingTicks = Math.max(
+                                0,
+                                (selectedEntry.arrivalTick ?? 0) - (selectedEntry.currentTick ?? 0)
+                            );
+                            return (
+                                <div className="cm-travel-panel">
+                                    <div className="cm-travel-title">⛵ Auf Reise</div>
+                                    <div className="cm-travel-route">{selectedEntry.from} → {selectedEntry.to}</div>
+                                    <div className="cm-travel-ticks">
+                                        Ankunft in {remainingTicks} Tagen
+                                    </div>
+                                    <StaticProgressBar pct={pct} color="#ff9800" />
                                 </div>
-                                {(() => {
-                                    const remaining = Math.max(0, (selectedEntry.arrivalTick ?? 0) - (selectedEntry.currentTick ?? 0));
-                                    return <TravelProgressBar remaining={remaining} color="#ff9800" />;
-                                })()}
-                            </div>
-                        )}
+                            );
+                        })()}
 
                         {selectedEntry.phase === "unloading" && (
                             <div className="loading-panel">
@@ -320,15 +333,22 @@ export default function CargoManagementScreen({
                                     </div>
                                 </div>
 
-                                {selectedEntry.unloadingCompletedAtTick != null && (
-                                    <div className="loading-progress-wrap">
-                                        <div className="loading-progress-label">Entladevorgang</div>
-                                        {(() => {
-                                            const remaining = Math.max(0, selectedEntry.unloadingCompletedAtTick - (selectedEntry.currentTick ?? 0));
-                                            return <TravelProgressBar remaining={remaining} color="#2196f3" />;
-                                        })()}
-                                    </div>
-                                )}
+                                {selectedEntry.unloadingCompletedAtTick != null && (() => {
+                                    const unloadingStartTick = (selectedEntry as AssignedCargoEntry & {
+                                        unloadingStartTick?: number
+                                    }).unloadingStartTick;
+                                    const pct = getTickPct(
+                                        selectedEntry.currentTick,
+                                        selectedEntry.unloadingCompletedAtTick,
+                                        unloadingStartTick
+                                    );
+                                    return (
+                                        <div className="loading-progress-wrap">
+                                            <div className="loading-progress-label">Entladevorgang</div>
+                                            <StaticProgressBar pct={pct} color="#2196f3" />
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         )}
 
@@ -337,7 +357,6 @@ export default function CargoManagementScreen({
                             const details = selectedEntry.rewardDetails;
                             return (
                                 <div className="cm-reward-panel">
-                                    {/* Header */}
                                     <div className="cm-reward-header">
                                         <span>{isPerfect ? '🌟' : '⚓'}</span>
                                         <div className="cm-reward-title">
@@ -351,7 +370,6 @@ export default function CargoManagementScreen({
                                         </div>
                                     )}
 
-                                    {/* Frachtbilanz */}
                                     <div className="cm-reward-section-label">
                                         Frachtbilanz (1)
                                     </div>
@@ -365,7 +383,6 @@ export default function CargoManagementScreen({
                                         </span>
                                     </div>
 
-                                    {/* Summary */}
                                     {details && (
                                         <div className="cm-reward-breakdown">
                                             <div className="cm-reward-row">
@@ -393,7 +410,6 @@ export default function CargoManagementScreen({
                                         </div>
                                     )}
 
-                                    {/* Weiter-Button */}
                                     <button
                                         className="cm-reward-btn"
                                         onClick={() => onCargoRemoved(selectedEntry.cargoId)}

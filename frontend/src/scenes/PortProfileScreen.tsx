@@ -73,9 +73,12 @@ export default function PortProfileScreen({ port, onClose }: Props) {
     const sessionId = sessionData ? (JSON.parse(sessionData) as { id: string }).id : null;
     const token = localStorage.getItem("auth_token") ?? "";
 
+    const userData = localStorage.getItem("crowns_user");
+    const playerId = userData ? JSON.parse(userData).id : null;
+
     useEffect(() => {
         if (!sessionId) { setLoading(false); return; }
-        fetch(`/api/cargo/${sessionId}/available?portId=${port.id}`, {
+        fetch(`/api/cargo/${sessionId}/available?portId=${port.id}&playerId=${playerId}`, {
             headers: { Authorization: `Bearer ${token}` },
         })
             .then((r) => r.json() as Promise<SessionCargoDTO[]>)

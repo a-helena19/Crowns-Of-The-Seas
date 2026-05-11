@@ -22,6 +22,7 @@ interface PlayerShip {
     operatingCost: number;
     baseReliability: number;
     iconUrl: string;
+    completionTick?: number | null;
 }
 
 interface SellQuote {
@@ -84,6 +85,32 @@ export default function OfficeScene({ onClose }: Props) {
     }, [playerId, sessionId, token]);
 
     useEffect(() => {
+        function handleShipPositions(e: Event) {
+            const detail = (e as CustomEvent).detail;
+            const wsShips: any[] = detail.ships ?? [];
+
+            setShips(prev => prev.map(ship => {
+                const wsShip = wsShips.find((ws: any) => ws.playerShipId === ship.id);
+                if (!wsShip) return ship;
+
+                const newStatus = wsShip.status ?? ship.status;
+                const updates: Partial<PlayerShip> = { status: newStatus, completionTick: wsShip.arrivalTick };
+
+                if (ship.status === "REFUELING" && newStatus === "AT_PORT") {
+                    loadOfficeData();
+                } else if (ship.status === "REPAIRING" && newStatus === "AT_PORT") {
+                    loadOfficeData();
+                }
+
+                return { ...ship, ...updates };
+            }));
+        }
+
+        window.addEventListener("backend-ship-positions", handleShipPositions);
+        return () => window.removeEventListener("backend-ship-positions", handleShipPositions);
+    }, []);
+
+    useEffect(() => {
         setSellQuote(null);
         if (!selectedShip || !playerId || !sessionId || selectedShip.status !== "AT_PORT") return;
 
@@ -142,10 +169,13 @@ export default function OfficeScene({ onClose }: Props) {
             });
             if (!res.ok) throw new Error();
             const data = await res.json();
-            updateShipLocally(selectedShip.id, { fuel: data.newFuelPercent });
+            updateShipLocally(selectedShip.id, {
+                status: "REFUELING",
+                completionTick: data.refuelingCompletedAtTick,
+            });
             setBalance(Number(data.newBalance));
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
-            showToast(`${selectedShip.name} betankt.`);
+            showToast(`${selectedShip.name} wird betankt… (${data.refuelingDurationTicks} Ticks)`);
         } catch {
             setError("Betanken fehlgeschlagen.");
         } finally {
@@ -164,10 +194,13 @@ export default function OfficeScene({ onClose }: Props) {
             });
             if (!res.ok) throw new Error();
             const data = await res.json();
-            updateShipLocally(selectedShip.id, { condition: data.newConditionPercent });
+            updateShipLocally(selectedShip.id, {
+                status: "REPAIRING",
+                completionTick: data.repairingCompletedAtTick,
+            });
             setBalance(Number(data.newBalance));
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
-            showToast(`${selectedShip.name} repariert.`);
+            showToast(`${selectedShip.name} wird repariert… (${data.repairingDurationTicks} Ticks)`);
         } catch {
             setError("Reparatur fehlgeschlagen.");
         } finally {
@@ -251,9 +284,22 @@ export default function OfficeScene({ onClose }: Props) {
                                     <div>
                                         <h2>{selectedShip.name}</h2>
                                         <p>{selectedShip.description}</p>
-                                        <span className={`office-status ${canUseActions ? "ok" : "blocked"}`}>
-                                            {statusLabel(selectedShip.status)}
-                                        </span>
+                                        <div className="office-status-wrap">
+                                            <span className={`office-status ${canUseActions ? "ok" : "blocked"}`}>
+                                                {statusLabel(selectedShip.status)}
+                                            </span>
+                                            {(selectedShip.status === "REFUELING" || selectedShip.status === "REPAIRING"
+                                                    || selectedShip.status === "LOADING" || selectedShip.status === "UNLOADING")
+                                                && selectedShip.completionTick != null && (
+                                                    <TickProgressBar
+                                                        completionTick={selectedShip.completionTick}
+                                                        label={selectedShip.status === "REFUELING" ? "Betanken"
+                                                            : selectedShip.status === "REPAIRING" ? "Reparatur"
+                                                                : selectedShip.status === "LOADING" ? "Beladen"
+                                                                    : "Entladen"}
+                                                    />
+                                                )}
+                                        </div>
                                     </div>
                                 </div>
 
@@ -387,6 +433,8 @@ function statusLabel(status: string) {
         READY_TO_DEPART: "Bereit",
         IN_REGISTRATION: "Registrierung",
         DAMAGED: "Beschaedigt",
+        REFUELING: "Tankt",
+        REPAIRING: "Repariert",
     };
     return labels[status] ?? status;
 }
@@ -397,4 +445,47 @@ function roundMoney(value: number) {
 
 function formatMoney(value: number) {
     return Number(value).toLocaleString("de-DE", { maximumFractionDigits: 2 });
+}
+
+function TickProgressBar({ completionTick, label }: { completionTick: number; label: string }) {
+    const [currentTick, setCurrentTick] = useState(
+        window.__latestTick?.currentTick ?? 0
+    );
+
+    const [startTick] = useState(currentTick);
+
+    useEffect(() => {
+        function onTick(e: Event) {
+            setCurrentTick((e as CustomEvent).detail.currentTick);
+        }
+        function onShipPos(e: Event) {
+            const tick = (e as CustomEvent).detail?.currentTick;
+            if (tick != null) setCurrentTick(tick);
+        }
+        window.addEventListener("backend-tick-update", onTick);
+        window.addEventListener("backend-ship-positions", onShipPos);
+        return () => {
+            window.removeEventListener("backend-tick-update", onTick);
+            window.removeEventListener("backend-ship-positions", onShipPos);
+        };
+    }, []);
+
+    const ticksRemaining = Math.max(0, completionTick - currentTick);
+    const totalDuration = Math.max(1, completionTick - startTick);
+    const elapsed = currentTick - startTick;
+    const pct = ticksRemaining <= 0 ? 100 : Math.max(5, (elapsed / totalDuration) * 100);
+
+    return (
+        <div className="office-tick-progress">
+            <div className="office-tick-progress-header">
+                <span className="office-tick-progress-label">{label}…</span>
+                <span className="office-tick-progress-remaining">
+                    {ticksRemaining > 0 ? `noch ${ticksRemaining} Tick${ticksRemaining !== 1 ? "s" : ""}` : "Fertig!"}
+                </span>
+            </div>
+            <div className="office-tick-progress-track">
+                <div className="office-tick-progress-fill" style={{ width: `${pct}%` }} />
+            </div>
+        </div>
+    );
 }

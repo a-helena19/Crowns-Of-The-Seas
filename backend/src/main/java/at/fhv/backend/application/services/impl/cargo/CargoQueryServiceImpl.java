@@ -14,6 +14,8 @@ import at.fhv.backend.rest.dtos.cargo.response.SessionCargoDTO;
 import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import at.fhv.backend.domain.model.player.ISessionPlayer;
+import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 
 import java.util.List;
 import java.util.UUID;
@@ -25,22 +27,48 @@ public class CargoQueryServiceImpl implements CargoQueryService {
     private final CargoRepository cargoRepository;
     private final GameSessionRepository gameSessionRepository;
     private final PortQueryService portQueryService;
+    private final SessionPlayerRepository sessionPlayerRepository;
 
-    public CargoQueryServiceImpl(SessionCargoRepository sessionCargoRepository, CargoRepository cargoRepository, GameSessionRepository gameSessionRepository, PortQueryService portQueryService) {
+    private static final int EARLY_DETECTION_TICK_SCALE = 6;
+
+
+    public CargoQueryServiceImpl(SessionCargoRepository sessionCargoRepository,
+                                 CargoRepository cargoRepository,
+                                 GameSessionRepository gameSessionRepository,
+                                 PortQueryService portQueryService,
+                                 SessionPlayerRepository sessionPlayerRepository) {
         this.sessionCargoRepository = sessionCargoRepository;
         this.cargoRepository = cargoRepository;
         this.gameSessionRepository = gameSessionRepository;
         this.portQueryService = portQueryService;
+        this.sessionPlayerRepository = sessionPlayerRepository;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<SessionCargoDTO> getAvailableCargos(UUID sessionId, UUID portId) {
-        GameSession session = gameSessionRepository.findById(sessionId).orElseThrow(() -> new SessionNotFoundException(sessionId));
+    public List<SessionCargoDTO> getAvailableCargos(UUID sessionId, UUID portId, UUID playerId) {
+        GameSession session = gameSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new SessionNotFoundException(sessionId));
         int currentTick = session.getCurrentTick();
-        return sessionCargoRepository.findAvailableBySessionIdAndPort(sessionId, portId, currentTick)
+
+        int effectiveTick = currentTick;
+        ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
+                .orElse(null);
+        if (player != null) {
+            double modifier = player.getEarlyOrderDetectionModifier();
+            int tickBonus = (int) Math.round((1.0 - modifier) * EARLY_DETECTION_TICK_SCALE);
+            effectiveTick = Math.max(0, currentTick + tickBonus);
+        }
+
+        System.out.println("[CargoQuery] playerId=" + playerId
+                + " currentTick=" + currentTick
+                + " modifier=" + (player != null ? player.getEarlyOrderDetectionModifier() : "NO_PLAYER")
+                + " effectiveTick=" + effectiveTick
+                + " results=" + sessionCargoRepository.findAvailableBySessionIdAndPort(sessionId, portId, effectiveTick).size());
+
+        return sessionCargoRepository.findAvailableBySessionIdAndPort(sessionId, portId, effectiveTick)
                 .stream()
-                .map(sc -> enrichDto(sc))
+                .map(this::enrichDto)
                 .collect(Collectors.toList());
     }
 

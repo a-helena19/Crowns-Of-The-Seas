@@ -1,6 +1,5 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 
 export default function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -11,15 +10,10 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
         return <Navigate to="/login" replace />;
     }
 
-    if (location.pathname === '/game' || location.pathname === '/intro') {
+    if (location.pathname === '/intro' || location.pathname === '/game') {
         const sessionData = sessionStorage.getItem('currentSession');
         if (!sessionData) {
             return <Navigate to="/lobby" replace />;
-        }
-
-        const session = JSON.parse(sessionData);
-        if (session.status !== 'RUNNING') {
-            return <Navigate to="/session-waiting" replace />;
         }
     }
 

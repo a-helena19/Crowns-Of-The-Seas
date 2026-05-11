@@ -5,7 +5,7 @@ import Stomp, { Client } from 'stompjs';
 interface SessionUpdateEvent {
     sessionId: string;
     gameCode: string;
-    status: 'LOBBY' | 'RUNNING' | 'FINISHED';
+    status: 'LOBBY' | 'FACTION_SELECTION' | 'RUNNING' | 'FINISHED';
     playerCount: number;
     maxPlayers: number;
     players: Array<{
@@ -13,7 +13,8 @@ interface SessionUpdateEvent {
         playerName: string;
         isHost: boolean;
     }>;
-    eventType: string;
+    type: string;
+    message?: string;
 }
 
 interface PortInfo {
@@ -41,7 +42,7 @@ export interface ShipPosition {
     iconUrl: string;
     x: number;
     y: number;
-    status: 'EN_ROUTE' | 'AT_PORT';
+    status: 'EN_ROUTE' | 'AT_PORT' | 'LOADING' | 'UNLOADING' | 'REFUELING' | 'REPAIRING' | 'READY_TO_DEPART';
     arrivalTick: number | null;
     originX: number | null;
     originY: number | null;
@@ -83,11 +84,21 @@ interface UseGameSessionWebSocketProps {
     onTickUpdate?: (event: TickUpdateEvent) => void;
 }
 
+declare global {
+    interface Window {
+        __latestPorts?: PortInfo[];
+        __latestTick?: { currentTick: number; totalTicks: number };
+        __tickRateMs?: number;
+        __latestShips?: ShipPosition[];
+        __latestShipPositionsTick?: number;
+    }
+}
+
 export function useGameSessionWebSocket({
-    sessionId,
-    onSessionUpdate,
-    onTickUpdate
-}: UseGameSessionWebSocketProps) {
+                                            sessionId,
+                                            onSessionUpdate,
+                                            onTickUpdate
+                                        }: UseGameSessionWebSocketProps) {
     const stompClientRef = useRef<Client | null>(null);
     const [isConnected, setIsConnected] = useState(false);
     const connectAttemptedRef = useRef(false);
@@ -96,6 +107,10 @@ export function useGameSessionWebSocket({
     const lastTickNumberRef = useRef<number | null>(null);
     const lastTickAtMsRef = useRef<number | null>(null);
     const smoothedTickMsRef = useRef<number | null>(null);
+    const onSessionUpdateRef = useRef(onSessionUpdate);
+    useEffect(() => {
+        onSessionUpdateRef.current = onSessionUpdate;
+    }, [onSessionUpdate]);
 
     const connect = useCallback(() => {
         if (!sessionId) {
@@ -103,7 +118,7 @@ export function useGameSessionWebSocket({
             return;
         }
 
-        if (connectAttemptedRef.current && isConnected) {
+        if (connectAttemptedRef.current) {
             console.log('Already connected');
             return;
         }
@@ -133,7 +148,8 @@ export function useGameSessionWebSocket({
                         console.log('Received session update:', message.body);
                         try {
                             const event = JSON.parse(message.body) as SessionUpdateEvent;
-                            onSessionUpdate(event);
+                            console.log('Event type:', event.type);  // Log für Debugging
+                            onSessionUpdateRef.current(event);
                         } catch (error) {
                             console.error('Error parsing session update:', error);
                         }
@@ -224,7 +240,7 @@ export function useGameSessionWebSocket({
             setIsConnected(false);
             connectAttemptedRef.current = false; // Reset so we can try again
         }
-    }, [sessionId, onSessionUpdate, isConnected]);
+    }, [sessionId]);
 
     const disconnect = useCallback(() => {
         if (stompClientRef.current) {
@@ -251,10 +267,14 @@ export function useGameSessionWebSocket({
             return () => clearTimeout(timer);
         }
 
+        return undefined
+    }, [sessionId, connect]);
+
+    useEffect(() => {
         return () => {
             disconnect();
         };
-    }, [sessionId, isConnected, connect, disconnect]);
+    }, []);
 
     return {
         isConnected,

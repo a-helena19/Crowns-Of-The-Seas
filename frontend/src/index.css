@@ -31,13 +31,6 @@ body {
     background: #0c1b33;
 }
 
-/* Lobby/Login/Register kriegen Pixel-Font */
-.game-lobby-page,
-.login-page,
-.register-page {
-    font-family: 'Press Start 2P', system-ui, sans-serif;
-}
-
 p {
     margin: 0;
 }
