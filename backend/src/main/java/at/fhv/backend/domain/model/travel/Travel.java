@@ -24,7 +24,7 @@ public class Travel {
     private Instant arrivedAt;
     private double fuelConsumed;
     private final int startTick;
-    private final int arrivalTick;
+    private int arrivalTick;
     private double loadingDurationSeconds;
 
     private Travel(UUID travelId, UUID playerShipId, UUID playerId, UUID sessionId,
@@ -201,5 +201,9 @@ public class Travel {
 
     public void setLoadingDurationSeconds(double loadingDurationSeconds) {
         this.loadingDurationSeconds = loadingDurationSeconds;
+    }
+
+    public void shiftArrivalTick(int additionalTicks) {
+        this.arrivalTick = this.arrivalTick + additionalTicks;
     }
 }

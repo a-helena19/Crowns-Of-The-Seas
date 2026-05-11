@@ -8,15 +8,20 @@ public class SmuggleOffer {
     private final UUID playerId;
     private final UUID sessionId;
     private final UUID portId;
+    private final UUID travelId;
+    private final UUID playerShipId;
     private final BigDecimal reward;
     private final SmuggleType cargoType;
     private SmuggleOfferStatus status;
 
-    public SmuggleOffer(UUID playerId, UUID sessionId, UUID portId, BigDecimal reward, SmuggleType cargoType) {
+    public SmuggleOffer(UUID playerId, UUID sessionId, UUID portId, UUID travelId, UUID playerShipId,
+                        BigDecimal reward, SmuggleType cargoType) {
         this.id = UUID.randomUUID();
         this.playerId = playerId;
         this.sessionId = sessionId;
         this.portId = portId;
+        this.travelId = travelId;
+        this.playerShipId = playerShipId;
         this.reward = reward;
         this.cargoType = cargoType;
         this.status = SmuggleOfferStatus.PENDING;
@@ -44,6 +49,14 @@ public class SmuggleOffer {
 
     public UUID getPortId() {
         return portId;
+    }
+
+    public UUID getTravelId() {
+        return travelId;
+    }
+
+    public UUID getPlayerShipId() {
+        return playerShipId;
     }
 
     public BigDecimal getReward() {

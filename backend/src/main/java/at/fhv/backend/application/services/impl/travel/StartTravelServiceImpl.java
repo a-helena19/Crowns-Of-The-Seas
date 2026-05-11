@@ -182,7 +182,8 @@ public class StartTravelServiceImpl implements StartTravelService {
             cargoWebSocketController.broadcastMarketUpdate(sessionId);
 
             try {
-                smuggleService.tryGenerateSmuggleOffer(playerId, sessionId, originPortId);
+                smuggleService.tryGenerateSmuggleOffer(playerId, sessionId, originPortId, saved.getTravelId(), playerShip.getId());
+                gameTickScheduler.triggerImmediateBroadcast(sessionId);
             } catch (Exception e) {
                 System.err.println("[StartTravel] Error generating smuggle offer: " + e.getMessage());
             }

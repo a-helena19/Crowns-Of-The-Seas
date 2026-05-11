@@ -31,12 +31,12 @@ export default function GameScreen() {
         id: string; shipName: string; from: string; to: string; reward: number;
     }[]>([]);
     const [smuggleOffer, setSmuggleOffer] = useState<{
-        offerId: string; portId: string; reward: number; cargoDescription: string;
+        offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
     } | null>(null);
 
     // Puffer: Offer der während der Departure-Animation ankam
     const pendingSmuggleRef = useRef<{
-        offerId: string; portId: string; reward: number; cargoDescription: string;
+        offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
     } | null>(null);
     const departureActiveRef = useRef(false);
 
@@ -83,7 +83,7 @@ export default function GameScreen() {
         const handler = (e: Event) => {
             const detail = (e as CustomEvent<{
                 currentTick: number;
-                ships: { playerShipId: string; status: string; arrivalTick?: number; currentPortId?: string; travelId?: string }[]
+                ships: { playerShipId: string; status: string; arrivalTick?: number; currentPortId?: string; travelId?: string; paused?: boolean }[]
             }>).detail;
 
             setAssignedCargos(prev => prev.map(entry => {
@@ -91,10 +91,16 @@ export default function GameScreen() {
                 const ship = detail.ships.find(s => s.playerShipId === entry.shipId);
                 if (!ship) return entry;
                 if (ship.status === "UNLOADING") {
-                    return  { ...entry, phase: "unloading", arrivalTick: ship.arrivalTick, currentTick: detail.currentTick, unloadingCompletedAtTick: ship.arrivalTick, };
+                    return  { ...entry, phase: "unloading", arrivalTick: ship.arrivalTick, currentTick: detail.currentTick, unloadingCompletedAtTick: ship.arrivalTick, paused: false };
                 }
                 if (ship.status === "EN_ROUTE") {
-                    return { ...entry, currentTick: detail.currentTick, arrivalTick: ship.arrivalTick ?? entry.arrivalTick, };
+                    const isPaused = ship.paused === true;
+                    return {
+                        ...entry,
+                        currentTick: isPaused ? (entry.currentTick ?? detail.currentTick) : detail.currentTick,
+                        arrivalTick: ship.arrivalTick ?? entry.arrivalTick,
+                        paused: isPaused,
+                    };
                 }
                 return entry;
             }));
@@ -164,12 +170,15 @@ export default function GameScreen() {
         const handler = (e: Event) => {
             const data = (e as CustomEvent<{
                 offerId: string; playerId: string; portId: string;
+                travelId: string; playerShipId: string;
                 reward: number; cargoDescription: string;
             }>).detail;
             if (data.playerId !== playerId) return;
             const offer = {
                 offerId: data.offerId,
                 portId: data.portId,
+                travelId: data.travelId,
+                playerShipId: data.playerShipId,
                 reward: data.reward,
                 cargoDescription: data.cargoDescription,
             };

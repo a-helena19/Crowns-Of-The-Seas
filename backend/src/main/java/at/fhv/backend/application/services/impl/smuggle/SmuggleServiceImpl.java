@@ -1,18 +1,16 @@
 package at.fhv.backend.application.services.impl.smuggle;
 
 import at.fhv.backend.application.services.smuggle.SmuggleService;
+import at.fhv.backend.application.services.travel.TravelPauseService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
 import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
-import at.fhv.backend.domain.model.session.GameSession;
-import at.fhv.backend.domain.model.session.exception.SessionNotFoundException;
+import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.smuggle.SmuggleOfferStatus;
 import at.fhv.backend.domain.model.smuggle.SmuggleType;
-
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.domain.model.player.exception.PlayerNotFoundException;
-import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.smuggle.SmuggleOffer;
 import at.fhv.backend.domain.model.smuggle.exception.SmuggleOfferExpiredException;
 import at.fhv.backend.domain.model.smuggle.exception.SmuggleOfferNotFoundException;
@@ -27,6 +25,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @Service
 public class SmuggleServiceImpl implements SmuggleService {
@@ -38,19 +37,24 @@ public class SmuggleServiceImpl implements SmuggleService {
     private final SessionPlayerRepository sessionPlayerRepository;
     private final SessionCargoRepository sessionCargoRepository;
     private final GameSessionWebSocketController webSocketController;
+    private final TravelPauseService travelPauseService;
     private final Map<UUID, SmuggleOffer> activeOffers = new ConcurrentHashMap<>();
     private final Map<UUID, List<SmuggleOffer>> acceptedOffers = new ConcurrentHashMap<>();
 
     private final Random random = new Random();
 
-    public SmuggleServiceImpl(SessionPlayerRepository sessionPlayerRepository, SessionCargoRepository sessionCargoRepository, GameSessionWebSocketController webSocketController) {
+    public SmuggleServiceImpl(SessionPlayerRepository sessionPlayerRepository,
+                              SessionCargoRepository sessionCargoRepository,
+                              GameSessionWebSocketController webSocketController,
+                              TravelPauseService travelPauseService) {
         this.sessionPlayerRepository = sessionPlayerRepository;
         this.sessionCargoRepository = sessionCargoRepository;
         this.webSocketController = webSocketController;
+        this.travelPauseService = travelPauseService;
     }
 
     @Override
-    public void tryGenerateSmuggleOffer(UUID playerId, UUID sessionId, UUID portId) {
+    public void tryGenerateSmuggleOffer(UUID playerId, UUID sessionId, UUID portId, UUID travelId, UUID playerShipId) {
         ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
                 .orElseThrow(() -> new PlayerNotFoundException(playerId));
 
@@ -66,13 +70,18 @@ public class SmuggleServiceImpl implements SmuggleService {
         SmuggleType[] types = SmuggleType.values();
         SmuggleType smuggleType = types[random.nextInt(types.length)];
 
-        SmuggleOffer offer = new SmuggleOffer(playerId, sessionId, portId, reward, smuggleType);
+        SmuggleOffer offer = new SmuggleOffer(playerId, sessionId, portId, travelId, playerShipId,
+                reward, smuggleType);
         activeOffers.put(offer.getId(), offer);
+
+        travelPauseService.pauseTravel(travelId, sessionId, playerId, playerShipId, "SMUGGLE");
 
         SmuggleOfferEvent event = new SmuggleOfferEvent(
                 offer.getId().toString(),
                 playerId.toString(),
                 portId.toString(),
+                travelId.toString(),
+                playerShipId.toString(),
                 offer.getReward(),
                 offer.getCargoDescription()
         );
@@ -81,6 +90,7 @@ public class SmuggleServiceImpl implements SmuggleService {
         System.out.println("[Smuggle] Offer generated for player " + playerId
                 + " at port " + portId
                 + " — reward: " + reward + " T"
+                + " — travel " + travelId + " PAUSED"
                 + " (chance was " + String.format("%.2f", chance * 100) + "%)");
     }
 
@@ -106,11 +116,15 @@ public class SmuggleServiceImpl implements SmuggleService {
             }
         }
 
+        travelPauseService.resumeTravel(
+                offer.getTravelId(), sessionId, playerId, offer.getPlayerShipId(), "SMUGGLE_ACCEPTED");
+
         activeOffers.remove(offerId);
-        acceptedOffers.computeIfAbsent(playerId, k -> new java.util.concurrent.CopyOnWriteArrayList<>()).add(offer);
+        acceptedOffers.computeIfAbsent(playerId, k -> new CopyOnWriteArrayList<>()).add(offer);
 
         System.out.println("[Smuggle] Player " + playerId + " accepted smuggle offer "
-                + offerId + " — reward pending: " + offer.getReward() + " T");
+                + offerId + " — travel " + offer.getTravelId() + " RESUMED"
+                + " — reward pending: " + offer.getReward() + " T");
     }
 
     @Override
@@ -144,8 +158,14 @@ public class SmuggleServiceImpl implements SmuggleService {
         }
 
         offer.decline();
+
+        travelPauseService.resumeTravel(
+                offer.getTravelId(), offer.getSessionId(), playerId, offer.getPlayerShipId(), "SMUGGLE_DECLINED");
+
         activeOffers.remove(offerId);
-        System.out.println("[Smuggle] Player " + playerId + " declined smuggle offer " + offerId);
+
+        System.out.println("[Smuggle] Player " + playerId + " declined smuggle offer " + offerId
+                + " — travel " + offer.getTravelId() + " RESUMED");
     }
 
     private BigDecimal calculateReward() {

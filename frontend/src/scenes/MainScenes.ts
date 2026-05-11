@@ -22,6 +22,7 @@ interface ShipPositionData {
     destY: number | null;
     startTick: number | null;
     currentPortId?: string | null;
+    paused?: boolean;
 }
 
 interface ShipPositionsPayload {
@@ -36,6 +37,7 @@ interface ShipEntry {
     lastStatus: 'EN_ROUTE' | 'AT_PORT' | 'LOADING' | 'UNLOADING' | null;
     lastStartTick: number | null;
     lastShipData: ShipPositionData;
+    lastPaused: boolean;
 }
 
 export default class MainScene extends Phaser.Scene {
@@ -338,27 +340,59 @@ export default class MainScene extends Phaser.Scene {
                 }
 
                 if (shipData.status === 'EN_ROUTE') {
-                    const isSameTravel = entry.lastStatus === 'EN_ROUTE'
-                        && shipData.startTick != null
-                        && entry.lastStartTick === shipData.startTick;
+                    const isPaused = shipData.paused === true;
+                    const wasPaused = entry.lastPaused;
 
-                    if (hasRouteData && !isSameTravel) {
-                        const routeTiming = this.getRouteTiming(shipData, currentTick, tickRateMs);
-                        const polyline = this.buildShipPolyline(
-                            shipData.originX, shipData.originY,
-                            shipData.destX, shipData.destY,
-                        );
-                        entry.controller.setRoute(
-                            polyline,
-                            routeTiming.elapsedMs,
-                            routeTiming.totalMs,
-                            true,
-                            routeTiming.startDelayMs,
-                        );
-                        entry.lastStartTick = shipData.startTick;
-                    } else if (!hasRouteData) {
-                        entry.controller.moveTo(px, py, tickRateMs);
-                        entry.lastStartTick = null;
+                    if (isPaused && !wasPaused) {
+                        // Ship just became paused — freeze at current position
+                        entry.controller.teleport(entry.sprite.x, entry.sprite.y);
+                        entry.lastPaused = true;
+                    } else if (!isPaused && wasPaused) {
+                        // Ship just resumed — restart route with new timing
+                        if (hasRouteData) {
+                            const routeTiming = this.getRouteTiming(shipData, currentTick, tickRateMs);
+                            const polyline = this.buildShipPolyline(
+                                shipData.originX, shipData.originY,
+                                shipData.destX, shipData.destY,
+                            );
+                            entry.controller.setRoute(
+                                polyline,
+                                routeTiming.elapsedMs,
+                                routeTiming.totalMs,
+                                true,
+                                routeTiming.startDelayMs,
+                            );
+                            entry.lastStartTick = shipData.startTick;
+                        } else {
+                            entry.controller.moveTo(px, py, tickRateMs);
+                        }
+                        entry.lastPaused = false;
+                    } else if (isPaused) {
+                        // Still paused — do nothing, keep ship frozen
+                    } else {
+                        // Normal EN_ROUTE (not paused)
+                        const isSameTravel = entry.lastStatus === 'EN_ROUTE'
+                            && shipData.startTick != null
+                            && entry.lastStartTick === shipData.startTick;
+
+                        if (hasRouteData && !isSameTravel) {
+                            const routeTiming = this.getRouteTiming(shipData, currentTick, tickRateMs);
+                            const polyline = this.buildShipPolyline(
+                                shipData.originX, shipData.originY,
+                                shipData.destX, shipData.destY,
+                            );
+                            entry.controller.setRoute(
+                                polyline,
+                                routeTiming.elapsedMs,
+                                routeTiming.totalMs,
+                                true,
+                                routeTiming.startDelayMs,
+                            );
+                            entry.lastStartTick = shipData.startTick;
+                        } else if (!hasRouteData) {
+                            entry.controller.moveTo(px, py, tickRateMs);
+                            entry.lastStartTick = null;
+                        }
                     }
                     entry.lastStatus = 'EN_ROUTE';
                 } else {
@@ -425,8 +459,9 @@ export default class MainScene extends Phaser.Scene {
 
         const controller = new Ship(this, sprite);
         let lastStartTick: number | null = null;
+        const isPaused = shipData.paused === true;
 
-        if (status === 'EN_ROUTE' && this.hasRouteData(shipData)) {
+        if (status === 'EN_ROUTE' && !isPaused && this.hasRouteData(shipData)) {
             const routeTiming = this.getRouteTiming(shipData, currentTick, tickRateMs);
             const polyline = this.buildShipPolyline(
                 shipData.originX, shipData.originY,
@@ -445,6 +480,7 @@ export default class MainScene extends Phaser.Scene {
         this.shipSprites.set(id, {
             sprite, controller, tooltip: shipTooltip,
             lastStatus: status, lastStartTick, lastShipData: shipData,
+            lastPaused: isPaused,
         });
 
         if (initialTexture === 'ship' && textureKey !== 'ship') {
@@ -580,7 +616,8 @@ export default class MainScene extends Phaser.Scene {
             && a.destX === b.destX
             && a.destY === b.destY
             && Math.abs(a.x - b.x) < 1e-9
-            && Math.abs(a.y - b.y) < 1e-9;
+            && Math.abs(a.y - b.y) < 1e-9
+            && (a.paused ?? false) === (b.paused ?? false);
     }
 
     private renderHarbors(ports: PortData[]) {

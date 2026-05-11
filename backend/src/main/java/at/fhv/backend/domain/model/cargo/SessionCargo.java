@@ -141,6 +141,14 @@ public class SessionCargo {
         this.assignedPlayerShipId = null;
     }
 
+    public void block() {
+        this.cargoStatus = CargoStatus.BLOCKED;
+    }
+
+    public void unblock() {
+        this.cargoStatus = CargoStatus.ASSIGNED;
+    }
+
     public void deliver() {
         if (cargoStatus != CargoStatus.ASSIGNED) {
             throw new CargoNotAssignedException(id, cargoStatus.name());

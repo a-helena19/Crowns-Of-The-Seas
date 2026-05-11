@@ -289,9 +289,12 @@ export default function CargoManagementScreen({
                                 <div className="cm-travel-title">⛵ Auf Reise</div>
                                 <div className="cm-travel-route">{selectedEntry.from} → {selectedEntry.to}</div>
                                 <div className="cm-travel-ticks">
-                                    Ankunft in {Math.max(0, (selectedEntry.arrivalTick ?? 0) - (selectedEntry.currentTick ?? 0))} Tagen
+                                    {selectedEntry.paused
+                                        ? "⚓ Reise unterbrochen"
+                                        : `Ankunft in ${Math.max(0, (selectedEntry.arrivalTick ?? 0) - (selectedEntry.currentTick ?? 0))} Tagen`
+                                    }
                                 </div>
-                                {(() => {
+                                {!selectedEntry.paused && (() => {
                                     const remaining = Math.max(0, (selectedEntry.arrivalTick ?? 0) - (selectedEntry.currentTick ?? 0));
                                     return <TravelProgressBar remaining={remaining} color="#ff9800" />;
                                 })()}

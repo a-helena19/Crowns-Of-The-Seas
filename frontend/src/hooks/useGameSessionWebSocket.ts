@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import SockJS from 'sockjs-client';
 import Stomp, { Client } from 'stompjs';
 
@@ -49,6 +49,7 @@ export interface ShipPosition {
     destX: number | null;
     destY: number | null;
     startTick: number | null;
+    paused?: boolean;
 }
 
 interface ShipPositionsUpdateEvent {
@@ -83,17 +84,6 @@ interface UseGameSessionWebSocketProps {
     onSessionUpdate: (event: SessionUpdateEvent) => void;
     onTickUpdate?: (event: TickUpdateEvent) => void;
 }
-
-declare global {
-    interface Window {
-        __latestPorts?: PortInfo[];
-        __latestTick?: { currentTick: number; totalTicks: number };
-        __tickRateMs?: number;
-        __latestShips?: ShipPosition[];
-        __latestShipPositionsTick?: number;
-    }
-}
-
 export function useGameSessionWebSocket({
                                             sessionId,
                                             onSessionUpdate,
@@ -101,6 +91,7 @@ export function useGameSessionWebSocket({
                                         }: UseGameSessionWebSocketProps) {
     const stompClientRef = useRef<Client | null>(null);
     const [isConnected, setIsConnected] = useState(false);
+    const [stompClient, setStompClient] = useState<Client | null>(null);
     const connectAttemptedRef = useRef(false);
     const lastTickSignatureRef = useRef<string | null>(null);
     const lastShipsSignatureRef = useRef<string | null>(null);
@@ -112,152 +103,152 @@ export function useGameSessionWebSocket({
         onSessionUpdateRef.current = onSessionUpdate;
     }, [onSessionUpdate]);
 
-    const connect = useCallback(() => {
-        if (!sessionId) {
-            console.log('No sessionId provided');
-            return;
-        }
+    useEffect(() => {
+        if (!sessionId) return;
+        if (connectAttemptedRef.current) return;
 
-        if (connectAttemptedRef.current) {
-            console.log('Already connected');
-            return;
-        }
+        const timer = setTimeout(() => {
+            connectAttemptedRef.current = true;
 
-        connectAttemptedRef.current = true;
+            try {
+                const wsUrl = window.location.hostname === 'localhost'
+                    ? 'http://localhost:8080/ws'
+                    : `/ws`;
 
-        try {
-            // Connect directly to backend WebSocket, not through proxy
-            // This avoids issues with vite proxy and ECONNRESET
-            const wsUrl = window.location.hostname === 'localhost'
-                ? 'http://localhost:8080/ws'
-                : `/ws`;
+                console.log('Connecting to WebSocket:', wsUrl);
+                const socket = new SockJS(wsUrl);
+                const client = Stomp.over(socket);
 
-            console.log('Connecting to WebSocket:', wsUrl);
-            const socket = new SockJS(wsUrl);
-            const client = Stomp.over(socket);
+                client.connect(
+                    {},
+                    () => {
+                        console.log('WebSocket connected');
+                        setIsConnected(true);
+                        stompClientRef.current = client;
+                        setStompClient(client);
 
-            client.connect(
-                {},
-                () => {
-                    console.log('WebSocket connected');
-                    setIsConnected(true);
-                    stompClientRef.current = client;
-
-                    // Subscribe to session updates
-                    client.subscribe(`/topic/session/${sessionId}`, (message) => {
-                        console.log('Received session update:', message.body);
-                        try {
-                            const event = JSON.parse(message.body) as SessionUpdateEvent;
-                            console.log('Event type:', event.type);  // Log für Debugging
-                            onSessionUpdateRef.current(event);
-                            console.log('Event type:', event.type);  // Log für Debugging
-                            onSessionUpdate(event);
-                        } catch (error) {
-                            console.error('Error parsing session update:', error);
-                        }
-                    });
-
-                    // Subscribe to ports update
-                    client.subscribe(`/topic/session/${sessionId}/ports`, (message) => {
-                        console.log('Received ports update:', message.body);
-                        try {
-                            const event = JSON.parse(message.body) as PortsUpdateEvent;
-                            window.__latestPorts = event.ports;
-                            window.dispatchEvent(new CustomEvent('backend-ports', { detail: event.ports }));
-                        } catch (error) {
-                            console.error('Error parsing ports update:', error);
-                        }
-                    });
-
-                    // Subscribe to tick update
-                    client.subscribe(`/topic/session/${sessionId}/tick`, (message) => {
-                        try {
-                            const event = JSON.parse(message.body) as TickUpdateEvent;
-                            const tickSignature = `${event.currentTick}:${event.totalTicks}`;
-                            if (lastTickSignatureRef.current === tickSignature) return;
-                            lastTickSignatureRef.current = tickSignature;
-
-                            const nowMs = performance.now();
-                            const prevTick = lastTickNumberRef.current;
-                            const prevAtMs = lastTickAtMsRef.current;
-                            if (prevTick != null && prevAtMs != null && event.currentTick > prevTick) {
-                                const tickDiff = event.currentTick - prevTick;
-                                const elapsedMs = nowMs - prevAtMs;
-                                const measuredTickMs = elapsedMs / tickDiff;
-                                if (Number.isFinite(measuredTickMs) && measuredTickMs >= 50 && measuredTickMs <= 120_000) {
-                                    const previous = smoothedTickMsRef.current ?? measuredTickMs;
-                                    const next = previous * 0.75 + measuredTickMs * 0.25;
-                                    smoothedTickMsRef.current = next;
-                                    window.__tickRateMs = next;
-                                }
+                        client.subscribe(`/topic/session/${sessionId}`, (message) => {
+                            console.log('Received session update:', message.body);
+                            try {
+                                const event = JSON.parse(message.body) as SessionUpdateEvent;
+                                console.log('Event type:', event.type);
+                                onSessionUpdateRef.current(event);
+                            } catch (error) {
+                                console.error('Error parsing session update:', error);
                             }
-                            lastTickNumberRef.current = event.currentTick;
-                            lastTickAtMsRef.current = nowMs;
+                        });
 
-                            window.__latestTick = event;
-                            window.dispatchEvent(new CustomEvent('backend-tick', { detail: event }));
-                            if (onTickUpdate) onTickUpdate(event);
-                        } catch (error) {
-                            console.error('Error parsing tick update:', error);
-                        }
-                    });
+                        client.subscribe(`/topic/session/${sessionId}/ports`, (message) => {
+                            console.log('Received ports update:', message.body);
+                            try {
+                                const event = JSON.parse(message.body) as PortsUpdateEvent;
+                                window.__latestPorts = event.ports;
+                                window.dispatchEvent(new CustomEvent('backend-ports', { detail: event.ports }));
+                            } catch (error) {
+                                console.error('Error parsing ports update:', error);
+                            }
+                        });
 
-                    // Subscribe to ship positions
-                    client.subscribe(`/topic/session/${sessionId}/ships`, (message) => {
-                        try {
-                            const event = JSON.parse(message.body) as ShipPositionsUpdateEvent;
-                            const shipsSignature = `${event.currentTick}:${JSON.stringify(event.ships)}`;
-                            if (lastShipsSignatureRef.current === shipsSignature) return;
-                            lastShipsSignatureRef.current = shipsSignature;
-                            window.__latestShips = event.ships;
-                            window.__latestShipPositionsTick = event.currentTick;
-                            window.dispatchEvent(new CustomEvent('backend-ship-positions', { detail: event }));
-                        } catch (error) {
-                            console.error('Error parsing ship positions:', error);
-                        }
-                    });
+                        client.subscribe(`/topic/session/${sessionId}/tick`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body) as TickUpdateEvent;
+                                const tickSignature = `${event.currentTick}:${event.totalTicks}`;
+                                if (lastTickSignatureRef.current === tickSignature) return;
+                                lastTickSignatureRef.current = tickSignature;
 
-                    // Subscribe to travel complete
-                    client.subscribe(`/topic/session/${sessionId}/travel-complete`, (message) => {
-                        try {
-                            const event = JSON.parse(message.body) as TravelCompleteEvent;
-                            window.dispatchEvent(new CustomEvent('travel-complete', { detail: event }));
-                            window.dispatchEvent(new Event('player-balance-updated'));
-                        } catch (error) {
-                            console.error('Error parsing travel-complete event:', error);
-                        }
-                    });
+                                const nowMs = performance.now();
+                                const prevTick = lastTickNumberRef.current;
+                                const prevAtMs = lastTickAtMsRef.current;
+                                if (prevTick != null && prevAtMs != null && event.currentTick > prevTick) {
+                                    const tickDiff = event.currentTick - prevTick;
+                                    const elapsedMs = nowMs - prevAtMs;
+                                    const measuredTickMs = elapsedMs / tickDiff;
+                                    if (Number.isFinite(measuredTickMs) && measuredTickMs >= 50 && measuredTickMs <= 120_000) {
+                                        const previous = smoothedTickMsRef.current ?? measuredTickMs;
+                                        const next = previous * 0.75 + measuredTickMs * 0.25;
+                                        smoothedTickMsRef.current = next;
+                                        window.__tickRateMs = next;
+                                    }
+                                }
+                                lastTickNumberRef.current = event.currentTick;
+                                lastTickAtMsRef.current = nowMs;
 
-                    // Subscribe to smuggle offers
-                    client.subscribe(`/topic/session/${sessionId}/smuggle-offer`, (message) => {
-                        try {
-                            const event = JSON.parse(message.body);
-                            window.dispatchEvent(new CustomEvent('smuggle-offer', { detail: event }));
-                        } catch (error) {
-                            console.error('Error parsing smuggle-offer event:', error);
-                        }
-                    });
+                                window.__latestTick = event;
+                                window.dispatchEvent(new CustomEvent('backend-tick', { detail: event }));
+                                if (onTickUpdate) onTickUpdate(event);
+                            } catch (error) {
+                                console.error('Error parsing tick update:', error);
+                            }
+                        });
 
-                    // Send subscribe message
-                    client.send(`/app/session/${sessionId}/subscribe`, {});
-                },
-                (error) => {
-                    console.error('WebSocket connection error:', error);
-                    setIsConnected(false);
-                    connectAttemptedRef.current = false; // Reset so we can try again
-                }
-            );
-        } catch (error) {
-            console.error('Failed to connect to WebSocket:', error);
-            setIsConnected(false);
-            connectAttemptedRef.current = false; // Reset so we can try again
-        }
+                        client.subscribe(`/topic/session/${sessionId}/ships`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body) as ShipPositionsUpdateEvent;
+                                const shipsSignature = `${event.currentTick}:${JSON.stringify(event.ships)}`;
+                                if (lastShipsSignatureRef.current === shipsSignature) return;
+                                lastShipsSignatureRef.current = shipsSignature;
+                                window.__latestShips = event.ships;
+                                window.__latestShipPositionsTick = event.currentTick;
+                                window.dispatchEvent(new CustomEvent('backend-ship-positions', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing ship positions:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/travel-complete`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body) as TravelCompleteEvent;
+                                window.dispatchEvent(new CustomEvent('travel-complete', { detail: event }));
+                                window.dispatchEvent(new Event('player-balance-updated'));
+                            } catch (error) {
+                                console.error('Error parsing travel-complete event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/smuggle-offer`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body);
+                                window.dispatchEvent(new CustomEvent('smuggle-offer', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing smuggle-offer event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/travel-resumed`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body);
+                                window.dispatchEvent(new CustomEvent('travel-resumed', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing travel-resumed event:', error);
+                            }
+                        });
+
+                        client.send(`/app/session/${sessionId}/subscribe`, {});
+                    },
+                    (error) => {
+                        console.error('WebSocket connection error:', error);
+                        setIsConnected(false);
+                        connectAttemptedRef.current = false;
+                    }
+                );
+            } catch (error) {
+                console.error('Failed to connect to WebSocket:', error);
+                setIsConnected(false);
+                connectAttemptedRef.current = false;
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
     }, [sessionId]);
 
-    const disconnect = useCallback(() => {
-        if (stompClientRef.current) {
-            stompClientRef.current.disconnect(() => {
-                console.log('WebSocket disconnected');
+    useEffect(() => {
+        return () => {
+            if (stompClientRef.current) {
+                stompClientRef.current.disconnect(() => {
+                    console.log('WebSocket disconnected');
+                });
+                stompClientRef.current = null;
+                setStompClient(null);
                 setIsConnected(false);
                 connectAttemptedRef.current = false;
                 lastTickSignatureRef.current = null;
@@ -265,31 +256,28 @@ export function useGameSessionWebSocket({
                 lastTickNumberRef.current = null;
                 lastTickAtMsRef.current = null;
                 smoothedTickMsRef.current = null;
-                stompClientRef.current = null;
-            });
-        }
-    }, []);
-
-    useEffect(() => {
-        if (sessionId && !isConnected) {
-            const timer = setTimeout(() => {
-                connect();
-            }, 500); // Small delay to ensure session is ready
-
-            return () => clearTimeout(timer);
-        }
-
-        return undefined
-    }, [sessionId, connect]);
-
-    useEffect(() => {
-        return () => {
-            disconnect();
+            }
         };
     }, []);
 
     return {
         isConnected,
-        disconnect, stompClient: stompClientRef.current
+        disconnect: () => {
+            if (stompClientRef.current) {
+                stompClientRef.current.disconnect(() => {
+                    console.log('WebSocket disconnected');
+                    setIsConnected(false);
+                    setStompClient(null);
+                    connectAttemptedRef.current = false;
+                    lastTickSignatureRef.current = null;
+                    lastShipsSignatureRef.current = null;
+                    lastTickNumberRef.current = null;
+                    lastTickAtMsRef.current = null;
+                    smoothedTickMsRef.current = null;
+                    stompClientRef.current = null;
+                });
+            }
+        },
+        stompClient
     };
 }

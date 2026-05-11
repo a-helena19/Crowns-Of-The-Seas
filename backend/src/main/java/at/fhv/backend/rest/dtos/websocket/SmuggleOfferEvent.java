@@ -6,13 +6,18 @@ public class SmuggleOfferEvent {
     private String offerId;
     private String playerId;
     private String portId;
+    private String travelId;
+    private String playerShipId;
     private BigDecimal reward;
     private String cargoDescription;
 
-    public SmuggleOfferEvent(String offerId, String playerId, String portId, BigDecimal reward, String cargoDescription) {
+    public SmuggleOfferEvent(String offerId, String playerId, String portId, String travelId, String playerShipId,
+                             BigDecimal reward, String cargoDescription) {
         this.offerId = offerId;
         this.playerId = playerId;
         this.portId = portId;
+        this.travelId = travelId;
+        this.playerShipId = playerShipId;
         this.reward = reward;
         this.cargoDescription = cargoDescription;
     }
@@ -27,6 +32,14 @@ public class SmuggleOfferEvent {
 
     public String getPortId() {
         return portId;
+    }
+
+    public String getTravelId() {
+        return travelId;
+    }
+
+    public String getPlayerShipId() {
+        return playerShipId;
     }
 
     public BigDecimal getReward() {

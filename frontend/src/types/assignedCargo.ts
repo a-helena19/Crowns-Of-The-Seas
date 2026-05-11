@@ -36,4 +36,5 @@ export interface AssignedCargoEntry {
     };
     cargoRewards?: CargoRewardEntry[];
     unloadingCompletedAtTick?: number;
+    paused?: boolean;
 }

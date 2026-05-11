@@ -1,4 +1,3 @@
-// frontend/src/hooks/useWebSocket.ts
 import { useEffect, useRef, useState } from 'react';
 import SockJS from 'sockjs-client';
 import Stomp, { Client } from 'stompjs';
