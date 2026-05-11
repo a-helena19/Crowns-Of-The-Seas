@@ -1,4 +1,3 @@
-import { useEffect, useCallback, useRef, useState } from "react";
 import { useEffect, useCallback, useState, useRef } from "react";
 import TopBar from "../components/TopBar.tsx";
 import Game from "../Game.tsx";
@@ -37,7 +36,6 @@ export default function GameScreen() {
         offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
     } | null>(null);
 
-    // Puffer: Offer der während der Departure-Animation ankam
     const pendingSmuggleRef = useRef<{
         offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
     } | null>(null);
@@ -88,6 +86,7 @@ export default function GameScreen() {
         return () => window.removeEventListener('port-clicked', onPortClicked);
     }, []);
 
+    // Ship positions → update cargo entries with tick data + paused state
     useEffect(() => {
         const handler = (e: Event) => {
             const detail = (e as CustomEvent<{
@@ -99,8 +98,8 @@ export default function GameScreen() {
                     startTick?: number;
                     currentPortId?: string;
                     travelId?: string;
+                    paused?: boolean;
                 }[]
-                ships: { playerShipId: string; status: string; arrivalTick?: number; currentPortId?: string; travelId?: string; paused?: boolean }[]
             }>).detail;
 
             setAssignedCargos(prev => prev.map(entry => {
@@ -108,7 +107,6 @@ export default function GameScreen() {
                 const ship = detail.ships.find(s => s.playerShipId === entry.shipId);
                 if (!ship) return entry;
                 if (ship.status === "UNLOADING") {
-                    return  { ...entry, phase: "unloading", arrivalTick: ship.arrivalTick, currentTick: detail.currentTick, unloadingCompletedAtTick: ship.arrivalTick, paused: false };
                     return {
                         ...entry,
                         phase: "unloading",
@@ -116,6 +114,7 @@ export default function GameScreen() {
                         currentTick: detail.currentTick,
                         unloadingCompletedAtTick: ship.arrivalTick,
                         unloadingStartTick: entry.unloadingStartTick ?? detail.currentTick,
+                        paused: false,
                     };
                 }
                 if (ship.status === "EN_ROUTE") {
@@ -124,13 +123,8 @@ export default function GameScreen() {
                         ...entry,
                         currentTick: isPaused ? (entry.currentTick ?? detail.currentTick) : detail.currentTick,
                         arrivalTick: ship.arrivalTick ?? entry.arrivalTick,
-                        paused: isPaused,
-                    };
-                    return {
-                        ...entry,
-                        currentTick: detail.currentTick,
-                        arrivalTick: ship.arrivalTick ?? entry.arrivalTick,
                         startTick: entry.startTick ?? ship.startTick,
+                        paused: isPaused,
                     };
                 }
                 return entry;
@@ -140,6 +134,7 @@ export default function GameScreen() {
         return () => window.removeEventListener("backend-ship-positions", handler);
     }, [playerId]);
 
+    // Travel complete → reward
     useEffect(() => {
         const handler = (e: Event) => {
             const data = (e as CustomEvent<{
@@ -190,13 +185,12 @@ export default function GameScreen() {
                 }
                 return prev;
             });
-
-
         };
         window.addEventListener("travel-complete", handler);
         return () => window.removeEventListener("travel-complete", handler);
     }, [playerId]);
 
+    // Smuggle offer
     useEffect(() => {
         const handler = (e: Event) => {
             const data = (e as CustomEvent<{
@@ -214,7 +208,6 @@ export default function GameScreen() {
                 cargoDescription: data.cargoDescription,
             };
             if (departureActiveRef.current) {
-                // Animation läuft noch → puffern, wird nach Animation+2s gezeigt
                 pendingSmuggleRef.current = offer;
             } else {
                 setSmuggleOffer(offer);
@@ -266,6 +259,7 @@ export default function GameScreen() {
         setSmuggleOffer(null);
     }
 
+    // Auto-complete loading phase
     useEffect(() => {
         const hasPendingLoading = assignedCargos.some(
             e => e.phase === "loading" && !e.loadingDone
@@ -277,7 +271,6 @@ export default function GameScreen() {
                 let changed = false;
                 const next = prev.map(entry => {
                     if (entry.phase !== "loading" || entry.loadingDone) return entry;
-
                     const elapsed = (Date.now() - entry.loadingStartedAt) / 1000;
                     if (elapsed >= entry.loadingDurationSeconds) {
                         changed = true;
