@@ -1,11 +1,26 @@
 .lb-overlay {
     position: fixed;
-    top: 1.2vh;
+    top: 24px;
     right: calc(260px + 12px);
     z-index: 1400;
     width: min(248px, calc(100vw - 16px));
+    min-height: 9vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    overflow: visible;
     color: #f4e9c9;
     font-family: "Press Start 2P", "Trebuchet MS", sans-serif;
+    transition: transform 0.2s ease;
+}
+
+.lb-overlay.closed {
+    transform: translateY(0);
+}
+
+.lb-overlay.open {
+    transform: translateY(-6px);
 }
 
 @media (max-width: 1100px) {
@@ -28,13 +43,15 @@
 }
 
 .lb-panel {
+    width: 100%;
     margin-top: 0.35rem;
     background: rgba(8, 12, 20, 0.68);
     backdrop-filter: blur(3px);
     border: 1px solid rgba(214, 177, 95, 0.35);
     border-radius: 8px;
     max-height: 300px;
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .lb-list {
