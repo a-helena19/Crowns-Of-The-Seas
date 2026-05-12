@@ -1,21 +1,52 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useGameSessionWebSocket } from '../hooks/useGameSessionWebSocket';
 import '../style/intro.css';
-import skipIcon from "../assets/intro/skip.png";
-import introMusic from "../assets/audio/intro-music.mp3";
+import skipIcon from '../assets/intro/skip.png';
+import introMusic from '../assets/audio/intro-music.mp3';
+
+const INTRO_DURATION_MS = 6000;
 
 export default function IntroAnimation() {
     const navigate = useNavigate();
     const [showSkip, setShowSkip] = useState(false);
     const [audioStarted, setAudioStarted] = useState(false);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const hasNavigatedRef = useRef(false);
+
     const [starPositions] = useState(() =>
         [...Array(20)].map(() => ({
             left: Math.random() * 100,
             top: Math.random() * 40,
-            delay: Math.random() * 2
+            delay: Math.random() * 2,
         }))
     );
+
+    const sessionId = (() => {
+        const data = sessionStorage.getItem('currentSession');
+        return data ? JSON.parse(data).id : null;
+    })();
+
+    const handleSessionUpdate = useCallback(
+        (event: { type: string; status: string }) => {
+            if (event.status === 'RUNNING' && !hasNavigatedRef.current) {
+                hasNavigatedRef.current = true;
+                navigate('/game');
+            }
+        },
+        [navigate]
+    );
+
+    useGameSessionWebSocket({
+        sessionId,
+        onSessionUpdate: handleSessionUpdate,
+    });
+
+    const goBackToWaiting = useCallback(() => {
+        if (hasNavigatedRef.current) return;
+        hasNavigatedRef.current = true;
+        navigate('/session-waiting');
+    }, [navigate]);
 
     const handleUnmute = () => {
         try {
@@ -24,20 +55,12 @@ export default function IntroAnimation() {
                 audioRef.current.volume = 0.5;
                 audioRef.current.loop = false;
             }
-
-            // Stelle sicher, dass die Wiedergabe von vorne startet
             audioRef.current.currentTime = 0;
             const playPromise = audioRef.current.play();
-
             if (playPromise !== undefined) {
                 playPromise
-                    .then(() => {
-                        console.log('Audio erfolgreich abgespielt');
-                        setAudioStarted(true);
-                    })
-                    .catch(error => {
-                        console.log('Audio-Fehler:', error);
-                    });
+                    .then(() => setAudioStarted(true))
+                    .catch(error => console.log('Audio-Fehler:', error));
             }
         } catch (error) {
             console.log('Audio nicht verfügbar:', error);
@@ -52,62 +75,51 @@ export default function IntroAnimation() {
     };
 
     useEffect(() => {
-        // Show skip button after 1 second
-        const skipTimer = setTimeout(() => {
-            setShowSkip(true);
-        }, 1000);
-
-        // Redirect to game after animation completes
-        const redirectTimer = setTimeout(() => {
-            navigate('/game');
-        }, 6000); // 6 seconds total
+        const skipTimer = setTimeout(() => setShowSkip(true), 1000);
+        const redirectTimer = setTimeout(goBackToWaiting, INTRO_DURATION_MS);
 
         return () => {
             clearTimeout(skipTimer);
             clearTimeout(redirectTimer);
-            // Stoppe die Audio-Wiedergabe
             if (audioRef.current) {
                 audioRef.current.pause();
                 audioRef.current.currentTime = 0;
             }
         };
-    }, [navigate]);
+    }, [goBackToWaiting]);
 
-    const handleSkip = () => {
-        navigate('/game');
-    };
+    const handleSkip = () => goBackToWaiting();
 
     return (
         <div className="intro-container">
-            {/* Unmute button */}
             {!audioStarted && (
                 <div className="unmute-button" onClick={handleUnmute} title="Sound einschalten">
                     🔇
                 </div>
             )}
 
-            {/* Muted indicator */}
             {audioStarted && (
                 <div className="mute-button" onClick={handleMute} title="Sound stumm schalten">
                     🔊
                 </div>
             )}
 
-            {/* Moon & Sky background (via CSS) */}
             <div className="moon" />
 
-            {/* Stars background */}
             <div className="stars">
                 {starPositions.map((pos, i) => (
-                    <div key={i} className="star" style={{
-                        left: `${pos.left}%`,
-                        top: `${pos.top}%`,
-                        animationDelay: `${pos.delay}s`
-                    }} />
+                    <div
+                        key={i}
+                        className="star"
+                        style={{
+                            left: `${pos.left}%`,
+                            top: `${pos.top}%`,
+                            animationDelay: `${pos.delay}s`,
+                        }}
+                    />
                 ))}
             </div>
 
-            {/* Story text animation */}
             <div className="intro-story">
                 <div className="story-text story-line-1">
                     <span>Die Meere rufen...</span>
@@ -120,26 +132,20 @@ export default function IntroAnimation() {
                 </div>
             </div>
 
-            {/* Ocean Waves with Pixel-Art Layers */}
             <div className="intro-ocean">
-                {/* Das Pixel-Art Schiff segelt zwischen den Ebenen */}
                 <div className="ship-container">
-                    <div className="ship-hull" /> {/* Emoji entfernt */}
+                    <div className="ship-hull" />
                 </div>
-
-                {/* Zwei Wellen-Ebenen für Parallax-Effekt */}
                 <div className="waves wave-1" />
                 <div className="waves wave-2" />
             </div>
 
-            {/* Skip button */}
             {showSkip && (
                 <div className="skip-button" onClick={handleSkip}>
                     <img src={skipIcon} alt="Überspringen" />
                 </div>
             )}
 
-            {/* Loading bar */}
             <div className="loading-bar">
                 <div className="loading-progress" />
             </div>

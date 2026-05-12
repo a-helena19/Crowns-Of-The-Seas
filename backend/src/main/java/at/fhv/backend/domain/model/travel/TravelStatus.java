@@ -5,5 +5,6 @@ public enum TravelStatus {
     IN_PROGRESS,
     ARRIVED,
     CANCELLED,
-    FAILED
+    FAILED,
+    COMPLETED
 }

@@ -2,6 +2,11 @@ package at.fhv.backend.rest;
 
 
 import at.fhv.backend.application.services.session.GameSessionService;
+import at.fhv.backend.domain.model.player.PlayerFaction;
+import at.fhv.backend.domain.model.player.exception.FactionAlreadyAssignedException;
+import at.fhv.backend.domain.model.player.exception.InvalidFactionException;
+import at.fhv.backend.domain.model.player.exception.PlayerNotFoundException;
+import at.fhv.backend.domain.model.session.exception.SessionNotFoundException;
 import at.fhv.backend.rest.dtos.session.request.*;
 import at.fhv.backend.rest.dtos.session.response.SessionDTO;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,6 +16,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -85,15 +92,60 @@ public class GameSessionRestController {
         return ResponseEntity.ok(gameSessionService.leaveSession(id, userId));
     }
 
-    /* TODO: remove the comment when it is needed in sprint2
-    @PatchMapping("/{id}/faction")
-    public ResponseEntity<SessionDTO> assignFaction(
-            @PathVariable UUID id,
-            @RequestBody AssignFactionRequest req) {
-        return ResponseEntity.ok(
-                gameSessionService.assignFaction(id, req.userId(), req.faction()));
+    @PostMapping("/{sessionId}/players/{userId}/faction")
+    public ResponseEntity<?> assignPlayerFaction(
+            @PathVariable UUID sessionId,
+            @PathVariable UUID userId,
+            @RequestBody AssignFactionRequest request) {
+
+        try {
+            gameSessionService.assignPlayerFaction(sessionId, userId, request.faction());
+            return ResponseEntity.ok().build();
+        } catch (SessionNotFoundException | PlayerNotFoundException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (FactionAlreadyAssignedException e) {
+            return ResponseEntity.badRequest().body("Faction already assigned for this player");
+        } catch (InvalidFactionException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
-     */
+    @GetMapping("/{sessionId}/players/{userId}/faction")
+    public ResponseEntity<?> getPlayerFaction(
+            @PathVariable UUID sessionId,
+            @PathVariable UUID userId) {
+
+        Optional<PlayerFaction> faction = gameSessionService.getPlayerFaction(sessionId, userId);
+        if (faction.isPresent()) {
+            return ResponseEntity.ok(Map.of("faction", faction.get()));
+        } else {
+            return ResponseEntity.ok(Map.of("faction", (String) null));
+        }
+    }
+
+    @PostMapping("/{sessionId}/players/{userId}/ready")
+    public ResponseEntity<?> markPlayerReady(
+            @PathVariable UUID sessionId,
+            @PathVariable UUID userId) {
+
+        try {
+            gameSessionService.markPlayerReady(sessionId, userId);
+            return ResponseEntity.ok().build();
+        } catch (SessionNotFoundException | PlayerNotFoundException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (InvalidFactionException e) {
+            return ResponseEntity.badRequest().body("Player must select faction first");
+        }
+    }
+
+    @GetMapping("/{sessionId}/ready-status")
+    public ResponseEntity<?> getReadyStatus(@PathVariable UUID sessionId) {
+        try {
+            Map<String, Object> status = gameSessionService.getSessionReadyStatus(sessionId);
+            return ResponseEntity.ok(status);
+        } catch (SessionNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 
 }

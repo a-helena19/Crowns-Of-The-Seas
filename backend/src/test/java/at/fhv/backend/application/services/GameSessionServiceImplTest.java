@@ -178,13 +178,13 @@ class GameSessionServiceImplTest {
     void givenLobbySession_whenHostStartsGame_thenStatusIsRunning() {
         UUID hostId = UUID.randomUUID();
         GameSession session = buildSavedSession(hostId, 4);
-        when(gameSessionRepository.findById(session.getId()))
+        when(gameSessionRepository.findByIdWithLock(session.getId()))
                 .thenReturn(Optional.of(session));
         when(gameSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         SessionDTO dto = service.startGame(session.getId(), hostId);
 
-        assertThat(dto.status()).isEqualTo("RUNNING");
+        assertThat(dto.status()).isEqualTo("FACTION_SELECTION");
         verify(webSocketController, times(1)).broadcastSessionUpdate(anyString(), any());
     }
 
@@ -193,7 +193,7 @@ class GameSessionServiceImplTest {
         UUID hostId = UUID.randomUUID();
         UUID nonHostId = UUID.randomUUID();
         GameSession session = buildSavedSession(hostId, 4);
-        when(gameSessionRepository.findById(session.getId()))
+        when(gameSessionRepository.findByIdWithLock(session.getId()))
                 .thenReturn(Optional.of(session));
 
         assertThatThrownBy(() -> service.startGame(session.getId(), nonHostId))
@@ -203,7 +203,7 @@ class GameSessionServiceImplTest {
     @Test
     void givenUnknownSessionId_whenStartGame_thenThrowsSessionNotFoundException() {
         UUID unknownId = UUID.randomUUID();
-        when(gameSessionRepository.findById(unknownId)).thenReturn(Optional.empty());
+        when(gameSessionRepository.findByIdWithLock(unknownId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.startGame(unknownId, UUID.randomUUID()))
                 .isInstanceOf(SessionNotFoundException.class);
@@ -213,8 +213,9 @@ class GameSessionServiceImplTest {
     void givenAlreadyRunningSession_whenStartGame_thenThrowsSessionNotInLobbyException() {
         UUID hostId = UUID.randomUUID();
         GameSession session = buildSavedSession(hostId, 4);
+        session.beginFactionSelection(hostId);
         session.start(hostId);
-        when(gameSessionRepository.findById(session.getId()))
+        when(gameSessionRepository.findByIdWithLock(session.getId()))
                 .thenReturn(Optional.of(session));
 
         assertThatThrownBy(() -> service.startGame(session.getId(), hostId))
@@ -227,7 +228,7 @@ class GameSessionServiceImplTest {
     void givenLobbySession_whenHostChangesTickRate_thenTickRateIsUpdatedInDTO() {
         UUID hostId = UUID.randomUUID();
         GameSession session = buildSavedSession(hostId, 4);
-        when(gameSessionRepository.findById(session.getId()))
+        when(gameSessionRepository.findByIdWithLock(session.getId()))
                 .thenReturn(Optional.of(session));
         when(gameSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -241,7 +242,7 @@ class GameSessionServiceImplTest {
         UUID hostId = UUID.randomUUID();
         UUID nonHost = UUID.randomUUID();
         GameSession session = buildSavedSession(hostId, 4);
-        when(gameSessionRepository.findById(session.getId()))
+        when(gameSessionRepository.findByIdWithLock(session.getId()))
                 .thenReturn(Optional.of(session));
 
         assertThatThrownBy(() -> service.changeTickRate(session.getId(), nonHost, 10))
@@ -252,7 +253,7 @@ class GameSessionServiceImplTest {
     void givenLobbySession_whenInvalidTickRate_thenThrowsInvalidTickRateException() {
         UUID hostId = UUID.randomUUID();
         GameSession session = buildSavedSession(hostId, 4);
-        when(gameSessionRepository.findById(session.getId()))
+        when(gameSessionRepository.findByIdWithLock(session.getId()))
                 .thenReturn(Optional.of(session));
 
         assertThatThrownBy(() -> service.changeTickRate(session.getId(), hostId, 0))
@@ -262,7 +263,7 @@ class GameSessionServiceImplTest {
     @Test
     void givenUnknownSessionId_whenChangeTickRate_thenThrowsSessionNotFoundException() {
         UUID unknownId = UUID.randomUUID();
-        when(gameSessionRepository.findById(unknownId)).thenReturn(Optional.empty());
+        when(gameSessionRepository.findByIdWithLock(unknownId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.changeTickRate(unknownId, UUID.randomUUID(), 10))
                 .isInstanceOf(SessionNotFoundException.class);
@@ -272,8 +273,9 @@ class GameSessionServiceImplTest {
     void givenRunningSession_whenChangeTickRate_thenThrowsSessionNotInLobbyException() {
         UUID hostId = UUID.randomUUID();
         GameSession session = buildSavedSession(hostId, 4);
+        session.beginFactionSelection(hostId);
         session.start(hostId);
-        when(gameSessionRepository.findById(session.getId()))
+        when(gameSessionRepository.findByIdWithLock(session.getId()))
                 .thenReturn(Optional.of(session));
 
         assertThatThrownBy(() -> service.changeTickRate(session.getId(), hostId, 10))
@@ -338,7 +340,7 @@ class GameSessionServiceImplTest {
     void givenTickRateAt60_whenChangeTickRate_thenTickRateIsUpdated() {
         UUID hostId = UUID.randomUUID();
         GameSession session = buildSavedSession(hostId, 4);
-        when(gameSessionRepository.findById(session.getId()))
+        when(gameSessionRepository.findByIdWithLock(session.getId()))
                 .thenReturn(Optional.of(session));
         when(gameSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -351,7 +353,7 @@ class GameSessionServiceImplTest {
     void givenTickRateTooHigh_whenChangeTickRate_thenThrowsInvalidTickRateException() {
         UUID hostId = UUID.randomUUID();
         GameSession session = buildSavedSession(hostId, 4);
-        when(gameSessionRepository.findById(session.getId()))
+        when(gameSessionRepository.findByIdWithLock(session.getId()))
                 .thenReturn(Optional.of(session));
 
         assertThatThrownBy(() -> service.changeTickRate(session.getId(), hostId, 61))
@@ -362,7 +364,7 @@ class GameSessionServiceImplTest {
     void givenTickRateNegative_whenChangeTickRate_thenThrowsInvalidTickRateException() {
         UUID hostId = UUID.randomUUID();
         GameSession session = buildSavedSession(hostId, 4);
-        when(gameSessionRepository.findById(session.getId()))
+        when(gameSessionRepository.findByIdWithLock(session.getId()))
                 .thenReturn(Optional.of(session));
 
         assertThatThrownBy(() -> service.changeTickRate(session.getId(), hostId, -5))

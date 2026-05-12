@@ -43,15 +43,24 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
             .then((ships: any[]) => {
                 const portsMap = new Map<string, string>();
                 ships
-                    .filter(s => s.status === "AT_PORT" && s.currentPortId)
+                    .filter(s => ["AT_PORT", "REFUELING", "REPAIRING", "LOADING", "UNLOADING", "READY_TO_DEPART"].includes(s.status) && s.currentPortId)
                     .forEach(s => {
                         const portName = window.__latestPorts?.find((p: any) => p.id === s.currentPortId)?.name ?? s.currentPortId;
                         portsMap.set(s.currentPortId, portName);
                     });
+
+                // Wenn keine Schiffe im Hafen → Default-Port (Hamburg) verwenden
+                if (portsMap.size === 0) {
+                    const hamburg = window.__latestPorts?.find((p: any) => p.name === "Hamburg");
+                    if (hamburg) {
+                        portsMap.set(hamburg.id, hamburg.name);
+                    }
+                }
+
                 const portList = Array.from(portsMap.entries()).map(([id, name]) => ({ id, name }));
                 setMyPorts(portList);
-                if (portList.length === 1) {
-                    setSelectedPortId(portList[0].id);
+                if (portList.length >= 1) {
+                    setSelectedPortId(prev => prev ?? portList[0].id);
                 }
             })
             .catch(console.error);

@@ -12,6 +12,8 @@ public interface ISessionPlayer {
     BigDecimal getBalance();
     void setHost(boolean host);
 
+    PlayerFaction getFaction();
+
     boolean hasSufficientBalance(BigDecimal amount);
     void addBalance(BigDecimal amount);
     void subtractBalance(BigDecimal amount);

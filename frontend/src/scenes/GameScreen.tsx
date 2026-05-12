@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import TopBar from "../components/TopBar.tsx";
 import Game from "../Game.tsx";
 import BottomBar from "../components/BottomBar.tsx";
@@ -11,6 +11,7 @@ import { useGameSessionWebSocket } from "../hooks/useGameSessionWebSocket.ts";
 import CargoManagementScreen from "../scenes/CargoManagementScreen";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
 import RewardToast from "../components/RewardToast.tsx";
+import SmuggleOfferDialog from "../components/SmuggleOfferDialog.tsx";
 import LeaderboardOverlay from "../components/LeaderboardOverlay";
 
 
@@ -33,6 +34,14 @@ export default function GameScreen() {
     const [rewardToasts, setRewardToasts] = useState<{
         id: string; shipName: string; from: string; to: string; reward: number;
     }[]>([]);
+    const [smuggleOffer, setSmuggleOffer] = useState<{
+        offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
+    } | null>(null);
+
+    const pendingSmuggleRef = useRef<{
+        offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
+    } | null>(null);
+    const departureActiveRef = useRef(false);
 
     function handleCargoAssigned(entry: AssignedCargoEntry) {
         setAssignedCargos(prev => {
@@ -79,11 +88,20 @@ export default function GameScreen() {
         return () => window.removeEventListener('port-clicked', onPortClicked);
     }, []);
 
+    // Ship positions → update cargo entries with tick data + paused state
     useEffect(() => {
         const handler = (e: Event) => {
             const detail = (e as CustomEvent<{
                 currentTick: number;
-                ships: { playerShipId: string; status: string; arrivalTick?: number; currentPortId?: string; travelId?: string }[]
+                ships: {
+                    playerShipId: string;
+                    status: string;
+                    arrivalTick?: number;
+                    startTick?: number;
+                    currentPortId?: string;
+                    travelId?: string;
+                    paused?: boolean;
+                }[]
             }>).detail;
 
             setAssignedCargos(prev => prev.map(entry => {
@@ -91,10 +109,25 @@ export default function GameScreen() {
                 const ship = detail.ships.find(s => s.playerShipId === entry.shipId);
                 if (!ship) return entry;
                 if (ship.status === "UNLOADING") {
-                    return  { ...entry, phase: "unloading", arrivalTick: ship.arrivalTick, currentTick: detail.currentTick, unloadingCompletedAtTick: ship.arrivalTick, };
+                    return {
+                        ...entry,
+                        phase: "unloading",
+                        arrivalTick: ship.arrivalTick,
+                        currentTick: detail.currentTick,
+                        unloadingCompletedAtTick: ship.arrivalTick,
+                        unloadingStartTick: entry.unloadingStartTick ?? detail.currentTick,
+                        paused: false,
+                    };
                 }
                 if (ship.status === "EN_ROUTE") {
-                    return { ...entry, currentTick: detail.currentTick, arrivalTick: ship.arrivalTick ?? entry.arrivalTick, };
+                    const isPaused = ship.paused === true;
+                    return {
+                        ...entry,
+                        currentTick: isPaused ? (entry.currentTick ?? detail.currentTick) : detail.currentTick,
+                        arrivalTick: ship.arrivalTick ?? entry.arrivalTick,
+                        startTick: entry.startTick ?? ship.startTick,
+                        paused: isPaused,
+                    };
                 }
                 return entry;
             }));
@@ -103,6 +136,7 @@ export default function GameScreen() {
         return () => window.removeEventListener("backend-ship-positions", handler);
     }, [playerId]);
 
+    // Travel complete → reward
     useEffect(() => {
         const handler = (e: Event) => {
             const data = (e as CustomEvent<{
@@ -110,7 +144,7 @@ export default function GameScreen() {
                 playerId: string;
                 totalReward: number;
                 baseReward: number;
-                cargoRewards: { actualReward: number; percentage: number; baseReward: number }[];
+                cargoRewards: { cargoId: string; cargoName: string; destinationPort: string; baseReward: number; bonusReward: number; actualReward: number; percentage: number; status: string; cargoType: string }[];
             }>).detail;
             if (data.playerId !== playerId) return;
 
@@ -119,17 +153,19 @@ export default function GameScreen() {
             setAssignedCargos(prev => {
                 const updated = prev.map(entry => {
                     if (entry.travelId !== data.travelId) return entry;
+                    const firstCargo = data.cargoRewards.find(r => r.cargoType !== "SMUGGLE");
                     return {
                         ...entry,
                         phase: "completed" as const,
                         reward: data.totalReward,
-                        rewardDetails: data.cargoRewards[0]
+                        rewardDetails: firstCargo
                             ? {
-                                baseReward: data.cargoRewards[0].baseReward,
-                                actualReward: data.cargoRewards[0].actualReward,
-                                percentage: data.cargoRewards[0].percentage
+                                baseReward: firstCargo.baseReward,
+                                actualReward: firstCargo.actualReward,
+                                percentage: firstCargo.percentage
                             }
                             : undefined,
+                        cargoRewards: data.cargoRewards,
                     };
                 });
                 return updated;
@@ -151,12 +187,105 @@ export default function GameScreen() {
                 }
                 return prev;
             });
-
-
         };
         window.addEventListener("travel-complete", handler);
         return () => window.removeEventListener("travel-complete", handler);
     }, [playerId]);
+
+    // Smuggle offer
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const data = (e as CustomEvent<{
+                offerId: string; playerId: string; portId: string;
+                travelId: string; playerShipId: string;
+                reward: number; cargoDescription: string;
+            }>).detail;
+            if (data.playerId !== playerId) return;
+            const offer = {
+                offerId: data.offerId,
+                portId: data.portId,
+                travelId: data.travelId,
+                playerShipId: data.playerShipId,
+                reward: data.reward,
+                cargoDescription: data.cargoDescription,
+            };
+            if (departureActiveRef.current) {
+                pendingSmuggleRef.current = offer;
+            } else {
+                setSmuggleOffer(offer);
+            }
+        };
+        window.addEventListener("smuggle-offer", handler);
+        return () => window.removeEventListener("smuggle-offer", handler);
+    }, [playerId]);
+
+    const handleDepartureComplete = useCallback(() => {
+        departureActiveRef.current = false;
+        const pending = pendingSmuggleRef.current;
+        if (pending) {
+            pendingSmuggleRef.current = null;
+            setTimeout(() => setSmuggleOffer(pending), 1000);
+        }
+    }, []);
+
+    const handleDepartureStarted = useCallback(() => {
+        departureActiveRef.current = true;
+        pendingSmuggleRef.current = null;
+    }, []);
+
+    async function handleSmuggleAccept() {
+        if (!smuggleOffer) return;
+        const token = localStorage.getItem("auth_token") ?? "";
+        try {
+            const res = await fetch(
+                `/api/smuggle/accept?playerId=${playerId}&sessionId=${sessionId}&offerId=${smuggleOffer.offerId}`,
+                { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (res.ok) {
+                setSmuggleOffer(null);
+            } else {
+                setSmuggleOffer(null);
+            }
+        } catch {
+            setSmuggleOffer(null);
+        }
+    }
+
+    function handleSmuggleDecline() {
+        if (!smuggleOffer) return;
+        const token = localStorage.getItem("auth_token") ?? "";
+        fetch(
+            `/api/smuggle/decline?playerId=${playerId}&offerId=${smuggleOffer.offerId}`,
+            { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+        ).catch(() => {});
+        setSmuggleOffer(null);
+    }
+
+    // Auto-complete loading phase
+    useEffect(() => {
+        const hasPendingLoading = assignedCargos.some(
+            e => e.phase === "loading" && !e.loadingDone
+        );
+        if (!hasPendingLoading) return;
+
+        const interval = setInterval(() => {
+            setAssignedCargos(prev => {
+                let changed = false;
+                const next = prev.map(entry => {
+                    if (entry.phase !== "loading" || entry.loadingDone) return entry;
+                    const elapsed = (Date.now() - entry.loadingStartedAt) / 1000;
+                    if (elapsed >= entry.loadingDurationSeconds) {
+                        changed = true;
+                        return { ...entry, loadingDone: true };
+                    }
+                    return entry;
+                });
+                return changed ? next : prev;
+            });
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [assignedCargos]);
 
     const handleSessionUpdate = useCallback(() => {}, []);
 
@@ -205,6 +334,8 @@ export default function GameScreen() {
                         onCargoRemoved={handleCargoRemoved}
                         onCargoPhaseChange={handleCargoPhaseChange}
                         onClose={() => setView("map")}
+                        onDepartureStarted={handleDepartureStarted}
+                        onDepartureComplete={handleDepartureComplete}
                     />
                 )}
             </div>
@@ -239,6 +370,17 @@ export default function GameScreen() {
                     onDismiss={() => setRewardToasts(prev => prev.filter(t => t.id !== toast.id))}
                 />
             ))}
+
+            {smuggleOffer && (
+                <SmuggleOfferDialog
+                    offerId={smuggleOffer.offerId}
+                    portId={smuggleOffer.portId}
+                    reward={smuggleOffer.reward}
+                    cargoDescription={smuggleOffer.cargoDescription}
+                    onAccept={handleSmuggleAccept}
+                    onDecline={handleSmuggleDecline}
+                />
+            )}
 
             {sessionId && (
                 <LeaderboardOverlay

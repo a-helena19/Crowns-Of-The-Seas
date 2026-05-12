@@ -1,9 +1,12 @@
 import { TOP_BAR_HEIGHT } from '../scenes/GameScreen';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import '../style/topbar.css';
 import moneyIcon from "../assets/icon-money.png";
 import timeIcon from "../assets/icon-clock.png";
 import shipIcon from "../assets/icon-ship.png";
+import { FACTION_DATA } from '../types/faction';
+import type { PlayerFaction } from '../types/faction';
+import { sessionApi } from '../api/sessionApi';
 
 
 export default function TopBar() {
@@ -11,6 +14,10 @@ export default function TopBar() {
     const [shipCount, setShipCount] = useState<number | null>(null);
     const [currentTick, setCurrentTick] = useState<number | null>(null);
     const [totalTicks, setTotalTicks] = useState<number | null>(null);
+    const [faction, setFaction] = useState<PlayerFaction | null>(null);
+    const [factionPanelOpen, setFactionPanelOpen] = useState(false);
+
+    const factionWrapperRef = useRef<HTMLDivElement | null>(null);
 
     const userData = localStorage.getItem('crowns_user');
     const playerId = userData ? JSON.parse(userData).id : null;
@@ -59,6 +66,36 @@ export default function TopBar() {
         return () => window.removeEventListener('backend-tick', handleTick);
     }, []);
 
+    // Faction des Spielers laden (einmalig beim Mount)
+    useEffect(() => {
+        if (!playerId || !sessionId) return;
+        sessionApi.getPlayerFaction(sessionId, playerId)
+            .then(result => {
+                if (result?.faction) {
+                    setFaction(result.faction as PlayerFaction);
+                }
+            })
+            .catch(err => console.warn('Could not load player faction:', err));
+    }, [playerId, sessionId]);
+
+    // Klick außerhalb schließt das Panel
+    useEffect(() => {
+        if (!factionPanelOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (factionWrapperRef.current && !factionWrapperRef.current.contains(e.target as Node)) {
+                setFactionPanelOpen(false);
+            }
+        };
+        // Mit kleinem Delay registrieren, damit der gleiche Klick nicht direkt schließt
+        const t = setTimeout(() => document.addEventListener('mousedown', handler), 0);
+        return () => {
+            clearTimeout(t);
+            document.removeEventListener('mousedown', handler);
+        };
+    }, [factionPanelOpen]);
+
+    const factionData = faction ? FACTION_DATA[faction] : null;
+
     return (
         <div className="topbar-container" style={{ height: TOP_BAR_HEIGHT }}>
             <div className="topbar-left">
@@ -88,7 +125,76 @@ export default function TopBar() {
                 </div>
             </div>
 
-            <div className="topbar-right" />
+            <div className="topbar-right">
+                {factionData && (
+                    <div className="topbar-faction-wrapper" ref={factionWrapperRef}>
+                        <button
+                            type="button"
+                            className={`topbar-panel topbar-faction-btn ${factionPanelOpen ? 'is-open' : ''}`}
+                            onClick={() => setFactionPanelOpen(o => !o)}
+                            aria-expanded={factionPanelOpen}
+                            aria-haspopup="dialog"
+                            title={`Fraktion: ${factionData.name}`}
+                        >
+                            <div className="topbar-faction-icon">
+                                <img
+                                    src={factionData.icon1}
+                                    alt={factionData.name}
+                                    className="topbar-faction-icon-img"
+                                />
+                            </div>
+                            <span className="topbar-value topbar-faction-name">
+                                {factionData.name}
+                            </span>
+                        </button>
+
+                        {factionPanelOpen && (
+                            <div
+                                className="faction-popover"
+                                role="dialog"
+                                aria-label={`Beschreibung Fraktion ${factionData.name}`}
+                            >
+                                <div
+                                    className="faction-popover-accent"
+                                    style={{ background: factionData.color }}
+                                />
+                                <div className="faction-popover-header">
+                                    <div className="faction-popover-icon">
+                                        <img
+                                            src={factionData.icon1}
+                                            alt=""
+                                            className="faction-popover-icon-img frame1"
+                                        />
+
+                                        <img
+                                            src={factionData.icon2}
+                                            alt=""
+                                            className="faction-popover-icon-img frame2"
+                                        />
+                                    </div>
+                                    <div className="faction-popover-titles">
+                                        <h3 className="faction-popover-name">
+                                            {factionData.name}
+                                        </h3>
+                                        <span className="faction-popover-label">
+                                            DEINE FRAKTION
+                                        </span>
+                                    </div>
+                                </div>
+                                <p className="faction-popover-desc">
+                                    {factionData.description}
+                                </p>
+                                <ul className="faction-popover-pros">
+                                    {factionData.pros.map((p, i) => <li key={i}>{p}</li>)}
+                                </ul>
+                                <ul className="faction-popover-cons">
+                                    {factionData.cons.map((c, i) => <li key={i}>{c}</li>)}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

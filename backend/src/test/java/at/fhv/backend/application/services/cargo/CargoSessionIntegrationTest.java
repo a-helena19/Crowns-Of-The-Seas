@@ -118,7 +118,8 @@ class CargoSessionIntegrationTest {
     private PlayerShip persistPlayerShip(UUID playerId, UUID sessionId, UUID shipId, UUID portId) {
         PlayerShip ps = PlayerShip.reconstruct(
                 UUID.randomUUID(), shipId, playerId, sessionId,
-                ShipStatus.AT_PORT, 100.0, 100.0, portId, null, -1, -1);
+                ShipStatus.AT_PORT, 100.0, 100.0, portId, null,
+                -1, -1, -1, -1, 0.0, 0.0);
         return playerShipRepository.save(ps);
     }
 
@@ -192,7 +193,7 @@ class CargoSessionIntegrationTest {
         persistAvailableSessionCargo(sessionId, t1.getId(), portA, UUID.randomUUID(), 50);
         persistAvailableSessionCargo(sessionId, t2.getId(), portB, UUID.randomUUID(), 70);
 
-        List<SessionCargoDTO> result = cargoQueryService.getAvailableCargos(sessionId, portA);
+        List<SessionCargoDTO> result = cargoQueryService.getAvailableCargos(sessionId, portA, hostId);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getOriginPortId()).isEqualTo(portA);
@@ -209,7 +210,7 @@ class CargoSessionIntegrationTest {
         UUID portB = UUID.randomUUID();
         persistAvailableSessionCargo(sessionId, t1.getId(), portA, UUID.randomUUID(), 50);
 
-        List<SessionCargoDTO> result = cargoQueryService.getAvailableCargos(sessionId, portB);
+        List<SessionCargoDTO> result = cargoQueryService.getAvailableCargos(sessionId, portB, hostId);
 
         assertThat(result).isEmpty();
     }
@@ -395,14 +396,14 @@ class CargoSessionIntegrationTest {
         SessionCargo sc = persistAvailableSessionCargo(
                 sessionId, template.getId(), portId, UUID.randomUUID(), 40);
 
-        List<SessionCargoDTO> before = cargoQueryService.getAvailableCargos(sessionId, portId);
+        List<SessionCargoDTO> before = cargoQueryService.getAvailableCargos(sessionId, portId, hostId);
         assertThat(before).hasSize(1);
 
         Ship ship = persistShip(100, 12.0);
         PlayerShip playerShip = persistPlayerShip(hostId, sessionId, ship.getId(), portId);
         acceptCargoService.acceptCargo(hostId, sessionId, buildRequest(sc.getId(), playerShip.getId()));
 
-        List<SessionCargoDTO> after = cargoQueryService.getAvailableCargos(sessionId, portId);
+        List<SessionCargoDTO> after = cargoQueryService.getAvailableCargos(sessionId, portId, hostId);
         assertThat(after).isEmpty();
     }
 }

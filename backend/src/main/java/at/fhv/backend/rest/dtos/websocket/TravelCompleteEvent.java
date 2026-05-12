@@ -9,18 +9,20 @@ public class TravelCompleteEvent {
     private List<CargoRewardBreakdown> cargoRewards;
     private BigDecimal baseReward;
     private BigDecimal totalReward;
+    private BigDecimal bonusReward;
     private BigDecimal previousBalance;
     private BigDecimal newBalance;
 
     public TravelCompleteEvent(String travelId, String playerId,
                                List<CargoRewardBreakdown> cargoRewards,
-                               BigDecimal baseReward, BigDecimal totalReward,
+                               BigDecimal baseReward, BigDecimal totalReward, BigDecimal bonusReward,
                                BigDecimal previousBalance, BigDecimal newBalance) {
         this.travelId = travelId;
         this.playerId = playerId;
         this.cargoRewards = cargoRewards;
         this.baseReward = baseReward;
         this.totalReward = totalReward;
+        this.bonusReward = bonusReward;
         this.previousBalance = previousBalance;
         this.newBalance = newBalance;
     }
@@ -51,5 +53,9 @@ public class TravelCompleteEvent {
 
     public BigDecimal getNewBalance() {
         return newBalance;
+    }
+
+    public BigDecimal getBonusReward() {
+        return bonusReward;
     }
 }

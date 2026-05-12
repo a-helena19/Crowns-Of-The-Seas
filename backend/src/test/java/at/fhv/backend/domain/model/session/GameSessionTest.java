@@ -80,6 +80,7 @@ class GameSessionTest {
     void givenRunningSession_whenAddPlayer_thenThrowsSessionNotInLobbyException() {
         ISessionPlayer host = new BaseSessionPlayer(hostId, session.getId(), "Host", true);
         session.addPlayer(host);
+        session.beginFactionSelection(hostId);
         session.start(hostId);
 
         ISessionPlayer late = new BaseSessionPlayer(UUID.randomUUID(), session.getId(), "Late", false);
@@ -99,6 +100,7 @@ class GameSessionTest {
     @Test
     void givenLobbySession_whenHostStarts_thenStatusIsRunning() {
         session.addPlayer(new BaseSessionPlayer(hostId, session.getId(), "Host", true));
+        session.beginFactionSelection(hostId);
         session.start(hostId);
         assertThat(session.getStatus()).isEqualTo(SessionStatus.RUNNING);
     }
@@ -106,6 +108,7 @@ class GameSessionTest {
     @Test
     void givenLobbySession_whenHostStarts_thenStartTimeIsSet() {
         session.addPlayer(new BaseSessionPlayer(hostId, session.getId(), "Host", true));
+        session.beginFactionSelection(hostId);
         session.start(hostId);
         assertThat(session.getStartTime()).isNotNull();
     }
@@ -121,6 +124,7 @@ class GameSessionTest {
     @Test
     void givenRunningSession_whenStartAgain_thenThrowsSessionNotInLobbyException() {
         session.addPlayer(new BaseSessionPlayer(hostId, session.getId(), "Host", true));
+        session.beginFactionSelection(hostId);
         session.start(hostId);
         assertThatThrownBy(() -> session.start(hostId))
                 .isInstanceOf(SessionNotInLobbyException.class);
@@ -168,6 +172,7 @@ class GameSessionTest {
     @Test
     void givenRunningSession_whenChangeTickRate_thenThrowsSessionNotInLobbyException() {
         session.addPlayer(new BaseSessionPlayer(hostId, session.getId(), "Host", true));
+        session.beginFactionSelection(hostId);
         session.start(hostId);
         assertThatThrownBy(() -> session.changeTickRate(hostId, 10))
                 .isInstanceOf(SessionNotInLobbyException.class);
@@ -178,6 +183,7 @@ class GameSessionTest {
     @Test
     void givenRunningSession_whenTick_thenCurrentTickIncremented() {
         session.addPlayer(new BaseSessionPlayer(hostId, session.getId(), "Host", true));
+        session.beginFactionSelection(hostId);
         session.start(hostId);
         session.tick();
         assertThat(session.getCurrentTick()).isEqualTo(1);
@@ -192,6 +198,7 @@ class GameSessionTest {
     @Test
     void givenRunningSession_whenTickMultipleTimes_thenCountsCorrectly() {
         session.addPlayer(new BaseSessionPlayer(hostId, session.getId(), "Host", true));
+        session.beginFactionSelection(hostId);
         session.start(hostId);
         for (int i = 0; i < 5; i++) session.tick();
         assertThat(session.getCurrentTick()).isEqualTo(5);
@@ -219,7 +226,7 @@ class GameSessionTest {
 
     @Test
     void givenLobbyStatus_thenCanTransitionToRunning() {
-        assertThat(SessionStatus.LOBBY.canTransitionTo(SessionStatus.RUNNING)).isTrue();
+        assertThat(SessionStatus.LOBBY.canTransitionTo(SessionStatus.FACTION_SELECTION)).isTrue();
     }
 
     @Test

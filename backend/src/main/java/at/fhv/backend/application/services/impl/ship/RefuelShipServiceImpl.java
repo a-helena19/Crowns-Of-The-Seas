@@ -9,6 +9,8 @@ import at.fhv.backend.domain.model.exception.ShipNotOwnedException;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.domain.model.player.exception.PlayerNotFoundException;
+import at.fhv.backend.domain.model.session.GameSession;
+import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.ship.Ship;
@@ -26,20 +28,24 @@ import java.util.UUID;
 public class RefuelShipServiceImpl implements RefuelShipService {
 
     private static final double FUEL_PRICE_PER_UNIT = 3.0;
+    private static final int BASE_REFUELING_TICKS = 3;
 
     private final PlayerShipRepository playerShipRepository;
     private final ShipRepository shipRepository;
     private final SessionPlayerRepository sessionPlayerRepository;
     private final GameTickScheduler gameTickScheduler;
+    private final GameSessionRepository gameSessionRepository;
 
     public RefuelShipServiceImpl(PlayerShipRepository playerShipRepository,
                                  ShipRepository shipRepository,
                                  SessionPlayerRepository sessionPlayerRepository,
-                                 GameTickScheduler gameTickScheduler) {
+                                 GameTickScheduler gameTickScheduler,
+                                 GameSessionRepository gameSessionRepository) {
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
         this.sessionPlayerRepository = sessionPlayerRepository;
         this.gameTickScheduler = gameTickScheduler;
+        this.gameSessionRepository = gameSessionRepository;
     }
 
     @Override
@@ -58,24 +64,41 @@ public class RefuelShipServiceImpl implements RefuelShipService {
 
         double fuelNeededPercent = 100.0 - playerShip.getFuel();
         double fuelNeededAbsolute = fuelNeededPercent / 100.0 * ship.getMaxFuel().doubleValue();
-        BigDecimal totalCost = BigDecimal.valueOf(fuelNeededAbsolute * FUEL_PRICE_PER_UNIT)
-                .setScale(2, RoundingMode.HALF_UP);
 
         ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
                 .orElseThrow(() -> new PlayerNotFoundException(playerId));
+
+        double costModifier = player.getFuelCostModifier();
+        BigDecimal totalCost = BigDecimal.valueOf(fuelNeededAbsolute * FUEL_PRICE_PER_UNIT * costModifier)
+                .setScale(2, java.math.RoundingMode.HALF_UP);
 
         if (player.getBalance().compareTo(totalCost) < 0) {
             throw new InsufficientFundsException(totalCost, player.getBalance());
         }
 
-        playerShip.addFuel(fuelNeededPercent);
-        playerShipRepository.save(playerShip);
-
         player.subtractBalance(totalCost);
         sessionPlayerRepository.save(player);
 
+        GameSession session = gameSessionRepository.findById(sessionId).orElse(null);
+        int currentTick = session != null ? session.getCurrentTick() : 0;
+
+        double fuelFactor = 1.0 + (fuelNeededPercent / 100.0);
+        double timeModifier = player.getFuelTimeModifier();
+        int refuelingTicks = (int) Math.ceil(BASE_REFUELING_TICKS * fuelFactor * timeModifier);
+        refuelingTicks = Math.max(1, refuelingTicks);
+        int completedAtTick = currentTick + refuelingTicks;
+
+        playerShip.startRefueling(completedAtTick, fuelNeededPercent);
+        playerShipRepository.save(playerShip);
+
         gameTickScheduler.triggerImmediateBroadcast(sessionId);
 
-        return new RefuelResponseDTO(playerShip.getFuel(), totalCost, player.getBalance());
+        return new RefuelResponseDTO(
+                playerShip.getFuel(),
+                totalCost,
+                player.getBalance(),
+                completedAtTick,
+                refuelingTicks
+        );
     }
 }

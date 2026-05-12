@@ -3,6 +3,7 @@ package at.fhv.backend.infrastructure.mapper;
 import at.fhv.backend.domain.model.player.BaseSessionPlayer;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.player.PlayerFaction;
+import at.fhv.backend.domain.model.player.decorator.FactionDecoratorFactory;
 import at.fhv.backend.infrastructure.persistence.player.SessionPlayerEntity;
 import org.springframework.stereotype.Component;
 
@@ -17,26 +18,11 @@ public class SessionPlayerMapperImpl implements SessionPlayerMapper {
                 entity.getSessionId(),
                 entity.getPlayerName(),
                 entity.isHost(),
-                entity.getBalance()
+                entity.getBalance(),
+                entity.getFaction()
         );
 
-        return player;
-
-        // TODO: implement faction decorators and remove this comment in sprint 2
-        /*
-        if (entity.getFaction() == null) return player;
-
-        return switch (entity.getFaction()) {
-            case ENGINEERS      -> new EngineerDecorator(player);
-            case REFINERIES     -> new RefineryDecorator(player);
-            case HARBOR_MASTERS -> new HarborMasterDecorator(player);
-            case SMUGGLERS      -> new SmugglerDecorator(player);
-            case SCOUTS         -> new ScoutDecorator(player);
-            case TRADERS        -> new TraderDecorator(player);
-            case QUICK_SERVICE  -> new QuickServiceDecorator(player);
-        };
-
-         */
+        return FactionDecoratorFactory.createDecoratedPlayer(player, entity.getFaction());
     }
 
     @Override

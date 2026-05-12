@@ -5,19 +5,17 @@ import at.fhv.backend.rest.dtos.cargo.response.SessionCargoDTO;
 import java.util.List;
 
 public class CargoMarketUpdateEvent {
-    private List<SessionCargoDTO> availableCargos;
+    private boolean refreshNeeded;
 
-    public CargoMarketUpdateEvent() {}
-
-    public CargoMarketUpdateEvent(List<SessionCargoDTO> availableCargos) {
-        this.availableCargos = availableCargos;
+    public CargoMarketUpdateEvent() {
+        this.refreshNeeded = true;
     }
 
-    public List<SessionCargoDTO> getAvailableCargos() {
-        return availableCargos;
+    public boolean isRefreshNeeded() {
+        return refreshNeeded;
     }
 
-    public void setAvailableCargos(List<SessionCargoDTO> availableCargos) {
-        this.availableCargos = availableCargos;
+    public void setRefreshNeeded(boolean refreshNeeded) {
+        this.refreshNeeded = refreshNeeded;
     }
 }

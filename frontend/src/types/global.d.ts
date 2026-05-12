@@ -12,12 +12,13 @@ interface Window {
         iconUrl: string;
         x: number;
         y: number;
-        status: 'EN_ROUTE' | 'AT_PORT' | 'LOADING' | 'UNLOADING' | 'READY_TO_DEPART';
+        status: 'EN_ROUTE' | 'AT_PORT' | 'LOADING' | 'UNLOADING' | 'READY_TO_DEPART' | 'REFUELING' | 'REPAIRING';
         arrivalTick: number | null;
         originX: number | null;
         originY: number | null;
         destX: number | null;
         destY: number | null;
         startTick: number | null;
+        paused?: boolean;
     }>;
 }
