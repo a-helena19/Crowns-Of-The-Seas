@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public interface PlayerShipRepository {
     PlayerShip save(PlayerShip playerShip);
+    void deleteById(UUID id);
 
     Optional<PlayerShip> findById(UUID id);
 
@@ -23,4 +24,6 @@ public interface PlayerShipRepository {
             UUID sessionId,
             ShipStatus status
     );
+
+    long countByShipIdAndSessionId(UUID shipId, UUID sessionId);
 }

@@ -1,4 +1,3 @@
-// SessionDTO
 export interface SessionDTO {
     id: string;
     gameCode: string;
@@ -17,6 +16,7 @@ export interface SessionPlayerDTO {
     playerName: string;
     isHost: boolean;
     faction: string | null;
+    homePortId: string | null;
 }
 
 // Request DTOs

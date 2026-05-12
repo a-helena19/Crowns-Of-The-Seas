@@ -31,6 +31,11 @@ public class PlayerShipRepositoryImpl implements PlayerShipRepository {
     }
 
     @Override
+    public void deleteById(UUID id) {
+        playerShipJpaRepository.deleteById(id);
+    }
+
+    @Override
     public Optional<PlayerShip> findById(UUID id) {
         return playerShipJpaRepository.findById(id)
                 .map(playerShipMapper::toDomainModel);
@@ -67,5 +72,10 @@ public class PlayerShipRepositoryImpl implements PlayerShipRepository {
                 .stream()
                 .map(playerShipMapper::toDomainModel)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public long countByShipIdAndSessionId(UUID shipId, UUID sessionId) {
+        return playerShipJpaRepository.countByShipIdAndSessionId(shipId, sessionId);
     }
 }

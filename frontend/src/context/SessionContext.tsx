@@ -1,5 +1,6 @@
 import { createContext, useState, type ReactNode, useCallback } from 'react';
 import { sessionApi } from '../api/sessionApi';
+import type { PlayerFaction } from '../types/faction';
 
 export interface Session {
     id: string;
@@ -8,6 +9,12 @@ export interface Session {
     hostName: string;
     players: number;
     maxPlayers: number;
+    playersList?: Array<{
+        userId: string;
+        playerName: string;
+        isHost: boolean;
+        faction?: PlayerFaction | null;
+    }>;
 }
 
 interface SessionContextType {
@@ -17,6 +24,9 @@ interface SessionContextType {
     startSession: (sessionId: string) => Promise<void>;
     getSessionByCode: (gameCode: string) => Session | null;
     updateSessionPlayers: (gameCode: string, playerCount: number) => void;
+    assignPlayerFaction: (sessionId: string, userId: string, faction: PlayerFaction) => Promise<void>;
+    markPlayerReady: (sessionId: string, userId: string) => Promise<void>;
+    getReadyStatus: (sessionId: string) => Promise<any>;
 }
 
 export type { SessionContextType };
@@ -44,7 +54,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                 status: response.status as 'LOBBY' | 'RUNNING' | 'FINISHED',
                 hostName,
                 players: response.players.length,
-                maxPlayers
+                maxPlayers,
+                playersList: response.players.map(p => ({
+                    userId: p.userId,
+                    playerName: p.playerName,
+                    isHost: p.isHost,
+                    faction: p.faction as PlayerFaction | null
+                }))
             };
 
             setSessions(prev => [...prev, newSession]);
@@ -79,7 +95,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                 status: response.status as 'LOBBY' | 'RUNNING' | 'FINISHED',
                 hostName,
                 players: response.players.length,
-                maxPlayers: response.maxPlayers
+                maxPlayers: response.maxPlayers,
+                playersList: response.players.map(p => ({
+                    userId: p.userId,
+                    playerName: p.playerName,
+                    isHost: p.isHost,
+                    faction: p.faction as PlayerFaction | null
+                }))
             };
 
             console.log('Creating session object:', updatedSession);
@@ -130,15 +152,59 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         );
     }, []);
 
+    const assignPlayerFaction = useCallback(
+        async (sessionId: string, userId: string, faction: PlayerFaction) => {
+            try {
+                await sessionApi.assignPlayerFaction(sessionId, userId, faction);
+                console.log(`✓ Faction ${faction} assigned to player ${userId}`);
+            } catch (error: unknown) {
+                console.error('Error assigning faction:', error);
+                throw error;
+            }
+        },
+        []
+    );
+
+    const markPlayerReady = useCallback(
+        async (sessionId: string, userId: string) => {
+            try {
+                await sessionApi.markPlayerReady(sessionId, userId);
+                console.log(`✓ Player ${userId} marked as ready`);
+            } catch (error: unknown) {
+                console.error('Error marking player ready:', error);
+                throw error;
+            }
+        },
+        []
+    );
+
+    const getReadyStatus = useCallback(
+        async (sessionId: string) => {
+            try {
+                const status = await sessionApi.getReadyStatus(sessionId);
+                return status;
+            } catch (error: unknown) {
+                console.error('Error getting ready status:', error);
+                throw error;
+            }
+        },
+        []
+    );
+
     return (
-        <SessionContext.Provider value={{
-            sessions,
-            createSession,
-            joinSession,
-            startSession,
-            getSessionByCode,
-            updateSessionPlayers
-        }}>
+        <SessionContext.Provider
+            value={{
+                sessions,
+                createSession,
+                joinSession,
+                startSession,
+                getSessionByCode,
+                updateSessionPlayers,
+                assignPlayerFaction,
+                markPlayerReady,
+                getReadyStatus,
+            }}
+        >
             {children}
         </SessionContext.Provider>
     );

@@ -5,11 +5,13 @@ import at.fhv.backend.domain.model.port.Port;
 import at.fhv.backend.domain.model.port.PortRepository;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
+@Order(1)
 public class PortDataInitializer implements ApplicationRunner {
 
     private final PortRepository portRepository;
@@ -25,16 +27,16 @@ public class PortDataInitializer implements ApplicationRunner {
         }
 
         List<Port> defaultPorts = List.of(
-                Port.create("Hamburg",      Coordinates.of(49.5, 22.0)),
-                Port.create("Rotterdam",    Coordinates.of(47.8, 23.5)),
-                Port.create("New York",     Coordinates.of(24.5, 29.0)),
-                Port.create("Santos",       Coordinates.of(30.0, 57.0)),
-                Port.create("Kapstadt",     Coordinates.of(51.5, 63.0)),
-                Port.create("Mumbai",       Coordinates.of(65.0, 38.5)),
-                Port.create("Singapur",     Coordinates.of(74.5, 46.5)),
-                Port.create("Shanghai",     Coordinates.of(79.5, 30.5)),
-                Port.create("Sydney",       Coordinates.of(84.0, 68.0)),
-                Port.create("Los Angeles",  Coordinates.of(11.5, 33.0))
+                Port.create("Hamburg",      Coordinates.of(47.1, 28.6)),
+                Port.create("Rotterdam",    Coordinates.of(46.3, 29.5)),
+                Port.create("New York",     Coordinates.of(26.1, 37.7)),
+                Port.create("Santos",       Coordinates.of(33.9, 71.4)),
+                Port.create("Kapstadt",     Coordinates.of(50.0, 77.1)),
+                Port.create("Mumbai",       Coordinates.of(63.7, 50.0)),
+                Port.create("Singapur",     Coordinates.of(70.9, 58.0)),
+                Port.create("Shanghai",     Coordinates.of(75.0, 43.0)),
+                Port.create("Sydney",       Coordinates.of(82.1, 80.2)),
+                Port.create("Los Angeles",  Coordinates.of(15.4, 40.2))
         );
 
         defaultPorts.forEach(portRepository::save);

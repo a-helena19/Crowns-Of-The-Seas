@@ -1,0 +1,240 @@
+.mgmt-scene {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.mgmt-panel {
+    background: #fff1e9;
+    border: 6px solid #5a3a0a;
+    border-radius: 12px;
+    box-shadow: 4px 4px 0 #2a1408;
+    padding: 24px 28px;
+    width: 560px;
+    max-width: 95vw;
+    color: #2a1a05;
+    font-family: var(--font-body);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* ── Header ─────────────────────────────────────────── */
+.mgmt-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 2px solid #c89b3c;
+    padding-bottom: 10px;
+}
+
+.mgmt-header-icon { font-size: 24px; }
+
+.mgmt-title {
+    font-family: var(--font-game);
+    font-size: 20px;
+    color: #3d1f0a;
+    margin: 0;
+}
+
+/* ── Ship overview ──────────────────────────────────── */
+.mgmt-ship-overview {
+    background: #f5e8d0;
+    border: 2px solid #c89b3c;
+    border-radius: 6px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mgmt-ship-name {
+    font-family: var(--font-game);
+    font-size: 16px;
+    color: #5a3a0a;
+    text-align: center;
+}
+
+.mgmt-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mgmt-bar-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: #3d1f0a;
+}
+
+.mgmt-bar-label { font-weight: 600; }
+
+.mgmt-bar-value { font-family: var(--font-game); font-size: 13px; }
+.mgmt-bar-value.bar-ok  { color: #3a8a3a; }
+.mgmt-bar-value.bar-mid { color: #b07a10; }
+.mgmt-bar-value.bar-low { color: #b03020; }
+
+.mgmt-bar-track {
+    width: 100%;
+    height: 10px;
+    background: #d4c8a8;
+    border: 1px solid #8b5a2b;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.mgmt-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+.mgmt-bar-fill.bar-ok  { background: #4caf50; }
+.mgmt-bar-fill.bar-mid { background: #f0a020; }
+.mgmt-bar-fill.bar-low { background: #e05030; }
+
+.mgmt-balance {
+    font-size: 13px;
+    color: #3d1f0a;
+    text-align: right;
+}
+
+/* ── Action cards ────────────────────────────────────── */
+.mgmt-actions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.mgmt-action-card {
+    background: #fdf5e8;
+    border: 2px solid #8b5a2b;
+    border-radius: 8px;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mgmt-action-title {
+    font-family: var(--font-game);
+    font-size: 15px;
+    color: #3d1f0a;
+    border-bottom: 1px solid #c89b3c;
+    padding-bottom: 6px;
+    margin-bottom: 2px;
+}
+
+.mgmt-action-info,
+.mgmt-action-cost {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #3d1f0a;
+}
+
+.mgmt-action-cost {
+    border-top: 1px solid #e0c880;
+    padding-top: 6px;
+}
+
+.mgmt-cost-value {
+    font-family: var(--font-game);
+    font-size: 14px;
+    color: #8b3a10;
+    font-weight: bold;
+}
+
+.mgmt-action-done {
+    font-size: 13px;
+    color: #3a8a3a;
+    font-style: italic;
+    flex: 1;
+}
+
+.mgmt-action-warn {
+    font-size: 12px;
+    color: #b03020;
+}
+
+/* ── Misc ────────────────────────────────────────────── */
+.mgmt-error {
+    color: #b03020;
+    font-size: 13px;
+    text-align: center;
+}
+
+.mgmt-loading {
+    text-align: center;
+    color: #5a3a0a;
+    font-family: var(--font-game);
+    padding: 20px;
+}
+
+.mgmt-close-row {
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* ── Background task banner (lives in HarborScene) ───── */
+.bg-task-banner {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20, 10, 3, 0.94);
+    border: 2px solid #c89b3c;
+    border-radius: 8px;
+    padding: 10px 20px 6px;
+    z-index: 800;
+    min-width: 260px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    animation: banner-in 0.3s ease-out;
+}
+
+@keyframes banner-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.bg-task-banner.hiding {
+    animation: banner-out 0.4s ease-in forwards;
+}
+
+@keyframes banner-out {
+    from { opacity: 1; transform: translateX(-50%) translateY(0); }
+    to   { opacity: 0; transform: translateX(-50%) translateY(12px); }
+}
+
+.bg-task-banner-text {
+    font-family: var(--font-game);
+    font-size: 14px;
+    color: #e8d9b0;
+    white-space: nowrap;
+}
+
+.bg-task-bar-track {
+    width: 100%;
+    height: 5px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.bg-task-bar-fill {
+    height: 100%;
+    background: #c89b3c;
+    border-radius: 3px;
+    animation: bg-task-progress 2.2s ease-out forwards;
+}
+
+@keyframes bg-task-progress {
+    from { width: 0%; }
+    to   { width: 100%; }
+}

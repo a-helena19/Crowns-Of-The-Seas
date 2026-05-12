@@ -6,6 +6,7 @@ import at.fhv.backend.domain.model.exception.InvalidShipStatusTransition;
 import at.fhv.backend.domain.model.exception.SamePortException;
 import at.fhv.backend.domain.model.exception.ShipNotOwnedException;
 import at.fhv.backend.domain.model.ship.PlayerShip;
+import at.fhv.backend.domain.model.ship.Ship;
 import at.fhv.backend.domain.model.ship.ShipStatus;
 import org.springframework.stereotype.Service;
 
@@ -13,23 +14,28 @@ import java.util.UUID;
 
 @Service
 public class ValidateTravelServiceImpl implements ValidateTravelService {
+
     @Override
-    public void validateTravelStart(PlayerShip playerShip, UUID playerId, UUID originPortId, UUID destinationPortId, double requiredFuelPercent) {
+    public void validateTravelStart(PlayerShip playerShip, Ship ship, UUID playerId,
+                                    UUID originPortId, UUID destinationPortId,
+                                    double requiredFuelAbsolute) {
         if (!playerShip.isOwnedBy(playerId)) {
             throw new ShipNotOwnedException("Ship is not owned by player", playerId);
         }
 
-        if (playerShip.getStatus() != ShipStatus.AT_PORT) {
-            throw new InvalidShipStatusTransition("Ship must be AT_PORT", "shipId", playerShip.getId());
+        if (playerShip.getStatus() != ShipStatus.READY_TO_DEPART) {
+            throw new InvalidShipStatusTransition("Ship must be READY_TO_DEPART", "shipId", playerShip.getId());
         }
 
         if (originPortId != null && originPortId.equals(destinationPortId)) {
             throw new SamePortException("Same origin and destination port: ", originPortId);
         }
 
-        // TODO Elif: fuel validation, kann aktuell fuel nicht berechnen, da die distance Berechnung fehlt.
-        // if (playerShip.getFuel() < requiredFuelPercent) {
-        //    throw new InsufficientFuelException("Insufficient fuel", requiredFuelPercent, playerShip.getFuel());
-        //}
+        double availableFuelAbsolute = (playerShip.getFuel() / 100.0) * ship.getMaxFuel().doubleValue();
+
+        if (availableFuelAbsolute < requiredFuelAbsolute) {
+            double requiredPercent = (requiredFuelAbsolute / ship.getMaxFuel().doubleValue()) * 100.0;
+            throw new InsufficientFuelException("Insufficient fuel", requiredPercent, playerShip.getFuel());
+        }
     }
 }

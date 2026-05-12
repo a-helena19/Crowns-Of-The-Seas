@@ -10,6 +10,13 @@
     object-position: 30% center;
 }
 
+.scene {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
 .bubble {
     position: absolute;
     bottom: 180px;
@@ -24,7 +31,6 @@
     min-width: 420px;
 }
 
-
 .bubble p {
     margin-bottom: 18px;
     font-size: 25px;
@@ -32,13 +38,11 @@
     line-height: 1.4;
 }
 
-
 .bubble::after {
     content: "";
     position: absolute;
     bottom: -16px;
     left: 40px;
-
     border-left: 12px solid transparent;
     border-right: 12px solid transparent;
     border-top: 16px solid white;
@@ -49,7 +53,6 @@
     position: absolute;
     bottom: -22px;
     left: 38px;
-
     border-left: 14px solid transparent;
     border-right: 14px solid transparent;
     border-top: 18px solid #5a3a0a;
@@ -67,7 +70,6 @@
     border: 4px solid #5a3a0a;
     padding: 12px;
     box-shadow: inset -4px -4px 0 #2a1408, inset 4px 4px 0 #6a3f1a;
-
     font-size: 100px;
     color: #4e411e;
 }
@@ -82,20 +84,13 @@
     font-size: 18px;
     width: 100%;
     text-align: center;
-    padding: 10px 14px;
-    background: #fff3da;
-    color: #2a1a05;
-    border: 3px solid #5a3a0a;
-    box-shadow: inset -3px -3px 0 #8b5e0a, inset 3px 3px 0 #352700;
-    cursor: pointer;
-    transition: all 0.1s;
-}
-
-.game-btn {
     background-color: #c89b3c;
     color: #2b1a10;
     border: 2px solid #8b5a2b;
     padding: 8px 12px;
+    box-shadow: inset -3px -3px 0 #8b5e0a, inset 3px 3px 0 #352700;
+    cursor: pointer;
+    transition: all 0.1s;
 }
 
 .game-btn.danger {
@@ -127,23 +122,17 @@
     box-shadow: none;
 }
 
-
 .back-icon-btn {
     position: fixed;
     top: 80px;
     left: 20px;
-
     z-index: 1000;
-
     width: 64px;
     height: 64px;
-
     cursor: pointer;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     transition: transform 0.15s ease, filter 0.15s ease;
 }
 
@@ -167,17 +156,33 @@
     image-rendering: pixelated;
 }
 
-.info-panel {
-    font-family: var(--font-body);
+.right-side-panels {
     position: absolute;
     top: 100px;
-    left: 1100px;
+    right: 40px;
     width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 10;
+}
+
+.right-side-panels .info-panel {
+    position: relative;
+    right: auto;
+    top: auto;
+    width: 100%;
+    max-height: none;
+    z-index: auto;
+}
+
+.info-panel {
+    font-family: var(--font-body);
+    width: 100%;
     background: #fff0e7;
     border: 4px solid #5a3a0a;
     padding: 14px;
     box-shadow: inset -4px -4px 0 #3c1603, inset 4px 4px 0 #4a2c10;
-
     color: #45392c;
 }
 
@@ -210,9 +215,125 @@
     display: flex;
     align-items: center;
     padding: 0 20px;
-
     color: #d1ba7e;
     font-size: 20px;
     box-shadow: inset -4px -4px 0 #270202, inset 4px 4px 0 #3c1e00;
     z-index: 20;
+}
+
+.harbor-error-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(200, 50, 50, 0.92);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 14px;
+    max-width: 460px;
+    text-align: center;
+    z-index: 500;
+    font-family: Georgia, serif;
+}
+
+.harbor-loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 600;
+    color: #e8d9b0;
+    font-size: 18px;
+    font-family: Georgia, serif;
+}
+
+/* ── Lotsendienst Toggle ───────────────────────────────────── */
+.pilotage-row { width: 100%; }
+
+.pilotage-toggle {
+    font-family: var(--font-game);
+    font-size: 16px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #2a1a05;
+    color: #c89b3c;
+    border: 2px solid #5a3a0a;
+    box-shadow: inset -2px -2px 0 #1a0d00, inset 2px 2px 0 #4a2c10;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-align: left;
+}
+
+.pilotage-toggle.active {
+    background: #1a3a10;
+    color: #90ee90;
+    border-color: #2e6b1a;
+    box-shadow: inset -2px -2px 0 #0d2008, inset 2px 2px 0 #3a7a20,
+                0 0 8px rgba(80, 200, 60, 0.35);
+}
+
+.pilotage-toggle:hover { filter: brightness(1.15); }
+.pilotage-check { font-size: 18px; min-width: 20px; text-align: center; }
+.pilotage-label { flex: 1; }
+.pilotage-cost  { font-size: 13px; opacity: 0.8; white-space: nowrap; }
+
+
+/* Port-Selektor in HarborScene */
+.harbor-port-selector {
+    position: absolute;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff0e7;
+    border: 4px solid #5a3a0a;
+    box-shadow: inset -4px -4px 0 #2a1408, inset 4px 4px 0 #6a3f1a;
+    padding: 8px 16px;
+    z-index: 20;
+}
+
+.harbor-port-selector-label {
+    font-family: var(--font-game);
+    color: #2a1408;
+    font-size: 14px;
+}
+
+.harbor-port-btn {
+    font-family: var(--font-game);
+    font-size: 14px;
+    padding: 6px 14px;
+    background-color: #c89b3c;
+    color: #2b1a10;
+    border: 2px solid #8b5a2b;
+    box-shadow: inset -3px -3px 0 #8b5e0a, inset 3px 3px 0 #352700;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.harbor-port-btn:hover { filter: brightness(1.2); }
+
+.harbor-port-btn.active {
+    background: #1a3a10;
+    color: #90ee90;
+    border-color: #2e6b1a;
+    box-shadow: inset -3px -3px 0 #417a2b, inset 3px 3px 0 #1d4312;
+}
+
+.harbor-selected-ship-hint {
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: #90ee90;
+    background: rgba(26, 58, 16, 0.5);
+    border: 1px solid #2e6b1a;
+    padding: 4px 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
 }

@@ -1,168 +1,439 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import SockJS from "sockjs-client";
+import Stomp, { Client } from "stompjs";
 import "../style/cargo.css";
+import { useTravelDuration } from "./TravelDurationInfo";
+import CargoRouteMapView from "./CargoRouteMapView";
+import Briefmarke from "../assets/Briefmarke.png";
 
-interface Cargo {
-    from: string;
-    to: string;
-    profit: string;
-    duration: string;
-    risk: string;
-    destinationPortId: string;
+interface SessionCargoDTO {
+    id: string; name: string; description: string;
+    originPortId: string; originPortName: string;
+    destinationPortId: string; destinationPortName: string;
+    reward: number; capacity: number; cargoType: string;
+    risk: number; cargoStatus: string; containsIllegal: boolean;
+    expiresAtTick: number; lifetimeTicks: number;
+}
+interface SpeedOption {
+    speedSetting: number; label: string;
+    fuelRequiredAbsolute: number; fuelRequiredPercent: number;
+    canAfford: boolean; possible: boolean;
+}
+interface FuelEstimate {
+    currentFuelPercent: number; currentFuelAbsolute: number;
+    maxFuel: number; distance: number; speedOptions: SpeedOption[];
+}
+// interface CargoMarketEvent { availableCargos?: SessionCargoDTO[]; }
+interface ShipPositionEventPayload {
+    currentTick: number;
+    ships: Array<{ playerShipId: string; status: "EN_ROUTE" | "AT_PORT" }>;
+}
+interface LoadingStartResponse {
+    cargoId: string; loadingDurationSeconds: number; loadingCompletedAtTick: number;
+}
+const TYPE_LABELS: Record<string, string> = {
+    GENERAL_GOODS: "General", FOOD: "Food", INDUSTRIAL_GOODS: "Industrial",
+    ELECTRONICS: "Electronics", FRAGILE: "Fragile", HAZARDOUS: "Hazardous", LUXURY_GOODS: "Luxury",
+};
+const TYPE_COLORS: Record<string, string> = {
+    GENERAL_GOODS: "#7a9b6a", FOOD: "#c0874a", INDUSTRIAL_GOODS: "#6a7fa0",
+    ELECTRONICS: "#6a5fb0", FRAGILE: "#b08060", HAZARDOUS: "#b04040", LUXURY_GOODS: "#a07030",
+};
+const SPEED_SETTINGS = [0.25, 0.4, 0.6, 0.8, 1.0];
+interface AcceptedCargo {
+    id: string; from: string; to: string; weight: number;
+    destinationPortId: string; speedSetting: number; loadingDurationSeconds?: number;
+}
+const getExpiredRewardPercent = (t: string) =>
+    ({ FOOD:0, HAZARDOUS:0, FRAGILE:10, ELECTRONICS:15, LUXURY_GOODS:20, GENERAL_GOODS:40, INDUSTRIAL_GOODS:50 }[t] ?? 0);
+
+
+interface Props {
+    onCargoAccepted: (cargo: AcceptedCargo) => void;
+    currentPortId: string | null;
+    playerShipId: string | null;
 }
 
-interface Port {
-    id: string;
-    name: string;
-    x: number;
-    y: number;
-}
-
-const RISK_LEVELS = ["Niedrig", "Mittel", "Hoch"];
-
-function buildCargoFromPorts(ports: Port[]): Cargo[] {
-    if (ports.length < 2) return [];
-    // Erste Port = Starthafen, generiere Routen zu allen anderen
-    const origin = ports[0];
-    return ports.slice(1).map((dest, i) => {
-        const dx = dest.x - origin.x;
-        const dy = dest.y - origin.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const profit = Math.round(dist * 150);
-        const days = Math.ceil(dist / 5);
-        return {
-            from: origin.name,
-            to: dest.name,
-            profit: profit.toLocaleString("de-DE"),
-            duration: `${days} Tage`,
-            risk: RISK_LEVELS[i % 3],
-            destinationPortId: dest.id,
-        };
-    });
-}
-
-const ScaleIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <path d="M12 3v18M6 7h12M6 7l-3 5h6l-3-5ZM18 7l-3 5h6l-3-5Z" stroke="currentColor" strokeWidth="1.5"/>
-    </svg>
-);
-
-const ClockIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5"/>
-        <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="1.5"/>
-    </svg>
-);
-
-const WarningIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <path d="M12 4l9 16H3L12 4Z" stroke="currentColor" strokeWidth="1.5"/>
-        <path d="M12 9v4M12 17h.01" stroke="currentColor" strokeWidth="1.5"/>
-    </svg>
-);
-
-export default function CargoScreen({ onSelect }: { onSelect: (cargo: Cargo) => void }) {
-
-    const [cargoData, setCargoData] = useState<Cargo[]>([]);
-    const [selectedCargo, setSelectedCargo] = useState<Cargo | null>(null);
+export default function CargoScreen({ onCargoAccepted, currentPortId, playerShipId }: Props) {
+    const [cargos, setCargos] = useState<SessionCargoDTO[]>([]);
+    const [selected, setSelected] = useState<SessionCargoDTO | null>(null);
+    const [loading, setLoading] = useState(true);
+    const stompRef = useRef<Client | null>(null);
+    const [speedIndex, setSpeedIndex] = useState(2);
+    const [fuelEstimate, setFuelEstimate] = useState<FuelEstimate | null>(null);
+    const [estimateLoading, setEstimateLoading] = useState(false);
+    const [fuelError, setFuelError] = useState<string | null>(null);
+    const [acceptError, setAcceptError] = useState<string | null>(null);
+    const starting = false;
+    const [shipInTransit, setShipInTransit] = useState(false);
+    const [currentTick, setCurrentTick] = useState<number>(window.__latestTick?.currentTick ?? 0);
+    const [routeDescription, setRouteDescription] = useState<string>("");
 
     useEffect(() => {
-        const ports: Port[] = window.__latestPorts ?? [];
-        const data = buildCargoFromPorts(ports);
-        setCargoData(data);
-        if (data.length > 0) setSelectedCargo(data[0]);
+        if (!selected || !currentPortId) {
+            setRouteDescription("");
+            return;
+        }
+        const token = localStorage.getItem("auth_token") ?? "";
+        let cancelled = false;
+
+        fetch(`/api/routes/${selected.originPortId}/${selected.destinationPortId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+            .then(r => r.ok ? r.json() as Promise<{ description?: string }> : null)
+            .then(data => {
+                if (!cancelled) {
+                    setRouteDescription(data?.description ?? `Seeroute von ${selected.originPortName} nach ${selected.destinationPortName}.`);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setRouteDescription(`Seeroute von ${selected.originPortName} nach ${selected.destinationPortName}.`);
+            });
+
+        return () => { cancelled = true; };
+    }, [selected?.id, selected?.originPortId, selected?.destinationPortId, currentPortId]);
+
+    useEffect(() => {
+        const onTick = (e: Event) => setCurrentTick((e as CustomEvent<{currentTick:number}>).detail.currentTick);
+        window.addEventListener("backend-tick", onTick);
+        return () => window.removeEventListener("backend-tick", onTick);
     }, []);
 
+    const sessionData = sessionStorage.getItem("currentSession");
+    const sessionId = sessionData ? (JSON.parse(sessionData) as {id:string}).id : null;
+    const userData = localStorage.getItem("crowns_user");
+    const playerId = userData ? (JSON.parse(userData) as {id:string}).id : null;
+    const token = localStorage.getItem("auth_token") ?? "";
+
+    useEffect(() => {
+        if (!playerShipId) { setShipInTransit(false); return; }
+        const read = (ships: Array<{playerShipId:string;status:string}>) => {
+            const me = ships.find(s => s.playerShipId === playerShipId);
+            setShipInTransit(me?.status === "EN_ROUTE" || me?.status === "LOADING");
+        };
+        if (window.__latestShips) read(window.__latestShips.map(s => ({playerShipId:s.playerShipId,status:s.status})));
+        const h = (evt: Event) => read((evt as CustomEvent<ShipPositionEventPayload>).detail.ships);
+        window.addEventListener("backend-ship-positions", h);
+        return () => window.removeEventListener("backend-ship-positions", h);
+    }, [playerShipId]);
+
+    const filterByPort = useCallback((list: SessionCargoDTO[]) =>
+        currentPortId ? list.filter(c => c.originPortId === currentPortId) : list, [currentPortId]);
+
+    console.log ("Filtering cargos for port", currentPortId, "player: ", playerId );
+    useEffect(() => {
+        if (!sessionId || !currentPortId) { setLoading(false); return; }
+        fetch(`/api/cargo/${sessionId}/available?portId=${currentPortId}&playerId=${playerId}`, { headers: { Authorization: `Bearer ${token}` } })
+            .then(r => r.json() as Promise<SessionCargoDTO[]>)
+            .then(data => {
+                const f = filterByPort(data);
+                setCargos(f);
+                if (f.length > 0) setSelected(prev => prev ?? f[0]);
+                setLoading(false);
+            }).catch(() => setLoading(false));
+    }, [sessionId, currentPortId, token, filterByPort]);
+
+    useEffect(() => {
+        if (!sessionId) return;
+        const wsUrl = window.location.hostname === "localhost" ? "http://localhost:8080/ws" : "/ws";
+        const client = Stomp.over(new SockJS(wsUrl));
+        client.debug = () => {};
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        client.connect(headers, () => {
+            stompRef.current = client;
+            client.subscribe(`/topic/session/${sessionId}/cargo`, () => {
+                // Markt hat sich geändert — Cargos neu laden (mit playerId-Modifier)
+                if (!currentPortId) return;
+                fetch(`/api/cargo/${sessionId}/available?portId=${currentPortId}&playerId=${playerId}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                })
+                    .then(r => r.json())
+                    .then((data: SessionCargoDTO[]) => {
+                        const f = filterByPort(data);
+                        setCargos(f);
+                        setSelected(prev => {
+                            if (prev && f.some(c => c.id === prev.id)) return prev;
+                            if (prev) setAcceptError("Diese Fracht wurde gerade von einem anderen Kapitän übernommen.");
+                            return f[0] ?? null;
+                        });
+                    })
+                    .catch(console.error);
+            });
+        }, () => {});
+        return () => { if (client.connected) client.disconnect(() => {}); };
+    }, [sessionId, token, filterByPort]);
+
+    useEffect(() => {
+        if (!selected || !playerShipId || !playerId || !sessionId || !currentPortId || shipInTransit) { setFuelEstimate(null); return; }
+        let cancelled = false;
+        setEstimateLoading(true); setFuelError(null);
+        fetch(`/api/travels/fuel-estimate?playerId=${playerId}&sessionId=${sessionId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ playerShipId, sessionCargoId: selected.id }),
+        }).then(res => res.ok ? res.json() as Promise<FuelEstimate> : Promise.reject())
+            .then(data => {
+                if (cancelled) return;
+                setFuelEstimate(data);
+                const aff = data.speedOptions.filter(o => o.canAfford);
+                if (aff.length > 0) {
+                    const idx = SPEED_SETTINGS.indexOf(aff[aff.length-1].speedSetting);
+                    setSpeedIndex(idx >= 0 ? idx : 2);
+                } else setSpeedIndex(0);
+            }).catch(() => { if (!cancelled) setFuelEstimate(null); })
+            .finally(() => { if (!cancelled) setEstimateLoading(false); });
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selected?.id, playerShipId, playerId, sessionId, token, currentPortId, shipInTransit]);
+
+    const durationOptions = useTravelDuration({
+        playerShipId: currentPortId && !shipInTransit ? playerShipId : null,
+        sessionCargoId: selected?.id ?? null, playerId, sessionId, token,
+    });
+    const findDuration = (speed: number) =>
+        durationOptions.find(o => Math.abs(o.speedSetting - speed) < 0.001)?.durationTicks ?? null;
+    const currentSpeedOpt = fuelEstimate?.speedOptions[speedIndex] ?? null;
+    const canAfford = !fuelEstimate || (currentSpeedOpt?.canAfford ?? false);
+    const hasNoAffordableOption = fuelEstimate != null && fuelEstimate.speedOptions.every(o => !o.canAfford);
+
+    async function handleAcceptCargo() {
+        if (!selected) return;
+        if (!playerShipId) { setAcceptError("Bitte zuerst ein Schiff auswählen."); return; }
+        if (hasNoAffordableOption) { setFuelError("Nicht genug Treibstoff für diese Fracht."); return; }
+        if (!canAfford) { setFuelError("Nicht genug Treibstoff für dieses Speed-Setting."); return; }
+        setFuelError(null);
+        try {
+            const res = await fetch(`/api/cargo/accept?playerId=${playerId}&sessionId=${sessionId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                body: JSON.stringify({ playerShipId, sessionCargoId: selected.id, destinationPortId: selected.destinationPortId }),
+            });
+            if (!res.ok) { const e = await res.json(); setFuelError(e.message || "Fehler"); return; }
+            const lr = await res.json() as LoadingStartResponse;
+            onCargoAccepted({ id: selected.id, from: selected.originPortName, to: selected.destinationPortName,
+                weight: selected.capacity, destinationPortId: selected.destinationPortId,
+                speedSetting: SPEED_SETTINGS[speedIndex], loadingDurationSeconds: lr.loadingDurationSeconds });
+        } catch { setFuelError("Verbindungsfehler beim Akzeptieren der Fracht"); }
+    }
+
+    const riskLabel = (r: number) => r < 0.1 ? "Niedrig" : r < 0.25 ? "Mittel" : r < 0.4 ? "Hoch" : "Extrem";
+    const riskClass = (r: number) => r < 0.1 ? "risk-low" : r < 0.25 ? "risk-medium" : r < 0.4 ? "risk-high" : "risk-extreme";
+    const ticksUntilExpiry = (c: SessionCargoDTO) => (!c.expiresAtTick || c.expiresAtTick < 0) ? null : c.expiresAtTick - currentTick;
+    const expiryClass = (tl: number | null) => tl == null ? "" : tl <= 2 ? "expiry-critical" : tl <= 5 ? "expiry-warn" : "expiry-ok";
+
+    useEffect(() => {
+        setCargos(prev => { const f = prev.filter(c => { const l=ticksUntilExpiry(c); return l==null||l>0; }); return f.length===prev.length?prev:f; });
+        if (selected) { const l=ticksUntilExpiry(selected); if (l!=null&&l<=0) setSelected(null); }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentTick]);
+
+    if (loading) return <div className="cs-screen"><p className="cs-loading">Lade Frachtbörse…</p></div>;
+
+    const startBtnDisabled = !selected || !playerShipId || !currentPortId || shipInTransit || !canAfford || hasNoAffordableOption || starting;
+    const selectedDurationTicks = fuelEstimate ? findDuration(SPEED_SETTINGS[speedIndex]) : null;
+
+
     return (
-        <div className="cargo-screen">
-            <div className="cargo-container">
+        <div className="cs-screen">
+            <h1 className="cs-title">Frachtbörse</h1>
+            <div className="cs-body">
 
-            <div className="cargo-header">
-                <h2 className="cargo-title">The Cargo Market</h2>
-
-            </div>
-
-            <div className="cargo-layout">
-                <div className="cargo-list">
-
-                    <div className="cargo-list-header">
-                        Available Charters
+                <div className="cs-list-panel">
+                    <div className="cs-list-header">
+                        <span>Verfügbare Frachten ({cargos.length})</span>
+                        <img src={Briefmarke} alt="" className="cs-list-stamp" />
                     </div>
 
-                    {cargoData.map((c) => {
-                        const active = selectedCargo?.destinationPortId === c.destinationPortId;
+                    {cargos.length === 0 && (
+                        <div className="cs-list-empty">
+                            Momentan keine Fracht verfügbar.<br />
+                            <span>Neue Angebote erscheinen mit der Zeit.</span>
+                        </div>
+                    )}
 
+                    {cargos.map(c => {
+                        const tl = ticksUntilExpiry(c);
                         return (
-                            <div
-                                key={c.destinationPortId}
-                                onClick={() => setSelectedCargo(c)}
-                                className={`cargo-item ${active ? "active" : ""}`}
-                            >
-                                <div className="cargo-item-row">
-                                    <span className="cargo-item-name">
-                                        {c.from} → {c.to}
-                                    </span>
-                                    <span className="cargo-item-profit">
-                                        {c.profit} G
-                                    </span>
+                            <div key={c.id}
+                                 onClick={() => { setSelected(c); setFuelError(null); setAcceptError(null); }}
+                                 className={`cs-list-item${selected?.id === c.id ? " cs-list-item--active" : ""}`}>
+                                <div className="cs-item-row1">
+                                    <span className="cs-item-name">{c.name}</span>
+                                    <span className="cs-item-reward">{Number(c.reward).toLocaleString("de-DE")} T</span>
                                 </div>
-
-                                <div className="cargo-item-sub">
-                                    <span>To {c.to}</span>
-                                    <span className={`risk-${c.risk.toLowerCase()}`}>
-                                        {c.risk} Risk
+                                <div className="cs-item-row2">
+                                    <span className="cs-type-badge" style={{ background: TYPE_COLORS[c.cargoType]+"22", color: TYPE_COLORS[c.cargoType] }}>
+                                        {TYPE_LABELS[c.cargoType] ?? c.cargoType}
                                     </span>
+                                    <span className="cs-item-route">{c.originPortName} → {c.destinationPortName}</span>
+                                    {tl != null && (
+                                        <span className={`cs-item-expiry ${expiryClass(tl)}`}>
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/>
+                                            </svg>
+                                            {tl} {tl === 1 ? "Tag" : "Tage"}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         );
                     })}
-
                 </div>
-                <div className="cargo-detail">
-                    {selectedCargo ? (
+
+                <div className="cs-detail-panel">
+                    {selected ? (
                         <>
-                            <div className="cargo-detail-title">
-                                {selectedCargo.from} → {selectedCargo.to}
+                            <div className="cs-detail-header">
+                                <div>
+                                    <h2 className="cs-detail-title">{selected.name}</h2>
+                                    <p className="cs-detail-desc">
+                                        {selected.description?.trim()
+                                            || `${TYPE_LABELS[selected.cargoType]} – Standardfracht ohne besondere Anforderungen.`}
+                                    </p>
+                                </div>
+                                <div className="cs-header-badges">
+                                    {(selected.cargoType === "FOOD" || selected.cargoType === "HAZARDOUS") && (
+                                        <div className="cs-perishable-badge">
+                                            ⚠ {selected.cargoType === "FOOD"
+                                            ? "Verderbliche Ware – schnelle Lieferung erforderlich!"
+                                            : "Gefährliches Material – wird bei Ablauf entsorgt!"}
+                                        </div>
+                                    )}
+                                    {selected.cargoStatus === "EXPIRED" && (
+                                        <div className="cs-expired-badge">
+                                            ⚠ Abgelaufen – nur noch {getExpiredRewardPercent(selected.cargoType)}% Belohnung.
+                                        </div>
+                                    )}
+                                    {(() => {
+                                        const tl = ticksUntilExpiry(selected);
+                                        if (tl == null) return null;
+                                        return (
+                                            <div className={`cs-expiry-badge ${expiryClass(tl)}`}>
+                                                <div className="cs-expiry-label">VERFÜGBAR NOCH</div>
+                                                <div className="cs-expiry-row">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/>
+                                                    </svg>
+                                                    <strong>{tl} {tl === 1 ? "Tag" : "Tage"}</strong>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
                             </div>
 
-                            <div className="cargo-route">
-                                <div className="cargo-port">{selectedCargo.from}</div>
-                                <div className="cargo-route-line" />
-                                <div className="cargo-port">{selectedCargo.to}</div>
+                            <div className="cs-route-bar">
+                                <span className="cs-port-from">{selected.originPortName}</span>
+                                <span className="cs-port-to">{selected.destinationPortName}</span>
                             </div>
 
-                            <div className="cargo-stats">
-                                <div className="cargo-stat">
-                                    <ScaleIcon />
-                                    <span>Profit</span>
-                                    <strong>{selectedCargo.profit} G</strong>
+                            <div className="cs-stats-grid">
+                                <div className="cs-stat">
+                                    <div className="cs-stat-label">Belohnung</div>
+                                    <div className="cs-stat-value">
+                                        {Number(selected.reward).toLocaleString("de-DE")} T
+                                        {selected.cargoStatus === "EXPIRED" && (
+                                            <span className="cs-stat-reduced"> ({getExpiredRewardPercent(selected.cargoType)}%)</span>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="cargo-stat">
-                                    <ClockIcon />
-                                    <span>Duration</span>
-                                    <strong>{selectedCargo.duration}</strong>
+                                <div className="cs-stat">
+                                    <div className="cs-stat-label">Kapazität</div>
+                                    <div className="cs-stat-value">{selected.capacity}t</div>
                                 </div>
-                                <div className="cargo-stat">
-                                    <WarningIcon />
-                                    <span>Risk</span>
-                                    <strong>{selectedCargo.risk}</strong>
+                                <div className="cs-stat">
+                                    <div className="cs-stat-label">Risiko</div>
+                                    <div className={`cs-stat-value ${riskClass(selected.risk)}`}>{riskLabel(selected.risk)}</div>
+                                </div>
+                                <div className="cs-stat">
+                                    <div className="cs-stat-label">Typ</div>
+                                    <div className="cs-stat-value" style={{ color: TYPE_COLORS[selected.cargoType] }}>
+                                        {TYPE_LABELS[selected.cargoType]}
+                                    </div>
                                 </div>
                             </div>
 
-                            <button
-                                className="cargo-btn"
-                                onClick={() => onSelect(selectedCargo)}
-                            >
-                                Sign Contract
-                            </button>
+
+                            {!playerShipId && <div className="cs-hint">Wähle zuerst ein Schiff aus, um eine Fracht anzunehmen.</div>}
+                            {playerShipId && (!currentPortId || shipInTransit) && (
+                                <div className="cs-hint">Dieses Schiff ist aktuell unterwegs. Werte sind erst wieder im Hafen verfügbar.</div>
+                            )}
+                            {playerShipId && currentPortId && !shipInTransit && (
+                                <div className="cs-speed-section">
+                                    <div className="cs-speed-title">REISEGESCHWINDIGKEIT</div>
+                                    {estimateLoading && !fuelEstimate && <div className="cs-hint">Berechne Treibstoffverbrauch…</div>}
+                                    {fuelEstimate && (
+                                        <>
+                                            <div className="cs-fuel-row">
+                                                <span className="cs-fuel-label">Tank</span>
+                                                <div className="cs-fuel-track">
+                                                    <div className="cs-fuel-fill" style={{ width: `${Math.min(100,(fuelEstimate.currentFuelAbsolute/fuelEstimate.maxFuel)*100)}%` }} />
+                                                </div>
+                                                <span className="cs-fuel-nums">
+                                                    {fuelEstimate.currentFuelAbsolute.toFixed(0)} / {fuelEstimate.maxFuel.toFixed(0)}
+                                                    {currentSpeedOpt && (
+                                                        <span style={{ color: currentSpeedOpt.canAfford?"#4a8a4a":"#c04040", marginLeft:8, fontWeight:"bold" }}>
+                                                            {currentSpeedOpt.canAfford?"":"⚠ "}
+                                                            −{currentSpeedOpt.fuelRequiredAbsolute.toFixed(0)} = {(fuelEstimate.currentFuelAbsolute-currentSpeedOpt.fuelRequiredAbsolute).toFixed(0)}
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            </div>
+                                            <div className="cs-speed-buttons">
+                                                {fuelEstimate.speedOptions.map((opt, idx) => {
+                                                    const dis = !opt.possible || !opt.canAfford;
+                                                    const ticks = findDuration(opt.speedSetting);
+                                                    return (
+                                                        <button key={idx} type="button"
+                                                                className={`cs-speed-btn${speedIndex===idx?" cs-speed-btn--active":""}${!opt.possible?" cs-speed-btn--impossible":!opt.canAfford?" cs-speed-btn--unaffordable":""}`}
+                                                                onClick={() => { if (!dis) { setSpeedIndex(idx); setFuelError(null); } }}
+                                                                disabled={dis}>
+                                                            <span className="cs-speed-name">{opt.label}</span>
+                                                            <span className="cs-speed-fuel">−{opt.fuelRequiredAbsolute.toFixed(0)}</span>
+                                                            {ticks != null && <span className="cs-speed-days">{ticks}d</span>}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            {hasNoAffordableOption && !fuelEstimate.speedOptions.every(o=>!o.possible) && <div className="cs-warn">Nicht genug Treibstoff. Tank muss aufgefüllt werden.</div>}
+                                            {fuelEstimate.speedOptions.every(o=>!o.possible) && <div className="cs-warn">Strecke zu lang für dieses Schiff.</div>}
+                                        </>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="cs-bottom">
+                                <div className="cs-bottom-left">
+                                    <div className="cs-route-section-label">ROUTE</div>
+                                    <p className="cs-route-desc">
+                                        {routeDescription}
+                                    </p>
+                                    {selectedDurationTicks != null && (
+                                        <div className="cs-duration">{selectedDurationTicks} Tage</div>
+                                    )}
+                                    <div className="cs-error-slot">
+                                        {fuelError && <div className="cs-error">{fuelError}</div>}
+                                        {acceptError && <div className="cs-error">{acceptError}</div>}
+                                    </div>
+                                    <button type="button" className="cs-accept-btn" onClick={handleAcceptCargo} disabled={startBtnDisabled}>
+                                        Reise Starten
+                                    </button>
+                                </div>
+                                <div className="cs-map-wrapper">
+                                    <CargoRouteMapView
+                                        fromPortName={selected.originPortName}
+                                        toPortName={selected.destinationPortName}
+                                        fromPortId={selected.originPortId}
+                                        toPortId={selected.destinationPortId}
+                                    />
+                                </div>
+                            </div>
                         </>
                     ) : (
-                        <div style={{ color: "#aaa", textAlign: "center", padding: "20px" }}>
-                            Keine Häfen geladen.
-                        </div>
+                        <div className="cs-empty-detail">Wähle ein Frachtangebot aus.</div>
                     )}
                 </div>
-
-            </div>
             </div>
         </div>
     );

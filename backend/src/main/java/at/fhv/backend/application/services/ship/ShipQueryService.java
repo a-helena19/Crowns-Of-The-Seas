@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ShipQueryService {
-    List<ShipDTO> getMarketShips(String shipClass);
+    List<ShipDTO> getMarketShips(String shipClass, UUID sessionId);
     List<PlayerShipDTO> getPlayerShips(UUID playerId, UUID sessionId);
     PlayerShipDTO getPlayerShip(UUID playerShipId, UUID playerId, UUID sessionId);
 }

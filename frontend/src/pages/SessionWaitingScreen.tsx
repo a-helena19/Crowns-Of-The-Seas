@@ -1,153 +1,214 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useGameSessionWebSocket } from '../hooks/useGameSessionWebSocket';
 import '../style/sessionWaiting.css';
+import FactionSelectionDialog from '../components/FactionSelectionDialog';
+import type { PlayerFaction } from '../types/faction';
+import { sessionApi } from '../api/sessionApi';
 
-interface GameSession {
-    id: string;
-    gameCode: string;
-    status: 'LOBBY' | 'RUNNING' | 'FINISHED';
-    hostName: string;
-    players: number;
-    maxPlayers: number;
-    playersList?: Array<{
-        userId: string;
-        playerName: string;
-        isHost: boolean;
-    }>;
+interface PlayerInfo {
+    userId: string;
+    playerName: string;
+    isHost: boolean;
+    faction?: PlayerFaction | null;
+    homePortId?: string | null;
+    ready?: boolean;
 }
 
 interface SessionUpdateEvent {
     sessionId: string;
     gameCode: string;
-    status: 'LOBBY' | 'RUNNING' | 'FINISHED';
+    status: 'LOBBY' | 'FACTION_SELECTION' | 'RUNNING' | 'FINISHED';
     playerCount: number;
     maxPlayers: number;
-    players: Array<{
-        userId: string;
-        playerName: string;
-        isHost: boolean;
-    }>;
-    eventType: string;
+    players: PlayerInfo[];
+    type: string;
 }
 
 export default function SessionWaitingScreen() {
-    const { logout } = useAuth();
+    const { user } = useAuth();
     const navigate = useNavigate();
-    const [session, setSession] = useState<GameSession | null>(null);
-    const [userRole, setUserRole] = useState<'host' | 'guest'>('guest');
-    const [playerList, setPlayerList] = useState<Array<{ playerName: string; isHost: boolean }>>([]);
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    useEffect(() => {
-        // Load session from sessionStorage
-        const sessionData = sessionStorage.getItem('currentSession');
-        const role = sessionStorage.getItem('userRole') as 'host' | 'guest';
-
-        if (sessionData) {
-            const parsedSession = JSON.parse(sessionData);
-            setSession(parsedSession);
-
-            // Set player list from session if available
-            if (parsedSession.playersList && parsedSession.playersList.length > 0) {
-                setPlayerList(parsedSession.playersList.map((p: { userId: string; playerName: string; isHost: boolean }) => ({
-                    playerName: p.playerName,
-                    isHost: p.isHost
-                })));
-            }
-        }
-
-        if (role) {
-            setUserRole(role);
-        }
-
-        console.log('SessionWaitingScreen mounted:', { sessionData, role });
+    const sessionId = useMemo(() => {
+        const data = sessionStorage.getItem('currentSession');
+        return data ? JSON.parse(data).id : null;
     }, []);
 
-    // WebSocket for real-time updates
-    const { isConnected } = useGameSessionWebSocket({
-        sessionId: session?.id || null,
-        onSessionUpdate: (event: SessionUpdateEvent) => {
-            console.log('Session update received:', event);
+    const initialSession = useMemo(() => {
+        const data = sessionStorage.getItem('currentSession');
+        return data ? JSON.parse(data) : null;
+    }, []);
 
-            // Update player list
-            if (event.players) {
-                setPlayerList(event.players.map(p => ({
-                    playerName: p.playerName,
-                    isHost: p.isHost
-                })));
+    const [status, setStatus] = useState<SessionUpdateEvent['status']>(
+        initialSession?.status ?? 'LOBBY'
+    );
+    const [gameCode] = useState<string>(initialSession?.gameCode ?? '');
+    const [maxPlayers] = useState<number>(initialSession?.maxPlayers ?? 4);
+    const [players, setPlayers] = useState<PlayerInfo[]>(
+        initialSession?.playersList ?? []
+    );
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+    const showFactionDialog = status === 'FACTION_SELECTION';
+
+    const [selectedFaction, setSelectedFaction] = useState<PlayerFaction | null>(null);
+    const [selectedHomePortId, setSelectedHomePortId] = useState<string | null>(null);
+    const [isPlayerReady, setIsPlayerReady] = useState(false);
+
+    const userRole: 'host' | 'guest' = useMemo(() => {
+        if (!user) return 'guest';
+        const me = players.find(p => p.userId === user.id);
+        return me?.isHost ? 'host' : 'guest';
+    }, [players, user]);
+
+    const readyStatus = useMemo(() => {
+        const ready = players.filter(p => p.ready).map(p => p.userId);
+        return {
+            readyPlayers: ready,
+            totalPlayers: players.length,
+            allReady: players.length > 0 && ready.length === players.length,
+        };
+    }, [players]);
+
+    const handleSessionUpdate = useCallback(
+        (event: SessionUpdateEvent) => {
+            console.log('[SessionWaiting] Update:', event.type, '→', event.status);
+
+            setStatus(event.status);
+            setPlayers(event.players ?? []);
+
+            const cached = sessionStorage.getItem('currentSession');
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                parsed.status = event.status;
+                parsed.playersList = event.players;
+                sessionStorage.setItem('currentSession', JSON.stringify(parsed));
             }
 
-            // Update session with new data
-            if (session) {
-                const updatedSession: GameSession = {
-                    ...session,
-                    status: event.status,
-                    players: event.playerCount,
-                    maxPlayers: event.maxPlayers,
-                    playersList: event.players
-                };
-                setSession(updatedSession);
-                sessionStorage.setItem('currentSession', JSON.stringify(updatedSession));
+            if (user && event.players) {
+                const me = event.players.find(p => p.userId === user.id);
+                if (me && !me.ready) setIsPlayerReady(false);
+                if (me && me.faction) setSelectedFaction(me.faction);
+                if (me && me.homePortId) setSelectedHomePortId(me.homePortId);
+            }
 
-                // Wenn Spiel gestartet wird, navigiere zur Spiel-Seite
-                if (event.status === 'RUNNING') {
-                    setTimeout(() => {
-                        navigate('/game');
-                    }, 500);
+            if (event.playerCount === 0) {
+                cleanupSessionStorage();
+                navigate('/lobby');
+                return;
+            }
+
+            if (event.status === 'FACTION_SELECTION') {
+                const introSeenKey = `intro_seen_${event.sessionId}`;
+                if (sessionStorage.getItem(introSeenKey) !== 'true') {
+                    sessionStorage.setItem(introSeenKey, 'true');
+                    navigate('/intro');
                 }
+                return;
             }
-        }
+
+            // RUNNING: Spiel läuft → /game
+            if (event.status === 'RUNNING') {
+                navigate('/game');
+                return;
+            }
+
+            if (event.status === 'FINISHED') {
+                cleanupSessionStorage();
+                navigate('/lobby');
+                return;
+            }
+        },
+        [navigate, user]
+    );
+
+    const { isConnected } = useGameSessionWebSocket({
+        sessionId,
+        onSessionUpdate: handleSessionUpdate,
     });
 
+    useEffect(() => {
+        if (!sessionId) return;
+        sessionApi.getSession(sessionId)
+            .then(s => {
+                setStatus(s.status as SessionUpdateEvent['status']);
+                setPlayers(
+                    (s.players ?? []).map(p => ({
+                        userId: p.userId,
+                        playerName: p.playerName,
+                        isHost: p.isHost,
+                        faction: p.faction as PlayerFaction | null,
+                        ready: false,
+                    }))
+                );
+            })
+            .catch(err => console.warn('Initial session fetch failed:', err));
+    }, [sessionId]);
+
+    const handleFactionSelected = (faction: PlayerFaction) => {
+        setSelectedFaction(faction);
+    };
+
+    const handleHomePortSelected = (portId: string) => {
+        setSelectedHomePortId(portId);
+        // Im globalen State speichern für HarborScene
+        window.__homePortId = portId;
+    };
+
+    const handleReadyClicked = () => {
+        setIsPlayerReady(true);
+    };
+
     const handleStartGame = async () => {
-        if (session) {
-            try {
-                console.log('Calling backend to start game with sessionId:', session.id);
-                // Import sessionApi to start game
-                const { sessionApi } = await import('../api/sessionApi');
-                const response = await sessionApi.startGame(session.id, {});
-                console.log('Game started response:', response);
-
-                // Update local state with response
-                const updatedSession: GameSession = {
-                    id: response.id,
-                    gameCode: response.gameCode,
-                    status: response.status as 'LOBBY' | 'RUNNING' | 'FINISHED',
-                    hostName: session.hostName,
-                    players: response.players ? response.players.length : session.players,
-                    maxPlayers: response.maxPlayers,
-                    playersList: response.players || playerList.map(p => ({ ...p, userId: '' }))
-                };
-                setSession(updatedSession);
-                sessionStorage.setItem('currentSession', JSON.stringify(updatedSession));
-
-                // Navigate to game
-                setTimeout(() => {
-                    navigate('/game');
-                }, 500);
-            } catch (error) {
-                console.error('Error starting game:', error);
-                setErrorMessage('Fehler beim Starten des Spiels. Bitte versuchen Sie es später erneut.');
-            }
+        if (!sessionId) return;
+        try {
+            console.log('Calling backend to start game with sessionId:', sessionId);
+            await sessionApi.startGame(sessionId, {});
+        } catch (error) {
+            console.error('Error starting game:', error);
+            setErrorMessage('Fehler beim Starten des Spiels. Bitte versuchen Sie es später erneut.');
         }
     };
 
-    const handleLogout = () => {
-        logout();
+    const cleanupSessionStorage = () => {
         sessionStorage.removeItem('currentSession');
         sessionStorage.removeItem('userRole');
         sessionStorage.removeItem('playerName');
-        navigate('/login');
+        if (sessionId) sessionStorage.removeItem(`intro_seen_${sessionId}`);
     };
 
-    const handleBackToLobby = () => {
-        sessionStorage.removeItem('currentSession');
-        sessionStorage.removeItem('userRole');
-        sessionStorage.removeItem('playerName');
+    const handleBackToLobby = async () => {
+        if (sessionId) {
+            try {
+                await sessionApi.leaveSession(sessionId);
+            } catch (error) {
+                console.error('Error leaving session:', error);
+            }
+        }
+        cleanupSessionStorage();
         navigate('/lobby');
     };
+
+    if (showFactionDialog && sessionId && user) {
+        return (
+            <div className="session-waiting-page">
+                <FactionSelectionDialog
+                    sessionId={sessionId}
+                    userId={user.id}
+                    playerName={user.username}
+                    onFactionSelected={handleFactionSelected}
+                    onHomePortSelected={handleHomePortSelected}
+                    onReadyClicked={handleReadyClicked}
+                    isLoading={false}
+                    selectedFaction={selectedFaction}
+                    selectedHomePortId={selectedHomePortId}
+                    isReady={isPlayerReady}
+                    readyStatus={readyStatus}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="session-waiting-page">
@@ -161,12 +222,12 @@ export default function SessionWaitingScreen() {
                     </div>
                 )}
 
-                {session ? (
+                {sessionId ? (
                     <>
                         <div className="session-info">
                             <div className="info-box">
                                 <label>Session Code</label>
-                                <code className="code-display">{session.gameCode}</code>
+                                <code className="code-display">{gameCode}</code>
                             </div>
 
                             <div className="info-box join-link-box">
@@ -174,13 +235,15 @@ export default function SessionWaitingScreen() {
                                 <div className="link-container">
                                     <input
                                         type="text"
-                                        value={`${window.location.origin}/join/${session.gameCode}`}
+                                        value={`${window.location.origin}/join/${gameCode}`}
                                         readOnly
                                         className="join-link-input"
                                     />
                                     <button
                                         onClick={() => {
-                                            navigator.clipboard.writeText(`${window.location.origin}/join/${session.gameCode}`);
+                                            navigator.clipboard.writeText(
+                                                `${window.location.origin}/join/${gameCode}`
+                                            );
                                             alert('Link kopiert!');
                                         }}
                                         className="copy-btn"
@@ -192,18 +255,23 @@ export default function SessionWaitingScreen() {
                         </div>
 
                         <div className="players-section">
-                            <h3>Spieler ({session.players}/{session.maxPlayers})</h3>
+                            <h3>Spieler ({players.length}/{maxPlayers})</h3>
                             <div className="players-list">
-                                {playerList && playerList.length > 0 ? (
-                                    playerList.map((player, idx) => (
-                                        <div key={idx} className="player-item">
+                                {players.length > 0 ? (
+                                    players.map(player => (
+                                        <div key={player.userId} className="player-item">
                                             <span className="player-name">{player.playerName}</span>
+                                            {player.faction && (
+                                                <span className="player-faction">{player.faction}</span>
+                                            )}
                                             {player.isHost && <span className="host-badge">HOST</span>}
                                         </div>
                                     ))
                                 ) : (
                                     <p className="empty-players">
-                                        {userRole === 'host' ? 'Warte auf Spieler...' : 'Warte auf Host zum Starten...'}
+                                        {userRole === 'host'
+                                            ? 'Warte auf Spieler...'
+                                            : 'Warte auf Host zum Starten...'}
                                     </p>
                                 )}
                             </div>
@@ -214,18 +282,18 @@ export default function SessionWaitingScreen() {
                         </div>
 
                         <div className="button-group">
-                            {userRole === 'host' && session?.status === 'LOBBY' && (
-                                <button onClick={handleStartGame} className="auth-btn start-btn">
+                            {userRole === 'host' && status === 'LOBBY' && (
+                                <button
+                                    onClick={handleStartGame}
+                                    className="auth-btn start-btn"
+                                    disabled={!isConnected}
+                                >
                                     Spiel Starten
                                 </button>
                             )}
 
                             <button onClick={handleBackToLobby} className="auth-btn secondary-btn">
                                 Zurück
-                            </button>
-
-                            <button onClick={handleLogout} className="auth-btn secondary-btn">
-                                Ausloggen
                             </button>
                         </div>
                     </>
@@ -241,4 +309,3 @@ export default function SessionWaitingScreen() {
         </div>
     );
 }
-

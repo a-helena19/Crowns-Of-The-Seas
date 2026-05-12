@@ -10,6 +10,12 @@ public interface ISessionPlayer {
     String getPlayerName();
     boolean isHost();
     BigDecimal getBalance();
+    void setHost(boolean host);
+
+    PlayerFaction getFaction();
+
+    UUID getHomePortId();
+    void setHomePortId(UUID homePortId);
 
     boolean hasSufficientBalance(BigDecimal amount);
     void addBalance(BigDecimal amount);

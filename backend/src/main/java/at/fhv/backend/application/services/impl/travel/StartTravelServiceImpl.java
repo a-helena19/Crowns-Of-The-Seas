@@ -1,25 +1,36 @@
 package at.fhv.backend.application.services.impl.travel;
 
 import at.fhv.backend.application.dtos.mapper.TravelResponseMapper;
+import at.fhv.backend.application.services.cargo.PortDistanceForCargoService;
+import at.fhv.backend.application.services.port.PortQueryService;
+import at.fhv.backend.domain.model.cargo.CargoStatus;
+import at.fhv.backend.domain.model.cargo.SessionCargo;
+import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
+import at.fhv.backend.domain.model.cargo.exception.CargoCapacityExceededException;
+import at.fhv.backend.domain.model.cargo.exception.CargoNotAvailableException;
+import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
+import at.fhv.backend.domain.model.exception.InvalidShipStatusTransition;
+import at.fhv.backend.domain.model.ship.*;
+import at.fhv.backend.rest.CargoWebSocketController;
+import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
 import at.fhv.backend.rest.dtos.ship.response.TravelDTO;
 import at.fhv.backend.application.services.impl.session.GameTickScheduler;
+import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CalculateFuelConsumptionService;
 import at.fhv.backend.application.services.travel.StartTravelService;
 import at.fhv.backend.application.services.travel.ValidateTravelService;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
 import at.fhv.backend.domain.model.exception.TravelNotFoundException;
+import at.fhv.backend.domain.model.player.ISessionPlayer;
+import at.fhv.backend.domain.model.player.SessionPlayerRepository;
+import at.fhv.backend.domain.model.player.exception.PlayerNotFoundException;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.session.exception.SessionNotFoundException;
-import at.fhv.backend.domain.model.ship.PlayerShip;
-import at.fhv.backend.domain.model.ship.PlayerShipRepository;
-import at.fhv.backend.domain.model.ship.Ship;
-import at.fhv.backend.domain.model.ship.ShipRepository;
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.domain.model.travel.TravelStatus;
-import at.fhv.backend.infrastructure.mapper.TravelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,98 +41,167 @@ import java.util.stream.Collectors;
 
 @Service
 public class StartTravelServiceImpl implements StartTravelService {
+    private static final double GLOBAL_TRAVEL_SPEED_FACTOR = 0.75;
+    private static final double CONDITION_WEAR_FACTOR = 0.08;
+    private static final BigDecimal PILOTAGE_COST = new BigDecimal("600");
+    private static final int DEPARTURE_ANIMATION_MS = 3000;
+    private static final int DEPARTURE_START_BUFFER_TICKS = 0;
+
     private final PlayerShipRepository playerShipRepository;
     private final ShipRepository shipRepository;
-    private final PortInfoHelper portInfoHelper;
+    private final PortQueryService portQueryService;
     private final CalculateFuelConsumptionService calculateFuelConsumptionService;
     private final ValidateTravelService validateTravelService;
     private final TravelRepository travelRepository;
-    private final TravelMapper travelMapper;
     private final TravelResponseMapper travelResponseMapper;
     private final GameSessionRepository gameSessionRepository;
     private final GameTickScheduler gameTickScheduler;
+    private final SessionCargoRepository sessionCargoRepository;
+    private final CargoWebSocketController cargoWebSocketController;
+    private final PortDistanceForCargoService portDistanceForCargoService;
+    private final SessionPlayerRepository sessionPlayerRepository;
+    private final SmuggleService smuggleService;
 
-    public StartTravelServiceImpl(PlayerShipRepository playerShipRepository, ShipRepository shipRepository, PortInfoHelper portInfoHelper,
-                                  CalculateFuelConsumptionService calculateFuelConsumptionService, ValidateTravelService validateTravelService,
-                                  TravelRepository travelRepository, TravelMapper travelMapper, TravelResponseMapper travelResponseMapper,
-                                  GameSessionRepository gameSessionRepository, GameTickScheduler gameTickScheduler) {
+    public StartTravelServiceImpl(PlayerShipRepository playerShipRepository,
+                                  ShipRepository shipRepository,
+                                  PortQueryService portQueryService,
+                                  CalculateFuelConsumptionService calculateFuelConsumptionService,
+                                  ValidateTravelService validateTravelService,
+                                  TravelRepository travelRepository,
+                                  TravelResponseMapper travelResponseMapper,
+                                  GameSessionRepository gameSessionRepository,
+                                  GameTickScheduler gameTickScheduler,
+                                  SessionCargoRepository sessionCargoRepository,
+                                  CargoWebSocketController cargoWebSocketController,
+                                  PortDistanceForCargoService portDistanceForCargoService,
+                                  SessionPlayerRepository sessionPlayerRepository,
+                                  SmuggleService smuggleService) {
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
-        this.portInfoHelper = portInfoHelper;
+        this.portQueryService = portQueryService;
         this.calculateFuelConsumptionService = calculateFuelConsumptionService;
         this.validateTravelService = validateTravelService;
         this.travelRepository = travelRepository;
-        this.travelMapper = travelMapper;
         this.travelResponseMapper = travelResponseMapper;
         this.gameSessionRepository = gameSessionRepository;
         this.gameTickScheduler = gameTickScheduler;
+        this.sessionCargoRepository = sessionCargoRepository;
+        this.cargoWebSocketController = cargoWebSocketController;
+        this.portDistanceForCargoService = portDistanceForCargoService;
+        this.sessionPlayerRepository = sessionPlayerRepository;
+        this.smuggleService = smuggleService;
     }
 
     @Override
     @Transactional
     public TravelDTO startTravel(UUID playerId, UUID sessionId, StartTravelDTO request) {
         try {
-
-
-            System.out.println("START TRAVEL");
             PlayerShip playerShip = playerShipRepository
                     .findByIdAndPlayerIdAndSessionId(request.getPlayerShipId(), playerId, sessionId)
                     .orElseThrow(() -> new ShipNotFoundException("PlayerShip", request.getPlayerShipId()));
 
-            System.out.println("Ship status: " + playerShip.getStatus());
-            System.out.println("Ship currentPortId: " + playerShip.getCurrentPortId());
-            Ship ship = shipRepository.findById(playerShip.getShipId()).orElseThrow(() -> new ShipNotFoundException("Ship", playerShip.getShipId()));
+            Ship ship = shipRepository.findById(playerShip.getShipId())
+                    .orElseThrow(() -> new ShipNotFoundException("Ship", playerShip.getShipId()));
 
-            UUID destinationPortId = request.getDestinationPortId();
-            // Zielhafen validieren - skipped, port gibt es noch nicht
-            // PortNotFoundException
-
-            UUID originPortId = playerShip.getCurrentPortId();
-            System.out.println("originPortId: " + originPortId);
-            System.out.println("destinationPortId: " + destinationPortId);
-
-            if (originPortId == null) {
-                // Fallback solange Ports noch nicht implementiert sind
-                originPortId = UUID.fromString("00000000-0000-0000-0000-000000000099");
-                System.out.println("originPortId was null, using fallback");
-            }
-
-            double distance;
-
-            try {
-                distance = portInfoHelper.getDistance(originPortId, destinationPortId);
-            } catch (Exception e) {
-                System.out.println("Distance fallback used");
-                distance = 1000;
-            }
-
-            double requiredFuelPercent = calculateFuelConsumptionService.calculateFuelConsumption(ship, distance);
-            System.out.println("requiredFuel: " + requiredFuelPercent);
-
-            validateTravelService.validateTravelStart(playerShip, playerId, originPortId, destinationPortId, requiredFuelPercent);
-            System.out.println("Validation passed");
-
-            double riskFactor = calculateRiskFactor(playerShip, ship);
-            BigDecimal baseReward = calculateBaseReward(distance);
-
+            // Session einmal laden — wird mehrfach gebraucht (Loading-Check, currentTick, tickRateSeconds)
             GameSession session = gameSessionRepository.findById(sessionId)
                     .orElseThrow(() -> new SessionNotFoundException(sessionId));
+
+            // FIX: Wenn die Beladezeit inhaltlich abgelaufen ist, das Schiff
+            // sofort selbst auf READY_TO_DEPART setzen — statt auf den
+            // nächsten Tick zu warten. Behebt SHIP_NOT_READY-Race.
+            if (playerShip.getStatus() == ShipStatus.LOADING) {
+                if (!playerShip.isStillLoading(session.getCurrentTick())) {
+                    playerShip.completeLoading();
+                    playerShipRepository.save(playerShip);
+                }
+            }
+
+            if (playerShip.getStatus() != ShipStatus.READY_TO_DEPART) {
+                throw new InvalidShipStatusTransition(
+                        "Ship must be in READY_TO_DEPART status to start travel",
+                        "shipId",
+                        playerShip.getId()
+                );
+            }
+
+            UUID originPortId = playerShip.getCurrentPortId();
+            UUID destinationPortId = request.getDestinationPortId();
+
+            SessionCargo cargo = sessionCargoRepository
+                    .findByIdForUpdate(request.getSessionCargoId())
+                    .orElseThrow(() -> new CargoNotFoundException(request.getSessionCargoId()));
+
+            if (cargo.getCargoStatus() != CargoStatus.ASSIGNED) {
+                throw new CargoNotAvailableException(cargo.getId());
+            }
+
             int currentTick = session.getCurrentTick();
+
+            ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
+                    .orElseThrow(() -> new PlayerNotFoundException(playerId));
+
+            Integer loadingCompletedAtTick = playerShip.getLoadingCompletedAtTick();
+            double loadingDurationSeconds = loadingCompletedAtTick != null && loadingCompletedAtTick > 0
+                    ? loadingCompletedAtTick * session.getTickRateSeconds()
+                    : 0;
+
+            double distance = portDistanceForCargoService.distanceBetween(originPortId, destinationPortId);
+            double speedSetting = Math.max(0.25, Math.min(1.0, request.getSpeedSetting()));
+            double speedMultiplier = 0.5 + speedSetting;
+            double baseFuelAbsolute = calculateFuelConsumptionService.calculateFuelConsumption(ship, distance);
+            double requiredFuelAbsolute = baseFuelAbsolute * speedMultiplier;
+
+            validateTravelService.validateTravelStart(playerShip, ship, playerId,
+                    originPortId, destinationPortId, requiredFuelAbsolute);
+
+            double requiredFuelPercent = (requiredFuelAbsolute / ship.getMaxFuel().doubleValue()) * 100.0;
+            double conditionWearPercent = requiredFuelPercent * CONDITION_WEAR_FACTOR;
+
+            playerShip.consumeFuel(requiredFuelPercent);
+            playerShip.applyWear(conditionWearPercent);
+            playerShip.depart();
+            playerShipRepository.save(playerShip);
+
+            double riskFactor = calculateRiskFactor(playerShip, ship);
+            BigDecimal baseReward = cargo.getReward();
+            double effectiveSpeed = ship.getMaxSpeed() * speedSetting * GLOBAL_TRAVEL_SPEED_FACTOR;
+
+            int startTickDelay = 0;
+            if (request.isPilotageService()) {
+                int tickRateSeconds = Math.max(1, session.getTickRateSeconds());
+                double wallSeconds = DEPARTURE_ANIMATION_MS / 1000.0;
+                int delayForOverlay = (int) Math.ceil(wallSeconds / tickRateSeconds);
+                startTickDelay = delayForOverlay + DEPARTURE_START_BUFFER_TICKS;
+            }
 
             Travel travel = Travel.start(
                     playerShip.getId(), playerId, sessionId,
                     originPortId, destinationPortId,
-                    distance, request.getSpeedSetting(),
+                    distance, effectiveSpeed,
                     riskFactor, baseReward,
-                    currentTick
+                    currentTick,
+                    startTickDelay
             );
 
-            playerShip.departForVoyage(destinationPortId);
-            playerShipRepository.save(playerShip);
+            travel.setLoadingDurationSeconds(loadingDurationSeconds);
+
             Travel saved = travelRepository.save(travel);
 
-            // Sofort Schiffspositionen broadcasten, ohne auf den nächsten Tick zu warten
+            if (request.isPilotageService()) {
+                player.subtractBalance(PILOTAGE_COST);
+                sessionPlayerRepository.save(player);
+            }
+
             gameTickScheduler.triggerImmediateBroadcast(sessionId);
+            cargoWebSocketController.broadcastMarketUpdate(sessionId);
+
+            try {
+                smuggleService.tryGenerateSmuggleOffer(playerId, sessionId, originPortId, saved.getTravelId(), playerShip.getId());
+                gameTickScheduler.triggerImmediateBroadcast(sessionId);
+            } catch (Exception e) {
+                System.err.println("[StartTravel] Error generating smuggle offer: " + e.getMessage());
+            }
 
             return travelResponseMapper.toResponse(saved);
         } catch (Exception e) {
@@ -155,9 +235,5 @@ public class StartTravelServiceImpl implements StartTravelService {
     private double calculateRiskFactor(PlayerShip playerShip, Ship ship) {
         double effectiveReliability = (playerShip.getCondition() / 100.0) * ship.getBaseReliability();
         return 1.0 - effectiveReliability;
-    }
-
-    private BigDecimal calculateBaseReward(double distance) {
-        return BigDecimal.valueOf(Math.round(distance * 100));
     }
 }

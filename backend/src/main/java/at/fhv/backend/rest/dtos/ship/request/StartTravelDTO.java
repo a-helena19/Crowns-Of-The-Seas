@@ -13,13 +13,16 @@ public class StartTravelDTO {
     @NotNull(message = "destinationPortId cannot be empty.")
     private UUID destinationPortId;
 
-    @DecimalMin(value = "0.5", message = "speedSetting must be over 0.5.")
+    @NotNull(message = "sessionCargoId cannot be null.")
+    private UUID sessionCargoId;
+
+    @DecimalMin(value = "0.25", message = "speedSetting must be over 0.25.")
     @DecimalMax(value = "1.0", message = "speedSetting must be max 1.0.")
     private double speedSetting = 1.0;
 
+    private boolean pilotageService = false;
+
     public StartTravelDTO() {}
-
-
 
     public UUID getPlayerShipId() {
         return playerShipId;
@@ -37,11 +40,27 @@ public class StartTravelDTO {
         this.destinationPortId = destinationPortId;
     }
 
+    public UUID getSessionCargoId() {
+        return sessionCargoId;
+    }
+
+    public void setSessionCargoId(UUID sessionCargoId) {
+        this.sessionCargoId = sessionCargoId;
+    }
+
     public double getSpeedSetting() {
         return speedSetting;
     }
 
     public void setSpeedSetting(double speedSetting) {
         this.speedSetting = speedSetting;
+    }
+
+    public boolean isPilotageService() {
+        return pilotageService;
+    }
+
+    public void setPilotageService(boolean pilotageService) {
+        this.pilotageService = pilotageService;
     }
 }

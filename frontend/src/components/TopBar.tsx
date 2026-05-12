@@ -1,17 +1,66 @@
 import { TOP_BAR_HEIGHT } from '../scenes/GameScreen';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import '../style/topbar.css';
+import moneyIcon from "../assets/icon-money.png";
+import timeIcon from "../assets/icon-clock.png";
+import shipIcon from "../assets/icon-ship.png";
+import { FACTION_DATA } from '../types/faction';
+import type { PlayerFaction } from '../types/faction';
+import { sessionApi } from '../api/sessionApi';
+import { getLeaderboard } from '../api/leaderboardApi';
+import type { LeaderboardEntry } from '../types/leaderboard';
+
 
 export default function TopBar() {
     const [balance, setBalance] = useState<number | null>(null);
     const [shipCount, setShipCount] = useState<number | null>(null);
     const [currentTick, setCurrentTick] = useState<number | null>(null);
     const [totalTicks, setTotalTicks] = useState<number | null>(null);
+    const [faction, setFaction] = useState<PlayerFaction | null>(null);
+    const [factionPanelOpen, setFactionPanelOpen] = useState(false);
+    const [homePortName, setHomePortName] = useState<string | null>(null);
+
+    const factionWrapperRef = useRef<HTMLDivElement | null>(null);
 
     const userData = localStorage.getItem('crowns_user');
     const playerId = userData ? JSON.parse(userData).id : null;
     const token = localStorage.getItem('auth_token') ?? '';
     const sessionData = sessionStorage.getItem('currentSession');
     const sessionId = sessionData ? JSON.parse(sessionData).id : null;
+
+    // leaderboard
+    const [lbOpen, setLbOpen] = useState(false);
+    const [lbEntries, setLbEntries] = useState<LeaderboardEntry[]>([]);
+    const lbWrapperRef = useRef<HTMLDivElement | null>(null);
+
+    const sortedLb = useMemo(() => lbEntries, [lbEntries]);
+
+    useEffect(() => {
+        if (!sessionId) return;
+        const load = async () => {
+            try {
+                const data = await getLeaderboard(sessionId);
+                setLbEntries(data);
+            } catch { /* ignore */ }
+        };
+        load();
+        const id = window.setInterval(load, 5000);
+        return () => window.clearInterval(id);
+    }, [sessionId]);
+
+    useEffect(() => {
+        if (!lbOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (lbWrapperRef.current && !lbWrapperRef.current.contains(e.target as Node)) {
+                setLbOpen(false);
+            }
+        };
+        const t = setTimeout(() => document.addEventListener('mousedown', handler), 0);
+        return () => {
+            clearTimeout(t);
+            document.removeEventListener('mousedown', handler);
+        };
+    }, [lbOpen]);
 
     useEffect(() => {
         if (!playerId || !sessionId) return;
@@ -54,46 +103,184 @@ export default function TopBar() {
         return () => window.removeEventListener('backend-tick', handleTick);
     }, []);
 
-    return (
-        <div style={{
-            height: TOP_BAR_HEIGHT,
-            flexShrink: 0,
-            background: 'linear-gradient(135deg, #0a1628 0%, #132744 50%, #0d1f3c 100%)',
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 16px',
-            justifyContent: 'space-between',
-            boxShadow: '0 4px 12px 4px rgba(0,0,0,0.6)',
-            zIndex: 1,
-        }}>
+    // Faction des Spielers laden (einmalig beim Mount)
+    useEffect(() => {
+        if (!playerId || !sessionId) return;
+        sessionApi.getPlayerFaction(sessionId, playerId)
+            .then(result => {
+                if (result?.faction) {
+                    setFaction(result.faction as PlayerFaction);
+                }
+            })
+            .catch(err => console.warn('Could not load player faction:', err));
+    }, [playerId, sessionId]);
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                <span>💵 {balance !== null ? balance.toLocaleString('de') : '...'}</span>
-                <span>🚢 {shipCount !== null ? `${shipCount} Schiff${shipCount !== 1 ? 'e' : ''}` : '...'}</span>
-                <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
-                    Tag {currentTick !== null ? currentTick : '1'}
-                    {totalTicks !== null && (
-                        <span style={{ opacity: 0.6, fontSize: '12px', marginLeft: '4px' }}>
-                            / {totalTicks}
-                        </span>
-                    )}
-                </span>
+    // Heimathafen laden
+    useEffect(() => {
+        if (!playerId || !sessionId) return;
+        sessionApi.getHomePort(sessionId, playerId)
+            .then(result => {
+                if (result?.homePortId) {
+                    window.__homePortId = result.homePortId;
+                    const portName = window.__latestPorts?.find(p => p.id === result.homePortId)?.name;
+                    setHomePortName(portName ?? null);
+                }
+            })
+            .catch(err => console.warn('Could not load home port:', err));
+    }, [playerId, sessionId]);
+
+    // Port-Name aktualisieren sobald Ports geladen sind
+    useEffect(() => {
+        if (!window.__homePortId) return;
+        const portName = window.__latestPorts?.find(p => p.id === window.__homePortId)?.name;
+        if (portName) setHomePortName(portName);
+    }, [window.__latestPorts]);
+
+    // Klick außerhalb schließt das Panel
+    useEffect(() => {
+        if (!factionPanelOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (factionWrapperRef.current && !factionWrapperRef.current.contains(e.target as Node)) {
+                setFactionPanelOpen(false);
+            }
+        };
+        // Mit kleinem Delay registrieren, damit der gleiche Klick nicht direkt schließt
+        const t = setTimeout(() => document.addEventListener('mousedown', handler), 0);
+        return () => {
+            clearTimeout(t);
+            document.removeEventListener('mousedown', handler);
+        };
+    }, [factionPanelOpen]);
+
+    const factionData = faction ? FACTION_DATA[faction] : null;
+
+    return (
+        <div className="topbar-container" style={{ height: TOP_BAR_HEIGHT }}>
+            <div className="topbar-left">
+                <div className="topbar-panel">
+                    <img src={moneyIcon} alt="" className="topbar-icon" />
+                    <span className="topbar-value">
+                        {balance !== null ? balance.toLocaleString('de') : '...'} T
+                    </span>
+                </div>
+                <div className="topbar-panel">
+                    <img src={shipIcon} alt="" className="topbar-icon" />
+                    <span className="topbar-value">
+                        {shipCount !== null ? `${shipCount} Schiffe` : '...'}
+                    </span>
+                </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <button style={{ ...btnStyle, fontSize: '18px', padding: '6px 10px' }}>⚙️</button>
+            <div className="topbar-center">
+                <div className="topbar-panel">
+                    <img src={timeIcon} alt="" className="topbar-icon" />
+                    <span className="topbar-value">
+                        Tag {currentTick !== null ? currentTick : '1'}
+                        {totalTicks !== null && (
+                            <span className="topbar-total"> / {totalTicks}</span>
+                        )}
+                    </span>
+                </div>
+            </div>
+
+            <div className="topbar-right">
+                {homePortName && (
+                    <div className="topbar-panel topbar-homeport">
+                        <span className="topbar-homeport-icon">⚓</span>
+                        <span className="topbar-value">{homePortName}</span>
+                    </div>
+                )}
+
+                {factionData && (
+                    <div className="topbar-faction-wrapper" ref={factionWrapperRef}>
+                        <button
+                            type="button"
+                            className={`topbar-panel topbar-faction-btn ${factionPanelOpen ? 'is-open' : ''}`}
+                            onClick={() => setFactionPanelOpen(o => !o)}
+                            aria-expanded={factionPanelOpen}
+                            aria-haspopup="dialog"
+                            title={`Fraktion: ${factionData.name}`}
+                        >
+                            <div className="topbar-faction-icon">
+                                <img
+                                    src={factionData.icon1}
+                                    alt={factionData.name}
+                                    className="topbar-faction-icon-img"
+                                />
+                            </div>
+                            <span className="topbar-value topbar-faction-name">
+                                {factionData.name}
+                            </span>
+                        </button>
+
+                        {factionPanelOpen && (
+                            <div
+                                className="faction-popover"
+                                role="dialog"
+                                aria-label={`Beschreibung Fraktion ${factionData.name}`}
+                            >
+                                <div
+                                    className="faction-popover-accent"
+                                    style={{ background: factionData.color }}
+                                />
+                                <div className="faction-popover-header">
+                                    <div className="faction-popover-icon">
+                                        <img src={factionData.icon1} alt="" className="faction-popover-icon-img frame1" />
+                                        <img src={factionData.icon2} alt="" className="faction-popover-icon-img frame2" />
+                                    </div>
+                                    <div className="faction-popover-titles">
+                                        <h3 className="faction-popover-name">{factionData.name}</h3>
+                                        <span className="faction-popover-label">DEINE FRAKTION</span>
+                                    </div>
+                                </div>
+                                <p className="faction-popover-desc">{factionData.description}</p>
+                                <ul className="faction-popover-pros">
+                                    {factionData.pros.map((p, i) => <li key={i}>{p}</li>)}
+                                </ul>
+                                <ul className="faction-popover-cons">
+                                    {factionData.cons.map((c, i) => <li key={i}>{c}</li>)}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                <div className="topbar-lb-wrapper" ref={lbWrapperRef}>
+                    <button
+                        type="button"
+                        className={`topbar-panel topbar-lb-btn ${lbOpen ? 'is-open' : ''}`}
+                        onClick={() => setLbOpen(o => !o)}
+                        aria-expanded={lbOpen}
+                        aria-haspopup="dialog"
+                        title="Leaderboard"
+                    >
+                        <span className="topbar-value">Leaderboard ▾</span>
+                    </button>
+
+                    {lbOpen && (
+                        <div className="lb-popover" role="dialog" aria-label="Leaderboard">
+                            {sortedLb.length === 0 ? (
+                                <div className="lb-popover-empty">Lade…</div>
+                            ) : (
+                                <ul className="lb-popover-list">
+                                    {sortedLb.map(e => {
+                                        const isMe = playerId === e.playerId;
+                                        return (
+                                            <li key={e.playerId} className={`lb-popover-row ${isMe ? 'me' : ''}`}>
+                                                <span className="lb-popover-rank">#{e.rank}</span>
+                                                <span className="lb-popover-name">{e.playerName}</span>
+                                                <span className="lb-popover-total">
+                                                    {Math.round(e.totalValue).toLocaleString('de-DE')} T
+                                                </span>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
 }
-
-const btnStyle: React.CSSProperties = {
-    background: 'transparent',
-    border: '1px solid white',
-    borderRadius: '20px',
-    padding: '6px 18px',
-    fontSize: '14px',
-    cursor: 'pointer',
-    fontWeight: 500,
-};

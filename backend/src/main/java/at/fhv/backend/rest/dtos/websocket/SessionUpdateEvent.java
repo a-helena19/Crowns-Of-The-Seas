@@ -10,12 +10,14 @@ public record SessionUpdateEvent(
         int playerCount,
         int maxPlayers,
         List<PlayerInfo> players,
-        String eventType
+        String type
 ) {
     public record PlayerInfo(
             UUID userId,
             String playerName,
-            boolean isHost
+            boolean isHost,
+            String faction,
+            UUID homePortId,
+            boolean ready
     ) {}
 }
-

@@ -18,6 +18,8 @@ public class ShipDTO {
     private BigDecimal operatingCost;
     private double baseReliability;
     private String iconUrl;
+    private int stock;
+    private int availableStock;
 
     public ShipDTO(){}
 
@@ -115,5 +117,21 @@ public class ShipDTO {
 
     public void setIconUrl(String iconUrl) {
         this.iconUrl = iconUrl;
+    }
+
+    public int getStock() {
+        return stock;
+    }
+
+    public void setStock(int stock) {
+        this.stock = stock;
+    }
+
+    public int getAvailableStock() {
+        return availableStock;
+    }
+
+    public void setAvailableStock(int availableStock) {
+        this.availableStock = availableStock;
     }
 }

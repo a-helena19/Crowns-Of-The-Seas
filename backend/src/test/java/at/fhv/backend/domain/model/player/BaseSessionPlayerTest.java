@@ -153,7 +153,7 @@ class BaseSessionPlayerTest {
         UUID id = UUID.randomUUID();
         BigDecimal balance = new BigDecimal("12345.67");
         BaseSessionPlayer reconstructed = BaseSessionPlayer.reconstruct(
-                id, userId, sessionId, "Bob", true, balance);
+                id, userId, sessionId, "Bob", true, balance, null, null);
 
         assertThat(reconstructed.getId()).isEqualTo(id);
         assertThat(reconstructed.getUserId()).isEqualTo(userId);

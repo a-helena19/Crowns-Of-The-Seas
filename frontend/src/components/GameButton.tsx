@@ -1,12 +1,17 @@
-export default function GameButton({children, onClick, variant = "default", disabled = false}: {
+export default function GameButton({
+                                       onClick,
+                                       children,
+                                       variant,
+                                       disabled,
+                                   }: {
+    onClick: () => void;
     children: React.ReactNode;
-    onClick?: () => void;
-    variant?: "default" | "danger";
+    variant?: "danger";
     disabled?: boolean;
 }) {
     return (
         <button
-            className={`game-btn ${variant}`}
+            className={`game-btn${variant ? ` ${variant}` : ""}`}
             onClick={onClick}
             disabled={disabled}
         >

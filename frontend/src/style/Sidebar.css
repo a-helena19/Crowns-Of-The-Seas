@@ -5,7 +5,7 @@
     height: 100%;
     gap: 10px;
 
-    background: linear-gradient(180deg, #0c1b33, #091426);
+    background: linear-gradient(180deg, #0c1a30, #0c1b33);
 
 }
 
@@ -69,4 +69,13 @@
             0 0 10px rgba(31, 147, 0, 0.6),
             inset 0 2px 0 rgba(255,255,255,0.2),
             inset 0 -2px 0 rgba(0,0,0,0.4);
+}
+
+
+.sidebar-btn.highlight {
+    border-color: #c89b3c;
+    color: #c89b3c;
+    box-shadow:
+            0 0 8px rgba(200, 155, 60, 0.5),
+            inset 0 1px 0 rgba(255,255,255,0.1);
 }

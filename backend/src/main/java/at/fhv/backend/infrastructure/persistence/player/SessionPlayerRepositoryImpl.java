@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
 
 @Repository
 public class SessionPlayerRepositoryImpl implements SessionPlayerRepository {
@@ -31,5 +32,13 @@ public class SessionPlayerRepositoryImpl implements SessionPlayerRepository {
         SessionPlayerEntity entity = mapper.toEntity(player, null);
         SessionPlayerEntity saved = jpaRepository.save(entity);
         return mapper.toDomain(saved);
+    }
+
+    @Override
+    public List<ISessionPlayer> findAllBySessionId(UUID sessionId) {
+        return jpaRepository.findAllBySessionId(sessionId)
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 }

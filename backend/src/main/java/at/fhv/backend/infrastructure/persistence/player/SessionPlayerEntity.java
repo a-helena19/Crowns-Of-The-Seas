@@ -28,9 +28,15 @@ public class SessionPlayerEntity {
     @Column(name = "balance", nullable = false)
     private BigDecimal balance;
 
+    @Column(name = "is_ready", nullable = false, columnDefinition = "boolean default false")
+    private boolean isReady;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "faction")
     private PlayerFaction faction;
+
+    @Column(name = "home_port_id")
+    private UUID homePortId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "session_id", insertable = false, updatable = false)
@@ -38,13 +44,16 @@ public class SessionPlayerEntity {
 
     public SessionPlayerEntity() {}
 
-    public SessionPlayerEntity(UUID userId, UUID sessionId, String playerName, boolean isHost, BigDecimal balance, PlayerFaction faction) {
+    public SessionPlayerEntity(UUID userId, UUID sessionId, String playerName, boolean isHost,
+                               BigDecimal balance, boolean isReady, PlayerFaction faction, UUID homePortId) {
         this.userId = userId;
         this.sessionId = sessionId;
         this.playerName = playerName;
         this.isHost = isHost;
         this.faction = faction;
         this.balance = balance;
+        this.isReady = isReady;
+        this.homePortId = homePortId;
     }
 
     public UUID getId() {
@@ -69,6 +78,10 @@ public class SessionPlayerEntity {
 
     public BigDecimal getBalance() {
         return balance;
+    }
+
+    public boolean isReady() {
+        return isReady;
     }
 
     public PlayerFaction getFaction() {
@@ -103,8 +116,20 @@ public class SessionPlayerEntity {
         this.balance = balance;
     }
 
+    public void setReady(boolean ready) {
+        isReady = ready;
+    }
+
     public void setFaction(PlayerFaction faction) {
         this.faction = faction;
+    }
+
+    public UUID getHomePortId() {
+        return homePortId;
+    }
+
+    public void setHomePortId(UUID homePortId) {
+        this.homePortId = homePortId;
     }
 
     public void setSession(GameSessionEntity session) {

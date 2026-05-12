@@ -591,3 +591,35 @@
     from { opacity: 0; transform: translateX(-50%) translateY(12px); }
     to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
+
+.ship-stock-badge {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    font-family: "Georgia", serif;
+    vertical-align: middle;
+}
+
+.ship-stock-badge.ok {
+    background: #dde7d6;
+    color: #4a6a3a;
+    border: 1px solid #a8b89a;
+}
+
+.ship-stock-badge.low {
+    background: #f7ecd0;
+    color: #b8801a;
+    border: 1px solid #d4b87a;
+}
+
+.ship-stock-badge.out {
+    background: #e8d5d5;
+    color: #8a3535;
+    border: 1px solid #b87878;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}

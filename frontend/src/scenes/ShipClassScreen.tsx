@@ -1,9 +1,19 @@
 import { useEffect, useState } from "react";
+import SockJS from "sockjs-client";
+import Stomp from "stompjs";
 import GameButton from "../components/GameButton";
 import "../style/harbor.css";
 import "../style/shipbroker.css";
 import "../style/shipclass.css"
 import backIcon from "../assets/goback.png";
+
+interface PurchasedShipResponse {
+    id: string;
+    playerId: string;
+    iconUrl: string;
+    currentPortId: string;
+    status: string;
+}
 
 interface Ship {
     id: string;
@@ -20,6 +30,8 @@ interface Ship {
     operatingCost: number;
 
     iconUrl: string;
+    stock: number;
+    availableStock: number;
 }
 
 interface Props {
@@ -36,6 +48,8 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
     const [boughtIds, setBoughtIds] = useState<Set<string>>(new Set());
     const [toast, setToast] = useState<string | null>(null);
     const [balance, setBalance] = useState<number | null>(null);
+    // Wenn der Spieler ein Schiff kauft, triggern wir einen Reload damit sich availableStock aktualisiert.
+    const [reloadKey, setReloadKey] = useState(0);
 
     const userData = localStorage.getItem('crowns_user');
     const playerId = userData ? JSON.parse(userData).id : null;
@@ -51,13 +65,20 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
             .then(res => res.json())
             .then(data => setBalance(Number(data)))
             .catch(() => setBalance(null));
-    }, [playerId]);
+    }, [playerId, reloadKey]);
 
     useEffect(() => {
         setLoading(true);
         setError(null);
 
-        fetch(`/api/ships?shipClass=${shipClass}`, {
+        // sessionId mitsenden, damit das Backend availableStock fuer die aktuelle Session berechnet.
+        const sessionData = sessionStorage.getItem('currentSession');
+        const sessionId = sessionData ? JSON.parse(sessionData).id : null;
+        const url = sessionId
+            ? `/api/ships?shipClass=${shipClass}&sessionId=${sessionId}`
+            : `/api/ships?shipClass=${shipClass}`;
+
+        fetch(url, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token') ?? ''}` }
         })
             .then(res => {
@@ -72,6 +93,32 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
                 setError("Schiffe konnten nicht geladen werden.");
                 setLoading(false);
             });
+    }, [shipClass, reloadKey]);
+
+    // Live-Updates des Schiffsmarktes — wenn ein anderer Spieler kauft, aktualisiert sich der Stock automatisch.
+    useEffect(() => {
+        const sessionData = sessionStorage.getItem('currentSession');
+        const sessionId = sessionData ? JSON.parse(sessionData).id : null;
+        if (!sessionId) return;
+
+        const wsUrl = window.location.hostname === "localhost" ? "http://localhost:8080/ws" : "/ws";
+        const client = Stomp.over(new SockJS(wsUrl));
+        client.debug = () => {};
+        const headers: Record<string, string> = {};
+        const token = localStorage.getItem('auth_token');
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        client.connect(headers, () => {
+            client.subscribe(`/topic/session/${sessionId}/ships`, (msg) => {
+                const event = JSON.parse(msg.body) as { ships: Ship[] };
+                const allShips = event.ships ?? [];
+                // Nur die Schiffe der aktuell angezeigten Klasse uebernehmen
+                const filtered = allShips.filter(s => s.shipClass.toUpperCase() === shipClass);
+                setShips(filtered);
+            });
+        }, () => {});
+
+        return () => { if (client.connected) client.disconnect(() => {}); };
     }, [shipClass]);
 
     function showToast(msg: string) {
@@ -104,14 +151,44 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
 
             if (!res.ok) throw new Error();
 
-            const data = await res.json();
+            const data = await res.json() as PurchasedShipResponse;
 
             setBoughtIds(prev => new Set(prev).add(ship.id));
             setBalance(prev => prev !== null ? prev - ship.price : null);
-            window.dispatchEvent(new CustomEvent('player-balance-updated')); // ← neu
+            window.dispatchEvent(new CustomEvent('player-balance-updated'));
             showToast(`${ship.name} gekauft!`);
+            // Reload triggern, damit availableStock fuer alle Schiffe aktualisiert wird
+            // (auch fuer andere Spieler-Kaeufe waeren ein WebSocket-Push praeziser, aber Reload reicht hier).
+            setReloadKey(k => k + 1);
 
-            console.log("Gekauft:", data);
+            // Sofort die Schiffsposition am Heimathafen anzeigen — kein Warten auf WebSocket-Tick.
+            // Funktioniert auch für zukünftige Heimathäfen: einfach currentPortId aus dem Response nutzen.
+            const homePort = (window.__latestPorts ?? []).find(p => p.id === data.currentPortId);
+            if (homePort) {
+                const userData = localStorage.getItem('crowns_user');
+                const playerName = userData ? (JSON.parse(userData).username ?? JSON.parse(userData).name ?? 'Spieler') : 'Spieler';
+                const syntheticShip = {
+                    playerShipId: data.id,
+                    playerId: data.playerId ?? playerId,
+                    playerName,
+                    iconUrl: data.iconUrl ?? '/ship.png',
+                    x: homePort.x,
+                    y: homePort.y,
+                    status: 'AT_PORT' as const,
+                    arrivalTick: null, originX: null, originY: null,
+                    destX: null, destY: null, startTick: null,
+                };
+                const updated = [
+                    ...(window.__latestShips ?? []).filter(s => s.playerShipId !== data.id),
+                    syntheticShip,
+                ];
+                window.__latestShips = updated;
+                const currentTick = window.__latestShipPositionsTick ?? window.__latestTick?.currentTick ?? 0;
+                window.__latestShipPositionsTick = currentTick;
+                window.dispatchEvent(new CustomEvent('backend-ship-positions', {
+                    detail: { currentTick, ships: updated }
+                }));
+            }
         } catch {
             showToast("Kauf fehlgeschlagen.");
         } finally {
@@ -139,7 +216,6 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
                 </div>
             </div>
 
-            {/* STATUS */}
             {loading && <p className="shipclass-status">Lade Schiffe…</p>}
             {error && <p className="shipclass-status">{error}</p>}
 
@@ -147,12 +223,13 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
                 <p className="shipclass-status">Keine Schiffe verfügbar.</p>
             )}
 
-            {/* GRID */}
             <div className="ship-grid-wrapper">
                 <div className="ship-grid">
                     {ships.map(ship => {
                         const canAfford = balance !== null ? balance >= ship.price : false;
                         const bought = boughtIds.has(ship.id);
+                        const outOfStock = ship.availableStock <= 0;
+                        const lowStock = !outOfStock && ship.availableStock <= 3;
 
                         return (
                             <div key={ship.id} className="ship-listing-card">
@@ -169,7 +246,17 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
                                 </div>
 
                                 <div className="ship-listing-info">
-                                    <div className="ship-listing-name">{ship.name}</div>
+                                    <div className="ship-listing-name">
+                                        {ship.name}
+                                        <span
+                                            className={`ship-stock-badge ${outOfStock ? "out" : lowStock ? "low" : "ok"}`}
+                                            title={`${ship.availableStock} von ${ship.stock} in dieser Session noch verfügbar`}
+                                        >
+                                            {outOfStock
+                                                ? "Ausverkauft"
+                                                : `${ship.availableStock} / ${ship.stock} verfügbar`}
+                                        </span>
+                                    </div>
                                     <div className="ship-listing-desc">{ship.description}</div>
 
                                     <div className="ship-listing-stats">
@@ -188,15 +275,17 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
 
                                         <GameButton
                                             onClick={() => handleBuy(ship)}
-                                            disabled={!canAfford || bought || buyingId === ship.id}
+                                            disabled={!canAfford || bought || buyingId === ship.id || outOfStock}
                                         >
                                             {bought
                                                 ? "Gekauft"
                                                 : buyingId === ship.id
                                                     ? "..."
-                                                    : !canAfford
-                                                        ? "Zu teuer"
-                                                        : "Kaufen"}
+                                                    : outOfStock
+                                                        ? "Ausverkauft"
+                                                        : !canAfford
+                                                            ? "Zu teuer"
+                                                            : "Kaufen"}
                                         </GameButton>
                                     </div>
                                 </div>
@@ -211,7 +300,6 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
     );
 }
 
-/* HELPER */
 function StatRow({ label, value }: { label: string; value: string }) {
     return (
         <div className="stat-row">

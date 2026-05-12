@@ -2,20 +2,22 @@ package at.fhv.backend.domain.model.session;
 
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.player.PlayerFaction;
+import at.fhv.backend.domain.model.player.exception.HomePortAlreadyAssignedException;
+import at.fhv.backend.domain.model.player.exception.HomePortNotAssignedException;
 import at.fhv.backend.domain.model.session.exception.*;
 import at.fhv.backend.domain.model.player.exception.*;
 
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class GameSession {
 
     private final UUID id;
     private SessionStatus status;
-    private final UUID hostUserId;
+    private UUID hostUserId;
     private final int maxPlayers;
     private int currentTick;
     private int tickRateSeconds;
@@ -23,8 +25,10 @@ public class GameSession {
     private final String gameCode;
     private final List<ISessionPlayer> players;
     private final Map<UUID, PlayerFaction> playerFactions;
+    private final Map<UUID, UUID> playerHomePorts;
     private LocalDateTime startTime;
     private final Duration duration;
+    private final Map<UUID, Boolean> playerReadyStatus = new HashMap<>();
 
     public GameSession(UUID hostUserId, int maxPlayers, int tickRateSeconds, int totalTicks, Duration duration) {
         this.id = UUID.randomUUID();
@@ -37,6 +41,7 @@ public class GameSession {
         this.gameCode = generateCode();
         this.players = new ArrayList<>();
         this.playerFactions = new HashMap<>();
+        this.playerHomePorts = new HashMap<>();
         this.duration = duration;
     }
 
@@ -46,17 +51,19 @@ public class GameSession {
                                           int totalTicks, String gameCode,
                                           List<ISessionPlayer> players,
                                           Map<UUID, PlayerFaction> factions,
+                                          Map<UUID, UUID> homePorts,
                                           LocalDateTime startTime,
                                           Duration duration) {
         return new GameSession(id, status, hostUserId, maxPlayers,
                 currentTick, tickRateSeconds, totalTicks, gameCode,
-                players, factions, startTime, duration);
+                players, factions, homePorts, startTime, duration);
     }
 
     private GameSession(UUID id, SessionStatus status, UUID hostUserId,
                         int maxPlayers, int currentTick, int tickRateSeconds,
                         int totalTicks, String gameCode, List<ISessionPlayer> players,
-                        Map<UUID, PlayerFaction> factions, LocalDateTime startTime, Duration duration) {
+                        Map<UUID, PlayerFaction> factions, Map<UUID, UUID> homePorts,
+                        LocalDateTime startTime, Duration duration) {
         this.id = id;
         this.status = status;
         this.hostUserId = hostUserId;
@@ -67,6 +74,7 @@ public class GameSession {
         this.gameCode = gameCode;
         this.players = players;
         this.playerFactions = factions;
+        this.playerHomePorts = homePorts;
         this.startTime = startTime;
         this.duration = duration;
     }
@@ -76,10 +84,17 @@ public class GameSession {
             throw new SessionNotInLobbyException(id);
         if (players.size() >= maxPlayers)
             throw new SessionFullException(id);
-        // Check if player already in session
         if (players.stream().anyMatch(p -> p.getUserId().equals(player.getUserId())))
             throw new PlayerAlreadyInSessionException(id, player.getUserId());
         players.add(player);
+    }
+
+    public void beginFactionSelection(UUID requestingUserId) {
+        if (!requestingUserId.equals(hostUserId))
+            throw new OnlyHostCanStartException(requestingUserId);
+        if (!status.canTransitionTo(SessionStatus.FACTION_SELECTION))
+            throw new SessionNotInLobbyException(id);
+        this.status = SessionStatus.FACTION_SELECTION;
     }
 
     public void start(UUID requestingUserId) {
@@ -101,19 +116,115 @@ public class GameSession {
         this.tickRateSeconds = tickRateSeconds;
     }
 
-    // TODO: assignPlayerFaction in sprint2
-    /*
-    public void assignPlayerFaction(UUID userId, PlayerFaction faction) {
-        boolean exists = players.stream()
-                .anyMatch(p -> p.getUserId().equals(userId));
-        if (!exists)
+    public void removePlayer(UUID userId) {
+        if (status != SessionStatus.LOBBY && status != SessionStatus.FACTION_SELECTION)
+            throw new SessionNotInLobbyException(id);
+        boolean removed = players.removeIf(p -> p.getUserId().equals(userId));
+        if (!removed)
             throw new PlayerNotFoundException(userId);
-        if (playerFactions.containsKey(userId))
+        playerFactions.remove(userId);
+        playerHomePorts.remove(userId);
+        playerReadyStatus.remove(userId);
+    }
+
+    public void makePlayerHost(UUID userId) {
+        for (ISessionPlayer player : this.players) {
+            player.setHost(false);
+        }
+        for (ISessionPlayer player : this.players) {
+            if (player.getUserId().equals(userId)) {
+                this.hostUserId = userId;
+                player.setHost(true);
+                return;
+            }
+        }
+    }
+
+    public void assignPlayerFaction(UUID userId, PlayerFaction faction) {
+        if (status != SessionStatus.FACTION_SELECTION)
+            throw new SessionNotInLobbyException(id);
+
+        boolean playerExists = players.stream()
+                .anyMatch(p -> p.getUserId().equals(userId));
+        if (!playerExists)
+            throw new PlayerNotFoundException(userId);
+
+        if (Boolean.TRUE.equals(playerReadyStatus.get(userId)))
             throw new FactionAlreadyAssignedException(userId);
+
         playerFactions.put(userId, faction);
     }
 
-     */
+    public Optional<PlayerFaction> getPlayerFaction(UUID userId) {
+        return Optional.ofNullable(playerFactions.get(userId));
+    }
+
+    public void assignHomePort(UUID userId, UUID portId) {
+        if (status != SessionStatus.FACTION_SELECTION)
+            throw new SessionNotInLobbyException(id);
+
+        boolean playerExists = players.stream()
+                .anyMatch(p -> p.getUserId().equals(userId));
+        if (!playerExists)
+            throw new PlayerNotFoundException(userId);
+
+        if (playerHomePorts.containsKey(userId))
+            throw new HomePortAlreadyAssignedException(userId);
+
+        playerHomePorts.put(userId, portId);
+    }
+
+    public Optional<UUID> getHomePort(UUID userId) {
+        return Optional.ofNullable(playerHomePorts.get(userId));
+    }
+
+    public Map<UUID, UUID> getPlayerHomePorts() {
+        return Collections.unmodifiableMap(playerHomePorts);
+    }
+
+    public void markPlayerReady(UUID userId) {
+        if (status != SessionStatus.FACTION_SELECTION)
+            throw new SessionNotInLobbyException(id);
+
+        if (!players.stream().anyMatch(p -> p.getUserId().equals(userId)))
+            throw new PlayerNotFoundException(userId);
+
+        if (!playerFactions.containsKey(userId))
+            throw new InvalidFactionException("Player must select faction first");
+
+        if (!playerHomePorts.containsKey(userId))
+            throw new HomePortNotAssignedException(userId);
+
+        playerReadyStatus.put(userId, true);
+    }
+
+    public boolean areAllPlayersReady() {
+        if (players.isEmpty())
+            return false;
+
+        if (playerFactions.size() != players.size())
+            return false;
+
+        if (playerHomePorts.size() != players.size())
+            return false;
+
+        if (playerReadyStatus.size() != players.size())
+            return false;
+
+        return playerReadyStatus.values().stream().allMatch(b -> b);
+    }
+
+    public void resetReadyStatus() {
+        playerReadyStatus.clear();
+    }
+
+
+    public List<UUID> getReadyPlayers() {
+        return playerReadyStatus.entrySet().stream()
+                .filter(Map.Entry::getValue)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+    }
 
     public void tick() {
         if (status != SessionStatus.RUNNING) return;
@@ -171,5 +282,14 @@ public class GameSession {
 
     public Duration getDuration(){
         return duration;
+    }
+
+
+    public Map<UUID, Boolean> getReadyStatus() {
+        return Collections.unmodifiableMap(playerReadyStatus);
+    }
+
+    public void setReadyStatus(Map<UUID, Boolean> readyStatus) {
+        this.playerReadyStatus.putAll(readyStatus);
     }
 }

@@ -76,6 +76,26 @@ class TravelTest {
     }
 
     @Test
+    void givenStartTickDelay_whenProgressBeforeEffectiveStart_thenZero() {
+        Travel delayed = Travel.start(playerShipId, playerId, sessionId, originPortId, destinationPortId,
+                10.0, 1.0, 0.1, new BigDecimal("1.00"), 100, 4);
+        assertThat(delayed.getStartTick()).isEqualTo(104);
+        int durationTicks = (int) Math.ceil(10.0 / 1.0);
+        assertThat(delayed.getArrivalTick()).isEqualTo(104 + durationTicks);
+        assertThat(delayed.getProgress(99)).isEqualTo(0.0);
+        assertThat(delayed.getProgress(103)).isEqualTo(0.0);
+        assertThat(delayed.getProgress(104)).isEqualTo(0.0);
+        assertThat(delayed.getProgress(104 + durationTicks / 2)).isBetween(0.0, 1.0);
+    }
+
+    @Test
+    void givenNegativeStartTickDelay_whenStart_thenTreatedAsZero() {
+        Travel t = Travel.start(playerShipId, playerId, sessionId, originPortId, destinationPortId,
+                10.0, 1.0, 0.1, new BigDecimal("1.00"), 50, -3);
+        assertThat(t.getStartTick()).isEqualTo(50);
+    }
+
+    @Test
     void givenSameOriginAndDestination_whenStart_thenThrowsSamePortException() {
         assertThatThrownBy(() -> Travel.start(playerShipId, playerId, sessionId,
                 originPortId, originPortId, 500.0, 1.0, 0.1, new BigDecimal("1000.00"), 0))

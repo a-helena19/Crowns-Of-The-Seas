@@ -1,0 +1,210 @@
+/* Non-blocking loading panel — flows inside .right-side-panels */
+.loading-panel {
+    position: relative;
+    width: 100%;
+    background: #fff0e7;
+    border: 4px solid #5a3a0a;
+    box-shadow: inset -4px -4px 0 #3c1603, inset 4px 4px 0 #4a2c10;
+    padding: 14px;
+    text-align: center;
+    font-family: var(--font-body, Georgia, serif);
+    color: #45392c;
+}
+
+/* ── Title ── */
+.loading-title {
+    font-family: var(--font-game, Georgia, serif);
+    font-size: 15px;
+    font-weight: bold;
+    color: #45392c;
+    margin-bottom: 12px;
+    letter-spacing: 0.5px;
+}
+
+.loading-dots span {
+    display: inline-block;
+    animation: dotBlink 1.2s infinite;
+    color: #7a4f10;
+}
+.loading-dots span:nth-child(2) { animation-delay: 0.3s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.6s; }
+
+@keyframes dotBlink {
+    0%, 100% { opacity: 0.2; transform: translateY(0); }
+    50%       { opacity: 1;   transform: translateY(-3px); }
+}
+
+/* ── Ship icon ── */
+.loading-ship-wrap {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    height: 80px;
+    margin-bottom: 6px;
+    overflow: hidden;
+}
+
+.loading-ship-img {
+    width: 70px;
+    height: 70px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 3px 8px rgba(90,58,10,0.3));
+    position: relative;
+    z-index: 2;
+}
+
+/* ── Animated cargo boxes ── */
+.cargo-box {
+    position: absolute;
+    font-size: 20px;
+    opacity: 0;
+    bottom: 8px;
+    animation: floatCargo 2.4s ease-in forwards;
+    z-index: 3;
+}
+.cargo-box:nth-child(1) { left: 30%; animation-delay: 0.5s; }
+.cargo-box:nth-child(2) { left: 55%; animation-delay: 3.5s; }
+.cargo-box:nth-child(3) { left: 42%; animation-delay: 6.5s; }
+
+@keyframes floatCargo {
+    0%   { opacity: 0;   transform: translateY(0)    scale(0.8); }
+    15%  { opacity: 1;   transform: translateY(-8px)  scale(1); }
+    70%  { opacity: 0.9; transform: translateY(-44px) scale(1); }
+    100% { opacity: 0;   transform: translateY(-64px) scale(0.7); }
+}
+
+/* ── Route label ── */
+.loading-route {
+    font-size: 13px;
+    color: #6b5230;
+    margin-bottom: 10px;
+    letter-spacing: 0.5px;
+}
+
+/* ── Capacity bar ── */
+.loading-capacity {
+    margin-bottom: 10px;
+}
+
+.loading-capacity-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #6b5230;
+    margin-bottom: 4px;
+}
+
+.capacity-track {
+    height: 10px;
+    background: #e8d5be;
+    border: 2px solid #5a3a0a;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.capacity-fill {
+    height: 100%;
+    border-radius: 1px;
+}
+.capacity-fill.ok {
+    background: linear-gradient(90deg, #4caf50, #81c784);
+}
+.capacity-fill.over {
+    background: linear-gradient(90deg, #f44336, #ef9a9a);
+}
+
+/* ── Time progress bar ── */
+.loading-progress-wrap {
+    margin-top: 2px;
+}
+
+.loading-progress-label {
+    font-size: 11px;
+    color: #8a6a40;
+    text-align: left;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.progress-track {
+    height: 8px;
+    background: #e8d5be;
+    border: 2px solid #5a3a0a;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #c89b3c, #ffd060, #c89b3c);
+    background-size: 200% 100%;
+    animation: progressFill 10s linear forwards, shimmer 1.5s linear infinite;
+    border-radius: 1px;
+}
+
+@keyframes progressFill {
+    from { width: 0%; }
+    to   { width: 100%; }
+}
+
+@keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ── Done state ── */
+.loading-done {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0 8px;
+}
+
+.loading-done-icon {
+    font-size: 28px;
+    animation: popIn 0.4s ease;
+}
+
+@keyframes popIn {
+    0%   { transform: scale(0.4); opacity: 0; }
+    70%  { transform: scale(1.2); }
+    100% { transform: scale(1);   opacity: 1; }
+}
+
+.loading-done-text {
+    font-family: var(--font-game, Georgia, serif);
+    font-size: 14px;
+    font-weight: bold;
+    color: #2e7d32;
+    letter-spacing: 0.5px;
+}
+
+.loading-done-sub {
+    font-size: 12px;
+    color: #6b5230;
+}
+
+.progress-fill-done {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #4caf50, #81c784);
+    border-radius: 1px;
+}
+
+
+.progress-fill.duration-15 {
+    animation: progressFill 15s linear forwards, shimmer 1.5s linear infinite;
+}
+
+.progress-fill.duration-20 {
+    animation: progressFill 20s linear forwards, shimmer 1.5s linear infinite;
+}
+
+.progress-fill.duration-30 {
+    animation: progressFill 30s linear forwards, shimmer 1.5s linear infinite;
+}

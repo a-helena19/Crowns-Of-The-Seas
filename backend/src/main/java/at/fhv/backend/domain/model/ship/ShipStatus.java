@@ -9,5 +9,8 @@ public enum ShipStatus {
     UNLOADING,
     BLOCKED,
     EN_ROUTE,
-    DAMAGED
+    DAMAGED,
+    READY_TO_DEPART,
+    REFUELING,
+    REPAIRING
 }

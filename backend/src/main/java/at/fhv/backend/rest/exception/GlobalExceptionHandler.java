@@ -43,30 +43,41 @@ public class GlobalExceptionHandler {
 
     private HttpStatus mapToHttpStatus(DomainException exception) {
         return switch (exception.getErrorCode()) {
-            case SHIP_NOT_FOUND,
-                 TRAVEL_NOT_FOUND -> HttpStatus.NOT_FOUND;
-
             case PLAYER_INSUFFICIENT_FUNDS,
                  INSUFFICIENT_FUEL,
                  SHIP_NOT_AVAILABLE_FOR_PURCHASE,
-                 SHIP_NOT_OWNED_BY_PLAYER -> HttpStatus.BAD_REQUEST;
-            case PLAYER_NOT_FOUND, SESSION_NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case FACTION_ALREADY_ASSIGNED, USERNAME_ALREADY_EXISTS -> HttpStatus.CONFLICT;
-            case INVALID_FACTION,
+                 SHIP_NOT_OWNED_BY_PLAYER,
+                 CARGO_NOT_AVAILABLE,
+                 SMUGGLE_EXPIRED,
+                 CARGO_NOT_ASSIGNED,
+                 CARGO_CAPACITY_EXCEEDED,
+                 INVALID_FACTION,
                  INVALID_AMOUNT,
                  SESSION_NOT_IN_LOBBY,
                  SESSION_NOT_RUNNING,
-                 INVALID_TICK_RATE -> HttpStatus.BAD_REQUEST;
+                 INVALID_TICK_RATE,
+                 HOME_PORT_NOT_ASSIGNED -> HttpStatus.BAD_REQUEST;
+
+            case PLAYER_NOT_FOUND,
+                 SESSION_NOT_FOUND,
+                 SHIP_NOT_FOUND,
+                 TRAVEL_NOT_FOUND,
+                 CARGO_NOT_FOUND,
+                 SMUGGLE_NOT_FOUND -> HttpStatus.NOT_FOUND;
 
             case SHIP_INVALID_STATUS_TRANSITION,
                  TRAVEL_INVALID_STATE,
                  TRAVEL_INVALID_DATA,
-                 TRAVEL_SAME_PORT -> HttpStatus.CONFLICT;
-            case SESSION_FULL,
+                 TRAVEL_SAME_PORT,
+                 FACTION_ALREADY_ASSIGNED,
+                 USERNAME_ALREADY_EXISTS,
+                 HOME_PORT_ALREADY_ASSIGNED,
+                 SESSION_FULL,
                  ONLY_HOST_CAN_START,
                  PLAYER_ALREADY_IN_SESSION -> HttpStatus.CONFLICT;
             case INVALID_CREDENTIALS -> HttpStatus.UNAUTHORIZED;
 
         };
+
     }
 }

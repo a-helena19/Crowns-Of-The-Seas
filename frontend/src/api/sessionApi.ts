@@ -16,21 +16,28 @@ const apiClient = axios.create({
     }
 });
 
+interface ReadyStatusResponse {
+    sessionId: string;
+    readyPlayers: string[];
+    totalPlayers: number;
+    allReady: boolean;
+}
+
+interface PlayerFactionResponse {
+    faction: string | null;
+}
+
 // Add JWT token to every request
 apiClient.interceptors.request.use((config) => {
     const token = localStorage.getItem('auth_token');
     if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
-        console.log('✅ Authorization header set with token:', token.substring(0, 20) + '...');
-    } else {
-        console.warn('⚠️ No auth token found in localStorage');
     }
     return config;
 }, (error) => {
     return Promise.reject(error);
 });
 
-// Add error interceptor for debugging
 apiClient.interceptors.response.use(
     response => response,
     error => {
@@ -73,8 +80,69 @@ export const sessionApi = {
             tickRateSeconds
         });
         return response.data;
+    },
+
+    async leaveSession(sessionId: string): Promise<SessionDTO> {
+        const response = await apiClient.post<SessionDTO>(`/${sessionId}/leave`, {});
+        return response.data;
+    },
+
+    async assignPlayerFaction(
+        sessionId: string,
+        userId: string,
+        faction: string
+    ): Promise<void> {
+        await apiClient.post(
+            `/${sessionId}/players/${userId}/faction`,
+            { faction }
+        );
+    },
+
+    async getPlayerFaction(
+        sessionId: string,
+        userId: string
+    ): Promise<PlayerFactionResponse> {
+        const response = await apiClient.get<PlayerFactionResponse>(
+            `/${sessionId}/players/${userId}/faction`
+        );
+        return response.data;
+    },
+
+    async assignHomePort(
+        sessionId: string,
+        userId: string,
+        portId: string
+    ): Promise<void> {
+        await apiClient.post(
+            `/${sessionId}/players/${userId}/home-port`,
+            { portId }
+        );
+    },
+
+    async getHomePort(
+        sessionId: string,
+        userId: string
+    ): Promise<{ homePortId?: string }> {
+        const response = await apiClient.get<{ homePortId?: string }>(
+            `/${sessionId}/players/${userId}/home-port`
+        );
+        return response.data;
+    },
+
+    async markPlayerReady(
+        sessionId: string,
+        userId: string
+    ): Promise<void> {
+        await apiClient.post(
+            `/${sessionId}/players/${userId}/ready`,
+            {}
+        );
+    },
+
+    async getReadyStatus(sessionId: string): Promise<ReadyStatusResponse> {
+        const response = await apiClient.get<ReadyStatusResponse>(
+            `/${sessionId}/ready-status`
+        );
+        return response.data;
     }
 };
-
-
-
