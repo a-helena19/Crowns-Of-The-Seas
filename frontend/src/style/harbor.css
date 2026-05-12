@@ -294,15 +294,16 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    background: rgba(20, 10, 3, 0.9);
-    border: 2px solid #5a3a0a;
+    background: #fff0e7;
+    border: 4px solid #5a3a0a;
+    box-shadow: inset -4px -4px 0 #2a1408, inset 4px 4px 0 #6a3f1a;
     padding: 8px 16px;
     z-index: 20;
 }
 
 .harbor-port-selector-label {
     font-family: var(--font-game);
-    color: #c89b3c;
+    color: #2a1408;
     font-size: 14px;
 }
 
