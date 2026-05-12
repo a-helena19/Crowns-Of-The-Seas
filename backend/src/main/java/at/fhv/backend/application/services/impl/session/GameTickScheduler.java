@@ -1,6 +1,7 @@
 package at.fhv.backend.application.services.impl.session;
 
 import at.fhv.backend.application.init.CargoSessionInitializer;
+import at.fhv.backend.application.services.travel.TravelPauseService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.TravelArrivalService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
@@ -50,6 +51,7 @@ public class GameTickScheduler {
     private final TravelArrivalService travelArrivalService;
     private final CargoUnloadingPhaseService cargoUnloadingPhaseService;
     private final CargoSessionInitializer cargoSessionInitializer;
+    private final TravelPauseService travelPauseService;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
     private final Map<UUID, ScheduledFuture<?>> runningTasks = new ConcurrentHashMap<>();
@@ -69,7 +71,8 @@ public class GameTickScheduler {
                              GameSessionWebSocketController webSocketController,
                              TravelArrivalService travelArrivalService,
                              CargoUnloadingPhaseService cargoUnloadingPhaseService,
-                             CargoSessionInitializer cargoSessionInitializer) {
+                             CargoSessionInitializer cargoSessionInitializer,
+                             TravelPauseService travelPauseService) {
         this.gameSessionRepository = gameSessionRepository;
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
@@ -81,6 +84,7 @@ public class GameTickScheduler {
         this.travelArrivalService = travelArrivalService;
         this.cargoUnloadingPhaseService = cargoUnloadingPhaseService;
         this.cargoSessionInitializer = cargoSessionInitializer;
+        this.travelPauseService = travelPauseService;
     }
 
 
@@ -258,6 +262,9 @@ public class GameTickScheduler {
 
             List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
             for (Travel travel : activeTravels) {
+                if (travelPauseService.isTravelPaused(travel.getTravelId())) {
+                    continue;
+                }
                 if (currentTick >= travel.getArrivalTick()) {
                     travelArrivalService.handleArrival(travel);
                 }
@@ -335,6 +342,7 @@ public class GameTickScheduler {
                         + " destPort=" + travel.getDestinationPortId() + " found=" + (dest != null));
 
                 if (origin != null && dest != null) {
+                    boolean isPaused = travelPauseService.isTravelPaused(travel.getTravelId());
                     double progress = travel.getProgress(currentTick);
                     double x = origin.x() + (dest.x() - origin.x()) * progress;
                     double y = origin.y() + (dest.y() - origin.y()) * progress;
@@ -342,7 +350,8 @@ public class GameTickScheduler {
                     positions.add(new ShipPositionsUpdateEvent.ShipPosition(
                             playerShip.getId(), playerShip.getPlayerId(), playerName,
                             iconUrl, x, y, "EN_ROUTE", travel.getArrivalTick(),
-                            origin.x(), origin.y(), dest.x(), dest.y(), travel.getStartTick(), null
+                            origin.x(), origin.y(), dest.x(), dest.y(), travel.getStartTick(), null,
+                            isPaused
                     ));
                 }
             } else if (playerShip.getCurrentPortId() != null) {

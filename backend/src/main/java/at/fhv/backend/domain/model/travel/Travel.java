@@ -24,7 +24,7 @@ public class Travel {
     private Instant arrivedAt;
     private double fuelConsumed;
     private final int startTick;
-    private final int arrivalTick;
+    private int arrivalTick;
     private double loadingDurationSeconds;
 
     private Travel(UUID travelId, UUID playerShipId, UUID playerId, UUID sessionId,
@@ -111,6 +111,13 @@ public class Travel {
         this.fuelConsumed = fuelConsumed;
     }
 
+    public void markAsCompleted() {
+        if (this.travelStatus != TravelStatus.ARRIVED) {
+            throw new InvalidTravelStateException("Only travels with status ARRIVED can be marked as COMPLETED", travelStatus);
+        }
+        this.travelStatus = TravelStatus.COMPLETED;
+    }
+
     public void cancel() {
         if (this.travelStatus != TravelStatus.IN_PROGRESS && this.travelStatus != TravelStatus.PLANNED) {
             throw new InvalidTravelStateException("Only PLANNED or IN_PROGRESS travels can be cancelled.", travelStatus);
@@ -194,5 +201,9 @@ public class Travel {
 
     public void setLoadingDurationSeconds(double loadingDurationSeconds) {
         this.loadingDurationSeconds = loadingDurationSeconds;
+    }
+
+    public void shiftArrivalTick(int additionalTicks) {
+        this.arrivalTick = this.arrivalTick + additionalTicks;
     }
 }

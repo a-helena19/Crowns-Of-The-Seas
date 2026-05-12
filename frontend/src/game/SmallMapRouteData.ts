@@ -31,23 +31,23 @@ function edge(a: string, b: string, ...waypoints: Point[]) {
     GRAPH[b].push({ to: a, waypoints: [...waypoints].reverse(), weight });
 }
 
-port("Hamburg",      46.1, 24.3);   // TODO
-port("Rotterdam",    43.8, 27.1);   // TODO
-port("New York",     21.6, 33.8);   // TODO
-port("Santos",       33.9, 71.4);   // TODO
-port("Kapstadt",     51.6, 79.4);   // TODO
-port("Mumbai",       68.1, 47.7);   // TODO
-port("Singapur",     75.9, 53.6);   // TODO
-port("Shanghai",     81.7, 41.4);   // TODO
-port("Sydney",       90.1, 80.5);   // TODO
-port("Los Angeles",  8.4, 32.0);   // TODO
+port("Hamburg",      46.1, 24.3);
+port("Rotterdam",    43.8, 27.1);
+port("New York",     21.6, 33.8);
+port("Santos",       33.9, 71.4);
+port("Kapstadt",     51.6, 79.4);
+port("Mumbai",       68.1, 47.7);
+port("Singapur",     75.9, 53.6);
+port("Shanghai",     81.7, 41.4);
+port("Sydney",       90.1, 80.5);
+port("Los Angeles",  8.4, 32.0);
 
-hub("Atlantic Crossroads",         37.5, 61.5);  // TODO
-hub("Second Atlantic Crossroad",   32.3, 42.3);  // TODO
-hub("Indian Ocean Hub",            68.7, 59.7);  // TODO
-hub("Phillipinen Hub",             90.7, 49.9);  // TODO
-hub("Biskaya Hub",                 38.0, 27.0);  // TODO
-hub("Santos Hub",                  32.9, 76.4);  // TODO
+hub("Atlantic Crossroads",         37.5, 61.5);
+hub("Second Atlantic Crossroad",   32.3, 42.3);
+hub("Indian Ocean Hub",            68.7, 59.7);
+hub("Phillipinen Hub",             90.7, 49.9);
+hub("Biskaya Hub",                 38.0, 27.0);
+hub("Santos Hub",                  32.9, 76.4);
 
 edge("Santos", "Santos Hub",                          wp(33.9, 71.4), wp(32.9, 76.4));
 edge("Santos Hub", "Second Atlantic Crossroad",       wp(32.9, 76.4), wp(37.5, 61.5));
@@ -106,18 +106,10 @@ function aStar(start: string, goal: string): string[] | null {
     return null;
 }
 
-// ══════════════════════════════════════════════════════════
-//  Öffentliche API
-// ══════════════════════════════════════════════════════════
-
 export function getSmallMapPort(name: string): Point | null {
     return PORTS[name] ?? null;
 }
 
-/**
- * Gibt die Waypoints (ohne Origin/Destination) für die kleine Map zurück.
- * Gleiche Logik wie RoutePathfinder.findRoute im Backend.
- */
 export function getSmallMapRoute(fromName: string, toName: string): Point[] {
     const nodePath = aStar(fromName, toName);
     if (!nodePath || nodePath.length < 2) return [];

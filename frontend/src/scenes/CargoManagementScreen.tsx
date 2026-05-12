@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import LoadingScreen from "./LoadingScreen";
 import backIcon from "../assets/goback.png";
 import background from "../assets/background.jpg";
@@ -6,14 +6,6 @@ import "../style/harbor.css";
 import "../style/cargoManagement.css";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
 import DepartureAnimation from "./DepartureAnimation";
-
-interface CargoManagementScreenProps {
-    assignedCargos: AssignedCargoEntry[];
-    onCargoLoadingDone: (cargoId: string) => void;
-    onCargoRemoved: (cargoId: string) => void;
-    onCargoPhaseChange: (cargoId: string, phase: AssignedCargoEntry["phase"], travelId?: string) => void;
-    onClose: () => void;
-}
 
 function StaticProgressBar({ pct, color }: { pct: number; color: string }) {
     const clamped = Math.min(100, Math.max(0, pct));
@@ -31,12 +23,24 @@ function StaticProgressBar({ pct, color }: { pct: number; color: string }) {
     );
 }
 
+interface CargoManagementScreenProps {
+    assignedCargos: AssignedCargoEntry[];
+    onCargoLoadingDone: (cargoId: string) => void;
+    onCargoRemoved: (cargoId: string) => void;
+    onCargoPhaseChange: (cargoId: string, phase: AssignedCargoEntry["phase"], travelId?: string) => void;
+    onClose: () => void;
+    onDepartureStarted?: () => void;
+    onDepartureComplete?: () => void;
+}
+
 export default function CargoManagementScreen({
                                                   assignedCargos,
                                                   onCargoLoadingDone,
                                                   onCargoRemoved,
                                                   onCargoPhaseChange,
                                                   onClose,
+                                                  onDepartureStarted,
+                                                  onDepartureComplete,
                                               }: CargoManagementScreenProps) {
     const [selectedCargoId, setSelectedCargoId] = useState<string | null>(
         assignedCargos[0]?.cargoId ?? null
@@ -51,7 +55,7 @@ export default function CargoManagementScreen({
         const hasRunningProgress = assignedCargos.some(
             e => e.phase === "loading" && !e.loadingDone
         );
-        if (!hasRunningProgress) return; // Nichts zu animieren → kein Tick
+        if (!hasRunningProgress) return;
 
         const interval = setInterval(() => {
             setRenderTick(t => (t + 1) % 1_000_000);
@@ -103,7 +107,7 @@ export default function CargoManagementScreen({
         return 0;
     }
 
-    async function handleStartTravel(entry: AssignedCargoEntry) {
+    const handleStartTravel = useCallback(async (entry: AssignedCargoEntry) => {
         if (!playerId || !sessionId) return;
         setStartingMap(m => ({ ...m, [entry.cargoId]: true }));
         setErrorMap(m => ({ ...m, [entry.cargoId]: "" }));
@@ -115,6 +119,10 @@ export default function CargoManagementScreen({
 
         const attemptStart = async (retriesLeft: number, delayMs: number): Promise<void> => {
             try {
+                if (retriesLeft === MAX_RETRIES) {
+                    onDepartureStarted?.();
+                }
+
                 const response = await fetch(`/api/travels/start/${playerId}?sessionId=${sessionId}`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -155,12 +163,14 @@ export default function CargoManagementScreen({
                 }
 
                 setErrorMap(m => ({ ...m, [entry.cargoId]: msg }));
+                onDepartureComplete?.();
             } catch {
                 if (retriesLeft > 0) {
                     await new Promise<void>(resolve => setTimeout(resolve, delayMs));
                     return attemptStart(retriesLeft - 1, delayMs);
                 }
                 setErrorMap(m => ({ ...m, [entry.cargoId]: "Verbindungsfehler." }));
+                onDepartureComplete?.();
             }
         };
 
@@ -169,7 +179,12 @@ export default function CargoManagementScreen({
         } finally {
             setStartingMap(m => ({ ...m, [entry.cargoId]: false }));
         }
-    }
+    }, [playerId, sessionId, token, pilotageMap, onDepartureStarted, onDepartureComplete, onCargoPhaseChange]);
+
+    const handleDepartureComplete = useCallback(() => {
+        setShowDeparture(null);
+        onDepartureComplete?.();
+    }, [onDepartureComplete]);
 
     return (
         <div className="scene">
@@ -194,7 +209,9 @@ export default function CargoManagementScreen({
 
                         const statusLabel = {
                             loading: isDone ? "✅ Bereit zur Abfahrt" : "⏳ Wird beladen…",
-                            en_route: `🚢 Unterwegs — noch ${(entry.arrivalTick ?? 0) - (entry.currentTick ?? 0)} Ticks`,
+                            en_route: entry.paused
+                                ? "⚓ Reise unterbrochen"
+                                : `🚢 Unterwegs — noch ${Math.max(0, (entry.arrivalTick ?? 0) - (entry.currentTick ?? 0))} Ticks`,
                             unloading: "⚓ Wird entladen…",
                             completed: `💰 +${entry.reward?.toLocaleString("de-DE")} G`,
                         }[entry.phase] ?? "…";
@@ -274,11 +291,10 @@ export default function CargoManagementScreen({
                         )}
 
                         {selectedEntry.phase === "en_route" && (() => {
-                            const startTick = (selectedEntry as AssignedCargoEntry & { startTick?: number }).startTick;
                             const pct = getTickPct(
                                 selectedEntry.currentTick,
                                 selectedEntry.arrivalTick,
-                                startTick
+                                selectedEntry.startTick
                             );
                             const remainingTicks = Math.max(
                                 0,
@@ -289,9 +305,12 @@ export default function CargoManagementScreen({
                                     <div className="cm-travel-title">⛵ Auf Reise</div>
                                     <div className="cm-travel-route">{selectedEntry.from} → {selectedEntry.to}</div>
                                     <div className="cm-travel-ticks">
-                                        Ankunft in {remainingTicks} Tagen
+                                        {selectedEntry.paused
+                                            ? "⚓ Reise unterbrochen"
+                                            : `Ankunft in ${remainingTicks} Tagen`
+                                        }
                                     </div>
-                                    <StaticProgressBar pct={pct} color="#ff9800" />
+                                    {!selectedEntry.paused && <StaticProgressBar pct={pct} color="#ff9800" />}
                                 </div>
                             );
                         })()}
@@ -334,13 +353,10 @@ export default function CargoManagementScreen({
                                 </div>
 
                                 {selectedEntry.unloadingCompletedAtTick != null && (() => {
-                                    const unloadingStartTick = (selectedEntry as AssignedCargoEntry & {
-                                        unloadingStartTick?: number
-                                    }).unloadingStartTick;
                                     const pct = getTickPct(
                                         selectedEntry.currentTick,
                                         selectedEntry.unloadingCompletedAtTick,
-                                        unloadingStartTick
+                                        selectedEntry.unloadingStartTick
                                     );
                                     return (
                                         <div className="loading-progress-wrap">
@@ -353,8 +369,10 @@ export default function CargoManagementScreen({
                         )}
 
                         {selectedEntry.phase === "completed" && (() => {
-                            const isPerfect = !selectedEntry.rewardDetails || selectedEntry.rewardDetails.percentage >= 100;
-                            const details = selectedEntry.rewardDetails;
+                            const allRewards = selectedEntry.cargoRewards ?? [];
+                            const cargoItems = allRewards.filter(r => r.cargoType !== "SMUGGLE");
+                            const smuggleItem = allRewards.find(r => r.cargoType === "SMUGGLE");
+                            const isPerfect = cargoItems.every(r => r.percentage >= 100);
                             return (
                                 <div className="cm-reward-panel">
                                     <div className="cm-reward-header">
@@ -364,51 +382,71 @@ export default function CargoManagementScreen({
                                         </div>
                                     </div>
 
-                                    {isPerfect && (
+                                    {isPerfect && !smuggleItem && (
                                         <div className="cm-reward-perfect-badge">
                                             100% Lieferquote — alle Frachten erfolgreich abgeliefert!
                                         </div>
                                     )}
 
                                     <div className="cm-reward-section-label">
-                                        Frachtbilanz (1)
-                                    </div>
-                                    <div className={`cm-reward-cargo-item${!isPerfect ? " expired" : ""}`}>
-                                        <div style={{ flex: 1 }}>
-                                            <div className="cm-reward-cargo-name">{selectedEntry.from} → {selectedEntry.to}</div>
-                                            <div className="cm-reward-cargo-sub">→ {selectedEntry.to}</div>
-                                        </div>
-                                        <span className={`cm-reward-cargo-amount${!isPerfect ? " expired" : ""}`}>
-                                            +{(details?.actualReward ?? selectedEntry.reward ?? 0).toLocaleString("de-DE")}T
-                                        </span>
+                                        Frachtbilanz ({cargoItems.length + (smuggleItem ? 1 : 0)})
                                     </div>
 
-                                    {details && (
-                                        <div className="cm-reward-breakdown">
-                                            <div className="cm-reward-row">
-                                                <span>Cargo Belohnung</span>
-                                                <span className="cm-reward-row-value">+{details.actualReward.toLocaleString("de-DE")}T</span>
-                                            </div>
-                                            {isPerfect && (
-                                                <div className="cm-reward-row bonus">
-                                                    <span>🎁 Reise Bonus</span>
-                                                    <span>+{details.actualReward.toLocaleString("de-DE")}T</span>
+                                    {cargoItems.map((item, i) => {
+                                        const isExpired = item.percentage < 100;
+                                        return (
+                                            <div key={i} className={`cm-reward-cargo-item${isExpired ? " expired" : ""}`}>
+                                                <div style={{ flex: 1 }}>
+                                                    <div className="cm-reward-cargo-name">{item.cargoName}</div>
+                                                    <div className="cm-reward-cargo-sub">→ {item.destinationPort}</div>
                                                 </div>
-                                            )}
-                                            {!isPerfect && (
-                                                <div className="cm-reward-row warn">
-                                                    <span>⚠ Fracht war abgelaufen ({details.percentage.toFixed(0)}%)</span>
-                                                    <span>−{(details.baseReward - details.actualReward).toLocaleString("de-DE")}T</span>
-                                                </div>
-                                            )}
-                                            <div className="cm-reward-row total">
-                                                <span>Gesamt</span>
-                                                <span className="cm-reward-row-value">
-                                                    +{(selectedEntry.reward ?? 0).toLocaleString("de-DE")}T
+                                                <span className={`cm-reward-cargo-amount${isExpired ? " expired" : ""}`}>
+                                                    +{item.actualReward.toLocaleString("de-DE")}T
                                                 </span>
                                             </div>
+                                        );
+                                    })}
+
+                                    {smuggleItem && (
+                                        <div className="cm-reward-cargo-item">
+                                            <div style={{ flex: 1 }}>
+                                                <div className="cm-reward-cargo-name">🏴‍☠️ {smuggleItem.cargoName}</div>
+                                                <div className="cm-reward-cargo-sub">Schmuggelware</div>
+                                            </div>
+                                            <span className="cm-reward-cargo-amount">
+                                                +{smuggleItem.actualReward.toLocaleString("de-DE")}T
+                                            </span>
                                         </div>
                                     )}
+
+                                    <div className="cm-reward-breakdown">
+                                        {cargoItems.map((item, i) => (
+                                            <div key={`cargo-${i}`}>
+                                                <div className={`cm-reward-row${item.percentage < 100 ? " warn" : ""}`}>
+                                                    <span>{item.percentage < 100 ? `⚠ ${item.cargoName} (${item.percentage}%)` : item.cargoName}</span>
+                                                    <span className="cm-reward-row-value">+{(item.actualReward - (item.bonusReward ?? 0)).toLocaleString("de-DE")}T</span>
+                                                </div>
+                                                {item.bonusReward > 0 && (
+                                                    <div className="cm-reward-row bonus">
+                                                        <span>🎁 Reise Bonus</span>
+                                                        <span>+{item.bonusReward.toLocaleString("de-DE")}T</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {smuggleItem && (
+                                            <div className="cm-reward-row bonus">
+                                                <span>🏴‍☠️ {smuggleItem.cargoName}</span>
+                                                <span>+{smuggleItem.actualReward.toLocaleString("de-DE")}T</span>
+                                            </div>
+                                        )}
+                                        <div className="cm-reward-row total">
+                                            <span>Gesamt</span>
+                                            <span className="cm-reward-row-value">
+                                                +{(selectedEntry.reward ?? 0).toLocaleString("de-DE")}T
+                                            </span>
+                                        </div>
+                                    </div>
 
                                     <button
                                         className="cm-reward-btn"
@@ -426,9 +464,7 @@ export default function CargoManagementScreen({
             {showDeparture && (
                 <DepartureAnimation
                     shipIconUrl={showDeparture.shipIconUrl ?? "/fallback-ship.png"}
-                    onComplete={() => {
-                        setShowDeparture(null);
-                    }}
+                    onComplete={handleDepartureComplete}
                 />
             )}
         </div>

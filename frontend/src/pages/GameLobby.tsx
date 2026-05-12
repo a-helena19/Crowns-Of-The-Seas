@@ -19,7 +19,6 @@ export default function GameLobby() {
         duration: '1h'
     });
 
-    // Join Session Form State
     const [joinForm, setJoinForm] = useState({
         gameCode: '',
         playerName: user?.username || ''
@@ -95,7 +94,6 @@ export default function GameLobby() {
 
             const axiosError = error as { response?: { data?: { code?: string; message?: string }; status?: number } };
 
-            // Spezifische Fehlermeldungen
             if (axiosError.response?.data?.code === 'PLAYER_ALREADY_IN_SESSION') {
                 setError('Du bist bereits dieser Session beigetreten!');
             } else if (axiosError.response?.data?.code === 'SESSION_FULL') {
