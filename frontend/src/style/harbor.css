@@ -84,7 +84,6 @@
     font-size: 18px;
     width: 100%;
     text-align: center;
-    padding: 10px 14px;
     background-color: #c89b3c;
     color: #2b1a10;
     border: 2px solid #8b5a2b;
@@ -311,9 +310,10 @@
     font-family: var(--font-game);
     font-size: 14px;
     padding: 6px 14px;
-    background: #2a1a05;
-    color: #c89b3c;
-    border: 2px solid #5a3a0a;
+    background-color: #c89b3c;
+    color: #2b1a10;
+    border: 2px solid #8b5a2b;
+    box-shadow: inset -3px -3px 0 #8b5e0a, inset 3px 3px 0 #352700;
     cursor: pointer;
     transition: background 0.15s;
 }
@@ -324,6 +324,7 @@
     background: #1a3a10;
     color: #90ee90;
     border-color: #2e6b1a;
+    box-shadow: inset -3px -3px 0 #417a2b, inset 3px 3px 0 #1d4312;
 }
 
 .harbor-selected-ship-hint {
