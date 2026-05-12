@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import LoadingScreen from "./LoadingScreen";
 import backIcon from "../assets/goback.png";
-import background from "../assets/background.jpg";
+import background from "../assets/background-cargomanagement.png";
 import "../style/harbor.css";
 import "../style/cargoManagement.css";
 import type { AssignedCargoEntry } from "../types/assignedCargo";

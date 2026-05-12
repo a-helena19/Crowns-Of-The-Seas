@@ -30,8 +30,8 @@
 
     display: flex;
     flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
+    min-height: 100vh;
+    overflow-y: auto;
 }
 
 .fs-header {
@@ -142,14 +142,10 @@
 
 .fs-grid {
     margin-top: 22px;
-
     display: grid;
-
     grid-template-columns: repeat(7, 1fr);
     gap: 14px;
-
-    flex: 1;
-    min-height: 0; /* erlaubt children dass sie schrumpfen statt überzulaufen */
+    flex: 0 0 auto;
 }
 
 @media (max-width: 1280px) {
@@ -333,8 +329,8 @@
 
 .fs-card-desc {
     font-family: var(--font-body);
-    font-size: 12px;
-    line-height: 1.35;
+    font-size: 13px;
+    line-height: 1.45;
     color: #7a6a4a;
     margin: 0;
     font-style: italic;
@@ -499,7 +495,7 @@
     .fs-card-icon { font-size: 18px; }
     .fs-card-icon-circle { width: 36px; height: 36px; bottom: -18px; }
     .fs-card-body { padding-top: 22px; }
-    .fs-card-desc { font-size: 11px; }
+    .fs-card-desc { font-size: 12px; }
     .fs-grid { gap: 10px; margin-top: 14px; }
 }
 
@@ -537,4 +533,21 @@
 
 .fs-card-cons {
     margin-top: 4px;
+}
+
+.fs-screen::-webkit-scrollbar {
+    width: 6px;
+}
+
+.fs-screen::-webkit-scrollbar-track {
+    background: rgba(120, 90, 40, 0.06);
+}
+
+.fs-screen::-webkit-scrollbar-thumb {
+    background: rgba(120, 90, 40, 0.25);
+    border-radius: 3px;
+}
+
+.fs-screen::-webkit-scrollbar-thumb:hover {
+    background: rgba(120, 90, 40, 0.4);
 }
