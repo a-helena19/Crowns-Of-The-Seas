@@ -1,5 +1,5 @@
 import { TOP_BAR_HEIGHT } from '../scenes/GameScreen';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import '../style/topbar.css';
 import moneyIcon from "../assets/icon-money.png";
 import timeIcon from "../assets/icon-clock.png";
@@ -7,6 +7,8 @@ import shipIcon from "../assets/icon-ship.png";
 import { FACTION_DATA } from '../types/faction';
 import type { PlayerFaction } from '../types/faction';
 import { sessionApi } from '../api/sessionApi';
+import { getLeaderboard } from '../api/leaderboardApi';
+import type { LeaderboardEntry } from '../types/leaderboard';
 
 
 export default function TopBar() {
@@ -25,6 +27,40 @@ export default function TopBar() {
     const token = localStorage.getItem('auth_token') ?? '';
     const sessionData = sessionStorage.getItem('currentSession');
     const sessionId = sessionData ? JSON.parse(sessionData).id : null;
+
+    // leaderboard
+    const [lbOpen, setLbOpen] = useState(false);
+    const [lbEntries, setLbEntries] = useState<LeaderboardEntry[]>([]);
+    const lbWrapperRef = useRef<HTMLDivElement | null>(null);
+
+    const sortedLb = useMemo(() => lbEntries, [lbEntries]);
+
+    useEffect(() => {
+        if (!sessionId) return;
+        const load = async () => {
+            try {
+                const data = await getLeaderboard(sessionId);
+                setLbEntries(data);
+            } catch { /* ignore */ }
+        };
+        load();
+        const id = window.setInterval(load, 5000);
+        return () => window.clearInterval(id);
+    }, [sessionId]);
+
+    useEffect(() => {
+        if (!lbOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (lbWrapperRef.current && !lbWrapperRef.current.contains(e.target as Node)) {
+                setLbOpen(false);
+            }
+        };
+        const t = setTimeout(() => document.addEventListener('mousedown', handler), 0);
+        return () => {
+            clearTimeout(t);
+            document.removeEventListener('mousedown', handler);
+        };
+    }, [lbOpen]);
 
     useEffect(() => {
         if (!playerId || !sessionId) return;
@@ -154,6 +190,7 @@ export default function TopBar() {
                         <span className="topbar-value">{homePortName}</span>
                     </div>
                 )}
+
                 {factionData && (
                     <div className="topbar-faction-wrapper" ref={factionWrapperRef}>
                         <button
@@ -188,30 +225,15 @@ export default function TopBar() {
                                 />
                                 <div className="faction-popover-header">
                                     <div className="faction-popover-icon">
-                                        <img
-                                            src={factionData.icon1}
-                                            alt=""
-                                            className="faction-popover-icon-img frame1"
-                                        />
-
-                                        <img
-                                            src={factionData.icon2}
-                                            alt=""
-                                            className="faction-popover-icon-img frame2"
-                                        />
+                                        <img src={factionData.icon1} alt="" className="faction-popover-icon-img frame1" />
+                                        <img src={factionData.icon2} alt="" className="faction-popover-icon-img frame2" />
                                     </div>
                                     <div className="faction-popover-titles">
-                                        <h3 className="faction-popover-name">
-                                            {factionData.name}
-                                        </h3>
-                                        <span className="faction-popover-label">
-                                            DEINE FRAKTION
-                                        </span>
+                                        <h3 className="faction-popover-name">{factionData.name}</h3>
+                                        <span className="faction-popover-label">DEINE FRAKTION</span>
                                     </div>
                                 </div>
-                                <p className="faction-popover-desc">
-                                    {factionData.description}
-                                </p>
+                                <p className="faction-popover-desc">{factionData.description}</p>
                                 <ul className="faction-popover-pros">
                                     {factionData.pros.map((p, i) => <li key={i}>{p}</li>)}
                                 </ul>
@@ -222,6 +244,42 @@ export default function TopBar() {
                         )}
                     </div>
                 )}
+
+                <div className="topbar-lb-wrapper" ref={lbWrapperRef}>
+                    <button
+                        type="button"
+                        className={`topbar-panel topbar-lb-btn ${lbOpen ? 'is-open' : ''}`}
+                        onClick={() => setLbOpen(o => !o)}
+                        aria-expanded={lbOpen}
+                        aria-haspopup="dialog"
+                        title="Leaderboard"
+                    >
+                        <span className="topbar-value">Leaderboard ▾</span>
+                    </button>
+
+                    {lbOpen && (
+                        <div className="lb-popover" role="dialog" aria-label="Leaderboard">
+                            {sortedLb.length === 0 ? (
+                                <div className="lb-popover-empty">Lade…</div>
+                            ) : (
+                                <ul className="lb-popover-list">
+                                    {sortedLb.map(e => {
+                                        const isMe = playerId === e.playerId;
+                                        return (
+                                            <li key={e.playerId} className={`lb-popover-row ${isMe ? 'me' : ''}`}>
+                                                <span className="lb-popover-rank">#{e.rank}</span>
+                                                <span className="lb-popover-name">{e.playerName}</span>
+                                                <span className="lb-popover-total">
+                                                    {Math.round(e.totalValue).toLocaleString('de-DE')} T
+                                                </span>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
