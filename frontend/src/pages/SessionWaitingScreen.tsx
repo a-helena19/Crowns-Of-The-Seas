@@ -12,6 +12,7 @@ interface PlayerInfo {
     playerName: string;
     isHost: boolean;
     faction?: PlayerFaction | null;
+    homePortId?: string | null;
     ready?: boolean;
 }
 
@@ -52,6 +53,7 @@ export default function SessionWaitingScreen() {
     const showFactionDialog = status === 'FACTION_SELECTION';
 
     const [selectedFaction, setSelectedFaction] = useState<PlayerFaction | null>(null);
+    const [selectedHomePortId, setSelectedHomePortId] = useState<string | null>(null);
     const [isPlayerReady, setIsPlayerReady] = useState(false);
 
     const userRole: 'host' | 'guest' = useMemo(() => {
@@ -88,6 +90,7 @@ export default function SessionWaitingScreen() {
                 const me = event.players.find(p => p.userId === user.id);
                 if (me && !me.ready) setIsPlayerReady(false);
                 if (me && me.faction) setSelectedFaction(me.faction);
+                if (me && me.homePortId) setSelectedHomePortId(me.homePortId);
             }
 
             if (event.playerCount === 0) {
@@ -147,6 +150,12 @@ export default function SessionWaitingScreen() {
         setSelectedFaction(faction);
     };
 
+    const handleHomePortSelected = (portId: string) => {
+        setSelectedHomePortId(portId);
+        // Im globalen State speichern für HarborScene
+        window.__homePortId = portId;
+    };
+
     const handleReadyClicked = () => {
         setIsPlayerReady(true);
     };
@@ -189,9 +198,11 @@ export default function SessionWaitingScreen() {
                     userId={user.id}
                     playerName={user.username}
                     onFactionSelected={handleFactionSelected}
+                    onHomePortSelected={handleHomePortSelected}
                     onReadyClicked={handleReadyClicked}
                     isLoading={false}
                     selectedFaction={selectedFaction}
+                    selectedHomePortId={selectedHomePortId}
                     isReady={isPlayerReady}
                     readyStatus={readyStatus}
                 />

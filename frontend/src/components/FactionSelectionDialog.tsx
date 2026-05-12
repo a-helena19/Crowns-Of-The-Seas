@@ -9,9 +9,11 @@ interface FactionSelectionDialogProps {
     userId: string;
     playerName: string;
     onFactionSelected: (faction: PlayerFaction) => void;
+    onHomePortSelected: (portId: string) => void;
     onReadyClicked: () => void;
     isLoading: boolean;
     selectedFaction: PlayerFaction | null;
+    selectedHomePortId: string | null;
     isReady: boolean;
     readyStatus?: {
         readyPlayers: string[];
@@ -27,9 +29,11 @@ export default function FactionSelectionDialog({
                                                    userId,
                                                    playerName,
                                                    onFactionSelected,
+                                                   onHomePortSelected,
                                                    onReadyClicked,
                                                    isLoading,
                                                    selectedFaction,
+                                                   selectedHomePortId,
                                                    isReady,
                                                    readyStatus,
                                                }: FactionSelectionDialogProps) {
@@ -41,9 +45,22 @@ export default function FactionSelectionDialog({
     const [hasTimedOut, setHasTimedOut] = useState(false);
     const [currentlySelectedFaction, setCurrentlySelectedFaction] =
         useState<PlayerFaction | null>(selectedFaction);
+    const [availablePorts, setAvailablePorts] = useState<Array<{ id: string; name: string }>>([]);
+    const [currentlySelectedPortId, setCurrentlySelectedPortId] =
+        useState<string | null>(selectedHomePortId);
 
     const submittedFactionRef = useRef<PlayerFaction | null>(null);
+    const submittedHomePortRef = useRef<string | null>(null);
     const readySubmittedRef = useRef(false);
+
+    // Ports vom Backend laden
+    useEffect(() => {
+        const token = localStorage.getItem('auth_token') ?? '';
+        fetch('/api/ports', { headers: { Authorization: `Bearer ${token}` } })
+            .then(r => r.json())
+            .then((ports: Array<{ id: string; name: string }>) => setAvailablePorts(ports))
+            .catch(err => console.warn('Could not load ports:', err));
+    }, []);
 
     const ensureFactionSubmitted = async (faction: PlayerFaction): Promise<boolean> => {
         if (submittedFactionRef.current === faction) return true;
@@ -55,6 +72,20 @@ export default function FactionSelectionDialog({
         } catch (err) {
             console.error('Error submitting faction:', err);
             setError('Fehler beim Auswählen der Fraktion. Bitte versuche es erneut.');
+            return false;
+        }
+    };
+
+    const ensureHomePortSubmitted = async (portId: string): Promise<boolean> => {
+        if (submittedHomePortRef.current === portId) return true;
+        try {
+            await sessionApi.assignHomePort(sessionId, userId, portId);
+            submittedHomePortRef.current = portId;
+            onHomePortSelected(portId);
+            return true;
+        } catch (err) {
+            console.error('Error submitting home port:', err);
+            setError('Fehler beim Auswählen des Heimathafens. Bitte versuche es erneut.');
             return false;
         }
     };
@@ -88,8 +119,26 @@ export default function FactionSelectionDialog({
                             currentlySelectedFaction ??
                             factions[Math.floor(Math.random() * factions.length)];
                         setCurrentlySelectedFaction(factionToSubmit);
-                        const ok = await ensureFactionSubmitted(factionToSubmit);
-                        if (ok) await submitReady();
+                        const factionOk = await ensureFactionSubmitted(factionToSubmit);
+
+                        const portToSubmit =
+                            currentlySelectedPortId ??
+                            (availablePorts.length > 0
+                                ? availablePorts[Math.floor(Math.random() * availablePorts.length)].id
+                                : null);
+                        console.log("Available:  ", availablePorts);
+                        if (portToSubmit) {
+                            setCurrentlySelectedPortId(portToSubmit);
+
+                            const portOk = await ensureHomePortSubmitted(portToSubmit);
+
+                            if (factionOk && portOk) {
+                                await submitReady();
+                            }
+                        } else {
+                            setError('Keine Häfen verfügbar.');
+                            console.error('No home ports available for random selection.');
+                        }
                     })();
                     return 0;
                 }
@@ -98,7 +147,7 @@ export default function FactionSelectionDialog({
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [isReady, hasTimedOut]);
+    }, [isReady, hasTimedOut, availablePorts, currentlySelectedFaction, currentlySelectedPortId]);
 
     const handleFactionClick = (faction: PlayerFaction) => {
         if (isReady || hasTimedOut) return;
@@ -112,12 +161,18 @@ export default function FactionSelectionDialog({
             setError('Bitte wähle eine Fraktion!');
             return;
         }
+        if (!currentlySelectedPortId) {
+            setError('Bitte wähle einen Heimathafen!');
+            return;
+        }
 
         setBusy(true);
         setError(null);
         try {
-            const ok = await ensureFactionSubmitted(currentlySelectedFaction);
-            if (!ok) return;
+            const factionOk = await ensureFactionSubmitted(currentlySelectedFaction);
+            if (!factionOk) return;
+            const portOk = await ensureHomePortSubmitted(currentlySelectedPortId);
+            if (!portOk) return;
             await submitReady();
         } finally {
             setBusy(false);
@@ -217,11 +272,28 @@ export default function FactionSelectionDialog({
                     })}
                 </div>
 
-                {/* Reservierter Slot für späteren Heimathafen-Bereich.
-                    Wenn das implementiert wird: aria-hidden entfernen,
-                    Inhalt rendern, .fs-future-slot bekommt Padding/Inhalt. */}
-                <section className="fs-future-slot" aria-hidden="true">
-                    {/* Heimathafen-Wahl folgt */}
+                <section className="fs-homeport-section">
+                    <div className="fs-homeport-row">
+                        <span className="fs-homeport-label">⚓ HEIMATHAFEN</span>
+                        <select
+                            className={`fs-homeport-select ${locked ? 'is-locked' : ''}`}
+                            value={currentlySelectedPortId ?? ''}
+                            onChange={(e) => {
+                                if (locked) return;
+                                setCurrentlySelectedPortId(e.target.value || null);
+                                setError(null);
+                            }}
+                            disabled={locked}
+                        >
+                            <option value="">— Hafen wählen —</option>
+                            {availablePorts.map(port => (
+                                <option key={port.id} value={port.id}>{port.name}</option>
+                            ))}
+                        </select>
+                        {locked && currentlySelectedPortId && (
+                            <span className="fs-homeport-locked-badge">GEWÄHLT</span>
+                        )}
+                    </div>
                 </section>
 
                 <footer className="fs-footer">
@@ -246,6 +318,7 @@ export default function FactionSelectionDialog({
                         onClick={handleReadyClicked}
                         disabled={
                             !currentlySelectedFaction ||
+                            !currentlySelectedPortId ||
                             isReady ||
                             isLoading ||
                             busy ||

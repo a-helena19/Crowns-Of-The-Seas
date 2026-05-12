@@ -108,6 +108,27 @@ export const sessionApi = {
         return response.data;
     },
 
+    async assignHomePort(
+        sessionId: string,
+        userId: string,
+        portId: string
+    ): Promise<void> {
+        await apiClient.post(
+            `/${sessionId}/players/${userId}/home-port`,
+            { portId }
+        );
+    },
+
+    async getHomePort(
+        sessionId: string,
+        userId: string
+    ): Promise<{ homePortId?: string }> {
+        const response = await apiClient.get<{ homePortId?: string }>(
+            `/${sessionId}/players/${userId}/home-port`
+        );
+        return response.data;
+    },
+
     async markPlayerReady(
         sessionId: string,
         userId: string

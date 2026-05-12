@@ -341,14 +341,66 @@
     text-align: center;
 }
 
-.fs-future-slot {
-    /* Aktuell unsichtbar, aber Platz reservieren wenn Inhalt kommt.
-       Wenn aria-hidden entfernt + Inhalt drin: min-height/padding setzen. */
+.fs-homeport-section {
     flex-shrink: 0;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(120, 90, 40, 0.2);
 }
 
-.fs-future-slot[aria-hidden="true"] {
-    display: none;
+.fs-homeport-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.fs-homeport-label {
+    font-family: var(--font-game);
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: #5a4a2a;
+    white-space: nowrap;
+}
+
+.fs-homeport-select {
+    flex: 1;
+    max-width: 280px;
+    padding: 8px 12px;
+    border: 2px solid rgba(120, 90, 40, 0.3);
+    border-radius: 6px;
+    background: rgba(255, 248, 230, 0.6);
+    color: #3a2a10;
+    font-family: var(--font-game);
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+    appearance: auto;
+}
+
+.fs-homeport-select:hover:not(:disabled) {
+    border-color: rgba(120, 90, 40, 0.5);
+}
+
+.fs-homeport-select:focus {
+    outline: none;
+    border-color: #b8860b;
+    box-shadow: 0 0 0 2px rgba(184, 134, 11, 0.2);
+}
+
+.fs-homeport-select.is-locked {
+    opacity: 0.7;
+    cursor: default;
+}
+
+.fs-homeport-locked-badge {
+    font-family: var(--font-game);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(106, 138, 58, 0.2);
+    color: #4a6a2a;
+    white-space: nowrap;
 }
 
 .fs-footer {

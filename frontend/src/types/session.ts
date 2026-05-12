@@ -17,6 +17,7 @@ export interface SessionPlayerDTO {
     playerName: string;
     isHost: boolean;
     faction: string | null;
+    homePortId: string | null;
 }
 
 // Request DTOs

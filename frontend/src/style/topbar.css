@@ -23,6 +23,9 @@
 
 .topbar-right {
     margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .topbar-panel {
@@ -295,4 +298,16 @@
     color: #8b2e1f;
     font-size: 8px;
     vertical-align: middle;
+}
+/* Heimathafen Badge */
+.topbar-homeport {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: auto;
+}
+
+.topbar-homeport-icon {
+    font-size: 14px;
+    line-height: 1;
 }

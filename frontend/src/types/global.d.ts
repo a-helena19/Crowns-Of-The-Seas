@@ -4,6 +4,7 @@ interface Window {
     __latestTick?: { currentTick: number; totalTicks: number };
     __latestShipPositionsTick?: number;
     __tickRateMs?: number;
+    __homePortId?: string;
     __activeGameView?: "map" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office";
     __latestShips?: Array<{
         playerShipId: string;
