@@ -313,3 +313,96 @@
     font-size: 14px;
     line-height: 1;
 }
+
+.topbar-lb-wrapper {
+    position: relative;
+}
+
+.topbar-lb-btn {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: filter 0.15s ease, transform 0.15s ease;
+    min-width: auto;
+    height: 35px;
+}
+
+.topbar-lb-btn:hover {
+    filter: brightness(1.1);
+}
+
+.topbar-lb-btn:active {
+    transform: translateY(1px);
+}
+
+.topbar-lb-btn.is-open {
+    filter: brightness(1.15);
+}
+
+.lb-popover-list {
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+}
+
+.lb-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 280px;
+    z-index: 200;
+
+    background: linear-gradient(160deg, #f4ecd2 0%, #f9f3df 50%, #ebe2c2 100%);
+    border: 1px solid rgba(120, 90, 40, 0.5);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    color: #2b2418;
+    font-family: "Press Start 2P", "Trebuchet MS", sans-serif;
+    font-size: 9px;
+    max-height: 320px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    animation: faction-popover-fade 0.15s ease-out;
+}
+
+.lb-popover-empty {
+    padding: 12px;
+    text-align: center;
+    font-size: 13px;
+    color: #7a6a4a;
+}
+
+.lb-popover-row {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    align-items: center;
+    color: #4a3f28;
+    font-size: 9px;
+}
+
+.lb-popover-row + .lb-popover-row {
+    border-top: 1px solid rgba(120, 90, 40, 0.25);
+}
+
+.lb-popover-row.me {
+    background: rgba(120, 90, 40, 0.15);
+    outline: 1px solid rgba(120, 90, 40, 0.4);
+}
+
+.lb-popover-rank {
+    font-weight: 700;
+    color: #3a2f1a;
+}
+
+.lb-popover-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lb-popover-total {
+    font-weight: 700;
+    color: #3a2f1a;
+}
