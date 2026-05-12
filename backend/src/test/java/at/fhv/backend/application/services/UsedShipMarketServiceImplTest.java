@@ -1,7 +1,9 @@
 package at.fhv.backend.application.services;
 
 import at.fhv.backend.application.dtos.mapper.PlayerShipResponseMapper;
+import at.fhv.backend.application.services.impl.ship.ShipValuationServiceImpl;
 import at.fhv.backend.application.services.impl.ship.UsedShipMarketServiceImpl;
+import at.fhv.backend.application.services.ship.ShipValuationService;
 import at.fhv.backend.domain.model.exception.InvalidShipStatusTransition;
 import at.fhv.backend.domain.model.player.BaseSessionPlayer;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
@@ -45,6 +47,7 @@ class UsedShipMarketServiceImplTest {
     @Mock private PlayerShipResponseMapper playerShipResponseMapper;
     @Mock private at.fhv.backend.application.services.impl.session.GameTickScheduler gameTickScheduler;
     @Mock private ShipMarketWebSocketController shipMarketWebSocketController;
+    private ShipValuationService shipValuationService = new ShipValuationServiceImpl();
 
     private UsedShipMarketServiceImpl service;
 
@@ -55,6 +58,7 @@ class UsedShipMarketServiceImplTest {
                 shipRepository,
                 usedShipListingRepository,
                 sessionPlayerRepository,
+                shipValuationService,
                 playerShipResponseMapper,
                 gameTickScheduler,
                 shipMarketWebSocketController
