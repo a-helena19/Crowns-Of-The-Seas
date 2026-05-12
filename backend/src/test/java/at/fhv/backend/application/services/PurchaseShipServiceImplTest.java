@@ -5,7 +5,6 @@ import at.fhv.backend.application.dtos.mapper.ShipResponseMapper;
 import at.fhv.backend.rest.dtos.ship.request.BuyShipDTO;
 import at.fhv.backend.rest.dtos.ship.response.PlayerShipDTO;
 import at.fhv.backend.application.services.impl.ship.PurchaseShipServiceImpl;
-import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.application.services.ship.ValidateShipService;
 import at.fhv.backend.domain.model.exception.InsufficientFundsException;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
@@ -20,7 +19,6 @@ import at.fhv.backend.domain.model.ship.ShipClass;
 import at.fhv.backend.domain.model.ship.ShipRepository;
 import at.fhv.backend.domain.model.ship.UsedShipListingRepository;
 import at.fhv.backend.domain.model.ship.UsedShipListingStatus;
-import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,7 +26,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -45,7 +42,6 @@ class PurchaseShipServiceImplTest {
     @Mock private PlayerShipRepository playerShipRepository;
     @Mock private PlayerShipResponseMapper playerShipResponseMapper;
     @Mock private ShipResponseMapper shipResponseMapper;
-    @Mock private PortQueryService portQueryService;
     @Mock private SessionPlayerRepository sessionPlayerRepository;
     @Mock private at.fhv.backend.application.services.impl.session.GameTickScheduler gameTickScheduler;
     @Mock private at.fhv.backend.rest.ShipMarketWebSocketController shipMarketWebSocketController;
@@ -58,7 +54,7 @@ class PurchaseShipServiceImplTest {
         service = new PurchaseShipServiceImpl(
                 validateShipService, shipRepository, playerShipRepository,
                 playerShipResponseMapper, shipResponseMapper,
-                portQueryService, sessionPlayerRepository,
+                sessionPlayerRepository,
                 gameTickScheduler, shipMarketWebSocketController,
                 usedShipListingRepository
         );
@@ -71,8 +67,9 @@ class PurchaseShipServiceImplTest {
     }
 
     private ISessionPlayer buildPlayer(UUID userId, UUID sessionId, BigDecimal balance) {
+        UUID homePortId = UUID.randomUUID();
         return BaseSessionPlayer.reconstruct(
-                UUID.randomUUID(), userId, sessionId, "TestPlayer", false, balance, null);
+                UUID.randomUUID(), userId, sessionId, "TestPlayer", false, balance, null, homePortId);
     }
 
     private BuyShipDTO buildBuyShipDTO(UUID shipId) {
@@ -83,7 +80,6 @@ class PurchaseShipServiceImplTest {
 
     private UUID stubSuccessfulPurchase(Ship ship, ISessionPlayer player,
                                         UUID playerId, UUID sessionId) {
-        UUID startPortId = UUID.randomUUID();
         when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
         when(playerShipRepository.countByShipIdAndSessionId(ship.getId(), sessionId)).thenReturn(0L);
         when(usedShipListingRepository.countByShipIdAndSessionIdAndStatus(ship.getId(), sessionId, UsedShipListingStatus.AVAILABLE))
@@ -93,11 +89,9 @@ class PurchaseShipServiceImplTest {
         when(validateShipService.validatePurchase(eq(ship), any())).thenReturn(ship.getPrice());
         when(sessionPlayerRepository.save(player)).thenReturn(player);
         when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(portQueryService.findAll())
-                .thenReturn(List.of(new PortResponseDTO(startPortId, "Hamburg", 49.5, 22.0)));
         when(playerShipResponseMapper.toResponse(any(PlayerShip.class), eq(ship)))
                 .thenReturn(new PlayerShipDTO());
-        return startPortId;
+        return player.getHomePortId();
     }
 
     @Test
@@ -182,7 +176,6 @@ class PurchaseShipServiceImplTest {
         Ship ship = buildShip(BigDecimal.valueOf(1000));
         ISessionPlayer player = buildPlayer(playerId, sessionId, BigDecimal.valueOf(5000));
 
-        UUID startPortId = UUID.randomUUID();
         when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
         when(playerShipRepository.countByShipIdAndSessionId(ship.getId(), sessionId)).thenReturn(0L);
         when(usedShipListingRepository.countByShipIdAndSessionIdAndStatus(ship.getId(), sessionId, UsedShipListingStatus.AVAILABLE))
@@ -196,8 +189,6 @@ class PurchaseShipServiceImplTest {
             assertThat(ps.getStatus().name()).isEqualTo("AT_PORT");
             return ps;
         });
-        when(portQueryService.findAll())
-                .thenReturn(List.of(new PortResponseDTO(startPortId, "Hamburg", 49.5, 22.0)));
         when(playerShipResponseMapper.toResponse(any(PlayerShip.class), eq(ship)))
                 .thenReturn(new PlayerShipDTO());
 

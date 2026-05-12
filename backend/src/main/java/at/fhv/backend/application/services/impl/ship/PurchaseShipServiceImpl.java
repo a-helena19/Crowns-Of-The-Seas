@@ -2,10 +2,8 @@ package at.fhv.backend.application.services.impl.ship;
 
 import at.fhv.backend.application.dtos.mapper.PlayerShipResponseMapper;
 import at.fhv.backend.application.dtos.mapper.ShipResponseMapper;
-import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.application.services.impl.session.GameTickScheduler;
 import at.fhv.backend.rest.ShipMarketWebSocketController;
-import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.dtos.ship.request.BuyShipDTO;
 import at.fhv.backend.rest.dtos.ship.response.PlayerShipDTO;
 import at.fhv.backend.application.services.ship.PurchaseShipService;
@@ -13,6 +11,7 @@ import at.fhv.backend.application.services.ship.ValidateShipService;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.player.SessionPlayerRepository;
+import at.fhv.backend.domain.model.player.exception.HomePortNotAssignedException;
 import at.fhv.backend.domain.model.player.exception.PlayerNotFoundException;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
@@ -24,7 +23,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -34,7 +32,6 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
     private final PlayerShipRepository playerShipRepository;
     private final PlayerShipResponseMapper playerShipResponseMapper;
     private final ShipResponseMapper shipResponseMapper;
-    private final PortQueryService portQueryService;
     private final SessionPlayerRepository sessionPlayerRepository;
     private final GameTickScheduler gameTickScheduler;
     private final ShipMarketWebSocketController shipMarketWebSocketController;
@@ -45,7 +42,6 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
                                    PlayerShipRepository playerShipRepository,
                                    PlayerShipResponseMapper playerShipResponseMapper,
                                    ShipResponseMapper shipResponseMapper,
-                                   PortQueryService portQueryService,
                                    SessionPlayerRepository sessionPlayerRepository,
                                    GameTickScheduler gameTickScheduler,
                                    ShipMarketWebSocketController shipMarketWebSocketController,
@@ -55,7 +51,6 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
         this.playerShipRepository = playerShipRepository;
         this.playerShipResponseMapper = playerShipResponseMapper;
         this.shipResponseMapper = shipResponseMapper;
-        this.portQueryService = portQueryService;
         this.sessionPlayerRepository = sessionPlayerRepository;
         this.gameTickScheduler = gameTickScheduler;
         this.shipMarketWebSocketController = shipMarketWebSocketController;
@@ -89,13 +84,12 @@ public class PurchaseShipServiceImpl implements PurchaseShipService {
         player.subtractBalance(price);
         sessionPlayerRepository.save(player);
 
-        List<PortResponseDTO> ports = portQueryService.findAll();
-        if (ports.isEmpty()) {
-            throw new IllegalStateException("No ports available in the system");
+        UUID homePortId = player.getHomePortId();
+        if (homePortId == null) {
+            throw new HomePortNotAssignedException(playerId);
         }
-        UUID startPortId = ports.get(0).id();
 
-        PlayerShip playerShip = PlayerShip.createFromPurchase(ship.getId(), playerId, sessionId, startPortId);
+        PlayerShip playerShip = PlayerShip.createFromPurchase(ship.getId(), playerId, sessionId, homePortId);
         playerShip.completeRegistration();
         PlayerShip saved = playerShipRepository.save(playerShip);
         gameTickScheduler.triggerImmediateBroadcast(sessionId);

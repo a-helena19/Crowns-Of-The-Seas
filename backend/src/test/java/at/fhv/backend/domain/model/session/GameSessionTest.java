@@ -212,7 +212,7 @@ class GameSessionTest {
         GameSession reconstructed = GameSession.reconstruct(
                 id, SessionStatus.RUNNING, hostId, 6,
                 3, 10, 100, "ABC123",
-                java.util.List.of(), java.util.Map.of(),
+                java.util.List.of(), java.util.Map.of(), java.util.Map.of(),
                 java.time.LocalDateTime.now(), Duration.ofHours(1));
 
         assertThat(reconstructed.getId()).isEqualTo(id);

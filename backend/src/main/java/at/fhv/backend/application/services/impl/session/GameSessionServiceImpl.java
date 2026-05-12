@@ -7,6 +7,9 @@ import at.fhv.backend.domain.model.player.BaseSessionPlayer;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.player.PlayerFaction;
 import at.fhv.backend.domain.model.player.exception.InvalidFactionException;
+import at.fhv.backend.domain.model.port.PortId;
+import at.fhv.backend.domain.model.port.PortRepository;
+import at.fhv.backend.domain.model.port.exception.PortNotFoundException;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.session.SessionStatus;
@@ -34,6 +37,7 @@ public class GameSessionServiceImpl implements GameSessionService {
     private final SessionDTOMapper sessionDTOMapper;
     private final GameSessionWebSocketController webSocketController;
     private final PortQueryService portQueryService;
+    private final PortRepository portRepository;
     private final GameTickScheduler gameTickScheduler;
     private final CargoSessionInitializer cargoSessionInitializer;
 
@@ -41,12 +45,14 @@ public class GameSessionServiceImpl implements GameSessionService {
                                   SessionDTOMapper sessionDTOMapper,
                                   GameSessionWebSocketController webSocketController,
                                   PortQueryService portQueryService,
+                                  PortRepository portRepository,
                                   GameTickScheduler gameTickScheduler,
                                   CargoSessionInitializer cargoSessionInitializer) {
         this.sessionDTOMapper = sessionDTOMapper;
         this.gameSessionRepository = gameSessionRepository;
         this.webSocketController = webSocketController;
         this.portQueryService = portQueryService;
+        this.portRepository = portRepository;
         this.gameTickScheduler = gameTickScheduler;
         this.cargoSessionInitializer = cargoSessionInitializer;
     }
@@ -66,6 +72,7 @@ public class GameSessionServiceImpl implements GameSessionService {
                                 session.getPlayerFactions().get(p.getUserId()) != null
                                         ? session.getPlayerFactions().get(p.getUserId()).name()
                                         : null,
+                                session.getPlayerHomePorts().get(p.getUserId()),
                                 session.getReadyPlayers().contains(p.getUserId())))
                         .collect(Collectors.toList()),
                 type
@@ -181,6 +188,29 @@ public class GameSessionServiceImpl implements GameSessionService {
         GameSession session = gameSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new SessionNotFoundException(sessionId));
         return session.getPlayerFaction(userId);
+    }
+
+    @Override
+    @Transactional
+    public void assignHomePort(UUID sessionId, UUID userId, UUID portId) {
+        GameSession session = gameSessionRepository.findByIdWithLock(sessionId)
+                .orElseThrow(() -> new SessionNotFoundException(sessionId));
+
+        if (!portRepository.existsById(PortId.of(portId))) {
+            throw new PortNotFoundException(PortId.of(portId));
+        }
+
+        session.assignHomePort(userId, portId);
+        gameSessionRepository.save(session);
+
+        broadcastSessionUpdate(session, "PLAYER_HOME_PORT_ASSIGNED");
+    }
+
+    @Override
+    public Optional<UUID> getHomePort(UUID sessionId, UUID userId) {
+        GameSession session = gameSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new SessionNotFoundException(sessionId));
+        return session.getHomePort(userId);
     }
 
     @Override

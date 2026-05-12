@@ -19,7 +19,8 @@ public class SessionPlayerMapperImpl implements SessionPlayerMapper {
                 entity.getPlayerName(),
                 entity.isHost(),
                 entity.getBalance(),
-                entity.getFaction()
+                entity.getFaction(),
+                entity.getHomePortId()
         );
 
         return FactionDecoratorFactory.createDecoratedPlayer(player, entity.getFaction());
@@ -35,6 +36,7 @@ public class SessionPlayerMapperImpl implements SessionPlayerMapper {
         entity.setHost(player.isHost());
         entity.setBalance(player.getBalance());
         entity.setFaction(faction);
+        entity.setHomePortId(player.getHomePortId());
         return entity;
     }
 }

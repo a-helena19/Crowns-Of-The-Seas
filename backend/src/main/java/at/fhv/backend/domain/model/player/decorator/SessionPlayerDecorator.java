@@ -50,6 +50,16 @@ public abstract class SessionPlayerDecorator implements ISessionPlayer {
     }
 
     @Override
+    public UUID getHomePortId() {
+        return wrappedPlayer.getHomePortId();
+    }
+
+    @Override
+    public void setHomePortId(UUID homePortId) {
+        wrappedPlayer.setHomePortId(homePortId);
+    }
+
+    @Override
     public void setHost(boolean host) {
         wrappedPlayer.setHost(host);
     }

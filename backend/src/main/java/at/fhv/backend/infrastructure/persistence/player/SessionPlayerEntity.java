@@ -35,13 +35,17 @@ public class SessionPlayerEntity {
     @Column(name = "faction")
     private PlayerFaction faction;
 
+    @Column(name = "home_port_id")
+    private UUID homePortId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "session_id", insertable = false, updatable = false)
     private GameSessionEntity session;
 
     public SessionPlayerEntity() {}
 
-    public SessionPlayerEntity(UUID userId, UUID sessionId, String playerName, boolean isHost, BigDecimal balance, boolean isReady, PlayerFaction faction) {
+    public SessionPlayerEntity(UUID userId, UUID sessionId, String playerName, boolean isHost,
+                               BigDecimal balance, boolean isReady, PlayerFaction faction, UUID homePortId) {
         this.userId = userId;
         this.sessionId = sessionId;
         this.playerName = playerName;
@@ -49,6 +53,7 @@ public class SessionPlayerEntity {
         this.faction = faction;
         this.balance = balance;
         this.isReady = isReady;
+        this.homePortId = homePortId;
     }
 
     public UUID getId() {
@@ -117,6 +122,14 @@ public class SessionPlayerEntity {
 
     public void setFaction(PlayerFaction faction) {
         this.faction = faction;
+    }
+
+    public UUID getHomePortId() {
+        return homePortId;
+    }
+
+    public void setHomePortId(UUID homePortId) {
+        this.homePortId = homePortId;
     }
 
     public void setSession(GameSessionEntity session) {

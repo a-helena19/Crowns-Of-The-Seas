@@ -2,6 +2,8 @@ package at.fhv.backend.domain.model.session;
 
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.player.PlayerFaction;
+import at.fhv.backend.domain.model.player.exception.HomePortAlreadyAssignedException;
+import at.fhv.backend.domain.model.player.exception.HomePortNotAssignedException;
 import at.fhv.backend.domain.model.session.exception.*;
 import at.fhv.backend.domain.model.player.exception.*;
 
@@ -23,6 +25,7 @@ public class GameSession {
     private final String gameCode;
     private final List<ISessionPlayer> players;
     private final Map<UUID, PlayerFaction> playerFactions;
+    private final Map<UUID, UUID> playerHomePorts;
     private LocalDateTime startTime;
     private final Duration duration;
     private final Map<UUID, Boolean> playerReadyStatus = new HashMap<>();
@@ -38,6 +41,7 @@ public class GameSession {
         this.gameCode = generateCode();
         this.players = new ArrayList<>();
         this.playerFactions = new HashMap<>();
+        this.playerHomePorts = new HashMap<>();
         this.duration = duration;
     }
 
@@ -47,17 +51,19 @@ public class GameSession {
                                           int totalTicks, String gameCode,
                                           List<ISessionPlayer> players,
                                           Map<UUID, PlayerFaction> factions,
+                                          Map<UUID, UUID> homePorts,
                                           LocalDateTime startTime,
                                           Duration duration) {
         return new GameSession(id, status, hostUserId, maxPlayers,
                 currentTick, tickRateSeconds, totalTicks, gameCode,
-                players, factions, startTime, duration);
+                players, factions, homePorts, startTime, duration);
     }
 
     private GameSession(UUID id, SessionStatus status, UUID hostUserId,
                         int maxPlayers, int currentTick, int tickRateSeconds,
                         int totalTicks, String gameCode, List<ISessionPlayer> players,
-                        Map<UUID, PlayerFaction> factions, LocalDateTime startTime, Duration duration) {
+                        Map<UUID, PlayerFaction> factions, Map<UUID, UUID> homePorts,
+                        LocalDateTime startTime, Duration duration) {
         this.id = id;
         this.status = status;
         this.hostUserId = hostUserId;
@@ -68,6 +74,7 @@ public class GameSession {
         this.gameCode = gameCode;
         this.players = players;
         this.playerFactions = factions;
+        this.playerHomePorts = homePorts;
         this.startTime = startTime;
         this.duration = duration;
     }
@@ -116,6 +123,7 @@ public class GameSession {
         if (!removed)
             throw new PlayerNotFoundException(userId);
         playerFactions.remove(userId);
+        playerHomePorts.remove(userId);
         playerReadyStatus.remove(userId);
     }
 
@@ -151,6 +159,29 @@ public class GameSession {
         return Optional.ofNullable(playerFactions.get(userId));
     }
 
+    public void assignHomePort(UUID userId, UUID portId) {
+        if (status != SessionStatus.FACTION_SELECTION)
+            throw new SessionNotInLobbyException(id);
+
+        boolean playerExists = players.stream()
+                .anyMatch(p -> p.getUserId().equals(userId));
+        if (!playerExists)
+            throw new PlayerNotFoundException(userId);
+
+        if (playerHomePorts.containsKey(userId))
+            throw new HomePortAlreadyAssignedException(userId);
+
+        playerHomePorts.put(userId, portId);
+    }
+
+    public Optional<UUID> getHomePort(UUID userId) {
+        return Optional.ofNullable(playerHomePorts.get(userId));
+    }
+
+    public Map<UUID, UUID> getPlayerHomePorts() {
+        return Collections.unmodifiableMap(playerHomePorts);
+    }
+
     public void markPlayerReady(UUID userId) {
         if (status != SessionStatus.FACTION_SELECTION)
             throw new SessionNotInLobbyException(id);
@@ -161,6 +192,9 @@ public class GameSession {
         if (!playerFactions.containsKey(userId))
             throw new InvalidFactionException("Player must select faction first");
 
+        if (!playerHomePorts.containsKey(userId))
+            throw new HomePortNotAssignedException(userId);
+
         playerReadyStatus.put(userId, true);
     }
 
@@ -169,6 +203,9 @@ public class GameSession {
             return false;
 
         if (playerFactions.size() != players.size())
+            return false;
+
+        if (playerHomePorts.size() != players.size())
             return false;
 
         if (playerReadyStatus.size() != players.size())
