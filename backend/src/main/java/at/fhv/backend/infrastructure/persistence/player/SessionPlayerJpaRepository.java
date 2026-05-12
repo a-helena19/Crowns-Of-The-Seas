@@ -4,7 +4,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
 
 public interface SessionPlayerJpaRepository extends JpaRepository<SessionPlayerEntity, UUID> {
     Optional<SessionPlayerEntity> findByUserIdAndSessionId(UUID userId, UUID sessionId);
+    List<SessionPlayerEntity> findAllBySessionId(UUID sessionId);
 }

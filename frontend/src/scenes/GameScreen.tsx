@@ -12,6 +12,8 @@ import CargoManagementScreen from "../scenes/CargoManagementScreen";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
 import RewardToast from "../components/RewardToast.tsx";
 import SmuggleOfferDialog from "../components/SmuggleOfferDialog.tsx";
+import LeaderboardOverlay from "../components/LeaderboardOverlay";
+
 
 export const TOP_BAR_HEIGHT = '9vh';
 export const BOTTOM_BAR_HEIGHT = '20vh';
@@ -377,6 +379,13 @@ export default function GameScreen() {
                     cargoDescription={smuggleOffer.cargoDescription}
                     onAccept={handleSmuggleAccept}
                     onDecline={handleSmuggleDecline}
+                />
+            )}
+
+            {sessionId && (
+                <LeaderboardOverlay
+                    sessionId={sessionId}
+                    currentUserId={playerId}
                 />
             )}
         </div>

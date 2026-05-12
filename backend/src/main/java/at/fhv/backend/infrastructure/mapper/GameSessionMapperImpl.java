@@ -90,10 +90,12 @@ public class GameSessionMapperImpl implements GameSessionMapper {
 
                     boolean isReady = domain.getReadyPlayers().contains(p.getUserId());
                     playerEntity.setReady(isReady);
+                    // Keep both sides of the bidirectional relation in sync so JPA reliably persists all players.
+                    playerEntity.setSession(entity);
 
                     return playerEntity;
                 })
-                .toList();
+                .collect(Collectors.toCollection(ArrayList::new));
         entity.setPlayers(playerEntities);
 
         return entity;

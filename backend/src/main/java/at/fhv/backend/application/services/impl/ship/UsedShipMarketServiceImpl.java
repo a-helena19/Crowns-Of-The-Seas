@@ -2,6 +2,7 @@ package at.fhv.backend.application.services.impl.ship;
 
 import at.fhv.backend.application.dtos.mapper.PlayerShipResponseMapper;
 import at.fhv.backend.application.services.impl.session.GameTickScheduler;
+import at.fhv.backend.application.services.ship.ShipValuationService;
 import at.fhv.backend.application.services.ship.UsedShipMarketService;
 import at.fhv.backend.domain.model.exception.InvalidShipStatusTransition;
 import at.fhv.backend.domain.model.exception.ShipNotAvailableException;
@@ -33,6 +34,7 @@ public class UsedShipMarketServiceImpl implements UsedShipMarketService {
     private final ShipRepository shipRepository;
     private final UsedShipListingRepository usedShipListingRepository;
     private final SessionPlayerRepository sessionPlayerRepository;
+    private final ShipValuationService shipValuationService;
     private final PlayerShipResponseMapper playerShipResponseMapper;
     private final GameTickScheduler gameTickScheduler;
     private final ShipMarketWebSocketController shipMarketWebSocketController;
@@ -41,6 +43,7 @@ public class UsedShipMarketServiceImpl implements UsedShipMarketService {
                                      ShipRepository shipRepository,
                                      UsedShipListingRepository usedShipListingRepository,
                                      SessionPlayerRepository sessionPlayerRepository,
+                                     ShipValuationService shipValuationService,
                                      PlayerShipResponseMapper playerShipResponseMapper,
                                      GameTickScheduler gameTickScheduler,
                                      ShipMarketWebSocketController shipMarketWebSocketController) {
@@ -48,6 +51,7 @@ public class UsedShipMarketServiceImpl implements UsedShipMarketService {
         this.shipRepository = shipRepository;
         this.usedShipListingRepository = usedShipListingRepository;
         this.sessionPlayerRepository = sessionPlayerRepository;
+        this.shipValuationService = shipValuationService;
         this.playerShipResponseMapper = playerShipResponseMapper;
         this.gameTickScheduler = gameTickScheduler;
         this.shipMarketWebSocketController = shipMarketWebSocketController;
@@ -69,7 +73,7 @@ public class UsedShipMarketServiceImpl implements UsedShipMarketService {
         Ship ship = findShip(playerShip.getShipId());
         ensureSellable(playerShip);
 
-        BigDecimal price = calculateSellPrice(ship, playerShip);
+        BigDecimal price = shipValuationService.calculateCurrentShipValue(ship, playerShip);
         UsedShipListing listing = UsedShipListing.create(
                 playerShip.getShipId(),
                 sessionId,
@@ -163,21 +167,8 @@ public class UsedShipMarketServiceImpl implements UsedShipMarketService {
         dto.setFuel(playerShip.getFuel());
         dto.setConditionWeight(CONDITION_WEIGHT.doubleValue());
         dto.setFuelWeight(FUEL_WEIGHT.doubleValue());
-        dto.setFinalPrice(calculateSellPrice(ship, playerShip));
+        dto.setFinalPrice(shipValuationService.calculateCurrentShipValue(ship, playerShip));
         return dto;
-    }
-
-    private BigDecimal calculateSellPrice(Ship ship, PlayerShip playerShip) {
-        BigDecimal conditionFactor = BigDecimal.valueOf(playerShip.getCondition())
-                .divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP)
-                .multiply(CONDITION_WEIGHT);
-        BigDecimal fuelFactor = BigDecimal.valueOf(playerShip.getFuel())
-                .divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP)
-                .multiply(FUEL_WEIGHT);
-        return ship.getPrice()
-                .multiply(SELL_BASE_FACTOR)
-                .multiply(conditionFactor.add(fuelFactor))
-                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private UsedShipListingDTO toUsedShipListingDto(UsedShipListing listing) {
