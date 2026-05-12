@@ -49,18 +49,34 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
                         portsMap.set(s.currentPortId, portName);
                     });
 
-                // Wenn keine Schiffe im Hafen → Default-Port (Hamburg) verwenden
+                // Heimathafen immer in der Liste anzeigen
+                const homePortId = window.__homePortId;
+                if (homePortId && !portsMap.has(homePortId)) {
+                    const homePort = window.__latestPorts?.find((p: any) => p.id === homePortId);
+                    if (homePort) {
+                        portsMap.set(homePort.id, homePort.name);
+                    }
+                }
+
+                // Wenn immer noch keine Ports → Heimathafen als einzigen verwenden
                 if (portsMap.size === 0) {
-                    const hamburg = window.__latestPorts?.find((p: any) => p.name === "Hamburg");
-                    if (hamburg) {
-                        portsMap.set(hamburg.id, hamburg.name);
+                    const homePort = homePortId
+                        ? window.__latestPorts?.find((p: any) => p.id === homePortId)
+                        : null;
+                    if (homePort) {
+                        portsMap.set(homePort.id, homePort.name);
                     }
                 }
 
                 const portList = Array.from(portsMap.entries()).map(([id, name]) => ({ id, name }));
                 setMyPorts(portList);
                 if (portList.length >= 1) {
-                    setSelectedPortId(prev => prev ?? portList[0].id);
+                    setSelectedPortId(prev => {
+                        if (prev) return prev;
+                        // Heimathafen bevorzugt vorauswählen
+                        if (homePortId && portList.some(p => p.id === homePortId)) return homePortId;
+                        return portList[0].id;
+                    });
                 }
             })
             .catch(console.error);

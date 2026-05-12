@@ -84,7 +84,6 @@
     font-size: 18px;
     width: 100%;
     text-align: center;
-    padding: 10px 14px;
     background-color: #c89b3c;
     color: #2b1a10;
     border: 2px solid #8b5a2b;
@@ -294,15 +293,16 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    background: rgba(20, 10, 3, 0.9);
-    border: 2px solid #5a3a0a;
+    background: #fff0e7;
+    border: 4px solid #5a3a0a;
+    box-shadow: inset -4px -4px 0 #2a1408, inset 4px 4px 0 #6a3f1a;
     padding: 8px 16px;
     z-index: 20;
 }
 
 .harbor-port-selector-label {
     font-family: var(--font-game);
-    color: #c89b3c;
+    color: #2a1408;
     font-size: 14px;
 }
 
@@ -310,9 +310,10 @@
     font-family: var(--font-game);
     font-size: 14px;
     padding: 6px 14px;
-    background: #2a1a05;
-    color: #c89b3c;
-    border: 2px solid #5a3a0a;
+    background-color: #c89b3c;
+    color: #2b1a10;
+    border: 2px solid #8b5a2b;
+    box-shadow: inset -3px -3px 0 #8b5e0a, inset 3px 3px 0 #352700;
     cursor: pointer;
     transition: background 0.15s;
 }
@@ -323,6 +324,7 @@
     background: #1a3a10;
     color: #90ee90;
     border-color: #2e6b1a;
+    box-shadow: inset -3px -3px 0 #417a2b, inset 3px 3px 0 #1d4312;
 }
 
 .harbor-selected-ship-hint {

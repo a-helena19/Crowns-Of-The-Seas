@@ -18,6 +18,8 @@ public interface GameSessionService {
     SessionDTO leaveSession(UUID sessionId, UUID userId);
     void assignPlayerFaction(UUID sessionId, UUID userId, String factionName);
     Optional<PlayerFaction> getPlayerFaction(UUID sessionId, UUID userId);
+    void assignHomePort(UUID sessionId, UUID userId, UUID portId);
+    Optional<UUID> getHomePort(UUID sessionId, UUID userId);
     void markPlayerReady(UUID sessionId, UUID userId);
     Map<String, Object> getSessionReadyStatus(UUID sessionId);
 }

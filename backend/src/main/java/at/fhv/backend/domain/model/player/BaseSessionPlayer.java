@@ -15,6 +15,7 @@ public class BaseSessionPlayer implements ISessionPlayer {
     private boolean isHost;
     private BigDecimal balance;
     private PlayerFaction faction;
+    private UUID homePortId;
 
     public BaseSessionPlayer(UUID userId, UUID sessionId,
                              String playerName, boolean isHost) {
@@ -25,10 +26,12 @@ public class BaseSessionPlayer implements ISessionPlayer {
         this.isHost = isHost;
         this.balance = BigDecimal.valueOf(40000.00); // Startkapital
         this.faction = null;
+        this.homePortId = null;
     }
 
     private BaseSessionPlayer(UUID id, UUID userId, UUID sessionId,
-                              String playerName, boolean isHost, BigDecimal balance, PlayerFaction faction) {
+                              String playerName, boolean isHost, BigDecimal balance,
+                              PlayerFaction faction, UUID homePortId) {
         this.id = id;
         this.userId = userId;
         this.sessionId = sessionId;
@@ -36,11 +39,13 @@ public class BaseSessionPlayer implements ISessionPlayer {
         this.isHost = isHost;
         this.balance = balance;
         this.faction = faction;
+        this.homePortId = homePortId;
     }
 
     public static BaseSessionPlayer reconstruct(UUID id, UUID userId, UUID sessionId,
-                                                String playerName, boolean isHost, BigDecimal balance, PlayerFaction faction) {
-        return new BaseSessionPlayer(id, userId, sessionId, playerName, isHost, balance, faction);
+                                                String playerName, boolean isHost, BigDecimal balance,
+                                                PlayerFaction faction, UUID homePortId) {
+        return new BaseSessionPlayer(id, userId, sessionId, playerName, isHost, balance, faction, homePortId);
     }
 
     @Override
@@ -76,6 +81,16 @@ public class BaseSessionPlayer implements ISessionPlayer {
     @Override
     public PlayerFaction getFaction() {
         return faction;
+    }
+
+    @Override
+    public UUID getHomePortId() {
+        return homePortId;
+    }
+
+    @Override
+    public void setHomePortId(UUID homePortId) {
+        this.homePortId = homePortId;
     }
 
     @Override

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import LoadingScreen from "./LoadingScreen";
 import backIcon from "../assets/goback.png";
-import background from "../assets/background.jpg";
+import background from "../assets/background-cargomanagement.png";
 import "../style/harbor.css";
 import "../style/cargoManagement.css";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
@@ -213,7 +213,7 @@ export default function CargoManagementScreen({
                                 ? "⚓ Reise unterbrochen"
                                 : `🚢 Unterwegs — noch ${Math.max(0, (entry.arrivalTick ?? 0) - (entry.currentTick ?? 0))} Ticks`,
                             unloading: "⚓ Wird entladen…",
-                            completed: `💰 +${entry.reward?.toLocaleString("de-DE")} G`,
+                            completed: `💰 +${entry.reward?.toLocaleString("de-DE")} T`,
                         }[entry.phase] ?? "…";
 
                         return (

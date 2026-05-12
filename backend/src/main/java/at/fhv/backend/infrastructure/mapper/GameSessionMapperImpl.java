@@ -47,6 +47,14 @@ public class GameSessionMapperImpl implements GameSessionMapper {
                         p -> true
                 ));
 
+        Map<UUID, UUID> homePorts = entity.getPlayers()
+                .stream()
+                .filter(p -> p.getHomePortId() != null)
+                .collect(Collectors.toMap(
+                        SessionPlayerEntity::getUserId,
+                        SessionPlayerEntity::getHomePortId
+                ));
+
         GameSession session = GameSession.reconstruct(
                 entity.getId(),
                 SessionStatus.valueOf(entity.getStatus().name()),
@@ -58,6 +66,7 @@ public class GameSessionMapperImpl implements GameSessionMapper {
                 entity.getGameCode(),
                 players,
                 factions,
+                homePorts,
                 entity.getStartTime(),
                 entity.getDuration()
         );
@@ -92,6 +101,9 @@ public class GameSessionMapperImpl implements GameSessionMapper {
                     playerEntity.setReady(isReady);
                     // Keep both sides of the bidirectional relation in sync so JPA reliably persists all players.
                     playerEntity.setSession(entity);
+
+                    UUID homePortId = domain.getPlayerHomePorts().get(p.getUserId());
+                    playerEntity.setHomePortId(homePortId);
 
                     return playerEntity;
                 })

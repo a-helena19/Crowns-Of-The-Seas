@@ -86,7 +86,7 @@ export default function InfoPanel({ cargo, ship, speedSetting }: InfoPanelProps)
                     <div className="info-row"><span>Nach</span><strong>{cargo.destinationPortName}</strong></div>
                     <div className="info-row">
                         <span>Belohnung</span>
-                        <strong style={{ color: "#b89b5e" }}>{Number(cargo.reward).toLocaleString("de-DE")} G</strong>
+                        <strong style={{ color: "#b89b5e" }}>{Number(cargo.reward).toLocaleString("de-DE")} T</strong>
                     </div>
                     <div className="info-row"><span>Kapazität</span><strong>{cargo.capacity} t</strong></div>
                     {cargo.cargoType && (

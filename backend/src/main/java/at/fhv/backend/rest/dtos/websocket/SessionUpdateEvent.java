@@ -17,7 +17,7 @@ public record SessionUpdateEvent(
             String playerName,
             boolean isHost,
             String faction,
+            UUID homePortId,
             boolean ready
     ) {}
 }
-

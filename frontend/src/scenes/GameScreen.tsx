@@ -307,6 +307,22 @@ export default function GameScreen() {
             .catch(err => console.error('Failed to load ports:', err));
     }, []);
 
+    // Heimathafen beim Game-Start laden
+    useEffect(() => {
+        if (!playerId || !sessionId) return;
+        const token = localStorage.getItem('auth_token') ?? '';
+        fetch(`/api/sessions/${sessionId}/players/${playerId}/home-port`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+            .then(res => res.json())
+            .then((data: { homePortId?: string }) => {
+                if (data.homePortId) {
+                    window.__homePortId = data.homePortId;
+                }
+            })
+            .catch(err => console.warn('Failed to load home port:', err));
+    }, [playerId, sessionId]);
+
     const send = useCallback((message: object) => {
         if (!stompClient?.connected) return;
         stompClient.send('/app/game', {}, JSON.stringify(message));

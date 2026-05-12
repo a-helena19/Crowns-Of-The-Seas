@@ -16,6 +16,7 @@ export default function TopBar() {
     const [totalTicks, setTotalTicks] = useState<number | null>(null);
     const [faction, setFaction] = useState<PlayerFaction | null>(null);
     const [factionPanelOpen, setFactionPanelOpen] = useState(false);
+    const [homePortName, setHomePortName] = useState<string | null>(null);
 
     const factionWrapperRef = useRef<HTMLDivElement | null>(null);
 
@@ -78,6 +79,27 @@ export default function TopBar() {
             .catch(err => console.warn('Could not load player faction:', err));
     }, [playerId, sessionId]);
 
+    // Heimathafen laden
+    useEffect(() => {
+        if (!playerId || !sessionId) return;
+        sessionApi.getHomePort(sessionId, playerId)
+            .then(result => {
+                if (result?.homePortId) {
+                    window.__homePortId = result.homePortId;
+                    const portName = window.__latestPorts?.find(p => p.id === result.homePortId)?.name;
+                    setHomePortName(portName ?? null);
+                }
+            })
+            .catch(err => console.warn('Could not load home port:', err));
+    }, [playerId, sessionId]);
+
+    // Port-Name aktualisieren sobald Ports geladen sind
+    useEffect(() => {
+        if (!window.__homePortId) return;
+        const portName = window.__latestPorts?.find(p => p.id === window.__homePortId)?.name;
+        if (portName) setHomePortName(portName);
+    }, [window.__latestPorts]);
+
     // Klick außerhalb schließt das Panel
     useEffect(() => {
         if (!factionPanelOpen) return;
@@ -126,6 +148,12 @@ export default function TopBar() {
             </div>
 
             <div className="topbar-right">
+                {homePortName && (
+                    <div className="topbar-panel topbar-homeport">
+                        <span className="topbar-homeport-icon">⚓</span>
+                        <span className="topbar-value">{homePortName}</span>
+                    </div>
+                )}
                 {factionData && (
                     <div className="topbar-faction-wrapper" ref={factionWrapperRef}>
                         <button

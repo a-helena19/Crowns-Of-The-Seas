@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
@@ -20,15 +21,26 @@ public class SessionDTOMapperImpl implements SessionDTOMapper {
                 player.getUserId(),
                 player.getPlayerName(),
                 player.isHost(),
-                faction != null ? faction.name() : null
+                faction != null ? faction.name() : null,
+                player.getHomePortId()
         );
     }
 
     @Override
     public SessionDTO sessionToDTO(GameSession session) {
         List<SessionPlayerDTO> playerDTOs = session.getPlayers().stream()
-                .map(p -> playerToDTO(
-                        p, session.getPlayerFactions().get(p.getUserId())))
+                .map(p -> {
+                    PlayerFaction faction = session.getPlayerFactions().get(p.getUserId());
+                    UUID homePortId = session.getPlayerHomePorts().get(p.getUserId());
+                    return new SessionPlayerDTO(
+                            p.getId(),
+                            p.getUserId(),
+                            p.getPlayerName(),
+                            p.isHost(),
+                            faction != null ? faction.name() : null,
+                            homePortId
+                    );
+                })
                 .toList();
 
         return new SessionDTO(

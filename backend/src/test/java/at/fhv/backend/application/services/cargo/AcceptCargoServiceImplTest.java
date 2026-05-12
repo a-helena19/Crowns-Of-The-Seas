@@ -57,7 +57,7 @@ class AcceptCargoServiceImplTest {
         return GameSession.reconstruct(
                 sessionId, SessionStatus.RUNNING, UUID.randomUUID(), 4,
                 currentTick, 5, 100, "AABBCC",
-                new ArrayList<>(), new HashMap<>(),
+                new ArrayList<>(), new HashMap<>(), new HashMap<>(),
                 LocalDateTime.now(), Duration.ofMinutes(30)
         );
     }

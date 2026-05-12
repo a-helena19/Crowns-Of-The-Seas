@@ -123,6 +123,29 @@ public class GameSessionRestController {
         }
     }
 
+    @PostMapping("/{sessionId}/players/{userId}/home-port")
+    public ResponseEntity<?> assignHomePort(
+            @PathVariable UUID sessionId,
+            @PathVariable UUID userId,
+            @RequestBody AssignHomePortRequest request) {
+
+        gameSessionService.assignHomePort(sessionId, userId, request.portId());
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{sessionId}/players/{userId}/home-port")
+    public ResponseEntity<?> getHomePort(
+            @PathVariable UUID sessionId,
+            @PathVariable UUID userId) {
+
+        Optional<UUID> homePort = gameSessionService.getHomePort(sessionId, userId);
+        if (homePort.isPresent()) {
+            return ResponseEntity.ok(Map.of("homePortId", homePort.get()));
+        } else {
+            return ResponseEntity.ok(Map.of());
+        }
+    }
+
     @PostMapping("/{sessionId}/players/{userId}/ready")
     public ResponseEntity<?> markPlayerReady(
             @PathVariable UUID sessionId,

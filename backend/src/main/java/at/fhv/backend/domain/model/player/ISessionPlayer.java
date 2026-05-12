@@ -14,6 +14,9 @@ public interface ISessionPlayer {
 
     PlayerFaction getFaction();
 
+    UUID getHomePortId();
+    void setHomePortId(UUID homePortId);
+
     boolean hasSufficientBalance(BigDecimal amount);
     void addBalance(BigDecimal amount);
     void subtractBalance(BigDecimal amount);

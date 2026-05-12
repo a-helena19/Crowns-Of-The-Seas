@@ -43,6 +43,9 @@ class GameSessionServiceImplTest {
     private PortQueryService portQueryService;
 
     @Mock
+    private at.fhv.backend.domain.model.port.PortRepository portRepository;
+
+    @Mock
     private GameTickScheduler gameTickScheduler;
 
     private GameSessionServiceImpl service;
@@ -52,7 +55,7 @@ class GameSessionServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new GameSessionServiceImpl(gameSessionRepository, new SessionDTOMapperImpl(), webSocketController, portQueryService, gameTickScheduler, cargoSessionInitializer);
+        service = new GameSessionServiceImpl(gameSessionRepository, new SessionDTOMapperImpl(), webSocketController, portQueryService, portRepository, gameTickScheduler, cargoSessionInitializer);
     }
 
     // Hilfsmethode: fertige LOBBY-Session ohne Spieler zurückliefern

@@ -74,7 +74,7 @@ class UsedShipMarketServiceImplTest {
 
     private ISessionPlayer buildPlayer(UUID playerId, UUID sessionId, BigDecimal balance) {
         return BaseSessionPlayer.reconstruct(
-                UUID.randomUUID(), playerId, sessionId, "TestPlayer", false, balance, null);
+                UUID.randomUUID(), playerId, sessionId, "TestPlayer", false, balance, null, null);
     }
 
     private void stubQuote(PlayerShip playerShip, Ship ship, UUID playerId, UUID sessionId) {

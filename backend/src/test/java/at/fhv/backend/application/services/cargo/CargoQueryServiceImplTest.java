@@ -62,6 +62,7 @@ class CargoQueryServiceImplTest {
                 hostId, 4, 5, 5, 100, "ABCDEF",
                 new java.util.ArrayList<>(),
                 new java.util.HashMap<>(),
+                new java.util.HashMap<>(),
                 java.time.LocalDateTime.now(),
                 Duration.ofMinutes(30)
         );

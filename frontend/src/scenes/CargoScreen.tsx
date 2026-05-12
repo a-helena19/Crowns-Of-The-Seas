@@ -332,7 +332,7 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
                                 <div className="cs-stat">
                                     <div className="cs-stat-label">Belohnung</div>
                                     <div className="cs-stat-value">
-                                        {Number(selected.reward).toLocaleString("de-DE")} G
+                                        {Number(selected.reward).toLocaleString("de-DE")} T
                                         {selected.cargoStatus === "EXPIRED" && (
                                             <span className="cs-stat-reduced"> ({getExpiredRewardPercent(selected.cargoType)}%)</span>
                                         )}
