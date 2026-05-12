@@ -140,7 +140,7 @@ export default function PortProfileScreen({ port, onClose }: Props) {
                             <div key={c.id} className="port-profile-cargo-item">
                                 <div className="port-profile-cargo-row">
                                     <span className="port-profile-cargo-name">{c.name}</span>
-                                    <span className="port-profile-cargo-reward">{Number(c.reward).toLocaleString("de-DE")} G</span>
+                                    <span className="port-profile-cargo-reward">{Number(c.reward).toLocaleString("de-DE")} T</span>
                                 </div>
                                 <div className="port-profile-cargo-sub">
                                     <span

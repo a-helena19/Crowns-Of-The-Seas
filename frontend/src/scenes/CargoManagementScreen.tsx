@@ -213,7 +213,7 @@ export default function CargoManagementScreen({
                                 ? "⚓ Reise unterbrochen"
                                 : `🚢 Unterwegs — noch ${Math.max(0, (entry.arrivalTick ?? 0) - (entry.currentTick ?? 0))} Ticks`,
                             unloading: "⚓ Wird entladen…",
-                            completed: `💰 +${entry.reward?.toLocaleString("de-DE")} G`,
+                            completed: `💰 +${entry.reward?.toLocaleString("de-DE")} T`,
                         }[entry.phase] ?? "…";
 
                         return (
