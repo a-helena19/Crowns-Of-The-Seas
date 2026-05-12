@@ -20,5 +20,6 @@ interface Window {
         destX: number | null;
         destY: number | null;
         startTick: number | null;
+        paused?: boolean;
     }>;
 }

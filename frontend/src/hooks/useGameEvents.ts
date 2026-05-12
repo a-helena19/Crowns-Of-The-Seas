@@ -12,9 +12,6 @@ interface UseGameEventsReturn {
 }
 
 
-// Hook that polls for session updates
-// Automatically stops polling when game is running
-
 export const useGameEvents = (): UseGameEventsReturn => {
     const [isPolling, setIsPolling] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -45,10 +42,7 @@ export const useGameEvents = (): UseGameEventsReturn => {
         setIsPolling(true);
         setError(null);
 
-        // Poll immediately
         poll(sessionId);
-
-        // Then poll every 2 seconds
         const id = window.setInterval(() => {
             poll(sessionId);
         }, 2000);
@@ -56,14 +50,12 @@ export const useGameEvents = (): UseGameEventsReturn => {
         setIntervalId(id);
     }, [poll]);
 
-    // Auto-stop polling when game starts running
     useEffect(() => {
         if (currentSession?.status === 'RUNNING' && isPolling) {
             stopPolling();
         }
     }, [currentSession?.status, isPolling, stopPolling]);
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
             if (intervalId) {

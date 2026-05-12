@@ -26,6 +26,15 @@ public record ShipPositionsUpdateEvent(
             Double destX,
             Double destY,
             Integer startTick,
-            UUID currentPortId
-    ) {}
+            UUID currentPortId,
+            boolean paused
+    ) {
+        public ShipPosition(UUID playerShipId, UUID playerId, String playerName, String iconUrl,
+                            double x, double y, String status, Integer arrivalTick,
+                            Double originX, Double originY, Double destX, Double destY,
+                            Integer startTick, UUID currentPortId) {
+            this(playerShipId, playerId, playerName, iconUrl, x, y, status, arrivalTick,
+                    originX, originY, destX, destY, startTick, currentPortId, false);
+        }
+    }
 }

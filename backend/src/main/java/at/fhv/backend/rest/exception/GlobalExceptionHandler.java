@@ -48,6 +48,7 @@ public class GlobalExceptionHandler {
                  SHIP_NOT_AVAILABLE_FOR_PURCHASE,
                  SHIP_NOT_OWNED_BY_PLAYER,
                  CARGO_NOT_AVAILABLE,
+                 SMUGGLE_EXPIRED,
                  CARGO_NOT_ASSIGNED,
                  CARGO_CAPACITY_EXCEEDED,
                  INVALID_FACTION,
@@ -61,7 +62,8 @@ public class GlobalExceptionHandler {
                  SESSION_NOT_FOUND,
                  SHIP_NOT_FOUND,
                  TRAVEL_NOT_FOUND,
-                 CARGO_NOT_FOUND-> HttpStatus.NOT_FOUND;
+                 CARGO_NOT_FOUND,
+                 SMUGGLE_NOT_FOUND -> HttpStatus.NOT_FOUND;
 
             case SHIP_INVALID_STATUS_TRANSITION,
                  TRAVEL_INVALID_STATE,

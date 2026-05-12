@@ -1,4 +1,3 @@
-// SessionDTO
 export interface SessionDTO {
     id: string;
     gameCode: string;

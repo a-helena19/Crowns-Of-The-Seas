@@ -8,10 +8,15 @@ import at.fhv.backend.domain.model.travel.Travel;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
+import java.util.Random;
 
 @Service
 public class RewardCalculationServiceImpl implements RewardCalculationService {
+
+    private static final double MAX_BONUS_FACTOR = 0.50;
+    private final Random random = new Random();
 
     @Override
     public BigDecimal calculateTotalReward(Travel travel, List<SessionCargo> cargos) {
@@ -22,10 +27,6 @@ public class RewardCalculationServiceImpl implements RewardCalculationService {
                 BigDecimal cargoReward = calculateCargoReward(cargo);
                 totalReward = totalReward.add(cargoReward);
             }
-        }
-
-        if (travel.getBaseReward() != null && travel.getBaseReward().compareTo(BigDecimal.ZERO) > 0) {
-            totalReward = totalReward.add(travel.getBaseReward());
         }
 
         return totalReward.max(BigDecimal.ZERO);
@@ -46,6 +47,16 @@ public class RewardCalculationServiceImpl implements RewardCalculationService {
             default:
                 return BigDecimal.ZERO;
         }
+    }
+
+    @Override
+    public BigDecimal calculateBonus(BigDecimal cargoReward) {
+        if (cargoReward == null || cargoReward.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        double bonusFactor = random.nextDouble() * MAX_BONUS_FACTOR;
+        return cargoReward.multiply(BigDecimal.valueOf(bonusFactor))
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private BigDecimal calculateExpiredCargoReward(SessionCargo cargo) {
