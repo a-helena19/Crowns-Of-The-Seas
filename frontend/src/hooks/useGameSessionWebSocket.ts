@@ -79,6 +79,17 @@ interface TravelCompleteEvent {
     newBalance: number;
 }
 
+interface RatMinigameEvent {
+    eventId: string;
+    eventType: "RATS";
+    playerId: string;
+    sessionId: string;
+    travelId: string;
+    playerShipId: string;
+    timeLimitSeconds: number;
+    requiredHits: number;
+}
+
 interface UseGameSessionWebSocketProps {
     sessionId: string | null;
     onSessionUpdate: (event: SessionUpdateEvent) => void;
@@ -220,6 +231,15 @@ export function useGameSessionWebSocket({
                                 window.dispatchEvent(new CustomEvent('travel-resumed', { detail: event }));
                             } catch (error) {
                                 console.error('Error parsing travel-resumed event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/rats-event`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body) as RatMinigameEvent;
+                                window.dispatchEvent(new CustomEvent('rats-event', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing rats-event:', error);
                             }
                         });
 

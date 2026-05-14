@@ -12,6 +12,10 @@ import CargoManagementScreen from "../scenes/CargoManagementScreen";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
 import RewardToast from "../components/RewardToast.tsx";
 import SmuggleOfferDialog from "../components/SmuggleOfferDialog.tsx";
+import RatMinigameOverlay from "../minigame/rats/RatMinigameOverlay.tsx";
+import type { RatMinigameEventPayload, RatMinigameResult } from "../minigame/rats/RatMinigameTypes.ts";
+import EventNotificationDialog from "../components/EventNotificationDialog.tsx";
+import ratImage from "../assets/Rat.png";
 
 export const TOP_BAR_HEIGHT = '9vh';
 export const BOTTOM_BAR_HEIGHT = '20vh';
@@ -32,9 +36,16 @@ export default function GameScreen() {
     const [rewardToasts, setRewardToasts] = useState<{
         id: string; shipName: string; from: string; to: string; reward: number;
     }[]>([]);
+    const [ratResultToasts, setRatResultToasts] = useState<{
+        id: string;
+        success: boolean;
+        message: string;
+    }[]>([]);
     const [smuggleOffer, setSmuggleOffer] = useState<{
         offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
     } | null>(null);
+    const [ratEventOffer, setRatEventOffer] = useState<RatMinigameEventPayload | null>(null);
+    const [activeRatMinigame, setActiveRatMinigame] = useState<RatMinigameEventPayload | null>(null);
 
     const pendingSmuggleRef = useRef<{
         offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
@@ -143,6 +154,11 @@ export default function GameScreen() {
                 totalReward: number;
                 baseReward: number;
                 cargoRewards: { cargoId: string; cargoName: string; destinationPort: string; baseReward: number; bonusReward: number; actualReward: number; percentage: number; status: string; cargoType: string }[];
+                ratMinigameSummary?: {
+                    triggered: boolean;
+                    result?: "SUCCESS" | "FAILED";
+                    penaltyAmount?: number;
+                };
             }>).detail;
             if (data.playerId !== playerId) return;
 
@@ -164,6 +180,7 @@ export default function GameScreen() {
                             }
                             : undefined,
                         cargoRewards: data.cargoRewards,
+                        ratMinigameSummary: data.ratMinigameSummary,
                     };
                 });
                 return updated;
@@ -217,6 +234,20 @@ export default function GameScreen() {
         return () => window.removeEventListener("smuggle-offer", handler);
     }, [playerId]);
 
+    // Rat minigame event
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const data = (e as CustomEvent<RatMinigameEventPayload>).detail;
+            if (data.playerId !== playerId) return;
+            if (window.__activeRatEventId === data.eventId) return;
+            window.__activeRatEventId = data.eventId;
+            setRatEventOffer(data);
+        };
+
+        window.addEventListener("rats-event", handler);
+        return () => window.removeEventListener("rats-event", handler);
+    }, [playerId]);
+
     const handleDepartureComplete = useCallback(() => {
         departureActiveRef.current = false;
         const pending = pendingSmuggleRef.current;
@@ -258,6 +289,96 @@ export default function GameScreen() {
         ).catch(() => {});
         setSmuggleOffer(null);
     }
+
+    const submitRatResult = useCallback(async (payload: {
+        eventId: string;
+        travelId: string;
+        result: "SUCCESS" | "FAILED";
+        hits: number;
+        requiredHits: number;
+        remainingSeconds: number;
+        timeLimitSeconds: number;
+    }) => {
+        const token = localStorage.getItem("auth_token") ?? "";
+        try {
+            await fetch(`/api/minigames/rats/result?playerId=${playerId}&sessionId=${sessionId}`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    eventId: payload.eventId,
+                    travelId: payload.travelId,
+                    result: payload.result,
+                    hits: payload.hits,
+                    requiredHits: payload.requiredHits,
+                    remainingSeconds: payload.remainingSeconds,
+                    timeLimitSeconds: payload.timeLimitSeconds,
+                }),
+            });
+        } catch {
+        }
+    }, [playerId, sessionId]);
+
+    const handleRatEventAccept = useCallback(() => {
+        if (!ratEventOffer) return;
+        setActiveRatMinigame(ratEventOffer);
+        setRatEventOffer(null);
+    }, [ratEventOffer]);
+
+    const handleRatEventDecline = useCallback(async () => {
+        if (!ratEventOffer) return;
+
+        await submitRatResult({
+            eventId: ratEventOffer.eventId,
+            travelId: ratEventOffer.travelId,
+            result: "FAILED",
+            hits: 0,
+            requiredHits: ratEventOffer.requiredHits,
+            remainingSeconds: 0,
+            timeLimitSeconds: ratEventOffer.timeLimitSeconds,
+        });
+
+        window.__activeRatEventId = undefined;
+        setRatEventOffer(null);
+        const id = `rat-result-${Date.now()}`;
+        setRatResultToasts(prev => [...prev, {
+            id,
+            success: false,
+            message: "Ratten-Event nicht bestanden",
+        }]);
+        setTimeout(() => {
+            setRatResultToasts(prev => prev.filter(toast => toast.id !== id));
+        }, 2600);
+    }, [ratEventOffer, submitRatResult]);
+
+    const handleRatMinigameFinished = useCallback(async (result: RatMinigameResult) => {
+        if (!activeRatMinigame) return;
+
+        await submitRatResult({
+            eventId: activeRatMinigame.eventId,
+            travelId: activeRatMinigame.travelId,
+            result: result.result,
+            hits: result.hits,
+            requiredHits: result.requiredHits,
+            remainingSeconds: result.remainingSeconds,
+            timeLimitSeconds: result.timeLimitSeconds,
+        });
+
+        window.__activeRatEventId = undefined;
+        setActiveRatMinigame(null);
+        const id = `rat-result-${Date.now()}`;
+        const success = result.result === "SUCCESS";
+        setRatResultToasts(prev => [...prev, {
+            id,
+            success,
+            message: success ? "Ratten-Event erfolgreich" : "Ratten-Event nicht bestanden",
+        }]);
+        setTimeout(() => {
+            setRatResultToasts(prev => prev.filter(toast => toast.id !== id));
+        }, 2600);
+    }, [activeRatMinigame, submitRatResult]);
 
     // Auto-complete loading phase
     useEffect(() => {
@@ -385,6 +506,30 @@ export default function GameScreen() {
                 />
             ))}
 
+            {ratResultToasts.map((toast, index) => (
+                <div
+                    key={toast.id}
+                    style={{
+                        position: "fixed",
+                        right: 20,
+                        bottom: 110 + index * 74,
+                        zIndex: 1002,
+                        minWidth: 280,
+                        maxWidth: 380,
+                        background: toast.success ? "#e7f6ea" : "#ffe7e7",
+                        border: `3px solid ${toast.success ? "#2f7a45" : "#a23f3f"}`,
+                        borderRadius: 8,
+                        boxShadow: "0 6px 14px rgba(0,0,0,0.25)",
+                        padding: "10px 12px",
+                        color: toast.success ? "#1f5e35" : "#7d2a2a",
+                        fontWeight: 700,
+                    }}
+                >
+                    {toast.success ? "✅ " : "⚠️ "}
+                    {toast.message}
+                </div>
+            ))}
+
             {smuggleOffer && (
                 <SmuggleOfferDialog
                     offerId={smuggleOffer.offerId}
@@ -393,6 +538,30 @@ export default function GameScreen() {
                     cargoDescription={smuggleOffer.cargoDescription}
                     onAccept={handleSmuggleAccept}
                     onDecline={handleSmuggleDecline}
+                />
+            )}
+
+            {ratEventOffer && (
+                <EventNotificationDialog
+                    title="Event: Rattenbefall"
+                    successText="Wenn du das Event schaffst, werden die Ratten abgewehrt und die Fracht bleibt unbeschädigt."
+                    failText="Wenn du das Event nicht schaffst oder ablehnst, wird das Minispiel als nicht bestanden gewertet und ein Teil der Fracht geht verloren."
+                    imageSrc={ratImage}
+                    imageAlt="Ratte"
+                    onAccept={handleRatEventAccept}
+                    onDecline={handleRatEventDecline}
+                />
+            )}
+
+            {activeRatMinigame && (
+                <RatMinigameOverlay
+                    config={{
+                        eventId: activeRatMinigame.eventId,
+                        travelId: activeRatMinigame.travelId,
+                        timeLimitSeconds: activeRatMinigame.timeLimitSeconds,
+                        requiredHits: activeRatMinigame.requiredHits,
+                    }}
+                    onFinished={handleRatMinigameFinished}
                 />
             )}
         </div>

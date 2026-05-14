@@ -1,6 +1,7 @@
 package at.fhv.backend.application.services.impl.travel;
 
 import at.fhv.backend.application.services.smuggle.SmuggleService;
+import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.RewardCalculationService;
 import at.fhv.backend.domain.model.cargo.Cargo;
@@ -39,6 +40,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
     private final CargoRepository cargoRepository;
     private final SmuggleService smuggleService;
     private final TravelRepository travelRepository;
+    private final RatMinigameService ratMinigameService;
 
     public CargoUnloadingPhaseServiceImpl(
             SessionCargoRepository sessionCargoRepository,
@@ -49,7 +51,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             PortRepository portRepository,
             CargoRepository cargoRepository,
             SmuggleService smuggleService,
-            TravelRepository travelRepository) {
+            TravelRepository travelRepository,
+            RatMinigameService ratMinigameService) {
         this.sessionCargoRepository = sessionCargoRepository;
         this.playerShipRepository = playerShipRepository;
         this.gameSessionRepository = gameSessionRepository;
@@ -59,6 +62,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         this.cargoRepository = cargoRepository;
         this.smuggleService = smuggleService;
         this.travelRepository = travelRepository;
+        this.ratMinigameService = ratMinigameService;
     }
 
     @Override
@@ -85,6 +89,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         }
 
         BigDecimal totalReward = cargoReward.add(totalBonus).add(smuggleReward);
+        totalReward = ratMinigameService.applyRewardModifier(travel.getTravelId(), totalReward);
 
         BigDecimal previousBalance = BigDecimal.ZERO;
         BigDecimal newBalance = BigDecimal.ZERO;
@@ -107,7 +112,9 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             }
         }
 
-        sendUnloadingCompleteEvent(travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffers, bonusPerCargo, totalBonus);
+        sendUnloadingCompleteEvent(
+                travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffers, bonusPerCargo, totalBonus, totalReward
+        );
 
         if (!smuggleOffers.isEmpty()) {
             smuggleService.clearAcceptedOffer(playerId);
@@ -167,7 +174,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                                             List<SessionCargo> cargosForPlayer,
                                             BigDecimal previousBalance, BigDecimal newBalance,
                                             List<SmuggleOffer> smuggleOffers,
-                                            Map<UUID, BigDecimal> bonusPerCargo, BigDecimal totalBonus) {
+                                            Map<UUID, BigDecimal> bonusPerCargo, BigDecimal totalBonus,
+                                            BigDecimal finalTotalReward) {
         try {
             PortId destinationPortId = PortId.of(travel.getDestinationPortId());
             Port destinationPort = portRepository.findById(destinationPortId).orElse(null);
@@ -224,20 +232,16 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
 
             BigDecimal baseReward = travel.getBaseReward() != null ? travel.getBaseReward() : BigDecimal.ZERO;
 
-            BigDecimal totalReward = BigDecimal.ZERO;
-            for (CargoRewardBreakdown breakdown : cargoRewards) {
-                totalReward = totalReward.add(breakdown.getActualReward());
-            }
-
             TravelCompleteEvent event = new TravelCompleteEvent(
                     travel.getTravelId().toString(),
                     playerId.toString(),
                     cargoRewards,
                     baseReward,
-                    totalReward,
+                    finalTotalReward,
                     totalBonus,
                     previousBalance,
-                    newBalance
+                    newBalance,
+                    ratMinigameService.consumeTravelSummary(travel.getTravelId())
             );
 
             webSocketController.broadcastTravelComplete(

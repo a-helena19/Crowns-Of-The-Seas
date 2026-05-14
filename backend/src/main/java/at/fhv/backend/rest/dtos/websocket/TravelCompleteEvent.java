@@ -12,11 +12,13 @@ public class TravelCompleteEvent {
     private BigDecimal bonusReward;
     private BigDecimal previousBalance;
     private BigDecimal newBalance;
+    private RatMinigameTravelSummary ratMinigameSummary;
 
     public TravelCompleteEvent(String travelId, String playerId,
                                List<CargoRewardBreakdown> cargoRewards,
                                BigDecimal baseReward, BigDecimal totalReward, BigDecimal bonusReward,
-                               BigDecimal previousBalance, BigDecimal newBalance) {
+                               BigDecimal previousBalance, BigDecimal newBalance,
+                               RatMinigameTravelSummary ratMinigameSummary) {
         this.travelId = travelId;
         this.playerId = playerId;
         this.cargoRewards = cargoRewards;
@@ -25,6 +27,7 @@ public class TravelCompleteEvent {
         this.bonusReward = bonusReward;
         this.previousBalance = previousBalance;
         this.newBalance = newBalance;
+        this.ratMinigameSummary = ratMinigameSummary;
     }
 
     public String getTravelId() {
@@ -57,5 +60,9 @@ public class TravelCompleteEvent {
 
     public BigDecimal getBonusReward() {
         return bonusReward;
+    }
+
+    public RatMinigameTravelSummary getRatMinigameSummary() {
+        return ratMinigameSummary;
     }
 }
