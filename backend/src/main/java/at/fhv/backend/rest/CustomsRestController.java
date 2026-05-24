@@ -1,6 +1,7 @@
 package at.fhv.backend.rest;
 
 import at.fhv.backend.application.services.cargo.CustomsService;
+import at.fhv.backend.domain.model.customs.CustomsInspection;
 import at.fhv.backend.rest.exception.ErrorResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,10 +22,11 @@ public class CustomsRestController {
     }
 
     @PostMapping("/cooperate")
-    public ResponseEntity<?> cooperate(@RequestParam UUID playerId, @RequestParam UUID inspectionId) {
+    public ResponseEntity<?> cooperate(@RequestParam UUID playerId,
+                                       @RequestParam UUID inspectionId) {
         try {
             customsService.cooperate(playerId, inspectionId);
-            return ResponseEntity.ok(Map.of("cooperated", true));
+            return ResponseEntity.ok(Map.of("cooperated", true, "outcome", "COOPERATED"));
         } catch (Exception exception) {
             return ResponseEntity.badRequest()
                     .body(new ErrorResponse(exception.getMessage(), "CUSTOMS_COOPERATE_FAILED"));
@@ -32,12 +34,15 @@ public class CustomsRestController {
     }
 
     @PostMapping("/bribe")
-    public ResponseEntity<?> bribe(@RequestParam UUID playerId, @RequestParam UUID inspectionId) {
+    public ResponseEntity<?> bribe(@RequestParam UUID playerId,
+                                   @RequestParam UUID inspectionId) {
         try {
-            customsService.bribe(playerId, inspectionId);
-            return ResponseEntity.ok(Map.of("bribed", true));
+            CustomsInspection result = customsService.bribe(playerId, inspectionId);
+            String outcome = result.getOutcome().name();
+            return ResponseEntity.ok(Map.of("bribed", true, "outcome", outcome));
         } catch (Exception exception) {
-            return ResponseEntity.badRequest().body(new ErrorResponse(exception.getMessage(), "CUSTOMS_BRIBE_FAILED"));
+            return ResponseEntity.badRequest()
+                    .body(new ErrorResponse(exception.getMessage(), "CUSTOMS_BRIBE_FAILED"));
         }
     }
 }

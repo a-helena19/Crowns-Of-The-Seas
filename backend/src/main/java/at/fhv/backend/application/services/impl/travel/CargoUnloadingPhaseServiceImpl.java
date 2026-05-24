@@ -86,20 +86,25 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         markCargosAsDelivered(travel, cargosForPlayer);
 
         BigDecimal cargoReward = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
+        CustomsInspection inspection = customsService.consumeInspection(travel.getTravelId());
+        BigDecimal customsFine = inspection != null ? inspection.getFinePaid() : BigDecimal.ZERO;
+        boolean smuggleConfiscated = inspection != null
+                && (inspection.getOutcome() == at.fhv.backend.domain.model.customs.CustomsInspectionOutcome.COOPERATED
+                || inspection.getOutcome() == at.fhv.backend.domain.model.customs.CustomsInspectionOutcome.BRIBE_FAILED);
 
         BigDecimal smuggleReward = BigDecimal.ZERO;
         List<SmuggleOffer> smuggleOffers = smuggleService.getAllAcceptedOffers(travel.getPlayerId());
-        for (SmuggleOffer smuggleOffer : smuggleOffers) {
-            smuggleReward = smuggleReward.add(smuggleOffer.getReward());
+        if (!smuggleConfiscated) {
+            for (SmuggleOffer smuggleOffer : smuggleOffers) {
+                smuggleReward = smuggleReward.add(smuggleOffer.getReward());
+            }
+        } else {
+            System.out.println("[CargoUnloading] Smuggle reward forfeited — customs confiscated the cargo");
         }
 
         BigDecimal totalReward = cargoReward.add(totalBonus).add(smuggleReward);
         totalReward = ratMinigameService.applyRewardModifier(travel.getTravelId(), totalReward);
 
-        // Customs: subtract any fine from the final payout. The inspection was performed on arrival;
-        // by the time we get here it must be in a terminal state (CLEARED / HIDDEN / COOPERATED / BRIBE_*).
-        CustomsInspection inspection = customsService.consumeInspection(travel.getTravelId());
-        BigDecimal customsFine = inspection != null ? inspection.getFinePaid() : BigDecimal.ZERO;
         BigDecimal payout = totalReward.subtract(customsFine);
         if (payout.compareTo(BigDecimal.ZERO) < 0) {
             payout = BigDecimal.ZERO;
@@ -128,7 +133,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
 
         sendUnloadingCompleteEvent(
                 travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffers,
-                bonusPerCargo, totalBonus, payout, inspection
+                bonusPerCargo, totalBonus, payout, inspection, smuggleConfiscated
         );
 
         if (!smuggleOffers.isEmpty()) {
@@ -191,7 +196,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                                             List<SmuggleOffer> smuggleOffers,
                                             Map<UUID, BigDecimal> bonusPerCargo, BigDecimal totalBonus,
                                             BigDecimal finalTotalReward,
-                                            CustomsInspection inspection) {
+                                            CustomsInspection inspection,
+                                            boolean smuggleConfiscated) {
         try {
             PortId destinationPortId = PortId.of(travel.getDestinationPortId());
             Port destinationPort = portRepository.findById(destinationPortId).orElse(null);
@@ -232,16 +238,23 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                     .toList());
 
             for (SmuggleOffer smuggleOffer : smuggleOffers) {
-                String displayName = SMUGGLE_DISPLAY_NAME;
+                String displayName = smuggleConfiscated
+                        ? SMUGGLE_DISPLAY_NAME + " (Konfisziert)"
+                        : SMUGGLE_DISPLAY_NAME;
+                BigDecimal actualSmuggleReward = smuggleConfiscated
+                        ? BigDecimal.ZERO
+                        : smuggleOffer.getReward();
+                String smuggleStatus = smuggleConfiscated ? "CONFISCATED" : "DELIVERED";
+
                 cargoRewards.add(new CargoRewardBreakdown(
                         smuggleOffer.getId().toString(),
                         displayName,
                         destinationPortName,
                         smuggleOffer.getReward(),
-                        smuggleOffer.getReward(),
+                        actualSmuggleReward,
                         BigDecimal.ZERO,
-                        100,
-                        "DELIVERED",
+                        smuggleConfiscated ? 0 : 100,
+                        smuggleStatus,
                         "SMUGGLE"
                 ));
             }

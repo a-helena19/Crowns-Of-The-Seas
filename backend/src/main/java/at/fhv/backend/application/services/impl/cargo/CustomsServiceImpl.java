@@ -22,11 +22,16 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class CustomsServiceImpl implements CustomsService {
+
     private static final double DETECTION_CHANCE_WHEN_SMUGGLING = 0.55;
     private static final double BRIBE_SUCCESS_CHANCE = 0.50;
     private static final int MIN_DETENTION_TICKS = 3;
@@ -47,8 +52,12 @@ public class CustomsServiceImpl implements CustomsService {
     private final Map<UUID, CustomsInspection> inspectionsById = new ConcurrentHashMap<>();
     private final Random random = new Random();
 
-    public CustomsServiceImpl(SessionCargoRepository sessionCargoRepository, PlayerShipRepository playerShipRepository, ShipRepository shipRepository,
-                              PortRepository portRepository, TravelPauseService travelPauseService, GameSessionWebSocketController webSocketController) {
+    public CustomsServiceImpl(SessionCargoRepository sessionCargoRepository,
+                              PlayerShipRepository playerShipRepository,
+                              ShipRepository shipRepository,
+                              PortRepository portRepository,
+                              TravelPauseService travelPauseService,
+                              GameSessionWebSocketController webSocketController) {
         this.sessionCargoRepository = sessionCargoRepository;
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
@@ -62,11 +71,9 @@ public class CustomsServiceImpl implements CustomsService {
         UUID playerId = travel.getPlayerId();
         UUID travelId = travel.getTravelId();
         UUID playerShipId = travel.getPlayerShipId();
-
         String shipName = lookupShipName(playerShipId);
         String originPortName = lookupPortName(travel.getOriginPortId());
         String destinationPortName = lookupPortName(travel.getDestinationPortId());
-
         List<SessionCargo> deliveredCargos = collectCargosForArrival(travel);
         boolean carryingIllegalCargo = deliveredCargos.stream().anyMatch(SessionCargo::isContainsIllegal);
 
@@ -81,7 +88,6 @@ public class CustomsServiceImpl implements CustomsService {
         );
 
         if (!carryingIllegalCargo) {
-            // Clean ship — routine inspection passes silently. The frontend shows a small toast.
             inspection.completeAsCleared();
             broadcastInspectionPass(inspection);
             inspectionsByTravelId.put(travelId, inspection);
@@ -140,13 +146,14 @@ public class CustomsServiceImpl implements CustomsService {
         inspection.cooperate();
         broadcastInspectionResolved(inspection);
         resumeTravelForInspection(inspection);
+        applyDetentionIfNeeded(inspection);
 
         System.out.println("[Customs] Player " + playerId + " COOPERATED on inspection " + inspectionId
                 + " — fine paid: " + inspection.getFinePaid() + " T, detained: " + inspection.getDetentionTicks() + " ticks");
     }
 
     @Override
-    public void bribe(UUID playerId, UUID inspectionId) {
+    public CustomsInspection bribe(UUID playerId, UUID inspectionId) {
         CustomsInspection inspection = inspectionsById.get(inspectionId);
         if (inspection == null) {
             throw new CustomsInspectionNotFoundException(inspectionId);
@@ -159,11 +166,13 @@ public class CustomsServiceImpl implements CustomsService {
         inspection.bribe(success);
         broadcastInspectionResolved(inspection);
         resumeTravelForInspection(inspection);
+        applyDetentionIfNeeded(inspection);
 
         System.out.println("[Customs] Player " + playerId + " BRIBED on inspection " + inspectionId
                 + " — success: " + success
                 + " — fine paid: " + inspection.getFinePaid() + " T"
                 + ", detained: " + (inspection.isDetained() ? inspection.getDetentionTicks() : 0) + " ticks");
+        return inspection;
     }
 
     @Override
@@ -193,6 +202,22 @@ public class CustomsServiceImpl implements CustomsService {
                 inspection.getPlayerId(),
                 inspection.getPlayerShipId(),
                 "CUSTOMS_RESOLVED");
+    }
+
+    private void applyDetentionIfNeeded(CustomsInspection inspection) {
+        if (!inspection.isDetained()) {
+            return;
+        }
+        PlayerShip ship = playerShipRepository.findById(inspection.getPlayerShipId()).orElse(null);
+        if (ship == null) {
+            System.err.println("[Customs] Could not find ship " + inspection.getPlayerShipId() + " to apply detention");
+            return;
+        }
+        ship.extendUnloadingBy(inspection.getDetentionTicks());
+        playerShipRepository.save(ship);
+        System.out.println("[Customs] Ship " + inspection.getShipName()
+                + " detained for " + inspection.getDetentionTicks() + " additional ticks"
+                + " (new unloadingCompletedAtTick: " + ship.getUnloadingCompletedAtTick() + ")");
     }
 
     private void broadcastInspectionPass(CustomsInspection inspection) {

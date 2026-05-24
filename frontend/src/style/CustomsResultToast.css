@@ -1,98 +1,62 @@
 .customs-toast {
     position: fixed;
-    right: 20px;
-    bottom: 110px;
-
-    z-index: 1003;
-    min-width: 320px;
-    max-width: 420px;
+    right: 14px;
+    z-index: 100000;
 
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
+    gap: 6px;
+    padding: 6px 12px;
 
-    background: #fbece0;
-    border: 3px solid #4a2f1f;
-    border-radius: 8px;
-
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    background: #f5e6d3;
+    border: 1.5px solid #7a6a5a;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 
     font-family: 'Crimson Pro', serif;
-    color: #3b1d10;
+    font-size: 13px;
+    color: #3b2a1a;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
 
     transform: translateX(110%);
     opacity: 0;
-    transition: transform 360ms cubic-bezier(0.2, 0.9, 0.3, 1.05), opacity 360ms ease-out;
+    transition: transform 280ms cubic-bezier(0.2, 0.9, 0.3, 1.05), opacity 280ms ease-out;
 }
 
-.customs-toast.show {
+.customs-toast-show {
     transform: translateX(0);
     opacity: 1;
 }
 
-.customs-toast.hide {
+.customs-toast-hide {
     transform: translateX(110%);
     opacity: 0;
 }
 
-.customs-toast.ok {
-    border-color: #2f7a45;
-}
-
-.customs-toast.bad {
-    border-color: #a23f3f;
-}
-
-.customs-toast-icon {
-    font-size: 28px;
-    line-height: 1;
-}
-
-.customs-toast-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
+.customs-toast-ok  { border-left: 3px solid #3a6b2a; }
+.customs-toast-bad { border-left: 3px solid #8a3030; }
 
 .customs-toast-ship {
     font-weight: 700;
-    font-size: 16px;
-    color: #3b1d10;
+    font-size: 13px;
 }
 
 .customs-toast-route {
-    font-size: 13px;
+    font-size: 12px;
+    color: #6a5540;
     font-style: italic;
-    color: #6a3b22;
-    opacity: 0.9;
+}
+
+.customs-toast-sep {
+    color: #9a8a7a;
+    font-size: 12px;
 }
 
 .customs-toast-label {
-    font-size: 15px;
-    margin-top: 2px;
+    font-size: 12px;
 }
 
-.customs-toast.ok .customs-toast-label {
-    color: #1f5e35;
-}
-
-.customs-toast.bad .customs-toast-label {
-    color: #7d2a2a;
-}
-
-.customs-toast-close {
-    background: transparent;
-    border: none;
-    font-size: 18px;
-    color: #6a3b22;
-    cursor: pointer;
-    padding: 4px 6px;
-    line-height: 1;
-    align-self: flex-start;
-}
-
-.customs-toast-close:hover {
-    color: #3b1d10;
-}
+.customs-toast-ok .customs-toast-label { color: #2a5a1a; }
+.customs-toast-bad .customs-toast-label { color: #7a2020; }

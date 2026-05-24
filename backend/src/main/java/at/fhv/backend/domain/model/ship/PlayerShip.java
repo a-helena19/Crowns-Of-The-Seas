@@ -194,6 +194,16 @@ public class PlayerShip {
         this.unloadingCompletedAtTick = -1;
     }
 
+    public void extendUnloadingBy(int additionalTicks) {
+        if (this.status != ShipStatus.UNLOADING) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status UNLOADING to extend unloading",
+                    "shipId", shipId
+            );
+        }
+        this.unloadingCompletedAtTick = this.unloadingCompletedAtTick + additionalTicks;
+    }
+
     public void startRefueling(int refuelingCompletedAtTick, double fuelAmount) {
         if (this.status != ShipStatus.AT_PORT) {
             throw new InvalidShipStatusTransition(
@@ -204,6 +214,7 @@ public class PlayerShip {
         this.refuelingCompletedAtTick = refuelingCompletedAtTick;
         this.pendingFuelAmount = fuelAmount;
     }
+
 
     public boolean isStillRefueling(int currentTick) {
         return status == ShipStatus.REFUELING

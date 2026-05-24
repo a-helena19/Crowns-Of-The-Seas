@@ -313,7 +313,6 @@ export default function GameScreen() {
         };
     }, [playerId]);
 
-    // Rat minigame event
     useEffect(() => {
         const handler = (e: Event) => {
             const data = (e as CustomEvent<RatMinigameEventPayload>).detail;
@@ -369,7 +368,6 @@ export default function GameScreen() {
         setSmuggleOffer(null);
     }
 
-
     const handleCustomsCooperate = useCallback(async () => {
         if (!customsInspection) return;
         const token = localStorage.getItem("auth_token") ?? "";
@@ -386,38 +384,22 @@ export default function GameScreen() {
     const handleCustomsBribe = useCallback(async (): Promise<"BRIBE_SUCCESS" | "BRIBE_FAILED" | "ERROR"> => {
         if (!customsInspection) return "ERROR";
         const token = localStorage.getItem("auth_token") ?? "";
-        return new Promise<"BRIBE_SUCCESS" | "BRIBE_FAILED" | "ERROR">((resolve) => {
-            const expectedTravelId = customsInspection.travelId;
-            let settled = false;
-            const onResolved = (e: Event) => {
-                const data = (e as CustomEvent<{ travelId: string; outcome: "BRIBE_SUCCESS" | "BRIBE_FAILED" | "COOPERATED" }>).detail;
-                if (data.travelId !== expectedTravelId) return;
-                if (data.outcome === "BRIBE_SUCCESS" || data.outcome === "BRIBE_FAILED") {
-                    settled = true;
-                    window.removeEventListener("customs-resolved", onResolved);
-                    resolve(data.outcome);
-                }
-            };
-            window.addEventListener("customs-resolved", onResolved);
-
-            fetch(
+        try {
+            const res = await fetch(
                 `/api/customs/bribe?playerId=${playerId}&inspectionId=${customsInspection.inspectionId}`,
                 { method: "POST", headers: { Authorization: `Bearer ${token}` } }
-            ).catch((err) => {
-                console.error("Customs bribe failed:", err);
-                if (!settled) {
-                    window.removeEventListener("customs-resolved", onResolved);
-                    resolve("ERROR");
-                }
-            });
-
-            setTimeout(() => {
-                if (!settled) {
-                    window.removeEventListener("customs-resolved", onResolved);
-                    resolve("ERROR");
-                }
-            }, 6000);
-        });
+            );
+            if (!res.ok) return "ERROR";
+            const data = await res.json();
+            const outcome = data.outcome as string;
+            if (outcome === "BRIBE_SUCCESS" || outcome === "BRIBE_FAILED") {
+                return outcome;
+            }
+            return "ERROR";
+        } catch (err) {
+            console.error("Customs bribe failed:", err);
+            return "ERROR";
+        }
     }, [customsInspection, playerId]);
 
     const handleCustomsDismiss = useCallback(() => {
@@ -517,7 +499,6 @@ export default function GameScreen() {
         }, 2600);
     }, [activeRatMinigame, submitRatResult]);
 
-    // Auto-complete loading phase
     useEffect(() => {
         const hasPendingLoading = assignedCargos.some(
             e => e.phase === "loading" && !e.loadingDone
@@ -667,18 +648,15 @@ export default function GameScreen() {
             ))}
 
             {customsToasts.map((toast, index) => (
-                <div
+                <CustomsResultToast
                     key={toast.id}
-                    style={{ bottom: `${110 + index * 86}px`, position: "fixed", right: 0 }}
-                >
-                    <CustomsResultToast
-                        kind={toast.kind}
-                        shipName={toast.shipName}
-                        from={toast.from}
-                        to={toast.to}
-                        onDismiss={() => setCustomsToasts(prev => prev.filter(t => t.id !== toast.id))}
-                    />
-                </div>
+                    kind={toast.kind}
+                    shipName={toast.shipName}
+                    from={toast.from}
+                    to={toast.to}
+                    bottomOffset={60 + index * 42}
+                    onDismiss={() => setCustomsToasts(prev => prev.filter(t => t.id !== toast.id))}
+                />
             ))}
 
             {smuggleOffer && (

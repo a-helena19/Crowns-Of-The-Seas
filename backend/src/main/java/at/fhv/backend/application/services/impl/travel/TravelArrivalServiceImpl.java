@@ -5,7 +5,6 @@ import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.TravelArrivalService;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
 import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
-import at.fhv.backend.domain.model.customs.CustomsInspection;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
@@ -17,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-
 
 @Service
 public class TravelArrivalServiceImpl implements TravelArrivalService {
@@ -53,11 +51,10 @@ public class TravelArrivalServiceImpl implements TravelArrivalService {
 
         PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
         List<SessionCargo> cargosForPlayer = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
-        CustomsInspection inspection = customsService.inspectOnArrival(travel);
-        int detentionTicks = inspection.isDetained() ? inspection.getDetentionTicks() : 0;
+        customsService.inspectOnArrival(travel);
 
         if (ship != null) {
-            int unloadingDuration = calculateUnloadingTime(travel, cargosForPlayer) + detentionTicks;
+            int unloadingDuration = calculateUnloadingTime(travel, cargosForPlayer);
             int unloadingCompletedAtTick = travel.getArrivalTick() + unloadingDuration;
 
             ship.arriveAndStartUnloading(travel.getDestinationPortId(), unloadingCompletedAtTick);
@@ -65,7 +62,6 @@ public class TravelArrivalServiceImpl implements TravelArrivalService {
 
             System.out.println("[TravelArrival] Ship " + ship.getId() + " arrived at port " + travel.getDestinationPortId());
             System.out.println("[TravelArrival] Ship set to UNLOADING status for " + unloadingDuration + " ticks"
-                    + " (base + " + detentionTicks + " detention)"
                     + " (until tick " + unloadingCompletedAtTick + ")");
         }
 
