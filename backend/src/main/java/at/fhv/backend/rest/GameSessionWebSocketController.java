@@ -47,5 +47,9 @@ public class GameSessionWebSocketController {
     public void broadcastTravelResumed(String sessionId, TravelResumedEvent event) {
         messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/travel-resumed", event);
     }
+
+    public void broadcastPilotStrike(String sessionId, PilotStrikeEvent event) {
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/pilot-strike", event);
+    }
 }
 

@@ -43,6 +43,8 @@ export default function GameScreen() {
     const departureActiveRef = useRef(false);
     const arrivedMiniGameShown = useRef<Set<string>>(new Set());
     const [showArrivalDocking, setShowArrivalDocking] = useState<AssignedCargoEntry | null>(null);
+    const [activePilotStrikes, setActivePilotStrikes] = useState<Record<string, { portName: string }>>({});
+    const [strikeNotice, setStrikeNotice] = useState<string | null>(null);
 
     const authToken = localStorage.getItem("auth_token") ?? "";
 
@@ -69,11 +71,66 @@ export default function GameScreen() {
         ));
     }
 
-    function handleTravelStarted(cargoId: string, pilotageUsed: boolean) {
+    function handleTravelStarted(cargoId: string, pilotageUsed: boolean, pilotageStrikeRevoked?: boolean) {
         setAssignedCargos(prev => prev.map(e =>
-            e.cargoId === cargoId ? { ...e, pilotageUsed } : e
+            e.cargoId === cargoId
+                ? { ...e, pilotageUsed, ...(pilotageStrikeRevoked != null ? { pilotageStrikeRevoked } : {}) }
+                : e
         ));
     }
+
+    useEffect(() => {
+        if (!sessionId || !authToken) return;
+        fetch(`/api/sessions/${sessionId}/pilot-strikes`, {
+            headers: { Authorization: `Bearer ${authToken}` },
+        })
+            .then(r => (r.ok ? r.json() : []))
+            .then((strikes: { portId: string; portName: string }[]) => {
+                const map: Record<string, { portName: string }> = {};
+                for (const s of strikes) {
+                    map[s.portId] = { portName: s.portName };
+                }
+                setActivePilotStrikes(map);
+            })
+            .catch(() => { /* noop */ });
+    }, [sessionId, authToken]);
+
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const detail = (e as CustomEvent<{
+                eventType: string;
+                portId: string;
+                portName: string;
+                endTick?: number;
+                revokedTravels?: { travelId: string; playerId: string }[];
+            }>).detail;
+
+            if (detail.eventType === "PILOT_STRIKE_STARTED") {
+                setActivePilotStrikes(prev => ({
+                    ...prev,
+                    [detail.portId]: { portName: detail.portName },
+                }));
+                const myRevoked = detail.revokedTravels?.filter(r => r.playerId === playerId) ?? [];
+                if (myRevoked.length > 0) {
+                    setStrikeNotice(
+                        `Lotsenstreik in ${detail.portName}! Du musst selbst anlegen. Die Lotsengebühr wird beim Reiseabschluss erstattet.`
+                    );
+                    setAssignedCargos(prev => prev.map(entry => {
+                        if (!myRevoked.some(r => r.travelId === entry.travelId)) return entry;
+                        return { ...entry, pilotageStrikeRevoked: true };
+                    }));
+                }
+            } else if (detail.eventType === "PILOT_STRIKE_ENDED") {
+                setActivePilotStrikes(prev => {
+                    const next = { ...prev };
+                    delete next[detail.portId];
+                    return next;
+                });
+            }
+        };
+        window.addEventListener("pilot-strike-update", handler);
+        return () => window.removeEventListener("pilot-strike-update", handler);
+    }, [playerId]);
 
     useEffect(() => {
         viewRef.current = view;
@@ -152,7 +209,7 @@ export default function GameScreen() {
             if (
                 entry.phase === "unloading" &&
                 entry.travelId &&
-                !entry.pilotageUsed &&
+                (!entry.pilotageUsed || entry.pilotageStrikeRevoked) &&
                 !arrivedMiniGameShown.current.has(entry.travelId)
             ) {
                 arrivedMiniGameShown.current.add(entry.travelId);
@@ -189,6 +246,7 @@ export default function GameScreen() {
                 baseReward: number;
                 dockingFine?: number;
                 departureDockingFine?: number;
+                pilotageRefund?: number;
                 cargoRewards: { cargoId: string; cargoName: string; destinationPort: string; baseReward: number; bonusReward: number; actualReward: number; percentage: number; status: string; cargoType: string }[];
             }>).detail;
             if (data.playerId !== playerId) return;
@@ -205,6 +263,7 @@ export default function GameScreen() {
                         reward: data.totalReward,
                         dockingFine: data.dockingFine ?? 0,
                         departureDockingFine: data.departureDockingFine ?? 0,
+                        pilotageRefund: data.pilotageRefund ?? 0,
                         rewardDetails: firstCargo
                             ? {
                                 baseReward: firstCargo.baseReward,
@@ -393,6 +452,7 @@ export default function GameScreen() {
                 {view === "cargoManagement" && (
                     <CargoManagementScreen
                         assignedCargos={assignedCargos}
+                        activePilotStrikes={activePilotStrikes}
                         onCargoLoadingDone={handleCargoCompleted}
                         onCargoRemoved={handleCargoRemoved}
                         onCargoPhaseChange={handleCargoPhaseChange}
@@ -444,6 +504,27 @@ export default function GameScreen() {
                     onAccept={handleSmuggleAccept}
                     onDecline={handleSmuggleDecline}
                 />
+            )}
+
+            {strikeNotice && (
+                <div className="pilot-strike-banner">
+                    {strikeNotice}
+                    <button
+                        type="button"
+                        onClick={() => setStrikeNotice(null)}
+                        style={{
+                            marginLeft: 12,
+                            background: "transparent",
+                            border: "none",
+                            color: "#fadbd8",
+                            cursor: "pointer",
+                            fontSize: 16,
+                        }}
+                        aria-label="Schließen"
+                    >
+                        ×
+                    </button>
+                </div>
             )}
 
             {showArrivalDocking && (

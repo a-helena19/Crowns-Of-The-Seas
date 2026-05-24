@@ -7,9 +7,10 @@ import at.fhv.backend.domain.model.cargo.exception.CargoCapacityExceededExceptio
 import at.fhv.backend.domain.model.cargo.exception.CargoNotAvailableException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
 import at.fhv.backend.domain.model.exception.InsufficientFuelException;
+import at.fhv.backend.domain.model.exception.InvalidTravelDataException;
 import at.fhv.backend.domain.model.exception.InvalidShipStatusTransition;
 import at.fhv.backend.domain.model.player.exception.InsufficientBalanceException;
-import at.fhv.backend.domain.model.exception.InvalidTravelDataException;
+import at.fhv.backend.domain.model.exception.PilotStrikeActiveException;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
 import at.fhv.backend.rest.dtos.ship.request.FuelEstimateRequest;
 import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
@@ -116,6 +117,9 @@ public class TravelRestController {
         } catch (InvalidShipStatusTransition e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "SHIP_NOT_READY", "message", "Schiff wird noch beladen. Bitte kurz warten."));
+        } catch (PilotStrikeActiveException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "PILOT_STRIKE", "message", e.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

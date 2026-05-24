@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import LoadingScreen from "./LoadingScreen";
 import backIcon from "../assets/goback.png";
 import background from "../assets/background-cargomanagement.png";
@@ -26,10 +26,11 @@ function StaticProgressBar({ pct, color }: { pct: number; color: string }) {
 
 interface CargoManagementScreenProps {
     assignedCargos: AssignedCargoEntry[];
+    activePilotStrikes?: Record<string, { portName: string }>;
     onCargoLoadingDone: (cargoId: string) => void;
     onCargoRemoved: (cargoId: string) => void;
     onCargoPhaseChange: (cargoId: string, phase: AssignedCargoEntry["phase"], travelId?: string) => void;
-    onTravelStarted?: (cargoId: string, pilotageUsed: boolean) => void;
+    onTravelStarted?: (cargoId: string, pilotageUsed: boolean, pilotageStrikeRevoked?: boolean) => void;
     onClose: () => void;
     onDepartureStarted?: () => void;
     onDepartureComplete?: () => void;
@@ -37,6 +38,7 @@ interface CargoManagementScreenProps {
 
 export default function CargoManagementScreen({
                                                   assignedCargos,
+                                                  activePilotStrikes = {},
                                                   onCargoLoadingDone,
                                                   onCargoRemoved,
                                                   onCargoPhaseChange,
@@ -53,7 +55,6 @@ export default function CargoManagementScreen({
     const [errorMap, setErrorMap] = useState<Record<string, string>>({});
     const [showDeparture, setShowDeparture] = useState<AssignedCargoEntry | null>(null);
     const [showDockingGame, setShowDockingGame] = useState<AssignedCargoEntry | null>(null);
-    const pilotageUsedMap = useRef<Record<string, boolean>>({});
 
     const [, setRenderTick] = useState(0);
     useEffect(() => {
@@ -83,6 +84,35 @@ export default function CargoManagementScreen({
     }, [assignedCargos, selectedCargoId]);
 
     const selectedEntry = assignedCargos.find(e => e.cargoId === selectedCargoId) ?? null;
+
+    function resolveOriginPortId(entry: AssignedCargoEntry): string | undefined {
+        if (entry.originPortId) return entry.originPortId;
+        return window.__latestPorts?.find(p => p.name === entry.from)?.id;
+    }
+
+    function getStrikeInfo(entry: AssignedCargoEntry) {
+        const originId = resolveOriginPortId(entry);
+        const strikeAtOrigin = originId ? activePilotStrikes[originId] : undefined;
+        const strikeAtDest = activePilotStrikes[entry.destinationPortId];
+        return { strikeAtOrigin, strikeAtDest, pilotBlocked: !!(strikeAtOrigin || strikeAtDest) };
+    }
+
+    useEffect(() => {
+        setPilotageMap(prev => {
+            let changed = false;
+            const next = { ...prev };
+            for (const entry of assignedCargos) {
+                if (entry.phase !== "loading") continue;
+                const { pilotBlocked } = getStrikeInfo(entry);
+                if (pilotBlocked && next[entry.cargoId]) {
+                    next[entry.cargoId] = false;
+                    changed = true;
+                }
+            }
+            return changed ? next : prev;
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [assignedCargos, activePilotStrikes]);
 
     function getElapsedSeconds(entry: AssignedCargoEntry): number {
         return (Date.now() - entry.loadingStartedAt) / 1000;
@@ -114,7 +144,6 @@ export default function CargoManagementScreen({
 
     const handleStartTravel = useCallback(async (entry: AssignedCargoEntry, miniGameFailed: boolean) => {
         if (!playerId || !sessionId) return;
-        pilotageUsedMap.current[entry.cargoId] = pilotageMap[entry.cargoId] ?? false;
         setStartingMap(m => ({ ...m, [entry.cargoId]: true }));
         setErrorMap(m => ({ ...m, [entry.cargoId]: "" }));
 
@@ -143,17 +172,20 @@ export default function CargoManagementScreen({
                 });
 
                 if (response.ok) {
-                    const data = await response.json() as { travelId?: string };
+                    const data = await response.json() as {
+                        travelId?: string;
+                        pilotageServiceBooked?: boolean;
+                        pilotageStrikeRevoked?: boolean;
+                    };
                     window.dispatchEvent(new CustomEvent("player-balance-updated"));
-                    if (pilotageUsedMap.current[entry.cargoId]) {
+                    const usedPilot = data.pilotageServiceBooked ?? pilotageMap[entry.cargoId] ?? false;
+                    if (usedPilot) {
                         setShowDeparture(entry);
-                        // DepartureAnimation ruft am Ende onDepartureComplete auf
                     } else {
-                        // Kein Lotse → kein Animation → sofort zur Weltkarte zurückkehren
                         onDepartureComplete?.();
                     }
                     onCargoPhaseChange(entry.cargoId, "en_route", data.travelId);
-                    onTravelStarted?.(entry.cargoId, pilotageMap[entry.cargoId] ?? false);
+                    onTravelStarted?.(entry.cargoId, usedPilot, data.pilotageStrikeRevoked);
                     return;
                 }
 
@@ -167,6 +199,7 @@ export default function CargoManagementScreen({
                     else if (errData.error === "CAPACITY_EXCEEDED") msg = "Schiff zu klein für diese Fracht.";
                     else if (errData.error === "INSUFFICIENT_FUEL") msg = errData.message ?? "Nicht genug Treibstoff.";
                     else if (errData.error === "INSUFFICIENT_BALANCE") msg = errData.message ?? "Nicht genug Taler für den Lotsendienst.";
+                    else if (errData.error === "PILOT_STRIKE") msg = errData.message ?? "Lotsenstreik — Lotsendienst nicht verfügbar.";
                     else msg = errData.message ?? msg;
                 } catch { /* noop */ }
 
@@ -288,17 +321,28 @@ export default function CargoManagementScreen({
                                     loadingDurationSeconds={selectedEntry.loadingDurationSeconds}
                                     elapsedRatio={getLoadingPct(selectedEntry) / 100}
                                 />
-                                {(selectedEntry.loadingDone || getRemainingSeconds(selectedEntry) <= 0) && (
+                                {(selectedEntry.loadingDone || getRemainingSeconds(selectedEntry) <= 0) && (() => {
+                                    const { strikeAtOrigin, strikeAtDest, pilotBlocked } = getStrikeInfo(selectedEntry);
+                                    const strikeNames = [
+                                        strikeAtOrigin?.portName,
+                                        strikeAtDest?.portName && strikeAtDest.portName !== strikeAtOrigin?.portName
+                                            ? strikeAtDest.portName
+                                            : null,
+                                    ].filter(Boolean);
+                                    return (
                                     <div className="cm-actions">
                                         <div className="pilotage-row">
                                             <button
-                                                className={`pilotage-toggle ${pilotageMap[selectedEntry.cargoId] ? "active" : ""}`}
-                                                onClick={() =>
+                                                type="button"
+                                                className={`pilotage-toggle ${pilotageMap[selectedEntry.cargoId] ? "active" : ""}${pilotBlocked ? " disabled" : ""}`}
+                                                disabled={pilotBlocked}
+                                                onClick={() => {
+                                                    if (pilotBlocked) return;
                                                     setPilotageMap(m => ({
                                                         ...m,
                                                         [selectedEntry.cargoId]: !m[selectedEntry.cargoId],
-                                                    }))
-                                                }
+                                                    }));
+                                                }}
                                             >
                                                 <span className="pilotage-check">
                                                     {pilotageMap[selectedEntry.cargoId] ? "✓" : "○"}
@@ -307,6 +351,11 @@ export default function CargoManagementScreen({
                                                 <span className="pilotage-cost">600 Taler</span>
                                             </button>
                                         </div>
+                                        {pilotBlocked && (
+                                            <div className="pilot-strike-info">
+                                                ⚠ Lotsenstreik in {strikeNames.join(" und ")} — Lotsendienst derzeit nicht verfügbar.
+                                            </div>
+                                        )}
                                         {errorMap[selectedEntry.cargoId] && (
                                             <div className="harbor-error-toast" style={{ position: "relative", transform: "none", marginBottom: 8 }}>
                                                 {errorMap[selectedEntry.cargoId]}
@@ -322,7 +371,8 @@ export default function CargoManagementScreen({
                                                 : "Reise starten"}
                                         </button>
                                     </div>
-                                )}
+                                    );
+                                })()}
                             </>
                         )}
 
@@ -410,6 +460,7 @@ export default function CargoManagementScreen({
                             const smuggleItem = allRewards.find(r => r.cargoType === "SMUGGLE");
                             const dockingFine = selectedEntry.dockingFine ?? 0;
                             const departureDockingFine = selectedEntry.departureDockingFine ?? 0;
+                            const pilotageRefund = selectedEntry.pilotageRefund ?? 0;
                             const hasDockingPenalty = dockingFine > 0 || departureDockingFine > 0;
                             const isPerfect = cargoItems.every(r => r.percentage >= 100) && !hasDockingPenalty;
                             return (
@@ -489,6 +540,12 @@ export default function CargoManagementScreen({
                                             <div className="cm-reward-row warn">
                                                 <span>⚠ Anlege-Schaden (Kollision)</span>
                                                 <span className="cm-reward-row-value">-{dockingFine.toLocaleString("de-DE")}T</span>
+                                            </div>
+                                        )}
+                                        {pilotageRefund > 0 && (
+                                            <div className="cm-reward-row bonus">
+                                                <span>Lotsenerstattung (Streik)</span>
+                                                <span className="cm-reward-row-value">+{pilotageRefund.toLocaleString("de-DE")}T</span>
                                             </div>
                                         )}
                                         <div className="cm-reward-row total">

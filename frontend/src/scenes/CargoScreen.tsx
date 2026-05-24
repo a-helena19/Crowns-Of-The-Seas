@@ -42,6 +42,7 @@ const TYPE_COLORS: Record<string, string> = {
 const SPEED_SETTINGS = [0.25, 0.4, 0.6, 0.8, 1.0];
 interface AcceptedCargo {
     id: string; from: string; to: string; weight: number;
+    originPortId: string;
     destinationPortId: string; speedSetting: number; loadingDurationSeconds?: number;
 }
 const getExpiredRewardPercent = (t: string) =>
@@ -212,7 +213,8 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
             if (!res.ok) { const e = await res.json(); setFuelError(e.message || "Fehler"); return; }
             const lr = await res.json() as LoadingStartResponse;
             onCargoAccepted({ id: selected.id, from: selected.originPortName, to: selected.destinationPortName,
-                weight: selected.capacity, destinationPortId: selected.destinationPortId,
+                weight: selected.capacity, originPortId: selected.originPortId,
+                destinationPortId: selected.destinationPortId,
                 speedSetting: SPEED_SETTINGS[speedIndex], loadingDurationSeconds: lr.loadingDurationSeconds });
         } catch { setFuelError("Verbindungsfehler beim Akzeptieren der Fracht"); }
     }

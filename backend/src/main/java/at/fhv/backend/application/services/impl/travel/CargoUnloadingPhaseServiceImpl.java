@@ -87,8 +87,9 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         BigDecimal grossReward = cargoReward.add(totalBonus).add(smuggleReward);
         BigDecimal arrivalFine = travel.getDockingFine();
         BigDecimal departureFine = travel.getDepartureDockingFine();
+        BigDecimal pilotageRefund = travel.getPilotageRefund();
         BigDecimal totalFine = departureFine.add(arrivalFine);
-        BigDecimal netReward = grossReward.subtract(totalFine).max(BigDecimal.ZERO);
+        BigDecimal netReward = grossReward.subtract(totalFine).add(pilotageRefund).max(BigDecimal.ZERO);
 
         BigDecimal previousBalance = BigDecimal.ZERO;
         BigDecimal newBalance = BigDecimal.ZERO;
@@ -111,7 +112,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             }
         }
 
-        sendUnloadingCompleteEvent(travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffers, bonusPerCargo, totalBonus, departureFine, arrivalFine, netReward);
+        sendUnloadingCompleteEvent(travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffers, bonusPerCargo, totalBonus, departureFine, arrivalFine, pilotageRefund, netReward);
 
         if (!smuggleOffers.isEmpty()) {
             smuggleService.clearAcceptedOffer(playerId);
@@ -173,6 +174,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                                             List<SmuggleOffer> smuggleOffers,
                                             Map<UUID, BigDecimal> bonusPerCargo, BigDecimal totalBonus,
                                             BigDecimal departureDockingFine, BigDecimal dockingFine,
+                                            BigDecimal pilotageRefund,
                                             BigDecimal netReward) {
         try {
             PortId destinationPortId = PortId.of(travel.getDestinationPortId());
@@ -240,7 +242,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                     previousBalance,
                     newBalance,
                     departureDockingFine,
-                    dockingFine
+                    dockingFine,
+                    pilotageRefund
             );
 
             webSocketController.broadcastTravelComplete(
