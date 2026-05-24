@@ -1,6 +1,8 @@
 package at.fhv.backend.application.services.impl.travel;
 
+import at.fhv.backend.application.services.customs.CustomsService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
+import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.RewardCalculationService;
 import at.fhv.backend.domain.model.cargo.Cargo;
@@ -8,6 +10,7 @@ import at.fhv.backend.domain.model.cargo.CargoRepository;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
 import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
+import at.fhv.backend.domain.model.customs.CustomsInspection;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.port.Port;
 import at.fhv.backend.domain.model.port.PortId;
@@ -20,7 +23,7 @@ import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.rest.GameSessionWebSocketController;
 import at.fhv.backend.rest.dtos.websocket.CargoRewardBreakdown;
-import at.fhv.backend.rest.dtos.websocket.PlayerInfo;
+import at.fhv.backend.rest.dtos.websocket.CustomsSummary;
 import at.fhv.backend.rest.dtos.websocket.TravelCompleteEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +42,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
     private final CargoRepository cargoRepository;
     private final SmuggleService smuggleService;
     private final TravelRepository travelRepository;
+    private final RatMinigameService ratMinigameService;
+    private final CustomsService customsService;
 
     public CargoUnloadingPhaseServiceImpl(
             SessionCargoRepository sessionCargoRepository,
@@ -49,7 +54,9 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             PortRepository portRepository,
             CargoRepository cargoRepository,
             SmuggleService smuggleService,
-            TravelRepository travelRepository) {
+            TravelRepository travelRepository,
+            RatMinigameService ratMinigameService,
+            CustomsService customsService) {
         this.sessionCargoRepository = sessionCargoRepository;
         this.playerShipRepository = playerShipRepository;
         this.gameSessionRepository = gameSessionRepository;
@@ -59,6 +66,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         this.cargoRepository = cargoRepository;
         this.smuggleService = smuggleService;
         this.travelRepository = travelRepository;
+        this.ratMinigameService = ratMinigameService;
+        this.customsService = customsService;
     }
 
     @Override
@@ -85,6 +94,16 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         }
 
         BigDecimal totalReward = cargoReward.add(totalBonus).add(smuggleReward);
+        totalReward = ratMinigameService.applyRewardModifier(travel.getTravelId(), totalReward);
+
+        // Customs: subtract any fine from the final payout. The inspection was performed on arrival;
+        // by the time we get here it must be in a terminal state (CLEARED / HIDDEN / COOPERATED / BRIBE_*).
+        CustomsInspection inspection = customsService.consumeInspection(travel.getTravelId());
+        BigDecimal customsFine = inspection != null ? inspection.getFinePaid() : BigDecimal.ZERO;
+        BigDecimal payout = totalReward.subtract(customsFine);
+        if (payout.compareTo(BigDecimal.ZERO) < 0) {
+            payout = BigDecimal.ZERO;
+        }
 
         BigDecimal previousBalance = BigDecimal.ZERO;
         BigDecimal newBalance = BigDecimal.ZERO;
@@ -99,15 +118,18 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
 
             if (player != null) {
                 previousBalance = player.getBalance();
-                if (totalReward.compareTo(BigDecimal.ZERO) > 0) {
-                    player.addBalance(totalReward);
+                if (payout.compareTo(BigDecimal.ZERO) > 0) {
+                    player.addBalance(payout);
                 }
                 newBalance = player.getBalance();
                 gameSessionRepository.save(session);
             }
         }
 
-        sendUnloadingCompleteEvent(travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffers, bonusPerCargo, totalBonus);
+        sendUnloadingCompleteEvent(
+                travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffers,
+                bonusPerCargo, totalBonus, payout, inspection
+        );
 
         if (!smuggleOffers.isEmpty()) {
             smuggleService.clearAcceptedOffer(playerId);
@@ -128,7 +150,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         travel.markAsCompleted();
         travelRepository.save(travel);
 
-        return totalReward;
+        return payout;
     }
 
     @Override
@@ -167,7 +189,9 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                                             List<SessionCargo> cargosForPlayer,
                                             BigDecimal previousBalance, BigDecimal newBalance,
                                             List<SmuggleOffer> smuggleOffers,
-                                            Map<UUID, BigDecimal> bonusPerCargo, BigDecimal totalBonus) {
+                                            Map<UUID, BigDecimal> bonusPerCargo, BigDecimal totalBonus,
+                                            BigDecimal finalTotalReward,
+                                            CustomsInspection inspection) {
         try {
             PortId destinationPortId = PortId.of(travel.getDestinationPortId());
             Port destinationPort = portRepository.findById(destinationPortId).orElse(null);
@@ -224,9 +248,15 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
 
             BigDecimal baseReward = travel.getBaseReward() != null ? travel.getBaseReward() : BigDecimal.ZERO;
 
-            BigDecimal totalReward = BigDecimal.ZERO;
-            for (CargoRewardBreakdown breakdown : cargoRewards) {
-                totalReward = totalReward.add(breakdown.getActualReward());
+            CustomsSummary customsSummary = null;
+            if (inspection != null) {
+                customsSummary = new CustomsSummary(
+                        inspection.getOutcome() != null ? inspection.getOutcome().name() : "CLEARED",
+                        inspection.getFinePaid(),
+                        inspection.isDetained(),
+                        inspection.isDetained() ? inspection.getDetentionTicks() : 0,
+                        inspection.isCarryingIllegalCargo()
+                );
             }
 
             TravelCompleteEvent event = new TravelCompleteEvent(
@@ -234,10 +264,11 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                     playerId.toString(),
                     cargoRewards,
                     baseReward,
-                    totalReward,
+                    finalTotalReward,
                     totalBonus,
                     previousBalance,
-                    newBalance
+                    newBalance,
+                    customsSummary
             );
 
             webSocketController.broadcastTravelComplete(

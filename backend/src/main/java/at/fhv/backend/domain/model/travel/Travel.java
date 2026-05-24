@@ -102,10 +102,14 @@ public class Travel {
                 startTick, arrivalTick);
     }
 
-    public void markAsArrived(double fuelConsumed, TravelStatus travelStatus) {
+    public void markAsArrived(double fuelConsumed) {
         if (this.travelStatus != TravelStatus.IN_PROGRESS) {
-            throw new InvalidTravelStateException("Only travels with status IN_PROGRESS can be marked as ARRIVED", travelStatus);
+            throw new InvalidTravelStateException(
+                    "Only travels with status IN_PROGRESS can be marked as ARRIVED",
+                    this.travelStatus
+            );
         }
+
         this.travelStatus = TravelStatus.ARRIVED;
         this.arrivedAt = Instant.now();
         this.fuelConsumed = fuelConsumed;
