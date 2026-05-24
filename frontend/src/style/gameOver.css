@@ -1,5 +1,11 @@
+/* ══════════════════════════════════════════════════════════
+   Game Over Screen — Crown of the Seas
+   Nachthimmel-Hintergrund wie Intro/Lobby + Mond-Strahlen
+   ══════════════════════════════════════════════════════════ */
+
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
 
+/* ── Fullscreen Overlay ── */
 .gameover-overlay {
     position: fixed;
     inset: 0;
@@ -8,8 +14,17 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: radial-gradient(ellipse at 50% 30%, #0f1f3d 0%, #060b1a 70%, #000 100%);
+
+    /* Gleicher Hintergrund wie Intro & Lobby */
+    background-image: url('../assets/intro/sky_bg_pixel.png');
+    background-color: #000814;
+    background-size: cover;
+    background-position: center;
+    image-rendering: pixelated;
+
     overflow: hidden;
+    font-family: 'Cinzel', serif;
+    color: #fdf0d5;
     animation: gameover-fadeIn 1.2s ease-out;
 }
 
@@ -18,11 +33,110 @@
     to   { opacity: 1; }
 }
 
+/* ── Mond (wie Intro/Lobby) ── */
+.gameover-moon {
+    position: absolute;
+    top: 6%;
+    right: 10%;
+    width: 160px;
+    height: 160px;
+    background-image: url('../assets/intro/moon_pixel.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    z-index: 1;
+    opacity: 0;
+    animation: moonReveal 1.8s ease-out 0.3s forwards;
+}
+
+@keyframes moonReveal {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+        filter: drop-shadow(0 0 5px rgba(253, 240, 213, 0.1));
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        filter: drop-shadow(0 0 20px rgba(253, 240, 213, 0.4));
+    }
+}
+
+/* ── Strahlen vom Mond (oben rechts, nicht Mitte) ── */
+.gameover-rays {
+    position: absolute;
+    /* Zentriert auf Mond-Position */
+    top: calc(6% + 40px);
+    right: calc(10% + 80px);
+    width: 200vmax;
+    height: 200vmax;
+    transform: translate(50%, -50%);
+    background: conic-gradient(
+            from 0deg,
+            transparent 0deg,
+            rgba(253, 240, 213, 0.04) 8deg,
+            transparent 16deg,
+            transparent 36deg,
+            rgba(253, 240, 213, 0.03) 44deg,
+            transparent 52deg,
+            transparent 72deg,
+            rgba(253, 240, 213, 0.04) 80deg,
+            transparent 88deg,
+            transparent 108deg,
+            rgba(253, 240, 213, 0.03) 116deg,
+            transparent 124deg,
+            transparent 144deg,
+            rgba(253, 240, 213, 0.04) 152deg,
+            transparent 160deg,
+            transparent 180deg,
+            rgba(253, 240, 213, 0.03) 188deg,
+            transparent 196deg,
+            transparent 216deg,
+            rgba(253, 240, 213, 0.04) 224deg,
+            transparent 232deg,
+            transparent 252deg,
+            rgba(253, 240, 213, 0.03) 260deg,
+            transparent 268deg,
+            transparent 288deg,
+            rgba(253, 240, 213, 0.04) 296deg,
+            transparent 304deg,
+            transparent 324deg,
+            rgba(253, 240, 213, 0.03) 332deg,
+            transparent 340deg,
+            transparent 360deg
+    );
+    animation: raysRotate 80s linear infinite;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes raysRotate {
+    from { transform: translate(50%, -50%) rotate(0deg); }
+    to   { transform: translate(50%, -50%) rotate(360deg); }
+}
+
+/* ── Sterne (wie Intro) ── */
+.gameover-star {
+    position: absolute;
+    background: white;
+    width: 2px;
+    height: 2px;
+    animation: twinkle 2s infinite ease-in-out;
+    z-index: 1;
+}
+
+@keyframes twinkle {
+    0%, 100% { opacity: 0.2; transform: scale(1); }
+    50%      { opacity: 0.8; transform: scale(1.1); }
+}
+
+/* ── Konfetti-Partikel ── */
 .gameover-particles {
     position: absolute;
     inset: 0;
     pointer-events: none;
     overflow: hidden;
+    z-index: 2;
 }
 
 .gameover-particle {
@@ -47,20 +161,19 @@
         opacity: 1;
         transform: translateY(-20px) rotate(0deg) scale(1);
     }
-    80% {
-        opacity: 0.8;
-    }
+    80% { opacity: 0.8; }
     100% {
         opacity: 0;
         transform: translateY(100vh) rotate(720deg) scale(0.3);
     }
 }
 
+/* ── Haupt-Titel ── */
 .gameover-title-section {
     text-align: center;
     margin-bottom: 12px;
     animation: titleDrop 0.8s ease-out 0.3s both;
-    z-index: 2;
+    z-index: 3;
 }
 
 @keyframes titleDrop {
@@ -75,43 +188,37 @@
 }
 
 .gameover-subtitle {
-    font-family: 'Cinzel', serif;
     font-size: 14px;
-    color: #8899bb;
+    color: rgba(253, 240, 213, 0.6);
     letter-spacing: 6px;
     text-transform: uppercase;
     margin-bottom: 4px;
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.6);
 }
 
 .gameover-title {
-    font-family: 'Cinzel', serif;
     font-size: 42px;
     font-weight: 700;
     color: transparent;
-    background: linear-gradient(180deg, #f6d365 0%, #c89b3c 50%, #8a6914 100%);
+    background: linear-gradient(180deg, #fdf0d5 0%, #c89b3c 60%, #8a6914 100%);
     -webkit-background-clip: text;
     background-clip: text;
-    text-shadow: 0 0 40px rgba(200, 155, 60, 0.3);
     margin: 0;
     line-height: 1.1;
+    text-shadow: none;
 }
 
+/* ── Gewinner-Ankündigung ── */
 .gameover-winner-announce {
     text-align: center;
     margin-bottom: 24px;
     animation: winnerReveal 0.6s ease-out 1.4s both;
-    z-index: 2;
+    z-index: 3;
 }
 
 @keyframes winnerReveal {
-    from {
-        opacity: 0;
-        transform: scale(0.8);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
+    from { opacity: 0; transform: scale(0.8); }
+    to   { opacity: 1; transform: scale(1); }
 }
 
 .gameover-crown-icon {
@@ -119,39 +226,38 @@
     display: block;
     margin-bottom: 4px;
     animation: crownFloat 2s ease-in-out infinite 2s;
-    filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.5));
+    filter: drop-shadow(0 0 12px rgba(200, 155, 60, 0.5));
 }
 
 @keyframes crownFloat {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
+    50%      { transform: translateY(-8px); }
 }
 
 .gameover-winner-name {
-    font-family: 'Cinzel', serif;
     font-size: 28px;
     font-weight: 700;
-    color: #f6d365;
-    text-shadow: 0 2px 10px rgba(200, 155, 60, 0.4);
+    color: #fdf0d5;
+    text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.8);
 }
 
 .gameover-winner-label {
-    font-family: 'Cinzel', serif;
     font-size: 12px;
-    color: #8899bb;
+    color: rgba(253, 240, 213, 0.5);
     letter-spacing: 4px;
     text-transform: uppercase;
     margin-top: 2px;
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.6);
 }
 
+/* ── Podest ── */
 .gameover-podium {
     display: flex;
     align-items: flex-end;
     justify-content: center;
     gap: 6px;
     margin-bottom: 28px;
-    z-index: 2;
-    perspective: 600px;
+    z-index: 3;
 }
 
 .gameover-podium-slot {
@@ -162,29 +268,16 @@
     animation: podiumRise 0.7s ease-out forwards;
 }
 
-.gameover-podium-slot[data-rank="3"] {
-    animation-delay: 1.0s;
-}
-.gameover-podium-slot[data-rank="2"] {
-    animation-delay: 1.4s;
-}
-.gameover-podium-slot[data-rank="1"] {
-    animation-delay: 1.8s;
-}
+.gameover-podium-slot[data-rank="3"] { animation-delay: 1.0s; }
+.gameover-podium-slot[data-rank="2"] { animation-delay: 1.4s; }
+.gameover-podium-slot[data-rank="1"] { animation-delay: 1.8s; }
 
 @keyframes podiumRise {
-    from {
-        opacity: 0;
-        transform: translateY(40px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(40px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
 .podium-player-name {
-    font-family: 'Cinzel', serif;
     font-size: 14px;
     font-weight: 700;
     color: #fdf0d5;
@@ -194,13 +287,14 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     text-align: center;
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.6);
 }
 
 .podium-player-value {
-    font-family: 'Cinzel', serif;
     font-size: 12px;
     color: #c89b3c;
     margin-bottom: 6px;
+    text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.6);
 }
 
 .podium-block {
@@ -208,59 +302,68 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Cinzel', serif;
     font-size: 28px;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.9);
     border-radius: 6px 6px 0 0;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 3px solid;
     border-bottom: none;
-    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
+/* Platz 1 — Gold */
 .podium-block[data-rank="1"] {
     height: 110px;
-    background: linear-gradient(180deg, #c89b3c 0%, #8a6914 100%);
-    box-shadow: 0 0 30px rgba(200, 155, 60, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    background: linear-gradient(180deg, #c89b3c 0%, #8b5a2b 100%);
+    border-color: #5a3a0a;
+    box-shadow:
+            inset -3px -3px 0 #8b5e0a,
+            inset 3px 3px 0 #352700,
+            0 0 30px rgba(200, 155, 60, 0.3);
+    color: #fff0e7;
 }
 
+/* Platz 2 — Silber */
 .podium-block[data-rank="2"] {
     height: 80px;
-    background: linear-gradient(180deg, #8899aa 0%, #556677 100%);
-    box-shadow: 0 0 20px rgba(136, 153, 170, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    background: linear-gradient(180deg, #c0c8d0 0%, #8a9198 100%);
+    border-color: #6a7078;
+    box-shadow:
+            inset -3px -3px 0 #70787e,
+            inset 3px 3px 0 #d8dde2;
+    color: #ffffff;
 }
 
+/* Platz 3 — dunkler Holzton */
 .podium-block[data-rank="3"] {
     height: 55px;
-    background: linear-gradient(180deg, #9a6a3a 0%, #6b4423 100%);
-    box-shadow: 0 0 15px rgba(154, 106, 58, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    background: linear-gradient(180deg, #5a3a0a 0%, #3a1f0f 100%);
+    border-color: #4a2c10;
+    box-shadow:
+            inset -3px -3px 0 #2a1408,
+            inset 3px 3px 0 #6a3f1a;
+    color: #b8a070;
 }
 
+/* ── Statistik-Tabelle ── */
 .gameover-stats {
     width: min(700px, 90vw);
-    z-index: 2;
+    z-index: 3;
     animation: statsSlideUp 0.6s ease-out 2.4s both;
 }
 
 @keyframes statsSlideUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
 .gameover-stats-title {
-    font-family: 'Cinzel', serif;
     font-size: 14px;
-    color: #8899bb;
+    color: rgba(253, 240, 213, 0.5);
     text-align: center;
     letter-spacing: 4px;
     text-transform: uppercase;
     margin-bottom: 10px;
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.6);
 }
 
 .gameover-stats-table {
@@ -272,38 +375,40 @@
 .gameover-stats-table thead th {
     font-family: 'Cinzel', serif;
     font-size: 11px;
-    color: #667799;
+    color: rgba(253, 240, 213, 0.4);
     text-transform: uppercase;
     letter-spacing: 1px;
     padding: 6px 12px;
     text-align: left;
-    border-bottom: 1px solid rgba(100, 120, 160, 0.2);
+    border-bottom: 1px solid rgba(200, 155, 60, 0.2);
 }
 
 .gameover-stats-table thead th:not(:first-child) {
     text-align: right;
 }
 
+/* Tabellenzeilen: Pergament-Stil wie Lobby-Panels */
 .gameover-stats-table tbody tr {
-    background: rgba(15, 25, 50, 0.6);
-    border-radius: 6px;
+    background: rgba(244, 236, 210, 0.08);
+    border: 1px solid rgba(200, 155, 60, 0.15);
+    border-radius: 4px;
     transition: background 0.2s;
 }
 
 .gameover-stats-table tbody tr:hover {
-    background: rgba(25, 40, 70, 0.7);
+    background: rgba(244, 236, 210, 0.14);
 }
 
 .gameover-stats-table tbody tr.is-me {
-    background: rgba(40, 80, 140, 0.35);
-    outline: 1px solid rgba(92, 163, 255, 0.3);
+    background: rgba(200, 155, 60, 0.15);
+    outline: 1px solid rgba(200, 155, 60, 0.35);
 }
 
 .gameover-stats-table tbody td {
     padding: 10px 12px;
-    font-family: 'Cinzel', serif;
+    font-family: Georgia, "Palatino Linotype", serif;
     font-size: 13px;
-    color: #c8d0e0;
+    color: #fdf0d5;
 }
 
 .gameover-stats-table tbody td:not(:first-child) {
@@ -317,9 +422,9 @@
     display: inline-block;
 }
 
-.stats-rank-1 { color: #f6d365; }
-.stats-rank-2 { color: #aabbcc; }
-.stats-rank-3 { color: #c49054; }
+.stats-rank-1 { color: #fdf0d5; }
+.stats-rank-2 { color: #d1ba7e; }
+.stats-rank-3 { color: #a08860; }
 
 .stats-name {
     font-weight: 600;
@@ -332,19 +437,21 @@
 }
 
 .stats-value-total {
-    color: #f6d365;
+    color: #fdf0d5;
     font-weight: 700;
     font-size: 14px;
 }
 
+/* ── Count-Up Animation ── */
 .count-up {
     display: inline-block;
     min-width: 50px;
 }
 
+/* ── Zurück-Button (game-btn Stil) ── */
 .gameover-actions {
     margin-top: 24px;
-    z-index: 2;
+    z-index: 3;
     animation: statsSlideUp 0.5s ease-out 3.0s both;
 }
 
@@ -354,76 +461,35 @@
     font-weight: 700;
     letter-spacing: 2px;
     text-transform: uppercase;
-    color: #fdf0d5;
-    background: linear-gradient(180deg, #c89b3c 0%, #8a6914 100%);
-    border: 2px solid #f6d365;
-    border-radius: 6px;
+    color: #2b1a10;
+    background: #c89b3c;
+    border: 2px solid #8b5a2b;
     padding: 12px 36px;
     cursor: pointer;
-    transition: transform 0.15s, box-shadow 0.15s;
-    box-shadow: 0 4px 15px rgba(200, 155, 60, 0.3);
+    transition: all 0.14s;
+    box-shadow:
+            inset -3px -3px 0 #8b5e0a,
+            inset 3px 3px 0 #352700;
 }
 
 .gameover-btn:hover {
+    filter: brightness(1.2);
     transform: translateY(-2px);
-    box-shadow: 0 6px 25px rgba(200, 155, 60, 0.5);
 }
 
 .gameover-btn:active {
-    transform: translateY(0);
+    transform: translateY(2px);
+    box-shadow:
+            inset 3px 3px 0 #8b5e0a,
+            inset -3px -3px 0 #ffd060;
 }
 
-.gameover-rays {
-    position: absolute;
-    top: -20%;
-    left: 50%;
-    width: 120%;
-    height: 120%;
-    transform: translateX(-50%);
-    background: conic-gradient(
-            from 0deg at 50% 40%,
-            transparent 0deg,
-            rgba(200, 155, 60, 0.03) 10deg,
-            transparent 20deg,
-            transparent 40deg,
-            rgba(200, 155, 60, 0.03) 50deg,
-            transparent 60deg,
-            transparent 80deg,
-            rgba(200, 155, 60, 0.03) 90deg,
-            transparent 100deg,
-            transparent 120deg,
-            rgba(200, 155, 60, 0.03) 130deg,
-            transparent 140deg,
-            transparent 160deg,
-            rgba(200, 155, 60, 0.03) 170deg,
-            transparent 180deg,
-            transparent 200deg,
-            rgba(200, 155, 60, 0.03) 210deg,
-            transparent 220deg,
-            transparent 240deg,
-            rgba(200, 155, 60, 0.03) 250deg,
-            transparent 260deg,
-            transparent 280deg,
-            rgba(200, 155, 60, 0.03) 290deg,
-            transparent 300deg,
-            transparent 320deg,
-            rgba(200, 155, 60, 0.03) 330deg,
-            transparent 340deg,
-            transparent 360deg
-    );
-    animation: raysRotate 60s linear infinite;
-    pointer-events: none;
-}
-
-@keyframes raysRotate {
-    from { transform: translateX(-50%) rotate(0deg); }
-    to   { transform: translateX(-50%) rotate(360deg); }
-}
-
+/* ── Responsive ── */
 @media (max-width: 600px) {
     .gameover-title { font-size: 28px; }
     .gameover-winner-name { font-size: 20px; }
     .podium-block { width: 80px; }
     .gameover-stats-table { font-size: 11px; }
     .gameover-crown-icon { font-size: 36px; }
+    .gameover-moon { width: 100px; height: 100px; }
 }

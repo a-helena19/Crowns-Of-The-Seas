@@ -9,9 +9,10 @@ interface Props {
     currentUserId: string | null;
 }
 
+/* ── Konfetti — helle Farben für dunklen Himmel ── */
 const CONFETTI_COLORS = [
-    "#f6d365", "#c89b3c", "#5ca3ff", "#ff6b6b",
-    "#51cf66", "#ffd43b", "#cc5de8", "#ff922b",
+    "#fdf0d5", "#c89b3c", "#f6d365", "#ffd060",
+    "#e8c97a", "#ff922b", "#51cf66", "#cc5de8",
 ];
 const SHAPES = ["square", "circle", "diamond"] as const;
 
@@ -21,12 +22,23 @@ function generateParticles(count: number) {
         left: Math.random() * 100,
         color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
         shape: SHAPES[Math.floor(Math.random() * SHAPES.length)],
-        delay: Math.random() * 3 + 1.5,       // startet nach Gewinner-Reveal
+        delay: Math.random() * 3 + 1.5,
         duration: 2 + Math.random() * 3,
         size: 4 + Math.random() * 6,
     }));
 }
 
+/* ── Sterne (wie Intro) ── */
+function generateStars(count: number) {
+    return Array.from({ length: count }, (_, i) => ({
+        id: i,
+        left: Math.random() * 100,
+        top: Math.random() * 50,
+        delay: Math.random() * 2,
+    }));
+}
+
+/* ── Count-Up Hook ── */
 function useCountUp(target: number, duration: number, startDelay: number) {
     const [value, setValue] = useState(0);
 
@@ -36,7 +48,6 @@ function useCountUp(target: number, duration: number, startDelay: number) {
             const step = (now: number) => {
                 const elapsed = now - startTime;
                 const progress = Math.min(elapsed / (duration * 1000), 1);
-                // easeOutExpo
                 const eased = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
                 setValue(Math.round(target * eased));
                 if (progress < 1) requestAnimationFrame(step);
@@ -50,6 +61,7 @@ function useCountUp(target: number, duration: number, startDelay: number) {
     return value;
 }
 
+/* ── CountUpCell ── */
 function CountUpCell({ value, delay, suffix = "" }: {
     value: number; delay: number; suffix?: string
 }) {
@@ -68,6 +80,7 @@ export default function GameOverScreen({ sessionId, currentUserId }: Props) {
     const hasLoadedRef = useRef(false);
 
     const particles = useMemo(() => generateParticles(60), []);
+    const stars = useMemo(() => generateStars(25), []);
 
     const loadLeaderboard = useCallback(async () => {
         if (hasLoadedRef.current) return;
@@ -87,18 +100,17 @@ export default function GameOverScreen({ sessionId, currentUserId }: Props) {
 
     const winner = entries.length > 0 ? entries[0] : null;
 
-    // Podest: Reihenfolge [Platz 2, Platz 1, Platz 3]
+    // Podest: [Platz 2, Platz 1, Platz 3]
     const podiumOrder = useMemo(() => {
         if (entries.length === 0) return [];
         const slots: (LeaderboardEntry | null)[] = [
-            entries[1] ?? null,  // links = Platz 2
-            entries[0],          // mitte = Platz 1
-            entries[2] ?? null,  // rechts = Platz 3
+            entries[1] ?? null,
+            entries[0],
+            entries[2] ?? null,
         ];
         return slots.filter(Boolean) as LeaderboardEntry[];
     }, [entries]);
 
-    // Podest-Rank Mapping (für Anordnung links-mitte-rechts)
     function podiumRank(index: number, total: number): number {
         if (total === 1) return 1;
         if (total === 2) return index === 0 ? 2 : 1;
@@ -113,6 +125,7 @@ export default function GameOverScreen({ sessionId, currentUserId }: Props) {
     if (!loaded) {
         return (
             <div className="gameover-overlay">
+                <div className="gameover-moon" />
                 <div className="gameover-rays" />
                 <div className="gameover-title-section">
                     <div className="gameover-subtitle">Berechne Ergebnis...</div>
@@ -123,8 +136,26 @@ export default function GameOverScreen({ sessionId, currentUserId }: Props) {
 
     return (
         <div className="gameover-overlay">
+            {/* Mond */}
+            <div className="gameover-moon" />
+
+            {/* Strahlen vom Mond */}
             <div className="gameover-rays" />
 
+            {/* Sterne */}
+            {stars.map(s => (
+                <div
+                    key={s.id}
+                    className="gameover-star"
+                    style={{
+                        left: `${s.left}%`,
+                        top: `${s.top}%`,
+                        animationDelay: `${s.delay}s`,
+                    }}
+                />
+            ))}
+
+            {/* Konfetti */}
             <div className="gameover-particles">
                 {particles.map(p => (
                     <div
@@ -142,11 +173,13 @@ export default function GameOverScreen({ sessionId, currentUserId }: Props) {
                 ))}
             </div>
 
+            {/* Titel */}
             <div className="gameover-title-section">
                 <div className="gameover-subtitle">Die Zeit ist abgelaufen</div>
                 <h1 className="gameover-title">Spielende</h1>
             </div>
 
+            {/* Gewinner */}
             {winner && (
                 <div className="gameover-winner-announce">
                     <span className="gameover-crown-icon">👑</span>
@@ -155,6 +188,7 @@ export default function GameOverScreen({ sessionId, currentUserId }: Props) {
                 </div>
             )}
 
+            {/* Podest */}
             <div className="gameover-podium">
                 {podiumOrder.map((entry, i) => {
                     const rank = podiumRank(i, podiumOrder.length);
@@ -180,6 +214,7 @@ export default function GameOverScreen({ sessionId, currentUserId }: Props) {
                 })}
             </div>
 
+            {/* Statistik */}
             <div className="gameover-stats">
                 <div className="gameover-stats-title">Statistiken</div>
                 <table className="gameover-stats-table">
@@ -213,7 +248,7 @@ export default function GameOverScreen({ sessionId, currentUserId }: Props) {
                                         </span>
                                 </td>
                                 <td>
-                                    <CountUpCell value={e.shipCount} delay={2.6} suffix="⛵" />
+                                    <CountUpCell value={e.shipCount} delay={2.6} suffix=" ⛵" />
                                 </td>
                                 <td>
                                         <span className="stats-value-gold">
@@ -235,6 +270,7 @@ export default function GameOverScreen({ sessionId, currentUserId }: Props) {
                 </table>
             </div>
 
+            {/* Button */}
             <div className="gameover-actions">
                 <button className="gameover-btn" onClick={handleBackToLobby}>
                     Zurück zur Lobby
