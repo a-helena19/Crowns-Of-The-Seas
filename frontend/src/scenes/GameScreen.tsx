@@ -12,6 +12,8 @@ import CargoManagementScreen from "../scenes/CargoManagementScreen";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
 import RewardToast from "../components/RewardToast.tsx";
 import SmuggleOfferDialog from "../components/SmuggleOfferDialog.tsx";
+import CustomsInspectionDialog from "../components/CustomsInspectionDialog.tsx";
+import CustomsResultToast, { type CustomsToastKind } from "../components/CustomsResultToast.tsx";
 import RatMinigameOverlay from "../minigame/rats/RatMinigameOverlay.tsx";
 import type { RatMinigameEventPayload, RatMinigameResult } from "../minigame/rats/RatMinigameTypes.ts";
 import EventNotificationDialog from "../components/EventNotificationDialog.tsx";
@@ -19,6 +21,28 @@ import ratImage from "../assets/Rat.png";
 
 export const TOP_BAR_HEIGHT = '9vh';
 export const BOTTOM_BAR_HEIGHT = '20vh';
+
+interface CustomsInspectionPayload {
+    inspectionId: string;
+    playerId: string;
+    travelId: string;
+    playerShipId: string;
+    shipName: string;
+    originPortName: string;
+    destinationPortName: string;
+    fineAmount: number;
+    bribeCost: number;
+    detentionTicks: number;
+    illegalCargoLabels: string[];
+}
+
+interface CustomsToast {
+    id: string;
+    kind: CustomsToastKind;
+    shipName: string;
+    from: string;
+    to: string;
+}
 
 export default function GameScreen() {
     const [view, setView] = useState<"map" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office">("map");
@@ -41,9 +65,12 @@ export default function GameScreen() {
         success: boolean;
         message: string;
     }[]>([]);
+    const [customsToasts, setCustomsToasts] = useState<CustomsToast[]>([]);
     const [smuggleOffer, setSmuggleOffer] = useState<{
         offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
     } | null>(null);
+    const [customsInspection, setCustomsInspection] = useState<CustomsInspectionPayload | null>(null);
+    const customsQueueRef = useRef<CustomsInspectionPayload[]>([]);
     const [ratEventOffer, setRatEventOffer] = useState<RatMinigameEventPayload | null>(null);
     const [activeRatMinigame, setActiveRatMinigame] = useState<RatMinigameEventPayload | null>(null);
 
@@ -97,7 +124,6 @@ export default function GameScreen() {
         return () => window.removeEventListener('port-clicked', onPortClicked);
     }, []);
 
-    // Ship positions → update cargo entries with tick data + paused state
     useEffect(() => {
         const handler = (e: Event) => {
             const detail = (e as CustomEvent<{
@@ -145,7 +171,6 @@ export default function GameScreen() {
         return () => window.removeEventListener("backend-ship-positions", handler);
     }, [playerId]);
 
-    // Travel complete → reward
     useEffect(() => {
         const handler = (e: Event) => {
             const data = (e as CustomEvent<{
@@ -159,6 +184,13 @@ export default function GameScreen() {
                     result?: "SUCCESS" | "FAILED";
                     penaltyAmount?: number;
                 };
+                customsSummary?: {
+                    outcome: "CLEARED" | "HIDDEN" | "COOPERATED" | "BRIBE_SUCCESS" | "BRIBE_FAILED";
+                    finePaid: number;
+                    detained: boolean;
+                    detentionTicks: number;
+                    wasCarryingIllegalCargo: boolean;
+                } | null;
             }>).detail;
             if (data.playerId !== playerId) return;
 
@@ -181,6 +213,7 @@ export default function GameScreen() {
                             : undefined,
                         cargoRewards: data.cargoRewards,
                         ratMinigameSummary: data.ratMinigameSummary,
+                        customsSummary: data.customsSummary ?? undefined,
                     };
                 });
                 return updated;
@@ -207,7 +240,6 @@ export default function GameScreen() {
         return () => window.removeEventListener("travel-complete", handler);
     }, [playerId]);
 
-    // Smuggle offer
     useEffect(() => {
         const handler = (e: Event) => {
             const data = (e as CustomEvent<{
@@ -232,6 +264,53 @@ export default function GameScreen() {
         };
         window.addEventListener("smuggle-offer", handler);
         return () => window.removeEventListener("smuggle-offer", handler);
+    }, [playerId]);
+
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const data = (e as CustomEvent<CustomsInspectionPayload>).detail;
+            if (data.playerId !== playerId) return;
+            setCustomsInspection(current => {
+                if (current !== null) {
+                    customsQueueRef.current.push(data);
+                    return current;
+                }
+                return data;
+            });
+        };
+        window.addEventListener("customs-inspection", handler);
+        return () => window.removeEventListener("customs-inspection", handler);
+    }, [playerId]);
+
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const data = (e as CustomEvent<{
+                playerId: string;
+                travelId: string;
+                shipName: string;
+                originPortName: string;
+                destinationPortName: string;
+                outcome: CustomsToastKind;
+            }>).detail;
+            if (data.playerId !== playerId) return;
+            const id = `customs-${data.travelId}-${Date.now()}`;
+            setCustomsToasts(prev => [
+                ...prev,
+                {
+                    id,
+                    kind: data.outcome,
+                    shipName: data.shipName,
+                    from: data.originPortName,
+                    to: data.destinationPortName,
+                },
+            ]);
+        };
+        window.addEventListener("customs-pass", handler);
+        window.addEventListener("customs-resolved", handler);
+        return () => {
+            window.removeEventListener("customs-pass", handler);
+            window.removeEventListener("customs-resolved", handler);
+        };
     }, [playerId]);
 
     // Rat minigame event
@@ -289,6 +368,64 @@ export default function GameScreen() {
         ).catch(() => {});
         setSmuggleOffer(null);
     }
+
+
+    const handleCustomsCooperate = useCallback(async () => {
+        if (!customsInspection) return;
+        const token = localStorage.getItem("auth_token") ?? "";
+        try {
+            await fetch(
+                `/api/customs/cooperate?playerId=${playerId}&inspectionId=${customsInspection.inspectionId}`,
+                { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+            );
+        } catch (err) {
+            console.error("Customs cooperate failed:", err);
+        }
+    }, [customsInspection, playerId]);
+
+    const handleCustomsBribe = useCallback(async (): Promise<"BRIBE_SUCCESS" | "BRIBE_FAILED" | "ERROR"> => {
+        if (!customsInspection) return "ERROR";
+        const token = localStorage.getItem("auth_token") ?? "";
+        return new Promise<"BRIBE_SUCCESS" | "BRIBE_FAILED" | "ERROR">((resolve) => {
+            const expectedTravelId = customsInspection.travelId;
+            let settled = false;
+            const onResolved = (e: Event) => {
+                const data = (e as CustomEvent<{ travelId: string; outcome: "BRIBE_SUCCESS" | "BRIBE_FAILED" | "COOPERATED" }>).detail;
+                if (data.travelId !== expectedTravelId) return;
+                if (data.outcome === "BRIBE_SUCCESS" || data.outcome === "BRIBE_FAILED") {
+                    settled = true;
+                    window.removeEventListener("customs-resolved", onResolved);
+                    resolve(data.outcome);
+                }
+            };
+            window.addEventListener("customs-resolved", onResolved);
+
+            fetch(
+                `/api/customs/bribe?playerId=${playerId}&inspectionId=${customsInspection.inspectionId}`,
+                { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+            ).catch((err) => {
+                console.error("Customs bribe failed:", err);
+                if (!settled) {
+                    window.removeEventListener("customs-resolved", onResolved);
+                    resolve("ERROR");
+                }
+            });
+
+            setTimeout(() => {
+                if (!settled) {
+                    window.removeEventListener("customs-resolved", onResolved);
+                    resolve("ERROR");
+                }
+            }, 6000);
+        });
+    }, [customsInspection, playerId]);
+
+    const handleCustomsDismiss = useCallback(() => {
+        setCustomsInspection(() => {
+            const next = customsQueueRef.current.shift();
+            return next ?? null;
+        });
+    }, []);
 
     const submitRatResult = useCallback(async (payload: {
         eventId: string;
@@ -426,7 +563,6 @@ export default function GameScreen() {
             .catch(err => console.error('Failed to load ports:', err));
     }, []);
 
-    // Heimathafen beim Game-Start laden
     useEffect(() => {
         if (!playerId || !sessionId) return;
         const token = localStorage.getItem('auth_token') ?? '';
@@ -530,6 +666,21 @@ export default function GameScreen() {
                 </div>
             ))}
 
+            {customsToasts.map((toast, index) => (
+                <div
+                    key={toast.id}
+                    style={{ bottom: `${110 + index * 86}px`, position: "fixed", right: 0 }}
+                >
+                    <CustomsResultToast
+                        kind={toast.kind}
+                        shipName={toast.shipName}
+                        from={toast.from}
+                        to={toast.to}
+                        onDismiss={() => setCustomsToasts(prev => prev.filter(t => t.id !== toast.id))}
+                    />
+                </div>
+            ))}
+
             {smuggleOffer && (
                 <SmuggleOfferDialog
                     offerId={smuggleOffer.offerId}
@@ -538,6 +689,23 @@ export default function GameScreen() {
                     cargoDescription={smuggleOffer.cargoDescription}
                     onAccept={handleSmuggleAccept}
                     onDecline={handleSmuggleDecline}
+                />
+            )}
+
+            {customsInspection && (
+                <CustomsInspectionDialog
+                    inspectionId={customsInspection.inspectionId}
+                    travelId={customsInspection.travelId}
+                    shipName={customsInspection.shipName}
+                    originPortName={customsInspection.originPortName}
+                    destinationPortName={customsInspection.destinationPortName}
+                    fineAmount={customsInspection.fineAmount}
+                    bribeCost={customsInspection.bribeCost}
+                    detentionTicks={customsInspection.detentionTicks}
+                    illegalCargoLabels={customsInspection.illegalCargoLabels}
+                    onCooperate={handleCustomsCooperate}
+                    onBribe={handleCustomsBribe}
+                    onDismiss={handleCustomsDismiss}
                 />
             )}
 

@@ -12,13 +12,71 @@ interface CargoRewardBreakdown {
     cargoType: string;
 }
 
+export interface CustomsSummary {
+    outcome: "CLEARED" | "HIDDEN" | "COOPERATED" | "BRIBE_SUCCESS" | "BRIBE_FAILED";
+    finePaid: number;
+    detained: boolean;
+    detentionTicks: number;
+    wasCarryingIllegalCargo: boolean;
+}
+
 interface TravelResultScreenProps {
     cargos: CargoRewardBreakdown[];
     baseReward: number;
     totalReward: number;
     previousBalance: number;
     newBalance: number;
+    customsSummary?: CustomsSummary;
     onClose: () => void;
+}
+
+function describeCustomsOutcome(summary: CustomsSummary): {
+    tone: "good" | "neutral" | "bad";
+    icon: string;
+    title: string;
+    description: string;
+} {
+    switch (summary.outcome) {
+        case "CLEARED":
+            return {
+                tone: "neutral",
+                icon: "🛃",
+                title: "Zollkontrolle bestanden",
+                description: "Routinekontrolle ohne Beanstandung.",
+            };
+        case "HIDDEN":
+            return {
+                tone: "good",
+                icon: "🤫",
+                title: "Glück gehabt!",
+                description: "Der Zoll hat die Schmuggelware nicht entdeckt.",
+            };
+        case "COOPERATED":
+            return {
+                tone: "bad",
+                icon: "⛓️",
+                title: "Strafe bezahlt",
+                description: summary.detained
+                    ? `Das Schiff wurde für ${summary.detentionTicks} Ticks festgehalten.`
+                    : "Sie haben kooperiert und die Strafe gezahlt.",
+            };
+        case "BRIBE_SUCCESS":
+            return {
+                tone: "good",
+                icon: "💰",
+                title: "Bestechung erfolgreich",
+                description: "Der Zollbeamte hat das Bestechungsgeld angenommen — keine Strafe.",
+            };
+        case "BRIBE_FAILED":
+            return {
+                tone: "bad",
+                icon: "⚠️",
+                title: "Bestechung fehlgeschlagen",
+                description: summary.detained
+                    ? `Strafe verdoppelt, Schiff für ${summary.detentionTicks} Ticks festgehalten.`
+                    : "Strafe verdoppelt.",
+            };
+    }
 }
 
 export default function TravelResultScreen({
@@ -27,13 +85,13 @@ export default function TravelResultScreen({
                                                totalReward,
                                                previousBalance,
                                                newBalance,
+                                               customsSummary,
                                                onClose,
                                            }: TravelResultScreenProps) {
     const balanceGain = newBalance - previousBalance;
     const [displayedBalance, setDisplayedBalance] = useState(previousBalance);
     const [displayedReward, setDisplayedReward] = useState(0);
 
-    // Animate Balance Counter
     useEffect(() => {
         const duration = 2000;
         const steps = 60;
@@ -56,7 +114,6 @@ export default function TravelResultScreen({
         return () => clearInterval(interval);
     }, [previousBalance, newBalance, balanceGain]);
 
-    // Sorting: DELIVERED first, then EXPIRED
     const sortedCargos = [...cargos].sort((a, b) => {
         if (a.status === b.status) return 0;
         return a.status === "DELIVERED" ? -1 : 1;
@@ -66,7 +123,6 @@ export default function TravelResultScreen({
     const expiredCount = sortedCargos.filter(c => c.status === "EXPIRED").length;
     const isPerfect = expiredCount === 0 && deliveredCount > 0;
 
-    // Get cargo type icon
     const getCargoIcon = (cargoType: string): string => {
         switch (cargoType) {
             case 'FOOD': return '🍎';
@@ -76,9 +132,13 @@ export default function TravelResultScreen({
             case 'LUXURY_GOODS': return '💎';
             case 'GENERAL_GOODS': return '📦';
             case 'INDUSTRIAL_GOODS': return '⚙️';
+            case 'SMUGGLE': return '📦';
             default: return '📦';
         }
     };
+
+    const customsView = customsSummary ? describeCustomsOutcome(customsSummary) : null;
+    const customsFine = customsSummary?.finePaid ?? 0;
 
     return (
         <div className="travel-result-overlay">
@@ -102,7 +162,48 @@ export default function TravelResultScreen({
                     {isPerfect && <p className="perfect-bonus">100% Lieferquote Bonus!</p>}
                 </div>
 
-                {/* Cargo Breakdown */}
+                {customsView && customsSummary && (
+                    <div
+                        className={`customs-summary-banner customs-tone-${customsView.tone}`}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "12px",
+                            padding: "12px 16px",
+                            marginBottom: "16px",
+                            border: "2px solid",
+                            borderRadius: "8px",
+                            borderColor:
+                                customsView.tone === "good" ? "#2f7a45"
+                                    : customsView.tone === "bad" ? "#a23f3f"
+                                        : "#6a3b22",
+                            background:
+                                customsView.tone === "good" ? "rgba(231, 246, 234, 0.85)"
+                                    : customsView.tone === "bad" ? "rgba(255, 231, 231, 0.85)"
+                                        : "rgba(251, 236, 224, 0.85)",
+                            color: "#3b1d10",
+                        }}
+                    >
+                        <div style={{ fontSize: 32, lineHeight: 1 }}>{customsView.icon}</div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 700, fontSize: 17 }}>{customsView.title}</div>
+                            <div style={{ fontSize: 14, opacity: 0.85, marginTop: 2 }}>{customsView.description}</div>
+                        </div>
+                        {customsFine > 0 && (
+                            <div
+                                style={{
+                                    fontWeight: 700,
+                                    fontSize: 16,
+                                    color: "#a23f3f",
+                                    whiteSpace: "nowrap",
+                                }}
+                            >
+                                -{customsFine.toLocaleString("de-DE")}G
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <div className="cargo-breakdown">
                     <h3>Frachtbilanz ({cargos.length} Einträge)</h3>
 
@@ -185,6 +286,13 @@ export default function TravelResultScreen({
                             </div>
                         )}
 
+                        {customsFine > 0 && (
+                            <div className="summary-item" style={{ color: "#a23f3f" }}>
+                                <span className="summary-label">🛃 Zollstrafe:</span>
+                                <span className="summary-value">-{customsFine.toLocaleString()}G</span>
+                            </div>
+                        )}
+
                         <div className="summary-divider"></div>
 
                         <div className="summary-item total">
@@ -220,7 +328,6 @@ export default function TravelResultScreen({
                     </div>
                 </div>
 
-                {/* Action Button */}
                 <button className="close-button" onClick={onClose}>
                     Weiter zur nächsten Reise →
                 </button>

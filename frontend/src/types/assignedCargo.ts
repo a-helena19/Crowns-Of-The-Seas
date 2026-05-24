@@ -10,6 +10,14 @@ export interface CargoRewardEntry {
     cargoType: string;
 }
 
+export interface CustomsSummary {
+    outcome: "CLEARED" | "HIDDEN" | "COOPERATED" | "BRIBE_SUCCESS" | "BRIBE_FAILED";
+    finePaid: number;
+    detained: boolean;
+    detentionTicks: number;
+    wasCarryingIllegalCargo: boolean;
+}
+
 export interface AssignedCargoEntry {
     cargoId: string;
     shipId: string;
@@ -40,6 +48,7 @@ export interface AssignedCargoEntry {
         result?: "SUCCESS" | "FAILED";
         penaltyAmount?: number;
     };
+    customsSummary?: CustomsSummary;
     unloadingCompletedAtTick?: number;
     startTick?: number;
     unloadingStartTick?: number;

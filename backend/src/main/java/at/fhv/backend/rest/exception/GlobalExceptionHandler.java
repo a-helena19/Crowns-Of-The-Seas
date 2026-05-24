@@ -56,14 +56,16 @@ public class GlobalExceptionHandler {
                  SESSION_NOT_IN_LOBBY,
                  SESSION_NOT_RUNNING,
                  INVALID_TICK_RATE,
-                 HOME_PORT_NOT_ASSIGNED -> HttpStatus.BAD_REQUEST;
+                 HOME_PORT_NOT_ASSIGNED,
+                 CUSTOMS_INSPECTION_INVALID_STATE -> HttpStatus.BAD_REQUEST;
 
             case PLAYER_NOT_FOUND,
                  SESSION_NOT_FOUND,
                  SHIP_NOT_FOUND,
                  TRAVEL_NOT_FOUND,
                  CARGO_NOT_FOUND,
-                 SMUGGLE_NOT_FOUND -> HttpStatus.NOT_FOUND;
+                 SMUGGLE_NOT_FOUND,
+                 CUSTOMS_INSPECTION_NOT_FOUND -> HttpStatus.NOT_FOUND;
 
             case SHIP_INVALID_STATUS_TRANSITION,
                  TRAVEL_INVALID_STATE,

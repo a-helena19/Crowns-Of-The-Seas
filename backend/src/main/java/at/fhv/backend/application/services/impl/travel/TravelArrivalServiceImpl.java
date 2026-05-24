@@ -48,7 +48,7 @@ public class TravelArrivalServiceImpl implements TravelArrivalService {
     @Override
     @Transactional
     public void handleArrival(Travel travel) {
-        travel.markAsArrived(0.0, travel.getTravelStatus());
+        travel.markAsArrived(0.0);
         travelRepository.save(travel);
 
         PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);

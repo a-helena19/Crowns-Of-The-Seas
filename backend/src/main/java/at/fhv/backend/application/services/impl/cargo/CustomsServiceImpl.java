@@ -16,6 +16,8 @@ import at.fhv.backend.domain.model.ship.Ship;
 import at.fhv.backend.domain.model.ship.ShipRepository;
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.rest.GameSessionWebSocketController;
+import at.fhv.backend.rest.dtos.websocket.CustomsInspectionDialogEvent;
+import at.fhv.backend.rest.dtos.websocket.CustomsInspectionPassEvent;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;

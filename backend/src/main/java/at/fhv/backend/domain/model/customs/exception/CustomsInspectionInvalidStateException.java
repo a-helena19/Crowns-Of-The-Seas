@@ -1,5 +1,6 @@
 package at.fhv.backend.domain.model.customs.exception;
 
+import at.fhv.backend.domain.model.customs.CustomsInspectionStatus;
 import at.fhv.backend.domain.model.exception.DomainException;
 import at.fhv.backend.domain.model.exception.ErrorCode;
 
