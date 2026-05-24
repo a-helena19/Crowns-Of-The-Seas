@@ -2,6 +2,7 @@ package at.fhv.backend.application.services.impl.session;
 
 import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.application.services.travel.TravelPauseService;
+import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.TravelArrivalService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
@@ -52,6 +53,7 @@ public class GameTickScheduler {
     private final CargoUnloadingPhaseService cargoUnloadingPhaseService;
     private final CargoSessionInitializer cargoSessionInitializer;
     private final TravelPauseService travelPauseService;
+    private final RatMinigameService ratMinigameService;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
     private final Map<UUID, ScheduledFuture<?>> runningTasks = new ConcurrentHashMap<>();
@@ -72,7 +74,8 @@ public class GameTickScheduler {
                              TravelArrivalService travelArrivalService,
                              CargoUnloadingPhaseService cargoUnloadingPhaseService,
                              CargoSessionInitializer cargoSessionInitializer,
-                             TravelPauseService travelPauseService) {
+                             TravelPauseService travelPauseService,
+                             RatMinigameService ratMinigameService) {
         this.gameSessionRepository = gameSessionRepository;
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
@@ -85,6 +88,7 @@ public class GameTickScheduler {
         this.cargoUnloadingPhaseService = cargoUnloadingPhaseService;
         this.cargoSessionInitializer = cargoSessionInitializer;
         this.travelPauseService = travelPauseService;
+        this.ratMinigameService = ratMinigameService;
     }
 
 
@@ -262,6 +266,8 @@ public class GameTickScheduler {
 
             List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
             for (Travel travel : activeTravels) {
+                ratMinigameService.tryTriggerForTravel(travel, sessionId);
+
                 if (travelPauseService.isTravelPaused(travel.getTravelId())) {
                     continue;
                 }

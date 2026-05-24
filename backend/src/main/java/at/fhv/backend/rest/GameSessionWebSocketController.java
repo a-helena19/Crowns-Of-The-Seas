@@ -59,5 +59,8 @@ public class GameSessionWebSocketController {
     public void broadcastCustomsInspectionResolved(String sessionId, CustomsInspectionPassEvent event) {
         messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/customs-resolved", event);
     }
-}
 
+    public void broadcastRatMinigameEvent(String sessionId, RatMinigameEvent event) {
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/rats-event", event);
+    }
+}

@@ -419,6 +419,28 @@ export default function CargoManagementScreen({
                                         </div>
                                     )}
 
+                                    {selectedEntry.ratMinigameSummary?.triggered && selectedEntry.ratMinigameSummary.result === "SUCCESS" && (
+                                        <div className="cm-reward-cargo-item">
+                                            <div style={{ flex: 1 }}>
+                                                <div className="cm-reward-cargo-name">✅ Ratten auf dem Schiff abgewehrt</div>
+                                                <div className="cm-reward-cargo-sub">Ratten-Event</div>
+                                            </div>
+                                            <span className="cm-reward-cargo-amount">+0T</span>
+                                        </div>
+                                    )}
+
+                                    {selectedEntry.ratMinigameSummary?.triggered && selectedEntry.ratMinigameSummary.result === "FAILED" && (
+                                        <div className="cm-reward-cargo-item expired">
+                                            <div style={{ flex: 1 }}>
+                                                <div className="cm-reward-cargo-name">⚠ Ratten haben ein Teil der Fracht zerstört</div>
+                                                <div className="cm-reward-cargo-sub">Ratten-Event</div>
+                                            </div>
+                                            <span className="cm-reward-cargo-amount expired">
+                                                -{Math.round(selectedEntry.ratMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                            </span>
+                                        </div>
+                                    )}
+
                                     <div className="cm-reward-breakdown">
                                         {cargoItems.map((item, i) => (
                                             <div key={`cargo-${i}`}>

@@ -35,6 +35,11 @@ export interface AssignedCargoEntry {
         percentage: number;
     };
     cargoRewards?: CargoRewardEntry[];
+    ratMinigameSummary?: {
+        triggered: boolean;
+        result?: "SUCCESS" | "FAILED";
+        penaltyAmount?: number;
+    };
     unloadingCompletedAtTick?: number;
     startTick?: number;
     unloadingStartTick?: number;

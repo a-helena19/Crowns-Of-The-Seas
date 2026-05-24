@@ -43,6 +43,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
     private final SmuggleService smuggleService;
     private final TravelRepository travelRepository;
     private final RatMinigameService ratMinigameService;
+    private final RatMinigameService ratMinigameService;
     private final CustomsService customsService;
 
     public CargoUnloadingPhaseServiceImpl(
@@ -54,6 +55,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             PortRepository portRepository,
             CargoRepository cargoRepository,
             SmuggleService smuggleService,
+            TravelRepository travelRepository,
+            RatMinigameService ratMinigameService) {
             TravelRepository travelRepository,
             RatMinigameService ratMinigameService,
             CustomsService customsService) {
@@ -68,6 +71,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         this.travelRepository = travelRepository;
         this.ratMinigameService = ratMinigameService;
         this.customsService = customsService;
+        this.ratMinigameService = ratMinigameService;
     }
 
     @Override
@@ -94,6 +98,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         }
 
         BigDecimal totalReward = cargoReward.add(totalBonus).add(smuggleReward);
+        totalReward = ratMinigameService.applyRewardModifier(travel.getTravelId(), totalReward);
         totalReward = ratMinigameService.applyRewardModifier(travel.getTravelId(), totalReward);
 
         // Customs: subtract any fine from the final payout. The inspection was performed on arrival;
@@ -126,6 +131,9 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             }
         }
 
+        sendUnloadingCompleteEvent(
+                travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffers, bonusPerCargo, totalBonus, totalReward
+        );
         sendUnloadingCompleteEvent(
                 travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffers,
                 bonusPerCargo, totalBonus, payout, inspection
@@ -269,6 +277,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                     previousBalance,
                     newBalance,
                     customsSummary
+                    newBalance,
+                    ratMinigameService.consumeTravelSummary(travel.getTravelId())
             );
 
             webSocketController.broadcastTravelComplete(

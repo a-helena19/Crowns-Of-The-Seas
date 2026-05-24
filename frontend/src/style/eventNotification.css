@@ -1,0 +1,100 @@
+.event-notification-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 999998;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.event-notification-panel {
+    width: min(760px, 94vw);
+    background: #efe4d7;
+    border: 3px solid #4f2f0f;
+    border-radius: 10px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+    padding: 20px;
+}
+
+.event-notification-title {
+    margin: 0 0 14px;
+    font-size: 28px;
+    color: #2c1a08;
+}
+
+.event-notification-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.event-notification-preview {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    border-radius: 8px;
+    background: #f8f1e7;
+    border: 1px solid #d5bea2;
+    padding: 4px;
+}
+
+.event-notification-section {
+    background: #f8f1e7;
+    border: 1px solid #d5bea2;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+.event-notification-section p {
+    margin: 6px 0 0;
+    color: #3c2a17;
+}
+
+.event-notification-label {
+    font-weight: 700;
+}
+
+.event-notification-label.success {
+    color: #2f7a45;
+}
+
+.event-notification-label.fail {
+    color: #9a2c2c;
+}
+
+.event-notification-actions {
+    margin-top: 12px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.event-btn {
+    min-width: 140px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.event-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.event-btn-decline {
+    background: #fff;
+    border-color: #a23f3f;
+    color: #7d2a2a;
+}
+
+.event-btn-accept {
+    background: #fff;
+    border-color: #2f7a45;
+    color: #1f5e35;
+}
