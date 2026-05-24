@@ -373,6 +373,24 @@ export default function CargoManagementScreen({
                             const cargoItems = allRewards.filter(r => r.cargoType !== "SMUGGLE");
                             const smuggleItem = allRewards.find(r => r.cargoType === "SMUGGLE");
                             const isPerfect = cargoItems.every(r => r.percentage >= 100);
+
+                            const customs = selectedEntry.customsSummary;
+                            const finePaid = customs?.finePaid ?? 0;
+                            const bribePaid = customs?.bribePaid ?? 0;
+                            const customsTotalOut = finePaid + bribePaid;
+
+                            // Cargo reward = sum of (actualReward - bonusReward) for each cargo
+                            const cargoBaseTotal = cargoItems.reduce((s, r) => s + (r.actualReward - (r.bonusReward ?? 0)), 0);
+                            // Bonus = sum of all bonusRewards
+                            const bonusTotal = cargoItems.reduce((s, r) => s + (r.bonusReward ?? 0), 0);
+                            // Smuggle reward
+                            const smuggleTotal = (smuggleItem?.actualReward ?? 0);
+                            // Rat penalty
+                            const ratPenalty = (selectedEntry.ratMinigameSummary?.result === "FAILED")
+                                ? (selectedEntry.ratMinigameSummary.penaltyAmount ?? 0) : 0;
+                            // Net total = cargo + bonus + smuggle - rat penalty - customs
+                            const netTotal = cargoBaseTotal + bonusTotal + smuggleTotal - ratPenalty - customsTotalOut;
+
                             return (
                                 <div className="cm-reward-panel">
                                     <div className="cm-reward-header">
@@ -388,17 +406,40 @@ export default function CargoManagementScreen({
                                         </div>
                                     )}
 
+                                    {/* Customs banner — only when there was an outcome worth showing */}
+                                    {customs && customs.outcome !== "CLEARED" && (
+                                        <div className={`cm-customs-banner ${
+                                            customs.outcome === "HIDDEN" || customs.outcome === "BRIBE_SUCCESS"
+                                                ? "cm-customs-good" : "cm-customs-bad"
+                                        }`}>
+                                            <span className="cm-customs-icon">
+                                                {customs.outcome === "HIDDEN" ? "🤫"
+                                                    : customs.outcome === "BRIBE_SUCCESS" ? "💰"
+                                                        : customs.outcome === "BRIBE_FAILED" ? "⚠️"
+                                                            : "⛓️"}
+                                            </span>
+                                            <span className="cm-customs-label">
+                                                {customs.outcome === "HIDDEN" ? "Glück gehabt! Zoll hat nichts gefunden."
+                                                    : customs.outcome === "BRIBE_SUCCESS" ? "Bestechung erfolgreich — keine Strafe."
+                                                        : customs.outcome === "BRIBE_FAILED"
+                                                            ? `Bestechung fehlgeschlagen — Strafe verdoppelt${customs.detained ? `, ${customs.detentionTicks} Ticks Festhalten` : ""}.`
+                                                            : `Kooperiert — Strafe bezahlt${customs.detained ? `, ${customs.detentionTicks} Ticks Festhalten` : ""}.`}
+                                            </span>
+                                        </div>
+                                    )}
+
                                     <div className="cm-reward-section-label">
                                         Frachtbilanz ({cargoItems.length + (smuggleItem ? 1 : 0)})
                                     </div>
 
+                                    {/* Top cargo list — one entry per cargo, no duplicates */}
                                     {cargoItems.map((item, i) => {
                                         const isExpired = item.percentage < 100;
                                         return (
                                             <div key={i} className={`cm-reward-cargo-item${isExpired ? " expired" : ""}`}>
                                                 <div style={{ flex: 1 }}>
                                                     <div className="cm-reward-cargo-name">{item.cargoName}</div>
-                                                    <div className="cm-reward-cargo-sub">→ {item.destinationPort}</div>
+                                                    <div className="cm-reward-cargo-sub">→ {item.destinationPort}{isExpired ? ` (${item.percentage}%)` : ""}</div>
                                                 </div>
                                                 <span className={`cm-reward-cargo-amount${isExpired ? " expired" : ""}`}>
                                                     +{item.actualReward.toLocaleString("de-DE")}T
@@ -408,12 +449,12 @@ export default function CargoManagementScreen({
                                     })}
 
                                     {smuggleItem && (
-                                        <div className="cm-reward-cargo-item">
+                                        <div className={`cm-reward-cargo-item${smuggleItem.actualReward === 0 ? " expired" : ""}`}>
                                             <div style={{ flex: 1 }}>
                                                 <div className="cm-reward-cargo-name">🏴‍☠️ {smuggleItem.cargoName}</div>
-                                                <div className="cm-reward-cargo-sub">Schmuggelware</div>
+                                                <div className="cm-reward-cargo-sub">Schmuggelware{smuggleItem.actualReward === 0 ? " — Konfisziert" : ""}</div>
                                             </div>
-                                            <span className="cm-reward-cargo-amount">
+                                            <span className={`cm-reward-cargo-amount${smuggleItem.actualReward === 0 ? " expired" : ""}`}>
                                                 +{smuggleItem.actualReward.toLocaleString("de-DE")}T
                                             </span>
                                         </div>
@@ -436,36 +477,53 @@ export default function CargoManagementScreen({
                                                 <div className="cm-reward-cargo-sub">Ratten-Event</div>
                                             </div>
                                             <span className="cm-reward-cargo-amount expired">
-                                                -{Math.round(selectedEntry.ratMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                                -{Math.round(ratPenalty).toLocaleString("de-DE")}T
                                             </span>
                                         </div>
                                     )}
 
+                                    {/* Summary breakdown — clean, no duplicates */}
                                     <div className="cm-reward-breakdown">
-                                        {cargoItems.map((item, i) => (
-                                            <div key={`cargo-${i}`}>
-                                                <div className={`cm-reward-row${item.percentage < 100 ? " warn" : ""}`}>
-                                                    <span>{item.percentage < 100 ? `⚠ ${item.cargoName} (${item.percentage}%)` : item.cargoName}</span>
-                                                    <span className="cm-reward-row-value">+{(item.actualReward - (item.bonusReward ?? 0)).toLocaleString("de-DE")}T</span>
-                                                </div>
-                                                {item.bonusReward > 0 && (
-                                                    <div className="cm-reward-row bonus">
-                                                        <span>🎁 Reise Bonus</span>
-                                                        <span>+{item.bonusReward.toLocaleString("de-DE")}T</span>
-                                                    </div>
-                                                )}
+                                        {cargoBaseTotal > 0 && (
+                                            <div className="cm-reward-row">
+                                                <span>Cargo Belohnung</span>
+                                                <span className="cm-reward-row-value">+{cargoBaseTotal.toLocaleString("de-DE")}T</span>
                                             </div>
-                                        ))}
-                                        {smuggleItem && (
+                                        )}
+                                        {bonusTotal > 0 && (
                                             <div className="cm-reward-row bonus">
-                                                <span>🏴‍☠️ {smuggleItem.cargoName}</span>
-                                                <span>+{smuggleItem.actualReward.toLocaleString("de-DE")}T</span>
+                                                <span>🎁 Reise Bonus</span>
+                                                <span>+{bonusTotal.toLocaleString("de-DE")}T</span>
+                                            </div>
+                                        )}
+                                        {smuggleTotal > 0 && (
+                                            <div className="cm-reward-row bonus">
+                                                <span>🏴‍☠️ Mysteriöse Kiste</span>
+                                                <span>+{smuggleTotal.toLocaleString("de-DE")}T</span>
+                                            </div>
+                                        )}
+                                        {ratPenalty > 0 && (
+                                            <div className="cm-reward-row warn">
+                                                <span>🐀 Ratten-Strafe</span>
+                                                <span style={{ color: "#c0392b" }}>-{Math.round(ratPenalty).toLocaleString("de-DE")}T</span>
+                                            </div>
+                                        )}
+                                        {bribePaid > 0 && (
+                                            <div className="cm-reward-row warn">
+                                                <span>💰 Bestechung</span>
+                                                <span style={{ color: "#c0392b" }}>-{bribePaid.toLocaleString("de-DE")}T</span>
+                                            </div>
+                                        )}
+                                        {finePaid > 0 && (
+                                            <div className="cm-reward-row warn">
+                                                <span>🛃 Zollstrafe</span>
+                                                <span style={{ color: "#c0392b" }}>-{finePaid.toLocaleString("de-DE")}T</span>
                                             </div>
                                         )}
                                         <div className="cm-reward-row total">
                                             <span>Gesamt</span>
-                                            <span className="cm-reward-row-value">
-                                                +{(selectedEntry.reward ?? 0).toLocaleString("de-DE")}T
+                                            <span className="cm-reward-row-value" style={{ color: netTotal < 0 ? "#c0392b" : undefined }}>
+                                                {netTotal >= 0 ? "+" : ""}{netTotal.toLocaleString("de-DE")}T
                                             </span>
                                         </div>
                                     </div>

@@ -5,11 +5,13 @@ import at.fhv.backend.application.services.impl.session.GameTickScheduler;
 import at.fhv.backend.application.services.travel.PendingTravelStartService;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
 import at.fhv.backend.domain.model.exception.TravelNotFoundException;
+import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.rest.CargoWebSocketController;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,16 +42,16 @@ public class PendingTravelStartServiceImpl implements PendingTravelStartService 
     private final GameTickScheduler gameTickScheduler;
     private final CargoWebSocketController cargoWebSocketController;
     private final TravelResponseMapper travelResponseMapper;
-    private final at.fhv.backend.domain.model.session.GameSessionRepository gameSessionRepository;
+    private final GameSessionRepository gameSessionRepository;
 
     private final Map<UUID, PendingData> pendingByTravelId = new ConcurrentHashMap<>();
 
     public PendingTravelStartServiceImpl(TravelRepository travelRepository,
                                          PlayerShipRepository playerShipRepository,
-                                         GameTickScheduler gameTickScheduler,
+                                         @Lazy GameTickScheduler gameTickScheduler,
                                          CargoWebSocketController cargoWebSocketController,
                                          TravelResponseMapper travelResponseMapper,
-                                         at.fhv.backend.domain.model.session.GameSessionRepository gameSessionRepository) {
+                                         GameSessionRepository gameSessionRepository) {
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
         this.gameTickScheduler = gameTickScheduler;

@@ -115,6 +115,12 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
 
         BigDecimal previousBalance = BigDecimal.ZERO;
         BigDecimal newBalance = BigDecimal.ZERO;
+        BigDecimal customsAlreadyDeducted = BigDecimal.ZERO;
+        if (inspection != null) {
+            BigDecimal fine = inspection.getFinePaid() != null ? inspection.getFinePaid() : BigDecimal.ZERO;
+            BigDecimal bribe = inspection.getBribePaid() != null ? inspection.getBribePaid() : BigDecimal.ZERO;
+            customsAlreadyDeducted = fine.add(bribe);
+        }
 
         UUID playerId = travel.getPlayerId();
         GameSession session = gameSessionRepository.findById(travel.getSessionId()).orElse(null);
@@ -128,7 +134,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             }
 
             if (player != null) {
-                previousBalance = player.getBalance();
+                BigDecimal currentBalance = player.getBalance();
+                previousBalance = currentBalance.add(customsAlreadyDeducted);
                 if (payout.compareTo(BigDecimal.ZERO) > 0) {
                     player.addBalance(payout);
                 }

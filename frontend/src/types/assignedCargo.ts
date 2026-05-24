@@ -13,6 +13,8 @@ export interface CargoRewardEntry {
 export interface CustomsSummary {
     outcome: "CLEARED" | "HIDDEN" | "COOPERATED" | "BRIBE_SUCCESS" | "BRIBE_FAILED";
     finePaid: number;
+    bribePaid: number;
+    bribeAttempted: boolean;
     detained: boolean;
     detentionTicks: number;
     wasCarryingIllegalCargo: boolean;

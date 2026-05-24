@@ -187,6 +187,8 @@ export default function GameScreen() {
                 customsSummary?: {
                     outcome: "CLEARED" | "HIDDEN" | "COOPERATED" | "BRIBE_SUCCESS" | "BRIBE_FAILED";
                     finePaid: number;
+                    bribePaid: number;
+                    bribeAttempted: boolean;
                     detained: boolean;
                     detentionTicks: number;
                     wasCarryingIllegalCargo: boolean;
