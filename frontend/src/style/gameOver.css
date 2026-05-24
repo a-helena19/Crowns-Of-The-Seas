@@ -1,0 +1,429 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
+
+.gameover-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at 50% 30%, #0f1f3d 0%, #060b1a 70%, #000 100%);
+    overflow: hidden;
+    animation: gameover-fadeIn 1.2s ease-out;
+}
+
+@keyframes gameover-fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.gameover-particles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.gameover-particle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    opacity: 0;
+    animation: confettiFall linear forwards;
+    image-rendering: pixelated;
+}
+
+.gameover-particle.square { border-radius: 0; }
+.gameover-particle.circle { border-radius: 50%; }
+.gameover-particle.diamond {
+    width: 6px;
+    height: 6px;
+    transform: rotate(45deg);
+}
+
+@keyframes confettiFall {
+    0% {
+        opacity: 1;
+        transform: translateY(-20px) rotate(0deg) scale(1);
+    }
+    80% {
+        opacity: 0.8;
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(100vh) rotate(720deg) scale(0.3);
+    }
+}
+
+.gameover-title-section {
+    text-align: center;
+    margin-bottom: 12px;
+    animation: titleDrop 0.8s ease-out 0.3s both;
+    z-index: 2;
+}
+
+@keyframes titleDrop {
+    from {
+        opacity: 0;
+        transform: translateY(-60px) scale(0.7);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.gameover-subtitle {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    color: #8899bb;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.gameover-title {
+    font-family: 'Cinzel', serif;
+    font-size: 42px;
+    font-weight: 700;
+    color: transparent;
+    background: linear-gradient(180deg, #f6d365 0%, #c89b3c 50%, #8a6914 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    text-shadow: 0 0 40px rgba(200, 155, 60, 0.3);
+    margin: 0;
+    line-height: 1.1;
+}
+
+.gameover-winner-announce {
+    text-align: center;
+    margin-bottom: 24px;
+    animation: winnerReveal 0.6s ease-out 1.4s both;
+    z-index: 2;
+}
+
+@keyframes winnerReveal {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.gameover-crown-icon {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 4px;
+    animation: crownFloat 2s ease-in-out infinite 2s;
+    filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.5));
+}
+
+@keyframes crownFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+.gameover-winner-name {
+    font-family: 'Cinzel', serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: #f6d365;
+    text-shadow: 0 2px 10px rgba(200, 155, 60, 0.4);
+}
+
+.gameover-winner-label {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    color: #8899bb;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-top: 2px;
+}
+
+.gameover-podium {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 28px;
+    z-index: 2;
+    perspective: 600px;
+}
+
+.gameover-podium-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    opacity: 0;
+    animation: podiumRise 0.7s ease-out forwards;
+}
+
+.gameover-podium-slot[data-rank="3"] {
+    animation-delay: 1.0s;
+}
+.gameover-podium-slot[data-rank="2"] {
+    animation-delay: 1.4s;
+}
+.gameover-podium-slot[data-rank="1"] {
+    animation-delay: 1.8s;
+}
+
+@keyframes podiumRise {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.podium-player-name {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fdf0d5;
+    margin-bottom: 4px;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.podium-player-value {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    color: #c89b3c;
+    margin-bottom: 6px;
+}
+
+.podium-block {
+    width: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Cinzel', serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.9);
+    border-radius: 6px 6px 0 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: none;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.podium-block[data-rank="1"] {
+    height: 110px;
+    background: linear-gradient(180deg, #c89b3c 0%, #8a6914 100%);
+    box-shadow: 0 0 30px rgba(200, 155, 60, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.podium-block[data-rank="2"] {
+    height: 80px;
+    background: linear-gradient(180deg, #8899aa 0%, #556677 100%);
+    box-shadow: 0 0 20px rgba(136, 153, 170, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.podium-block[data-rank="3"] {
+    height: 55px;
+    background: linear-gradient(180deg, #9a6a3a 0%, #6b4423 100%);
+    box-shadow: 0 0 15px rgba(154, 106, 58, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.gameover-stats {
+    width: min(700px, 90vw);
+    z-index: 2;
+    animation: statsSlideUp 0.6s ease-out 2.4s both;
+}
+
+@keyframes statsSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.gameover-stats-title {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    color: #8899bb;
+    text-align: center;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.gameover-stats-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 3px;
+}
+
+.gameover-stats-table thead th {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: #667799;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 6px 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(100, 120, 160, 0.2);
+}
+
+.gameover-stats-table thead th:not(:first-child) {
+    text-align: right;
+}
+
+.gameover-stats-table tbody tr {
+    background: rgba(15, 25, 50, 0.6);
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.gameover-stats-table tbody tr:hover {
+    background: rgba(25, 40, 70, 0.7);
+}
+
+.gameover-stats-table tbody tr.is-me {
+    background: rgba(40, 80, 140, 0.35);
+    outline: 1px solid rgba(92, 163, 255, 0.3);
+}
+
+.gameover-stats-table tbody td {
+    padding: 10px 12px;
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    color: #c8d0e0;
+}
+
+.gameover-stats-table tbody td:not(:first-child) {
+    text-align: right;
+}
+
+.stats-rank {
+    color: #c89b3c;
+    font-weight: 700;
+    min-width: 32px;
+    display: inline-block;
+}
+
+.stats-rank-1 { color: #f6d365; }
+.stats-rank-2 { color: #aabbcc; }
+.stats-rank-3 { color: #c49054; }
+
+.stats-name {
+    font-weight: 600;
+    color: #fdf0d5;
+}
+
+.stats-value-gold {
+    color: #c89b3c;
+    font-weight: 700;
+}
+
+.stats-value-total {
+    color: #f6d365;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.count-up {
+    display: inline-block;
+    min-width: 50px;
+}
+
+.gameover-actions {
+    margin-top: 24px;
+    z-index: 2;
+    animation: statsSlideUp 0.5s ease-out 3.0s both;
+}
+
+.gameover-btn {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #fdf0d5;
+    background: linear-gradient(180deg, #c89b3c 0%, #8a6914 100%);
+    border: 2px solid #f6d365;
+    border-radius: 6px;
+    padding: 12px 36px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 15px rgba(200, 155, 60, 0.3);
+}
+
+.gameover-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(200, 155, 60, 0.5);
+}
+
+.gameover-btn:active {
+    transform: translateY(0);
+}
+
+.gameover-rays {
+    position: absolute;
+    top: -20%;
+    left: 50%;
+    width: 120%;
+    height: 120%;
+    transform: translateX(-50%);
+    background: conic-gradient(
+            from 0deg at 50% 40%,
+            transparent 0deg,
+            rgba(200, 155, 60, 0.03) 10deg,
+            transparent 20deg,
+            transparent 40deg,
+            rgba(200, 155, 60, 0.03) 50deg,
+            transparent 60deg,
+            transparent 80deg,
+            rgba(200, 155, 60, 0.03) 90deg,
+            transparent 100deg,
+            transparent 120deg,
+            rgba(200, 155, 60, 0.03) 130deg,
+            transparent 140deg,
+            transparent 160deg,
+            rgba(200, 155, 60, 0.03) 170deg,
+            transparent 180deg,
+            transparent 200deg,
+            rgba(200, 155, 60, 0.03) 210deg,
+            transparent 220deg,
+            transparent 240deg,
+            rgba(200, 155, 60, 0.03) 250deg,
+            transparent 260deg,
+            transparent 280deg,
+            rgba(200, 155, 60, 0.03) 290deg,
+            transparent 300deg,
+            transparent 320deg,
+            rgba(200, 155, 60, 0.03) 330deg,
+            transparent 340deg,
+            transparent 360deg
+    );
+    animation: raysRotate 60s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes raysRotate {
+    from { transform: translateX(-50%) rotate(0deg); }
+    to   { transform: translateX(-50%) rotate(360deg); }
+}
+
+@media (max-width: 600px) {
+    .gameover-title { font-size: 28px; }
+    .gameover-winner-name { font-size: 20px; }
+    .podium-block { width: 80px; }
+    .gameover-stats-table { font-size: 11px; }
+    .gameover-crown-icon { font-size: 36px; }
+}

@@ -12,6 +12,7 @@ import CargoManagementScreen from "../scenes/CargoManagementScreen";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
 import RewardToast from "../components/RewardToast.tsx";
 import SmuggleOfferDialog from "../components/SmuggleOfferDialog.tsx";
+import GameOverScreen from "../components/GameOverScreen";
 
 export const TOP_BAR_HEIGHT = '9vh';
 export const BOTTOM_BAR_HEIGHT = '20vh';
@@ -27,6 +28,8 @@ export default function GameScreen() {
 
     const userData = localStorage.getItem('crowns_user');
     const playerId: string | null = userData ? JSON.parse(userData).id : null;
+
+    const [gameOver, setGameOver] = useState(false);
 
     const [assignedCargos, setAssignedCargos] = useState<AssignedCargoEntry[]>([]);
     const [rewardToasts, setRewardToasts] = useState<{
@@ -190,6 +193,24 @@ export default function GameScreen() {
         return () => window.removeEventListener("travel-complete", handler);
     }, [playerId]);
 
+    // Game Over Erkennung
+    useEffect(() => {
+        const handleTick = (e: Event) => {
+            const { currentTick, totalTicks } = (e as CustomEvent<{
+                currentTick: number;
+                totalTicks: number;
+            }>).detail;
+
+            if (currentTick >= totalTicks && totalTicks > 0) {
+                // Kurze Verzögerung damit der letzte Tick noch angezeigt wird
+                setTimeout(() => setGameOver(true), 500);
+            }
+        };
+
+        window.addEventListener("backend-tick", handleTick);
+        return () => window.removeEventListener("backend-tick", handleTick);
+    }, []);
+
     // Smuggle offer
     useEffect(() => {
         const handler = (e: Event) => {
@@ -285,7 +306,11 @@ export default function GameScreen() {
         return () => clearInterval(interval);
     }, [assignedCargos]);
 
-    const handleSessionUpdate = useCallback(() => {}, []);
+    const handleSessionUpdate = useCallback((event: { type?: string; status?: string }) => {
+        if (event.status === "FINISHED" || event.type === "GAME_FINISHED") {
+            setTimeout(() => setGameOver(true), 500);
+        }
+    }, []);
 
     const { isConnected, stompClient } = useGameSessionWebSocket({
         sessionId,
@@ -393,6 +418,13 @@ export default function GameScreen() {
                     cargoDescription={smuggleOffer.cargoDescription}
                     onAccept={handleSmuggleAccept}
                     onDecline={handleSmuggleDecline}
+                />
+            )}
+
+            {gameOver && sessionId && (
+                <GameOverScreen
+                    sessionId={sessionId}
+                    currentUserId={playerId}
                 />
             )}
         </div>
