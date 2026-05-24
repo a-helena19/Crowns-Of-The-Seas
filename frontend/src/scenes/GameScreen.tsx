@@ -9,6 +9,7 @@ import OfficeScene from "../scenes/OfficeScene.tsx";
 import PortProfileScreen from "../scenes/PortProfileScreen.tsx";
 import { useGameSessionWebSocket } from "../hooks/useGameSessionWebSocket.ts";
 import CargoManagementScreen from "../scenes/CargoManagementScreen";
+import DockingMiniGame from "../scenes/DockingMiniGame";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
 import RewardToast from "../components/RewardToast.tsx";
 import SmuggleOfferDialog from "../components/SmuggleOfferDialog.tsx";
@@ -40,6 +41,10 @@ export default function GameScreen() {
         offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
     } | null>(null);
     const departureActiveRef = useRef(false);
+    const arrivedMiniGameShown = useRef<Set<string>>(new Set());
+    const [showArrivalDocking, setShowArrivalDocking] = useState<AssignedCargoEntry | null>(null);
+
+    const authToken = localStorage.getItem("auth_token") ?? "";
 
     function handleCargoAssigned(entry: AssignedCargoEntry) {
         setAssignedCargos(prev => {
@@ -61,6 +66,12 @@ export default function GameScreen() {
     function handleCargoPhaseChange(cargoId: string, phase: AssignedCargoEntry["phase"], travelId?: string) {
         setAssignedCargos(prev => prev.map(e =>
             e.cargoId === cargoId ? { ...e, phase, ...(travelId ? { travelId } : {}) } : e
+        ));
+    }
+
+    function handleTravelStarted(cargoId: string, pilotageUsed: boolean) {
+        setAssignedCargos(prev => prev.map(e =>
+            e.cargoId === cargoId ? { ...e, pilotageUsed } : e
         ));
     }
 
@@ -134,6 +145,40 @@ export default function GameScreen() {
         return () => window.removeEventListener("backend-ship-positions", handler);
     }, [playerId]);
 
+    // Ankunfts-Minispiel automatisch starten (Vollbild über der Karte)
+    useEffect(() => {
+        if (showArrivalDocking) return;
+        for (const entry of assignedCargos) {
+            if (
+                entry.phase === "unloading" &&
+                entry.travelId &&
+                !entry.pilotageUsed &&
+                !arrivedMiniGameShown.current.has(entry.travelId)
+            ) {
+                arrivedMiniGameShown.current.add(entry.travelId);
+                setShowArrivalDocking(entry);
+                break;
+            }
+        }
+    }, [assignedCargos, showArrivalDocking]);
+
+    const handleArrivalDockingSuccess = useCallback(() => {
+        setShowArrivalDocking(null);
+    }, []);
+
+    const handleArrivalDockingFailure = useCallback(async () => {
+        const entry = showArrivalDocking;
+        setShowArrivalDocking(null);
+        if (!entry?.travelId || !playerId || !sessionId) return;
+        try {
+            await fetch(
+                `/api/travels/${entry.travelId}/docking-failed?playerId=${playerId}&sessionId=${sessionId}`,
+                { method: "POST", headers: { Authorization: `Bearer ${authToken}` } }
+            );
+            window.dispatchEvent(new CustomEvent("player-balance-updated"));
+        } catch { /* nicht-fatal */ }
+    }, [showArrivalDocking, playerId, sessionId, authToken]);
+
     // Travel complete → reward
     useEffect(() => {
         const handler = (e: Event) => {
@@ -142,6 +187,8 @@ export default function GameScreen() {
                 playerId: string;
                 totalReward: number;
                 baseReward: number;
+                dockingFine?: number;
+                departureDockingFine?: number;
                 cargoRewards: { cargoId: string; cargoName: string; destinationPort: string; baseReward: number; bonusReward: number; actualReward: number; percentage: number; status: string; cargoType: string }[];
             }>).detail;
             if (data.playerId !== playerId) return;
@@ -156,6 +203,8 @@ export default function GameScreen() {
                         ...entry,
                         phase: "completed" as const,
                         reward: data.totalReward,
+                        dockingFine: data.dockingFine ?? 0,
+                        departureDockingFine: data.departureDockingFine ?? 0,
                         rewardDetails: firstCargo
                             ? {
                                 baseReward: firstCargo.baseReward,
@@ -347,6 +396,7 @@ export default function GameScreen() {
                         onCargoLoadingDone={handleCargoCompleted}
                         onCargoRemoved={handleCargoRemoved}
                         onCargoPhaseChange={handleCargoPhaseChange}
+                        onTravelStarted={handleTravelStarted}
                         onClose={() => setView("map")}
                         onDepartureStarted={handleDepartureStarted}
                         onDepartureComplete={handleDepartureComplete}
@@ -393,6 +443,16 @@ export default function GameScreen() {
                     cargoDescription={smuggleOffer.cargoDescription}
                     onAccept={handleSmuggleAccept}
                     onDecline={handleSmuggleDecline}
+                />
+            )}
+
+            {showArrivalDocking && (
+                <DockingMiniGame
+                    mode="arrival"
+                    shipIconUrl={showArrivalDocking.shipIconUrl ?? "/fallback-ship.png"}
+                    portName={showArrivalDocking.to}
+                    onSuccess={handleArrivalDockingSuccess}
+                    onFailure={handleArrivalDockingFailure}
                 />
             )}
         </div>

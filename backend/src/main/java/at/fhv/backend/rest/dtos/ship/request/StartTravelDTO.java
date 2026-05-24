@@ -22,6 +22,8 @@ public class StartTravelDTO {
 
     private boolean pilotageService = false;
 
+    private boolean miniGameFailedDeparture = false;
+
     public StartTravelDTO() {}
 
     public UUID getPlayerShipId() {
@@ -62,5 +64,13 @@ public class StartTravelDTO {
 
     public void setPilotageService(boolean pilotageService) {
         this.pilotageService = pilotageService;
+    }
+
+    public boolean isMiniGameFailedDeparture() {
+        return miniGameFailedDeparture;
+    }
+
+    public void setMiniGameFailedDeparture(boolean miniGameFailedDeparture) {
+        this.miniGameFailedDeparture = miniGameFailedDeparture;
     }
 }

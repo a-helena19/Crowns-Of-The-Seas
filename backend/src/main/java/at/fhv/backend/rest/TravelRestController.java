@@ -2,6 +2,7 @@ package at.fhv.backend.rest;
 
 import at.fhv.backend.application.services.travel.FuelEstimateService;
 import at.fhv.backend.application.services.travel.TravelDurationEstimateService;
+import at.fhv.backend.application.services.travel.DockingPenaltyService;
 import at.fhv.backend.domain.model.cargo.exception.CargoCapacityExceededException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotAvailableException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
@@ -31,13 +32,16 @@ public class TravelRestController {
     private final StartTravelService startTravelService;
     private final FuelEstimateService fuelEstimateService;
     private final TravelDurationEstimateService travelDurationEstimateService;
+    private final DockingPenaltyService dockingPenaltyService;
 
     public TravelRestController(StartTravelService startTravelService,
                                 FuelEstimateService fuelEstimateService,
-                                TravelDurationEstimateService travelDurationEstimateService) {
+                                TravelDurationEstimateService travelDurationEstimateService,
+                                DockingPenaltyService dockingPenaltyService) {
         this.startTravelService = startTravelService;
         this.fuelEstimateService = fuelEstimateService;
         this.travelDurationEstimateService = travelDurationEstimateService;
+        this.dockingPenaltyService = dockingPenaltyService;
     }
 
     @PostMapping("/fuel-estimate")
@@ -127,5 +131,22 @@ public class TravelRestController {
     @GetMapping("/{travelId}/player/{playerId}")
     public ResponseEntity<TravelDTO> getTravelStatus(@PathVariable UUID travelId, @PathVariable UUID playerId) {
         return ResponseEntity.ok(startTravelService.getTravelStatus(travelId, playerId));
+    }
+
+    @PostMapping("/{travelId}/docking-failed")
+    public ResponseEntity<?> reportDockingFailure(
+            @PathVariable UUID travelId,
+            @RequestParam UUID playerId,
+            @RequestParam UUID sessionId) {
+        try {
+            dockingPenaltyService.applyArrivalFailurePenalty(travelId, playerId, sessionId);
+            return ResponseEntity.ok(Map.of("success", true));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "FORBIDDEN", "message", e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "NOT_FOUND", "message", e.getMessage()));
+        }
     }
 }

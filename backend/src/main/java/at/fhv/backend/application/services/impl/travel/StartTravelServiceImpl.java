@@ -18,6 +18,7 @@ import at.fhv.backend.rest.dtos.ship.response.TravelDTO;
 import at.fhv.backend.application.services.impl.session.GameTickScheduler;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CalculateFuelConsumptionService;
+import at.fhv.backend.application.services.travel.DockingPenaltyService;
 import at.fhv.backend.application.services.travel.StartTravelService;
 import at.fhv.backend.application.services.travel.ValidateTravelService;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
@@ -61,6 +62,7 @@ public class StartTravelServiceImpl implements StartTravelService {
     private final PortDistanceForCargoService portDistanceForCargoService;
     private final SessionPlayerRepository sessionPlayerRepository;
     private final SmuggleService smuggleService;
+    private final DockingPenaltyService dockingPenaltyService;
 
     public StartTravelServiceImpl(PlayerShipRepository playerShipRepository,
                                   ShipRepository shipRepository,
@@ -75,7 +77,8 @@ public class StartTravelServiceImpl implements StartTravelService {
                                   CargoWebSocketController cargoWebSocketController,
                                   PortDistanceForCargoService portDistanceForCargoService,
                                   SessionPlayerRepository sessionPlayerRepository,
-                                  SmuggleService smuggleService) {
+                                  SmuggleService smuggleService,
+                                  DockingPenaltyService dockingPenaltyService) {
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
         this.portQueryService = portQueryService;
@@ -90,6 +93,7 @@ public class StartTravelServiceImpl implements StartTravelService {
         this.portDistanceForCargoService = portDistanceForCargoService;
         this.sessionPlayerRepository = sessionPlayerRepository;
         this.smuggleService = smuggleService;
+        this.dockingPenaltyService = dockingPenaltyService;
     }
 
     @Override
@@ -191,6 +195,11 @@ public class StartTravelServiceImpl implements StartTravelService {
             if (request.isPilotageService()) {
                 player.subtractBalance(PILOTAGE_COST);
                 sessionPlayerRepository.save(player);
+            }
+
+            if (request.isMiniGameFailedDeparture()) {
+                dockingPenaltyService.applyDepartureFailurePenalty(
+                        saved.getTravelId(), playerId, sessionId);
             }
 
             gameTickScheduler.triggerImmediateBroadcast(sessionId);

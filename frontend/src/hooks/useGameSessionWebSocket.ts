@@ -77,6 +77,8 @@ interface TravelCompleteEvent {
     totalReward: number;
     previousBalance: number;
     newBalance: number;
+    dockingFine?: number;
+    departureDockingFine?: number;
 }
 
 interface UseGameSessionWebSocketProps {

@@ -32,7 +32,6 @@ function edge(a: string, b: string, ...waypoints: Point[]) {
 }
 
 port("Hamburg",      46.1, 24.3);
-port("Rotterdam",    43.8, 27.1);
 port("New York",     21.6, 33.8);
 port("Santos",       33.9, 71.4);
 port("Kapstadt",     51.6, 79.4);
@@ -54,12 +53,11 @@ edge("Santos Hub", "Second Atlantic Crossroad",       wp(32.9, 76.4), wp(37.5, 6
 
 edge("Second Atlantic Crossroad", "Atlantic Crossroads", wp(37.5, 61.5), wp(32.3, 42.3));
 edge("Second Atlantic Crossroad", "Kapstadt",         wp(37.5, 61.5), wp(51.6, 79.4));
-edge("Rotterdam", "Biskaya Hub",                      wp(43.8, 27.1), wp(38.0, 27.0));
+edge("Hamburg", "Biskaya Hub",                        wp(46.1, 24.3), wp(38.0, 27.0));
 edge("Biskaya Hub", "Atlantic Crossroads",            wp(38.0, 27.0), wp(32.3, 42.3));
 edge("Atlantic Crossroads", "Los Angeles",            wp(32.3, 42.3), wp(23.3, 48.7), wp(19.7, 47.6), wp(18.9, 54.2), wp(8.8, 48.7), wp(8.4, 32.0));
 edge("Santos Hub", "Kapstadt",                        wp(32.9, 76.4), wp(51.6, 79.4));
 edge("Atlantic Crossroads", "New York",               wp(32.3, 42.3), wp(21.6, 33.8));
-edge("Hamburg", "Rotterdam",                          wp(46.1, 24.3), wp(43.8, 27.1));
 edge("Mumbai", "Biskaya Hub",                         wp(68.1, 47.7), wp(58.9, 49.2), wp(54.9, 36.1), wp(47.8, 32.1), wp(41.3, 34.7), wp(38.0, 27.0));
 edge("Mumbai", "Indian Ocean Hub",                    wp(68.1, 47.7), wp(67.3, 54.5), wp(68.7, 59.7));
 edge("Singapur", "Indian Ocean Hub",                  wp(75.9, 53.6), wp(79.0, 59.0), wp(83.4, 62.0), wp(83.4, 64.9), wp(76.5, 64.9), wp(68.7, 59.7));

@@ -12,11 +12,14 @@ public class TravelCompleteEvent {
     private BigDecimal bonusReward;
     private BigDecimal previousBalance;
     private BigDecimal newBalance;
+    private BigDecimal departureDockingFine;
+    private BigDecimal dockingFine;
 
     public TravelCompleteEvent(String travelId, String playerId,
                                List<CargoRewardBreakdown> cargoRewards,
                                BigDecimal baseReward, BigDecimal totalReward, BigDecimal bonusReward,
-                               BigDecimal previousBalance, BigDecimal newBalance) {
+                               BigDecimal previousBalance, BigDecimal newBalance,
+                               BigDecimal departureDockingFine, BigDecimal dockingFine) {
         this.travelId = travelId;
         this.playerId = playerId;
         this.cargoRewards = cargoRewards;
@@ -25,6 +28,8 @@ public class TravelCompleteEvent {
         this.bonusReward = bonusReward;
         this.previousBalance = previousBalance;
         this.newBalance = newBalance;
+        this.departureDockingFine = departureDockingFine != null ? departureDockingFine : BigDecimal.ZERO;
+        this.dockingFine = dockingFine != null ? dockingFine : BigDecimal.ZERO;
     }
 
     public String getTravelId() {
@@ -57,5 +62,13 @@ public class TravelCompleteEvent {
 
     public BigDecimal getBonusReward() {
         return bonusReward;
+    }
+
+    public BigDecimal getDepartureDockingFine() {
+        return departureDockingFine;
+    }
+
+    public BigDecimal getDockingFine() {
+        return dockingFine;
     }
 }

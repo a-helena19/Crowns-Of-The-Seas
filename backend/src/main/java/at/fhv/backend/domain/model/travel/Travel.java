@@ -26,12 +26,17 @@ public class Travel {
     private final int startTick;
     private int arrivalTick;
     private double loadingDurationSeconds;
+    /** Ankunfts-Strafe (Anlege-Minispiel fehlgeschlagen) */
+    private BigDecimal dockingFine = BigDecimal.ZERO;
+    /** Abfahrts-Strafe (Ablege-Minispiel fehlgeschlagen) */
+    private BigDecimal departureDockingFine = BigDecimal.ZERO;
 
     private Travel(UUID travelId, UUID playerShipId, UUID playerId, UUID sessionId,
                    UUID originPortId, UUID destinationPortId,
                    double distance, double speedSetting, double riskFactor, BigDecimal baseReward,
                    TravelStatus travelStatus, Instant startedAt, Instant arrivedAt,
-                   double fuelConsumed, int startTick, int arrivalTick) {
+                   double fuelConsumed, int startTick, int arrivalTick,
+                   BigDecimal departureDockingFine, BigDecimal dockingFine) {
         this.travelId = travelId;
         this.playerShipId = playerShipId;
         this.playerId = playerId;
@@ -48,6 +53,8 @@ public class Travel {
         this.fuelConsumed = fuelConsumed;
         this.startTick = startTick;
         this.arrivalTick = arrivalTick;
+        this.departureDockingFine = departureDockingFine != null ? departureDockingFine : BigDecimal.ZERO;
+        this.dockingFine = dockingFine != null ? dockingFine : BigDecimal.ZERO;
     }
 
     public static Travel start(UUID playerShipId, UUID playerId, UUID sessionId,
@@ -85,7 +92,7 @@ public class Travel {
                 distance, speedSetting, riskFactor, baseReward,
                 TravelStatus.IN_PROGRESS,
                 Instant.now(), null, 0.0,
-                effectiveStartTick, arrivalTick
+                effectiveStartTick, arrivalTick, BigDecimal.ZERO, BigDecimal.ZERO
         );
     }
 
@@ -94,12 +101,21 @@ public class Travel {
                                      double distance, double speedSetting, double riskFactor,
                                      BigDecimal baseReward, TravelStatus travelStatus,
                                      Instant startedAt, Instant arrivedAt, double fuelConsumed,
-                                     int startTick, int arrivalTick) {
+                                     int startTick, int arrivalTick,
+                                     BigDecimal departureDockingFine, BigDecimal dockingFine) {
         return new Travel(travelId, playerShipId, playerId, sessionId,
                 originPortId, destinationPortId,
                 distance, speedSetting, riskFactor, baseReward,
                 travelStatus, startedAt, arrivedAt, fuelConsumed,
-                startTick, arrivalTick);
+                startTick, arrivalTick, departureDockingFine, dockingFine);
+    }
+
+    public void markDockingFailure(BigDecimal fine) {
+        this.dockingFine = fine != null ? fine : BigDecimal.ZERO;
+    }
+
+    public void markDepartureDockingFailure(BigDecimal fine) {
+        this.departureDockingFine = fine != null ? fine : BigDecimal.ZERO;
     }
 
     public void markAsArrived(double fuelConsumed, TravelStatus travelStatus) {
@@ -205,5 +221,13 @@ public class Travel {
 
     public void shiftArrivalTick(int additionalTicks) {
         this.arrivalTick = this.arrivalTick + additionalTicks;
+    }
+
+    public BigDecimal getDockingFine() {
+        return dockingFine != null ? dockingFine : BigDecimal.ZERO;
+    }
+
+    public BigDecimal getDepartureDockingFine() {
+        return departureDockingFine != null ? departureDockingFine : BigDecimal.ZERO;
     }
 }

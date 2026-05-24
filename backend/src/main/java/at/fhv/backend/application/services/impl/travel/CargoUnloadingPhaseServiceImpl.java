@@ -84,7 +84,11 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             smuggleReward = smuggleReward.add(smuggleOffer.getReward());
         }
 
-        BigDecimal totalReward = cargoReward.add(totalBonus).add(smuggleReward);
+        BigDecimal grossReward = cargoReward.add(totalBonus).add(smuggleReward);
+        BigDecimal arrivalFine = travel.getDockingFine();
+        BigDecimal departureFine = travel.getDepartureDockingFine();
+        BigDecimal totalFine = departureFine.add(arrivalFine);
+        BigDecimal netReward = grossReward.subtract(totalFine).max(BigDecimal.ZERO);
 
         BigDecimal previousBalance = BigDecimal.ZERO;
         BigDecimal newBalance = BigDecimal.ZERO;
@@ -99,15 +103,15 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
 
             if (player != null) {
                 previousBalance = player.getBalance();
-                if (totalReward.compareTo(BigDecimal.ZERO) > 0) {
-                    player.addBalance(totalReward);
+                if (netReward.compareTo(BigDecimal.ZERO) > 0) {
+                    player.addBalance(netReward);
                 }
                 newBalance = player.getBalance();
                 gameSessionRepository.save(session);
             }
         }
 
-        sendUnloadingCompleteEvent(travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffers, bonusPerCargo, totalBonus);
+        sendUnloadingCompleteEvent(travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffers, bonusPerCargo, totalBonus, departureFine, arrivalFine, netReward);
 
         if (!smuggleOffers.isEmpty()) {
             smuggleService.clearAcceptedOffer(playerId);
@@ -128,7 +132,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         travel.markAsCompleted();
         travelRepository.save(travel);
 
-        return totalReward;
+        return netReward;
     }
 
     @Override
@@ -167,7 +171,9 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                                             List<SessionCargo> cargosForPlayer,
                                             BigDecimal previousBalance, BigDecimal newBalance,
                                             List<SmuggleOffer> smuggleOffers,
-                                            Map<UUID, BigDecimal> bonusPerCargo, BigDecimal totalBonus) {
+                                            Map<UUID, BigDecimal> bonusPerCargo, BigDecimal totalBonus,
+                                            BigDecimal departureDockingFine, BigDecimal dockingFine,
+                                            BigDecimal netReward) {
         try {
             PortId destinationPortId = PortId.of(travel.getDestinationPortId());
             Port destinationPort = portRepository.findById(destinationPortId).orElse(null);
@@ -224,20 +230,17 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
 
             BigDecimal baseReward = travel.getBaseReward() != null ? travel.getBaseReward() : BigDecimal.ZERO;
 
-            BigDecimal totalReward = BigDecimal.ZERO;
-            for (CargoRewardBreakdown breakdown : cargoRewards) {
-                totalReward = totalReward.add(breakdown.getActualReward());
-            }
-
             TravelCompleteEvent event = new TravelCompleteEvent(
                     travel.getTravelId().toString(),
                     playerId.toString(),
                     cargoRewards,
                     baseReward,
-                    totalReward,
+                    netReward,
                     totalBonus,
                     previousBalance,
-                    newBalance
+                    newBalance,
+                    departureDockingFine,
+                    dockingFine
             );
 
             webSocketController.broadcastTravelComplete(

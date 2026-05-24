@@ -39,4 +39,7 @@ export interface AssignedCargoEntry {
     startTick?: number;
     unloadingStartTick?: number;
     paused?: boolean;
+    pilotageUsed?: boolean;
+    dockingFine?: number;
+    departureDockingFine?: number;
 }

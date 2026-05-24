@@ -25,6 +25,8 @@ public class TravelMapper implements  EntityMapper<Travel, TravelEntity> {
         entity.setFuelConsumed(travel.getFuelConsumed());
         entity.setStartTick(travel.getStartTick());
         entity.setArrivalTick(travel.getArrivalTick());
+        entity.setDepartureDockingFine(travel.getDepartureDockingFine());
+        entity.setDockingFine(travel.getDockingFine());
         return entity;
     }
 
@@ -46,7 +48,9 @@ public class TravelMapper implements  EntityMapper<Travel, TravelEntity> {
                 entity.getArrivedAt(),
                 entity.getFuelConsumed(),
                 entity.getStartTick(),
-                entity.getArrivalTick()
+                entity.getArrivalTick(),
+                entity.getDepartureDockingFine(),
+                entity.getDockingFine()
         );
     }
 }

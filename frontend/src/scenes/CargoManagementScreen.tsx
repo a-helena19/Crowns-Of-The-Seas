@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import LoadingScreen from "./LoadingScreen";
 import backIcon from "../assets/goback.png";
 import background from "../assets/background-cargomanagement.png";
@@ -6,6 +6,7 @@ import "../style/harbor.css";
 import "../style/cargoManagement.css";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
 import DepartureAnimation from "./DepartureAnimation";
+import DockingMiniGame from "./DockingMiniGame";
 
 function StaticProgressBar({ pct, color }: { pct: number; color: string }) {
     const clamped = Math.min(100, Math.max(0, pct));
@@ -28,6 +29,7 @@ interface CargoManagementScreenProps {
     onCargoLoadingDone: (cargoId: string) => void;
     onCargoRemoved: (cargoId: string) => void;
     onCargoPhaseChange: (cargoId: string, phase: AssignedCargoEntry["phase"], travelId?: string) => void;
+    onTravelStarted?: (cargoId: string, pilotageUsed: boolean) => void;
     onClose: () => void;
     onDepartureStarted?: () => void;
     onDepartureComplete?: () => void;
@@ -38,6 +40,7 @@ export default function CargoManagementScreen({
                                                   onCargoLoadingDone,
                                                   onCargoRemoved,
                                                   onCargoPhaseChange,
+                                                  onTravelStarted,
                                                   onClose,
                                                   onDepartureStarted,
                                                   onDepartureComplete,
@@ -49,6 +52,8 @@ export default function CargoManagementScreen({
     const [startingMap, setStartingMap] = useState<Record<string, boolean>>({});
     const [errorMap, setErrorMap] = useState<Record<string, string>>({});
     const [showDeparture, setShowDeparture] = useState<AssignedCargoEntry | null>(null);
+    const [showDockingGame, setShowDockingGame] = useState<AssignedCargoEntry | null>(null);
+    const pilotageUsedMap = useRef<Record<string, boolean>>({});
 
     const [, setRenderTick] = useState(0);
     useEffect(() => {
@@ -107,8 +112,9 @@ export default function CargoManagementScreen({
         return 0;
     }
 
-    const handleStartTravel = useCallback(async (entry: AssignedCargoEntry) => {
+    const handleStartTravel = useCallback(async (entry: AssignedCargoEntry, miniGameFailed: boolean) => {
         if (!playerId || !sessionId) return;
+        pilotageUsedMap.current[entry.cargoId] = pilotageMap[entry.cargoId] ?? false;
         setStartingMap(m => ({ ...m, [entry.cargoId]: true }));
         setErrorMap(m => ({ ...m, [entry.cargoId]: "" }));
 
@@ -132,14 +138,22 @@ export default function CargoManagementScreen({
                         sessionCargoId: entry.cargoId,
                         speedSetting: entry.speedSetting,
                         pilotageService: pilotageMap[entry.cargoId] ?? false,
+                        miniGameFailedDeparture: miniGameFailed,
                     }),
                 });
 
                 if (response.ok) {
                     const data = await response.json() as { travelId?: string };
                     window.dispatchEvent(new CustomEvent("player-balance-updated"));
-                    setShowDeparture(entry);
+                    if (pilotageUsedMap.current[entry.cargoId]) {
+                        setShowDeparture(entry);
+                        // DepartureAnimation ruft am Ende onDepartureComplete auf
+                    } else {
+                        // Kein Lotse → kein Animation → sofort zur Weltkarte zurückkehren
+                        onDepartureComplete?.();
+                    }
                     onCargoPhaseChange(entry.cargoId, "en_route", data.travelId);
+                    onTravelStarted?.(entry.cargoId, pilotageMap[entry.cargoId] ?? false);
                     return;
                 }
 
@@ -179,7 +193,29 @@ export default function CargoManagementScreen({
         } finally {
             setStartingMap(m => ({ ...m, [entry.cargoId]: false }));
         }
-    }, [playerId, sessionId, token, pilotageMap, onDepartureStarted, onDepartureComplete, onCargoPhaseChange]);
+    }, [playerId, sessionId, token, pilotageMap, onDepartureStarted, onDepartureComplete, onCargoPhaseChange, onTravelStarted]);
+
+    const handleDepartButton = useCallback((entry: AssignedCargoEntry) => {
+        if (pilotageMap[entry.cargoId]) {
+            handleStartTravel(entry, false);
+        } else {
+            setShowDockingGame(entry);
+        }
+    }, [pilotageMap, handleStartTravel]);
+
+    const handleDockingSuccess = useCallback(() => {
+        if (!showDockingGame) return;
+        const entry = showDockingGame;
+        setShowDockingGame(null);
+        handleStartTravel(entry, false);
+    }, [showDockingGame, handleStartTravel]);
+
+    const handleDockingFailure = useCallback(async () => {
+        if (!showDockingGame) return;
+        const entry = showDockingGame;
+        setShowDockingGame(null);
+        handleStartTravel(entry, true);
+    }, [showDockingGame, handleStartTravel]);
 
     const handleDepartureComplete = useCallback(() => {
         setShowDeparture(null);
@@ -278,7 +314,7 @@ export default function CargoManagementScreen({
                                         )}
                                         <button
                                             className="game-btn danger"
-                                            onClick={() => handleStartTravel(selectedEntry)}
+                                            onClick={() => handleDepartButton(selectedEntry)}
                                             disabled={startingMap[selectedEntry.cargoId]}
                                         >
                                             {startingMap[selectedEntry.cargoId]
@@ -372,7 +408,10 @@ export default function CargoManagementScreen({
                             const allRewards = selectedEntry.cargoRewards ?? [];
                             const cargoItems = allRewards.filter(r => r.cargoType !== "SMUGGLE");
                             const smuggleItem = allRewards.find(r => r.cargoType === "SMUGGLE");
-                            const isPerfect = cargoItems.every(r => r.percentage >= 100);
+                            const dockingFine = selectedEntry.dockingFine ?? 0;
+                            const departureDockingFine = selectedEntry.departureDockingFine ?? 0;
+                            const hasDockingPenalty = dockingFine > 0 || departureDockingFine > 0;
+                            const isPerfect = cargoItems.every(r => r.percentage >= 100) && !hasDockingPenalty;
                             return (
                                 <div className="cm-reward-panel">
                                     <div className="cm-reward-header">
@@ -440,6 +479,18 @@ export default function CargoManagementScreen({
                                                 <span>+{smuggleItem.actualReward.toLocaleString("de-DE")}T</span>
                                             </div>
                                         )}
+                                        {departureDockingFine > 0 && (
+                                            <div className="cm-reward-row warn">
+                                                <span>⚠ Ablege-Schaden (Kollision)</span>
+                                                <span className="cm-reward-row-value">-{departureDockingFine.toLocaleString("de-DE")}T</span>
+                                            </div>
+                                        )}
+                                        {dockingFine > 0 && (
+                                            <div className="cm-reward-row warn">
+                                                <span>⚠ Anlege-Schaden (Kollision)</span>
+                                                <span className="cm-reward-row-value">-{dockingFine.toLocaleString("de-DE")}T</span>
+                                            </div>
+                                        )}
                                         <div className="cm-reward-row total">
                                             <span>Gesamt</span>
                                             <span className="cm-reward-row-value">
@@ -465,6 +516,16 @@ export default function CargoManagementScreen({
                 <DepartureAnimation
                     shipIconUrl={showDeparture.shipIconUrl ?? "/fallback-ship.png"}
                     onComplete={handleDepartureComplete}
+                />
+            )}
+
+            {showDockingGame && (
+                <DockingMiniGame
+                    mode="departure"
+                    shipIconUrl={showDockingGame.shipIconUrl ?? '/fallback-ship.png'}
+                    portName={showDockingGame.from}
+                    onSuccess={handleDockingSuccess}
+                    onFailure={handleDockingFailure}
                 />
             )}
         </div>

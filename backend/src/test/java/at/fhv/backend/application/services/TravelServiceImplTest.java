@@ -12,6 +12,7 @@ import at.fhv.backend.application.services.impl.session.GameTickScheduler;
 import at.fhv.backend.application.services.impl.travel.StartTravelServiceImpl;
 import at.fhv.backend.application.services.impl.travel.ValidateTravelServiceImpl;
 import at.fhv.backend.application.services.travel.CalculateFuelConsumptionService;
+import at.fhv.backend.application.services.travel.DockingPenaltyService;
 import at.fhv.backend.application.services.travel.ValidateTravelService;
 import at.fhv.backend.domain.model.exception.InvalidShipStatusTransition;
 import at.fhv.backend.domain.model.exception.SamePortException;
@@ -167,6 +168,7 @@ class TravelServiceImplTest {
         @Mock private PortDistanceForCargoService portDistanceForCargoService;
         @Mock private SessionPlayerRepository sessionPlayerRepository;
         @Mock private SmuggleService smuggleService;
+        @Mock private DockingPenaltyService dockingPenaltyService;
 
 
         private StartTravelServiceImpl service;
@@ -179,7 +181,8 @@ class TravelServiceImplTest {
                     travelRepository, travelResponseMapper,
                     gameSessionRepository, gameTickScheduler,
                     sessionCargoRepository, cargoWebSocketController,
-                    portDistanceForCargoService, sessionPlayerRepository, smuggleService
+                    portDistanceForCargoService, sessionPlayerRepository, smuggleService,
+                    dockingPenaltyService
             );
         }
 
