@@ -23,7 +23,7 @@ public class Travel {
     private final Instant startedAt;
     private Instant arrivedAt;
     private double fuelConsumed;
-    private final int startTick;
+    private int startTick;
     private int arrivalTick;
     private double loadingDurationSeconds;
 
@@ -59,20 +59,12 @@ public class Travel {
                 distance, speedSetting, riskFactor, baseReward, currentTick, 0);
     }
 
-    /**
-     * @param startTickDelay extra ticks before {@code startTick}; progress stays at 0 until then.
-     */
     public static Travel start(UUID playerShipId, UUID playerId, UUID sessionId,
                                UUID originPortId, UUID destinationPortId,
                                double distance, double speedSetting,
                                double riskFactor, BigDecimal baseReward,
                                int currentTick, int startTickDelay) {
-        if (originPortId.equals(destinationPortId)) {
-            throw new SamePortException("Same port", originPortId);
-        }
-        if (distance <= 0) {
-            throw new InvalidTravelDataException("Distance must be more than 0", "distance", destinationPortId);
-        }
+        validate(originPortId, destinationPortId, distance);
 
         int durationTicks = (int) Math.ceil(distance / Math.max(speedSetting, 0.01));
         int effectiveStartTick = currentTick + Math.max(0, startTickDelay);
@@ -87,6 +79,52 @@ public class Travel {
                 Instant.now(), null, 0.0,
                 effectiveStartTick, arrivalTick
         );
+    }
+
+    public static Travel plan(UUID playerShipId, UUID playerId, UUID sessionId,
+                              UUID originPortId, UUID destinationPortId,
+                              double distance, double speedSetting,
+                              double riskFactor, BigDecimal baseReward,
+                              int currentTick, int startTickDelay) {
+        validate(originPortId, destinationPortId, distance);
+
+        int durationTicks = (int) Math.ceil(distance / Math.max(speedSetting, 0.01));
+        int effectiveStartTick = currentTick + Math.max(0, startTickDelay);
+        int arrivalTick = effectiveStartTick + durationTicks;
+
+        return new Travel(
+                UUID.randomUUID(),
+                playerShipId, playerId, sessionId,
+                originPortId, destinationPortId,
+                distance, speedSetting, riskFactor, baseReward,
+                TravelStatus.PLANNED,
+                Instant.now(), null, 0.0,
+                effectiveStartTick, arrivalTick
+        );
+    }
+
+    public void activate(int currentTick, int startTickDelay) {
+        if (this.travelStatus != TravelStatus.PLANNED) {
+            throw new InvalidTravelStateException(
+                    "Only PLANNED travels can be activated",
+                    this.travelStatus
+            );
+        }
+        int durationTicks = (int) Math.ceil(this.distance / Math.max(this.speedSetting, 0.01));
+        int effectiveStartTick = currentTick + Math.max(0, startTickDelay);
+
+        this.startTick = effectiveStartTick;
+        this.arrivalTick = effectiveStartTick + durationTicks;
+        this.travelStatus = TravelStatus.IN_PROGRESS;
+    }
+
+    private static void validate(UUID originPortId, UUID destinationPortId, double distance) {
+        if (originPortId.equals(destinationPortId)) {
+            throw new SamePortException("Same port", originPortId);
+        }
+        if (distance <= 0) {
+            throw new InvalidTravelDataException("Distance must be more than 0", "distance", destinationPortId);
+        }
     }
 
     public static Travel reconstruct(UUID travelId, UUID playerShipId, UUID playerId, UUID sessionId,
@@ -127,6 +165,21 @@ public class Travel {
             throw new InvalidTravelStateException("Only PLANNED or IN_PROGRESS travels can be cancelled.", travelStatus);
         }
         this.travelStatus = TravelStatus.CANCELLED;
+    }
+
+
+
+    public double getProgress(int currentTick) {
+        if (arrivalTick <= startTick) return 1.0;
+        double raw = (double) (currentTick - startTick) / (arrivalTick - startTick);
+        return Math.max(0.0, Math.min(1.0, raw));
+    }
+
+    public double getLoadingDurationSeconds() { return loadingDurationSeconds; }
+    public void setLoadingDurationSeconds(double loadingDurationSeconds) { this.loadingDurationSeconds = loadingDurationSeconds; }
+
+    public void shiftArrivalTick(int additionalTicks) {
+        this.arrivalTick = this.arrivalTick + additionalTicks;
     }
 
     public UUID getTravelId() {
@@ -191,23 +244,5 @@ public class Travel {
 
     public int getArrivalTick() {
         return arrivalTick;
-    }
-
-    public double getProgress(int currentTick) {
-        if (arrivalTick <= startTick) return 1.0;
-        double raw = (double) (currentTick - startTick) / (arrivalTick - startTick);
-        return Math.max(0.0, Math.min(1.0, raw));
-    }
-
-    public double getLoadingDurationSeconds() {
-        return loadingDurationSeconds;
-    }
-
-    public void setLoadingDurationSeconds(double loadingDurationSeconds) {
-        this.loadingDurationSeconds = loadingDurationSeconds;
-    }
-
-    public void shiftArrivalTick(int additionalTicks) {
-        this.arrivalTick = this.arrivalTick + additionalTicks;
     }
 }

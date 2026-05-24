@@ -2,8 +2,10 @@ package at.fhv.backend.application.services;
 
 import at.fhv.backend.application.dtos.mapper.TravelResponseMapper;
 import at.fhv.backend.application.services.cargo.PortDistanceForCargoService;
+import at.fhv.backend.application.services.impl.travel.PendingTravelStartServiceImpl;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
+import at.fhv.backend.application.services.travel.PendingTravelStartService;
 import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.rest.CargoWebSocketController;
 import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
@@ -167,6 +169,7 @@ class TravelServiceImplTest {
         @Mock private PortDistanceForCargoService portDistanceForCargoService;
         @Mock private SessionPlayerRepository sessionPlayerRepository;
         @Mock private SmuggleService smuggleService;
+        @Mock private PendingTravelStartServiceImpl pendingTravelStartService;
 
 
         private StartTravelServiceImpl service;
@@ -179,7 +182,7 @@ class TravelServiceImplTest {
                     travelRepository, travelResponseMapper,
                     gameSessionRepository, gameTickScheduler,
                     sessionCargoRepository, cargoWebSocketController,
-                    portDistanceForCargoService, sessionPlayerRepository, smuggleService
+                    portDistanceForCargoService, sessionPlayerRepository, smuggleService, pendingTravelStartService
             );
         }
 

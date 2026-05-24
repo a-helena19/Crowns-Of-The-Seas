@@ -7,6 +7,7 @@ import at.fhv.backend.application.services.impl.travel.TravelArrivalServiceImpl;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
+import at.fhv.backend.application.services.travel.UnloadingStartService;
 import at.fhv.backend.domain.model.cargo.*;
 import at.fhv.backend.domain.model.customs.CustomsInspection;
 import at.fhv.backend.domain.model.player.BaseSessionPlayer;
@@ -196,14 +197,14 @@ class TravelCompletionServiceTest {
         @Mock private CargoUnloadingPhaseService cargoUnloadingPhaseService;
         @Mock private SessionCargoRepository sessionCargoRepository;
         @Mock private CustomsService customsService;
+        @Mock private UnloadingStartService unloadingStartService;
 
         private TravelArrivalServiceImpl service;
 
         @BeforeEach
         void setUp() {
             service = new TravelArrivalServiceImpl(
-                    travelRepository, playerShipRepository, sessionCargoRepository,
-                    cargoUnloadingPhaseService, gameSessionRepository, customsService
+                    travelRepository, playerShipRepository, customsService, unloadingStartService
             );
         }
 
@@ -361,8 +362,7 @@ class TravelCompletionServiceTest {
                     .thenReturn(null);
 
             // Default: no smuggle offers
-            when(smuggleService.getAllAcceptedOffers(any(UUID.class)))
-                    .thenReturn(List.of());
+            // when(smuggleService.getAllAcceptedOffers(any(UUID.class))).thenReturn(List.of());
         }
 
         private PlayerShip buildPlayerShipInUnloading(UUID destinationPortId) {

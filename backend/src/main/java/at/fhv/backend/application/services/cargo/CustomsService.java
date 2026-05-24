@@ -12,4 +12,6 @@ public interface CustomsService {
     CustomsInspection peekByTravelId(UUID travelId);
     CustomsInspection consumeInspection(UUID travelId);
     boolean isAwaitingDecision(UUID travelId);
+    int getBlockExpirationTick(UUID travelId);
+    void clearBlockTracking(UUID travelId);
 }

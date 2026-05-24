@@ -1,10 +1,12 @@
 package at.fhv.backend.application.services.impl.session;
 
 import at.fhv.backend.application.init.CargoSessionInitializer;
+import at.fhv.backend.application.services.cargo.CustomsService;
 import at.fhv.backend.application.services.travel.TravelPauseService;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.TravelArrivalService;
+import at.fhv.backend.application.services.travel.UnloadingStartService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
 import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
@@ -54,6 +56,8 @@ public class GameTickScheduler {
     private final CargoSessionInitializer cargoSessionInitializer;
     private final TravelPauseService travelPauseService;
     private final RatMinigameService ratMinigameService;
+    private final CustomsService customsService;
+    private final UnloadingStartService unloadingStartService;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
     private final Map<UUID, ScheduledFuture<?>> runningTasks = new ConcurrentHashMap<>();
@@ -75,7 +79,8 @@ public class GameTickScheduler {
                              CargoUnloadingPhaseService cargoUnloadingPhaseService,
                              CargoSessionInitializer cargoSessionInitializer,
                              TravelPauseService travelPauseService,
-                             RatMinigameService ratMinigameService) {
+                             RatMinigameService ratMinigameService,
+                             CustomsService customsService, UnloadingStartService unloadingStartService) {
         this.gameSessionRepository = gameSessionRepository;
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
@@ -89,6 +94,8 @@ public class GameTickScheduler {
         this.cargoSessionInitializer = cargoSessionInitializer;
         this.travelPauseService = travelPauseService;
         this.ratMinigameService = ratMinigameService;
+        this.customsService = customsService;
+        this.unloadingStartService = unloadingStartService;
     }
 
 
@@ -158,6 +165,31 @@ public class GameTickScheduler {
                 System.out.println("[GameTick] Ship " + ship.getId()
                         + " repairing completed at tick " + currentTick + " → AT_PORT");
             }
+        }
+    }
+
+    @Transactional
+    public void checkCustomsBlockCompletion(UUID sessionId, int currentTick) {
+        List<Travel> arrivedTravels = travelRepository
+                .findAllBySessionIdAndStatus(sessionId, TravelStatus.ARRIVED);
+
+        for (Travel travel : arrivedTravels) {
+            PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
+            if (ship == null) continue;
+            if (ship.getStatus() != ShipStatus.BLOCKED) continue;
+
+            int expirationTick = customsService.getBlockExpirationTick(travel.getTravelId());
+            if (expirationTick < 0) {
+                continue;
+            }
+            if (currentTick < expirationTick) {
+                continue;
+            }
+
+            unloadingStartService.startUnloadingAfterDetention(travel.getTravelId());
+            customsService.clearBlockTracking(travel.getTravelId());
+            System.out.println("[GameTick] Customs block expired for travel " + travel.getTravelId()
+                    + " — ship now UNLOADING");
         }
     }
 
@@ -262,6 +294,7 @@ public class GameTickScheduler {
             checkLoadingCompletion(sessionId, currentTick);
             checkRefuelingCompletion(sessionId, currentTick);
             checkRepairingCompletion(sessionId, currentTick);
+            checkCustomsBlockCompletion(sessionId, currentTick);
             handleUnloadingPhase(sessionId, currentTick);
 
             List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
@@ -369,6 +402,7 @@ public class GameTickScheduler {
                         case UNLOADING       -> "UNLOADING";
                         case REFUELING       -> "REFUELING";
                         case REPAIRING       -> "REPAIRING";
+                        case BLOCKED         -> "BLOCKED";
                         default              -> "AT_PORT";
                     };
 

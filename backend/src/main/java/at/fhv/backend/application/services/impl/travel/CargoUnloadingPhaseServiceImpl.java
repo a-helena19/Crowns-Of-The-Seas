@@ -1,8 +1,8 @@
 package at.fhv.backend.application.services.impl.travel;
 
 import at.fhv.backend.application.services.cargo.CustomsService;
-import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
+import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.RewardCalculationService;
 import at.fhv.backend.domain.model.cargo.Cargo;
@@ -11,10 +11,12 @@ import at.fhv.backend.domain.model.cargo.CargoStatus;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
 import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
 import at.fhv.backend.domain.model.customs.CustomsInspection;
+import at.fhv.backend.domain.model.customs.CustomsInspectionOutcome;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.port.Port;
 import at.fhv.backend.domain.model.port.PortId;
 import at.fhv.backend.domain.model.port.PortRepository;
+import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
@@ -29,10 +31,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseService {
+
+    private static final String SMUGGLE_DISPLAY_NAME = "Mysteriöse Kiste";
+
     private final SessionCargoRepository sessionCargoRepository;
     private final PlayerShipRepository playerShipRepository;
     private final GameSessionRepository gameSessionRepository;
@@ -84,42 +93,39 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         }
 
         markCargosAsDelivered(travel, cargosForPlayer);
-
         BigDecimal cargoReward = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
         CustomsInspection inspection = customsService.consumeInspection(travel.getTravelId());
-        BigDecimal customsFine = inspection != null ? inspection.getFinePaid() : BigDecimal.ZERO;
         boolean smuggleConfiscated = inspection != null
-                && (inspection.getOutcome() == at.fhv.backend.domain.model.customs.CustomsInspectionOutcome.COOPERATED
-                || inspection.getOutcome() == at.fhv.backend.domain.model.customs.CustomsInspectionOutcome.BRIBE_FAILED);
+                && (inspection.getOutcome() == CustomsInspectionOutcome.COOPERATED
+                || inspection.getOutcome() == CustomsInspectionOutcome.BRIBE_FAILED);
 
         BigDecimal smuggleReward = BigDecimal.ZERO;
-        List<SmuggleOffer> smuggleOffers = smuggleService.getAllAcceptedOffers(travel.getPlayerId());
-        if (!smuggleConfiscated) {
-            for (SmuggleOffer smuggleOffer : smuggleOffers) {
-                smuggleReward = smuggleReward.add(smuggleOffer.getReward());
-            }
-        } else {
-            System.out.println("[CargoUnloading] Smuggle reward forfeited — customs confiscated the cargo");
+        SmuggleOffer acceptedOffer = smuggleService.getAcceptedOfferForTravel(travel.getTravelId());
+        if (acceptedOffer != null && !smuggleConfiscated) {
+            smuggleReward = acceptedOffer.getReward();
+        } else if (acceptedOffer != null) {
+            System.out.println("[CargoUnloading] Smuggle reward forfeited — customs confiscated for travel "
+                    + travel.getTravelId());
         }
 
         BigDecimal totalReward = cargoReward.add(totalBonus).add(smuggleReward);
         totalReward = ratMinigameService.applyRewardModifier(travel.getTravelId(), totalReward);
 
-        BigDecimal payout = totalReward.subtract(customsFine);
-        if (payout.compareTo(BigDecimal.ZERO) < 0) {
-            payout = BigDecimal.ZERO;
-        }
+        BigDecimal payout = totalReward.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : totalReward;
 
         BigDecimal previousBalance = BigDecimal.ZERO;
         BigDecimal newBalance = BigDecimal.ZERO;
 
         UUID playerId = travel.getPlayerId();
-        var session = gameSessionRepository.findById(travel.getSessionId()).orElse(null);
+        GameSession session = gameSessionRepository.findById(travel.getSessionId()).orElse(null);
         if (session != null) {
-            ISessionPlayer player = session.getPlayers().stream()
-                    .filter(p -> p.getUserId().equals(playerId))
-                    .findFirst()
-                    .orElse(null);
+            ISessionPlayer player = null;
+            for (ISessionPlayer p : session.getPlayers()) {
+                if (p.getUserId().equals(playerId)) {
+                    player = p;
+                    break;
+                }
+            }
 
             if (player != null) {
                 previousBalance = player.getBalance();
@@ -132,12 +138,12 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         }
 
         sendUnloadingCompleteEvent(
-                travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffers,
-                bonusPerCargo, totalBonus, payout, inspection, smuggleConfiscated
+                travel, playerId, cargosForPlayer, previousBalance, newBalance,
+                acceptedOffer, bonusPerCargo, totalBonus, payout, inspection, smuggleConfiscated
         );
 
-        if (!smuggleOffers.isEmpty()) {
-            smuggleService.clearAcceptedOffer(playerId);
+        if (acceptedOffer != null) {
+            smuggleService.clearAcceptedOfferForTravel(travel.getTravelId());
         }
 
         for (SessionCargo cargo : cargosForPlayer) {
@@ -188,12 +194,10 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         return isForThisShipAndPort && isAssignedOrExpired;
     }
 
-    private static final String SMUGGLE_DISPLAY_NAME = "Mysteriöse Kiste";
-
     private void sendUnloadingCompleteEvent(Travel travel, UUID playerId,
                                             List<SessionCargo> cargosForPlayer,
                                             BigDecimal previousBalance, BigDecimal newBalance,
-                                            List<SmuggleOffer> smuggleOffers,
+                                            SmuggleOffer acceptedOffer,
                                             Map<UUID, BigDecimal> bonusPerCargo, BigDecimal totalBonus,
                                             BigDecimal finalTotalReward,
                                             CustomsInspection inspection,
@@ -203,54 +207,53 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             Port destinationPort = portRepository.findById(destinationPortId).orElse(null);
             String destinationPortName = destinationPort != null ? destinationPort.getName() : "Unknown Port";
 
-            List<CargoRewardBreakdown> cargoRewards = new ArrayList<>(cargosForPlayer.stream()
-                    .filter(sessionCargo -> {
-                        boolean isForThisPort = sessionCargo.getDestinationPortId()
-                                .equals(travel.getDestinationPortId());
-                        boolean isDeliveredOrExpired =
-                                sessionCargo.getCargoStatus() == CargoStatus.DELIVERED
-                                        || sessionCargo.getCargoStatus() == CargoStatus.EXPIRED;
-                        return isForThisPort && isDeliveredOrExpired;
-                    })
-                    .map(sessionCargo -> {
-                        BigDecimal cargoBase = rewardCalculationService.calculateCargoReward(sessionCargo);
-                        BigDecimal bonus = bonusPerCargo.getOrDefault(sessionCargo.getId(), BigDecimal.ZERO);
-                        BigDecimal actualReward = cargoBase.add(bonus);
-                        int percentage = sessionCargo.getCargoStatus() == CargoStatus.DELIVERED
-                                ? 100
-                                : calculateExpiredPercentage(sessionCargo.getCargoType());
+            List<CargoRewardBreakdown> cargoRewards = new ArrayList<>();
+            for (SessionCargo sessionCargo : cargosForPlayer) {
+                boolean isForThisPort = sessionCargo.getDestinationPortId()
+                        .equals(travel.getDestinationPortId());
+                boolean isDeliveredOrExpired =
+                        sessionCargo.getCargoStatus() == CargoStatus.DELIVERED
+                                || sessionCargo.getCargoStatus() == CargoStatus.EXPIRED;
+                if (!(isForThisPort && isDeliveredOrExpired)) {
+                    continue;
+                }
+                BigDecimal cargoBase = rewardCalculationService.calculateCargoReward(sessionCargo);
+                BigDecimal bonus = bonusPerCargo.getOrDefault(sessionCargo.getId(), BigDecimal.ZERO);
+                BigDecimal actualReward = cargoBase.add(bonus);
+                int percentage = sessionCargo.getCargoStatus() == CargoStatus.DELIVERED
+                        ? 100
+                        : calculateExpiredPercentage(sessionCargo.getCargoType());
 
-                        Cargo cargo = cargoRepository.findById(sessionCargo.getCargoId()).orElse(null);
-                        String cargoName = cargo != null ? cargo.getName() : "Unknown Cargo";
+                Cargo cargo = cargoRepository.findById(sessionCargo.getCargoId()).orElse(null);
+                String cargoName = cargo != null ? cargo.getName() : "Unknown Cargo";
 
-                        return new CargoRewardBreakdown(
-                                sessionCargo.getId().toString(),
-                                cargoName,
-                                destinationPortName,
-                                sessionCargo.getReward(),
-                                actualReward,
-                                bonus,
-                                percentage,
-                                sessionCargo.getCargoStatus().toString(),
-                                sessionCargo.getCargoType().toString()
-                        );
-                    })
-                    .toList());
+                cargoRewards.add(new CargoRewardBreakdown(
+                        sessionCargo.getId().toString(),
+                        cargoName,
+                        destinationPortName,
+                        sessionCargo.getReward(),
+                        actualReward,
+                        bonus,
+                        percentage,
+                        sessionCargo.getCargoStatus().toString(),
+                        sessionCargo.getCargoType().toString()
+                ));
+            }
 
-            for (SmuggleOffer smuggleOffer : smuggleOffers) {
+            if (acceptedOffer != null) {
                 String displayName = smuggleConfiscated
                         ? SMUGGLE_DISPLAY_NAME + " (Konfisziert)"
                         : SMUGGLE_DISPLAY_NAME;
                 BigDecimal actualSmuggleReward = smuggleConfiscated
                         ? BigDecimal.ZERO
-                        : smuggleOffer.getReward();
+                        : acceptedOffer.getReward();
                 String smuggleStatus = smuggleConfiscated ? "CONFISCATED" : "DELIVERED";
 
                 cargoRewards.add(new CargoRewardBreakdown(
-                        smuggleOffer.getId().toString(),
+                        acceptedOffer.getId().toString(),
                         displayName,
                         destinationPortName,
-                        smuggleOffer.getReward(),
+                        acceptedOffer.getReward(),
                         actualSmuggleReward,
                         BigDecimal.ZERO,
                         smuggleConfiscated ? 0 : 100,
@@ -266,6 +269,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                 customsSummary = new CustomsSummary(
                         inspection.getOutcome() != null ? inspection.getOutcome().name() : "CLEARED",
                         inspection.getFinePaid(),
+                        inspection.getBribePaid(),
+                        inspection.isBribeAttempted(),
                         inspection.isDetained(),
                         inspection.isDetained() ? inspection.getDetentionTicks() : 0,
                         inspection.isCarryingIllegalCargo()

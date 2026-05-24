@@ -15,6 +15,8 @@ interface CargoRewardBreakdown {
 export interface CustomsSummary {
     outcome: "CLEARED" | "HIDDEN" | "COOPERATED" | "BRIBE_SUCCESS" | "BRIBE_FAILED";
     finePaid: number;
+    bribePaid: number;
+    bribeAttempted: boolean;
     detained: boolean;
     detentionTicks: number;
     wasCarryingIllegalCargo: boolean;
@@ -65,7 +67,7 @@ function describeCustomsOutcome(summary: CustomsSummary): {
                 tone: "good",
                 icon: "💰",
                 title: "Bestechung erfolgreich",
-                description: "Der Zollbeamte hat das Bestechungsgeld angenommen — keine Strafe.",
+                description: `Der Zollbeamte hat ${summary.bribePaid.toLocaleString("de-DE")} T angenommen — keine Strafe.`,
             };
         case "BRIBE_FAILED":
             return {
@@ -73,8 +75,8 @@ function describeCustomsOutcome(summary: CustomsSummary): {
                 icon: "⚠️",
                 title: "Bestechung fehlgeschlagen",
                 description: summary.detained
-                    ? `Strafe verdoppelt, Schiff für ${summary.detentionTicks} Ticks festgehalten.`
-                    : "Strafe verdoppelt.",
+                    ? `Bestechung (${summary.bribePaid.toLocaleString("de-DE")} T) verloren, Strafe verdoppelt, Schiff für ${summary.detentionTicks} Ticks festgehalten.`
+                    : `Bestechung (${summary.bribePaid.toLocaleString("de-DE")} T) verloren, Strafe verdoppelt.`,
             };
     }
 }
@@ -139,6 +141,9 @@ export default function TravelResultScreen({
 
     const customsView = customsSummary ? describeCustomsOutcome(customsSummary) : null;
     const customsFine = customsSummary?.finePaid ?? 0;
+    const customsBribe = customsSummary?.bribePaid ?? 0;
+    const customsTotalOut = customsFine + customsBribe;
+
 
     return (
         <div className="travel-result-overlay">
@@ -189,16 +194,28 @@ export default function TravelResultScreen({
                             <div style={{ fontWeight: 700, fontSize: 17 }}>{customsView.title}</div>
                             <div style={{ fontSize: 14, opacity: 0.85, marginTop: 2 }}>{customsView.description}</div>
                         </div>
-                        {customsFine > 0 && (
+                        {customsTotalOut > 0 && (
                             <div
                                 style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "flex-end",
                                     fontWeight: 700,
-                                    fontSize: 16,
+                                    fontSize: 14,
                                     color: "#a23f3f",
                                     whiteSpace: "nowrap",
+                                    gap: 2,
                                 }}
                             >
-                                -{customsFine.toLocaleString("de-DE")}G
+                                {customsBribe > 0 && (
+                                    <div>Bestechung: -{customsBribe.toLocaleString("de-DE")} T</div>
+                                )}
+                                {customsFine > 0 && (
+                                    <div>Strafe: -{customsFine.toLocaleString("de-DE")} T</div>
+                                )}
+                                <div style={{ borderTop: "1px solid #a23f3f", paddingTop: 2, fontSize: 15 }}>
+                                    Gesamt: -{customsTotalOut.toLocaleString("de-DE")} T
+                                </div>
                             </div>
                         )}
                     </div>
