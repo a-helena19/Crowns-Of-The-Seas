@@ -17,9 +17,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class RegressServiceImpl implements RegressService {
 
-    private static final BigDecimal DELAY_FRACTION_PER_TICK = new BigDecimal("0.08");
+    private static final BigDecimal DELAY_FRACTION_PER_TICK = new BigDecimal("0.03");
     private static final BigDecimal DAMAGE_RATE_PER_PERCENT = new BigDecimal("50");
-    private static final BigDecimal DELAY_FRACTION_CAP = new BigDecimal("0.60");
+    private static final BigDecimal DELAY_FRACTION_CAP = new BigDecimal("0.30");
 
     private final Map<UUID, Double> conditionAtStartByTravelId = new ConcurrentHashMap<>();
     private final Map<UUID, RegressFine> evaluatedFineByTravelId = new ConcurrentHashMap<>();
@@ -189,9 +189,9 @@ public class RegressServiceImpl implements RegressService {
     }
 
     private double pickHighestMultiplier(SpecialCargoFlags flags) {
-        if (flags.hasPerishable) return 2.0;
-        if (flags.hasFragile) return 1.8;
-        if (flags.hasElectronics) return 1.4;
+        if (flags.hasPerishable) return 1.4;
+        if (flags.hasFragile) return 1.3;
+        if (flags.hasElectronics) return 1.15;
         return 1.0;
     }
 
