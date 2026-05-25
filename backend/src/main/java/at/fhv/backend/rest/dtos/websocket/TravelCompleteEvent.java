@@ -21,10 +21,9 @@ public class TravelCompleteEvent {
                                List<CargoRewardBreakdown> cargoRewards,
                                BigDecimal baseReward, BigDecimal totalReward, BigDecimal bonusReward,
                                BigDecimal previousBalance, BigDecimal newBalance,
-                               RatMinigameTravelSummary ratMinigameSummary) {
-                               BigDecimal previousBalance, BigDecimal newBalance,
                                BigDecimal departureDockingFine, BigDecimal dockingFine,
-                               BigDecimal pilotageRefund) {
+                               BigDecimal pilotageRefund,
+                               RatMinigameTravelSummary ratMinigameSummary) {
         this.travelId = travelId;
         this.playerId = playerId;
         this.cargoRewards = cargoRewards;

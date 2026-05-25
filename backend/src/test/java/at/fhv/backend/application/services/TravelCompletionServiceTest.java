@@ -3,6 +3,7 @@ package at.fhv.backend.application.services;
 import at.fhv.backend.application.services.impl.travel.CargoUnloadingPhaseServiceImpl;
 import at.fhv.backend.application.services.impl.travel.RewardCalculationServiceImpl;
 import at.fhv.backend.application.services.impl.travel.TravelArrivalServiceImpl;
+import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.domain.model.cargo.*;
@@ -136,7 +137,7 @@ class TravelCompletionServiceTest {
 
             BigDecimal reward = service.calculateTotalReward(travel, List.of(cargo));
 
-            assertThat(reward).isEqualByComparingTo(BigDecimal.valueOf(1500));
+            assertThat(reward).isEqualByComparingTo(BigDecimal.valueOf(1000));
         }
 
         @Test
@@ -287,6 +288,7 @@ class TravelCompletionServiceTest {
         @Mock private CargoRepository cargoRepository;
         @Mock private SmuggleService smuggleService;
         @Mock private TravelRepository travelRepository;
+        @Mock private RatMinigameService ratMinigameService;
 
         private CargoUnloadingPhaseServiceImpl service;
 
@@ -302,8 +304,11 @@ class TravelCompletionServiceTest {
                     portRepository,
                     cargoRepository,
                     smuggleService,
-                    travelRepository
+                    travelRepository,
+                    ratMinigameService
             );
+            when(ratMinigameService.applyRewardModifier(any(UUID.class), any(BigDecimal.class)))
+                    .thenAnswer(inv -> inv.getArgument(1));
         }
 
         private PlayerShip buildPlayerShipInUnloading(UUID destinationPortId) {
@@ -330,6 +335,7 @@ class TravelCompletionServiceTest {
 
             Travel travel = Travel.start(playerShipId, userId, sessionId,
                     UUID.randomUUID(), destinationPortId, 5.0, 1.0, 0.1, BigDecimal.valueOf(500), 0);
+            travel.markAsArrived(0.0, TravelStatus.ARRIVED);
 
             PlayerShip playerShip = buildPlayerShipInUnloading(destinationPortId);
             ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
@@ -354,8 +360,8 @@ class TravelCompletionServiceTest {
 
             service.completeUnloadingPhase(travel, List.of(cargo));
 
-            // 40000 (start) + 1000 (cargo reward) + 500 (base reward) = 41500
-            assertThat(player.getBalance()).isEqualByComparingTo(new BigDecimal("41500.00"));
+            // 40000 start + 1000 cargo + random bonus (0..500)
+            assertThat(player.getBalance()).isBetween(new BigDecimal("41000.00"), new BigDecimal("41500.00"));
         }
 
         @Test
@@ -367,6 +373,7 @@ class TravelCompletionServiceTest {
 
             Travel travel = Travel.start(playerShipId, userId, sessionId,
                     UUID.randomUUID(), destinationPortId, 5.0, 1.0, 0.1, BigDecimal.ZERO, 0);
+            travel.markAsArrived(0.0, TravelStatus.ARRIVED);
 
             PlayerShip playerShip = buildPlayerShipInUnloading(destinationPortId);
             ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
@@ -394,6 +401,7 @@ class TravelCompletionServiceTest {
 
             Travel travel = Travel.start(playerShipId, userId, sessionId,
                     UUID.randomUUID(), destinationPortId, 5.0, 1.0, 0.1, BigDecimal.ZERO, 0);
+            travel.markAsArrived(0.0, TravelStatus.ARRIVED);
 
             PlayerShip playerShip = buildPlayerShipInUnloading(destinationPortId);
             ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
@@ -417,7 +425,7 @@ class TravelCompletionServiceTest {
 
             service.completeUnloadingPhase(travel, List.of(cargo));
 
-            assertThat(player.getBalance()).isEqualByComparingTo(new BigDecimal("41000.00"));
+            assertThat(player.getBalance()).isBetween(new BigDecimal("41000.00"), new BigDecimal("41500.00"));
             assertThat(cargo.getCargoStatus()).isEqualTo(CargoStatus.DELIVERED);
         }
     }

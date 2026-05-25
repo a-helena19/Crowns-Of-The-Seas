@@ -552,6 +552,14 @@ export default function CargoManagementScreen({
                                                 <span>+{smuggleItem.actualReward.toLocaleString("de-DE")}T</span>
                                             </div>
                                         )}
+                                        {selectedEntry.ratMinigameSummary?.triggered && selectedEntry.ratMinigameSummary.result === "FAILED" && (
+                                            <div className="cm-reward-row warn">
+                                                <span>⚠ Ratten-Event Schaden</span>
+                                                <span className="cm-reward-row-value">
+                                                    -{Math.round(selectedEntry.ratMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                                </span>
+                                            </div>
+                                        )}
                                         {departureDockingFine > 0 && (
                                             <div className="cm-reward-row warn">
                                                 <span>⚠ Ablege-Schaden (Kollision)</span>

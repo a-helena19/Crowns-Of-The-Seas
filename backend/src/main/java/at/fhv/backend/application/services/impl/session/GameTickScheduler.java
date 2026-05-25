@@ -77,8 +77,7 @@ public class GameTickScheduler {
                              CargoUnloadingPhaseService cargoUnloadingPhaseService,
                              CargoSessionInitializer cargoSessionInitializer,
                              TravelPauseService travelPauseService,
-                             RatMinigameService ratMinigameService) {
-                             TravelPauseService travelPauseService,
+                             RatMinigameService ratMinigameService,
                              PilotStrikeService pilotStrikeService) {
         this.gameSessionRepository = gameSessionRepository;
         this.travelRepository = travelRepository;
