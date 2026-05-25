@@ -25,6 +25,11 @@ public class TravelMapper implements  EntityMapper<Travel, TravelEntity> {
         entity.setFuelConsumed(travel.getFuelConsumed());
         entity.setStartTick(travel.getStartTick());
         entity.setArrivalTick(travel.getArrivalTick());
+        entity.setDepartureDockingFine(travel.getDepartureDockingFine());
+        entity.setDockingFine(travel.getDockingFine());
+        entity.setPilotageServiceBooked(travel.isPilotageServiceBooked());
+        entity.setPilotageStrikeRevoked(travel.isPilotageStrikeRevoked());
+        entity.setPilotageRefund(travel.getPilotageRefund());
         return entity;
     }
 
@@ -46,7 +51,12 @@ public class TravelMapper implements  EntityMapper<Travel, TravelEntity> {
                 entity.getArrivedAt(),
                 entity.getFuelConsumed(),
                 entity.getStartTick(),
-                entity.getArrivalTick()
+                entity.getArrivalTick(),
+                entity.getDepartureDockingFine(),
+                entity.getDockingFine(),
+                entity.isPilotageServiceBooked(),
+                entity.isPilotageStrikeRevoked(),
+                entity.getPilotageRefund()
         );
     }
 }

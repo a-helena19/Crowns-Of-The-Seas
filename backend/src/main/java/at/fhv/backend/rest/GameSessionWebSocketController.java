@@ -51,4 +51,8 @@ public class GameSessionWebSocketController {
     public void broadcastRatMinigameEvent(String sessionId, RatMinigameEvent event) {
         messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/rats-event", event);
     }
+
+    public void broadcastPilotStrike(String sessionId, PilotStrikeEvent event) {
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/pilot-strike", event);
+    }
 }

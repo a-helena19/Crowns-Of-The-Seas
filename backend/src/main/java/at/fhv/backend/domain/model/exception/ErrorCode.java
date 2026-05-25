@@ -39,6 +39,8 @@ public enum ErrorCode {
     SMUGGLE_EXPIRED,
     SMUGGLE_NOT_FOUND,
 
+    PILOT_STRIKE_ACTIVE,
+
     // Home Port
     HOME_PORT_NOT_ASSIGNED,
     HOME_PORT_ALREADY_ASSIGNED

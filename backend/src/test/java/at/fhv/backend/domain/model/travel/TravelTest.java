@@ -174,7 +174,8 @@ class TravelTest {
 
         Travel reconstructed = Travel.reconstruct(travelId, playerShipId, playerId, sessionId,
                 originPortId, destinationPortId, 300.0, 0.8, 0.2,
-                new BigDecimal("500.00"), TravelStatus.ARRIVED, started, arrived, 45.0, 0, 10);
+                new BigDecimal("500.00"), TravelStatus.ARRIVED, started, arrived, 45.0, 0, 10,
+                BigDecimal.ZERO, BigDecimal.ZERO);
 
         assertThat(reconstructed.getTravelId()).isEqualTo(travelId);
         assertThat(reconstructed.getPlayerShipId()).isEqualTo(playerShipId);

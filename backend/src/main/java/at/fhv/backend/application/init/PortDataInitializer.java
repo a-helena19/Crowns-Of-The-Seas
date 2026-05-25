@@ -28,7 +28,6 @@ public class PortDataInitializer implements ApplicationRunner {
 
         List<Port> defaultPorts = List.of(
                 Port.create("Hamburg",      Coordinates.of(47.1, 28.6)),
-                Port.create("Rotterdam",    Coordinates.of(46.3, 29.5)),
                 Port.create("New York",     Coordinates.of(26.1, 37.7)),
                 Port.create("Santos",       Coordinates.of(33.9, 71.4)),
                 Port.create("Kapstadt",     Coordinates.of(50.0, 77.1)),

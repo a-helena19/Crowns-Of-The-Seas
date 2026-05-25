@@ -77,6 +77,9 @@ interface TravelCompleteEvent {
     totalReward: number;
     previousBalance: number;
     newBalance: number;
+    dockingFine?: number;
+    departureDockingFine?: number;
+    pilotageRefund?: number;
 }
 
 interface RatMinigameEvent {
@@ -240,6 +243,15 @@ export function useGameSessionWebSocket({
                                 window.dispatchEvent(new CustomEvent('rats-event', { detail: event }));
                             } catch (error) {
                                 console.error('Error parsing rats-event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/pilot-strike`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body);
+                                window.dispatchEvent(new CustomEvent('pilot-strike-update', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing pilot-strike event:', error);
                             }
                         });
 

@@ -95,7 +95,7 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
 
     function handleCargoAccepted(c: {
         id: string; from: string; to: string;
-        weight: number; destinationPortId: string;
+        weight: number; originPortId: string; destinationPortId: string;
         speedSetting: number; loadingDurationSeconds?: number;
     }) {
         if (!selectedShip) return;
@@ -108,6 +108,7 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
             to: c.to,
             weight: c.weight,
             maxCargoCapacity: selectedShip.maxCargoCapacity ?? c.weight,
+            originPortId: c.originPortId,
             destinationPortId: c.destinationPortId,
             speedSetting: c.speedSetting,
             loadingDurationSeconds: c.loadingDurationSeconds ?? 10,

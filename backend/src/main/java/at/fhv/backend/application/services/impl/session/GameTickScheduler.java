@@ -3,6 +3,7 @@ package at.fhv.backend.application.services.impl.session;
 import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.application.services.travel.TravelPauseService;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
+import at.fhv.backend.application.services.pilotstrike.PilotStrikeService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.TravelArrivalService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
@@ -54,6 +55,7 @@ public class GameTickScheduler {
     private final CargoSessionInitializer cargoSessionInitializer;
     private final TravelPauseService travelPauseService;
     private final RatMinigameService ratMinigameService;
+    private final PilotStrikeService pilotStrikeService;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
     private final Map<UUID, ScheduledFuture<?>> runningTasks = new ConcurrentHashMap<>();
@@ -76,6 +78,8 @@ public class GameTickScheduler {
                              CargoSessionInitializer cargoSessionInitializer,
                              TravelPauseService travelPauseService,
                              RatMinigameService ratMinigameService) {
+                             TravelPauseService travelPauseService,
+                             PilotStrikeService pilotStrikeService) {
         this.gameSessionRepository = gameSessionRepository;
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
@@ -89,6 +93,7 @@ public class GameTickScheduler {
         this.cargoSessionInitializer = cargoSessionInitializer;
         this.travelPauseService = travelPauseService;
         this.ratMinigameService = ratMinigameService;
+        this.pilotStrikeService = pilotStrikeService;
     }
 
 
@@ -263,6 +268,7 @@ public class GameTickScheduler {
             checkRefuelingCompletion(sessionId, currentTick);
             checkRepairingCompletion(sessionId, currentTick);
             handleUnloadingPhase(sessionId, currentTick);
+            pilotStrikeService.processTick(sessionId, currentTick);
 
             List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
             for (Travel travel : activeTravels) {

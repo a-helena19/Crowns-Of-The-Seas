@@ -88,6 +88,12 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             smuggleReward = smuggleReward.add(smuggleOffer.getReward());
         }
 
+        BigDecimal grossReward = cargoReward.add(totalBonus).add(smuggleReward);
+        BigDecimal arrivalFine = travel.getDockingFine();
+        BigDecimal departureFine = travel.getDepartureDockingFine();
+        BigDecimal pilotageRefund = travel.getPilotageRefund();
+        BigDecimal totalFine = departureFine.add(arrivalFine);
+        BigDecimal netReward = grossReward.subtract(totalFine).add(pilotageRefund).max(BigDecimal.ZERO);
         BigDecimal totalReward = cargoReward.add(totalBonus).add(smuggleReward);
         totalReward = ratMinigameService.applyRewardModifier(travel.getTravelId(), totalReward);
 
@@ -104,14 +110,15 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
 
             if (player != null) {
                 previousBalance = player.getBalance();
-                if (totalReward.compareTo(BigDecimal.ZERO) > 0) {
-                    player.addBalance(totalReward);
+                if (netReward.compareTo(BigDecimal.ZERO) > 0) {
+                    player.addBalance(netReward);
                 }
                 newBalance = player.getBalance();
                 gameSessionRepository.save(session);
             }
         }
 
+        sendUnloadingCompleteEvent(travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffers, bonusPerCargo, totalBonus, departureFine, arrivalFine, pilotageRefund, netReward);
         sendUnloadingCompleteEvent(
                 travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffers, bonusPerCargo, totalBonus, totalReward
         );
@@ -135,7 +142,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         travel.markAsCompleted();
         travelRepository.save(travel);
 
-        return totalReward;
+        return netReward;
     }
 
     @Override
@@ -176,6 +183,10 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                                             List<SmuggleOffer> smuggleOffers,
                                             Map<UUID, BigDecimal> bonusPerCargo, BigDecimal totalBonus,
                                             BigDecimal finalTotalReward) {
+                                            Map<UUID, BigDecimal> bonusPerCargo, BigDecimal totalBonus,
+                                            BigDecimal departureDockingFine, BigDecimal dockingFine,
+                                            BigDecimal pilotageRefund,
+                                            BigDecimal netReward) {
         try {
             PortId destinationPortId = PortId.of(travel.getDestinationPortId());
             Port destinationPort = portRepository.findById(destinationPortId).orElse(null);
@@ -237,9 +248,14 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                     playerId.toString(),
                     cargoRewards,
                     baseReward,
+                    netReward,
                     finalTotalReward,
                     totalBonus,
                     previousBalance,
+                    newBalance,
+                    departureDockingFine,
+                    dockingFine,
+                    pilotageRefund
                     newBalance,
                     ratMinigameService.consumeTravelSummary(travel.getTravelId())
             );

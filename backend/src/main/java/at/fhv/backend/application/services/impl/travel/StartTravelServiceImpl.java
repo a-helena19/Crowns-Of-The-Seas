@@ -1,6 +1,7 @@
 package at.fhv.backend.application.services.impl.travel;
 
 import at.fhv.backend.application.dtos.mapper.TravelResponseMapper;
+import at.fhv.backend.application.services.travel.DockingPenaltyService;
 import at.fhv.backend.application.services.cargo.PortDistanceForCargoService;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
@@ -18,6 +19,8 @@ import at.fhv.backend.rest.dtos.ship.response.TravelDTO;
 import at.fhv.backend.application.services.impl.session.GameTickScheduler;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CalculateFuelConsumptionService;
+import at.fhv.backend.application.services.pilotstrike.PilotStrikeService;
+import at.fhv.backend.domain.model.exception.PilotStrikeActiveException;
 import at.fhv.backend.application.services.travel.StartTravelService;
 import at.fhv.backend.application.services.travel.ValidateTravelService;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
@@ -61,6 +64,8 @@ public class StartTravelServiceImpl implements StartTravelService {
     private final PortDistanceForCargoService portDistanceForCargoService;
     private final SessionPlayerRepository sessionPlayerRepository;
     private final SmuggleService smuggleService;
+    private final DockingPenaltyService dockingPenaltyService;
+    private final PilotStrikeService pilotStrikeService;
 
     public StartTravelServiceImpl(PlayerShipRepository playerShipRepository,
                                   ShipRepository shipRepository,
@@ -75,7 +80,9 @@ public class StartTravelServiceImpl implements StartTravelService {
                                   CargoWebSocketController cargoWebSocketController,
                                   PortDistanceForCargoService portDistanceForCargoService,
                                   SessionPlayerRepository sessionPlayerRepository,
-                                  SmuggleService smuggleService) {
+                                  SmuggleService smuggleService,
+                                  DockingPenaltyService dockingPenaltyService,
+                                  PilotStrikeService pilotStrikeService) {
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
         this.portQueryService = portQueryService;
@@ -90,6 +97,8 @@ public class StartTravelServiceImpl implements StartTravelService {
         this.portDistanceForCargoService = portDistanceForCargoService;
         this.sessionPlayerRepository = sessionPlayerRepository;
         this.smuggleService = smuggleService;
+        this.dockingPenaltyService = dockingPenaltyService;
+        this.pilotStrikeService = pilotStrikeService;
     }
 
     @Override
@@ -155,6 +164,17 @@ public class StartTravelServiceImpl implements StartTravelService {
             validateTravelService.validateTravelStart(playerShip, ship, playerId,
                     originPortId, destinationPortId, requiredFuelAbsolute);
 
+            if (request.isPilotageService()) {
+                if (pilotStrikeService.isStrikeActive(sessionId, originPortId)) {
+                    throw new PilotStrikeActiveException(
+                            "Lotsenstreik am Abfahrtshafen — Lotsendienst nicht verfügbar.", originPortId);
+                }
+                if (pilotStrikeService.isStrikeActive(sessionId, destinationPortId)) {
+                    throw new PilotStrikeActiveException(
+                            "Lotsenstreik am Ankunftshafen — Lotsendienst nicht verfügbar.", destinationPortId);
+                }
+            }
+
             double requiredFuelPercent = (requiredFuelAbsolute / ship.getMaxFuel().doubleValue()) * 100.0;
             double conditionWearPercent = requiredFuelPercent * CONDITION_WEAR_FACTOR;
 
@@ -185,12 +205,18 @@ public class StartTravelServiceImpl implements StartTravelService {
             );
 
             travel.setLoadingDurationSeconds(loadingDurationSeconds);
+            travel.setPilotageServiceBooked(request.isPilotageService());
 
             Travel saved = travelRepository.save(travel);
 
             if (request.isPilotageService()) {
                 player.subtractBalance(PILOTAGE_COST);
                 sessionPlayerRepository.save(player);
+            }
+
+            if (request.isMiniGameFailedDeparture()) {
+                dockingPenaltyService.applyDepartureFailurePenalty(
+                        saved.getTravelId(), playerId, sessionId);
             }
 
             gameTickScheduler.triggerImmediateBroadcast(sessionId);

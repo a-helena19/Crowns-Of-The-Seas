@@ -31,7 +31,6 @@ interface Props {
 
 const PORT_INFO: Record<string, { country: string; flag: string; facts: [string, string] }> = {
     "Hamburg":     { country: "Deutschland",  flag: "🇩🇪", facts: ["Drittgrößter Hafen Europas", "Gegründet im Jahr 1189"] },
-    "Rotterdam":   { country: "Niederlande",  flag: "🇳🇱", facts: ["Größter Hafen Europas", "Über 450 Mio. Tonnen/Jahr"] },
     "New York":    { country: "USA",          flag: "🇺🇸", facts: ["Historisches Gateway der USA", "Ellis Island in der Nähe"] },
     "Santos":      { country: "Brasilien",    flag: "🇧🇷", facts: ["Größter Hafen Südamerikas", "Wichtig für Kaffeeexport"] },
     "Kapstadt":    { country: "Südafrika",    flag: "🇿🇦", facts: ["Südlichster Großhafen Afrikas", "Am Fuß des Tafelbergs"] },

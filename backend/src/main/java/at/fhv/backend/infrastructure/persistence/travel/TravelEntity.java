@@ -60,6 +60,21 @@ public class TravelEntity {
     @Column(name = "arrival_tick", nullable = false, columnDefinition = "int default 0")
     private int arrivalTick;
 
+    @Column(name = "docking_fine", nullable = false, precision = 12, scale = 2, columnDefinition = "decimal(12,2) default 0")
+    private BigDecimal dockingFine = BigDecimal.ZERO;
+
+    @Column(name = "departure_docking_fine", nullable = false, precision = 12, scale = 2, columnDefinition = "decimal(12,2) default 0")
+    private BigDecimal departureDockingFine = BigDecimal.ZERO;
+
+    @Column(name = "pilotage_service_booked", nullable = false, columnDefinition = "boolean default false")
+    private boolean pilotageServiceBooked = false;
+
+    @Column(name = "pilotage_strike_revoked", nullable = false, columnDefinition = "boolean default false")
+    private boolean pilotageStrikeRevoked = false;
+
+    @Column(name = "pilotage_refund", nullable = false, precision = 12, scale = 2, columnDefinition = "decimal(12,2) default 0")
+    private BigDecimal pilotageRefund = BigDecimal.ZERO;
+
     public TravelEntity() {}
 
     public UUID getTravelId() {
@@ -188,5 +203,45 @@ public class TravelEntity {
 
     public void setArrivalTick(int arrivalTick) {
         this.arrivalTick = arrivalTick;
+    }
+
+    public BigDecimal getDockingFine() {
+        return dockingFine;
+    }
+
+    public void setDockingFine(BigDecimal dockingFine) {
+        this.dockingFine = dockingFine;
+    }
+
+    public BigDecimal getDepartureDockingFine() {
+        return departureDockingFine;
+    }
+
+    public void setDepartureDockingFine(BigDecimal departureDockingFine) {
+        this.departureDockingFine = departureDockingFine;
+    }
+
+    public boolean isPilotageServiceBooked() {
+        return pilotageServiceBooked;
+    }
+
+    public void setPilotageServiceBooked(boolean pilotageServiceBooked) {
+        this.pilotageServiceBooked = pilotageServiceBooked;
+    }
+
+    public boolean isPilotageStrikeRevoked() {
+        return pilotageStrikeRevoked;
+    }
+
+    public void setPilotageStrikeRevoked(boolean pilotageStrikeRevoked) {
+        this.pilotageStrikeRevoked = pilotageStrikeRevoked;
+    }
+
+    public BigDecimal getPilotageRefund() {
+        return pilotageRefund;
+    }
+
+    public void setPilotageRefund(BigDecimal pilotageRefund) {
+        this.pilotageRefund = pilotageRefund;
     }
 }
