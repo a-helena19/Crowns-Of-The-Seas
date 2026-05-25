@@ -5,16 +5,6 @@ import at.fhv.backend.domain.model.customs.exception.CustomsInspectionInvalidSta
 import java.math.BigDecimal;
 import java.util.UUID;
 
-/**
- * A single customs inspection at the destination port at the end of a travel.
- *
- * <p>The inspection captures both the {@code finePaid} (Strafe, may be zero, base, or doubled)
- * AND the {@code bribePaid} (Bestechungssumme, also flows out of the player's balance).
- * Both are deducted from the player's balance directly in
- * {@link at.fhv.backend.application.services.impl.cargo.CustomsServiceImpl}, NOT via the
- * unloading reward subtraction. This guarantees the fine / bribe is actually paid even
- * if the cargo reward is zero (e.g. all cargo expired).
- */
 public class CustomsInspection {
     private final UUID id;
     private final UUID playerId;
@@ -81,10 +71,6 @@ public class CustomsInspection {
         this.bribePaid = BigDecimal.ZERO;
     }
 
-    /**
-     * Marks the inspection as bribed. The bribe cost is paid regardless of success.
-     * On success: no fine. On failure: double fine on top of the bribe cost.
-     */
     public void bribe(boolean success) {
         ensurePendingDecision();
         this.status = CustomsInspectionStatus.COMPLETED;
@@ -108,9 +94,6 @@ public class CustomsInspection {
         return status == CustomsInspectionStatus.PENDING_DECISION;
     }
 
-    /**
-     * Total amount the player has to pay out of pocket as a result of this inspection.
-     */
     public BigDecimal getTotalOutOfPocket() {
         return this.finePaid.add(this.bribePaid);
     }

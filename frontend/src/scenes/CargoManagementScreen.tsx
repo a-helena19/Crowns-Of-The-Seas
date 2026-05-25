@@ -37,15 +37,6 @@ function IconAnchor() {
 }
 
 
-function IconCrate() {
-    return (
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{ verticalAlign: "middle", marginRight: 4, opacity: 0.75 }}>
-            <rect x="1.5" y="3" width="10" height="8" rx="1" stroke="#5a3a0a" strokeWidth="1.2" fill="none"/>
-            <line x1="6.5" y1="3" x2="6.5" y2="11" stroke="#5a3a0a" strokeWidth="1"/>
-            <line x1="1.5" y1="6.5" x2="11.5" y2="6.5" stroke="#5a3a0a" strokeWidth="1"/>
-        </svg>
-    );
-}
 
 function IconWarning() {
     return (
@@ -63,6 +54,40 @@ function IconCheck() {
             <circle cx="7" cy="7" r="5.5" stroke="#2e7d32" strokeWidth="1.2" fill="none"/>
             <polyline points="4,7 6.5,9.5 10,5" stroke="#2e7d32" strokeWidth="1.4" fill="none" strokeLinecap="round"/>
         </svg>
+    );
+}
+
+
+function UnloadingStallNotice({ currentTick, completionTick }: {
+    currentTick: number | undefined;
+    completionTick: number | undefined;
+}) {
+    const [secondsWaiting, setSecondsWaiting] = useState(0);
+
+    const isOverdue = currentTick != null
+        && completionTick != null
+        && currentTick >= completionTick;
+
+    useEffect(() => {
+        if (!isOverdue) {
+            setSecondsWaiting(0);
+            return;
+        }
+        const interval = setInterval(() => {
+            setSecondsWaiting(s => s + 1);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [isOverdue, completionTick]);
+
+    // Only show notice after 3 seconds of stalling so it doesn't appear during the
+    // normal handoff between server ticks.
+    if (!isOverdue || secondsWaiting < 3) return null;
+
+    return (
+        <div className="cm-unloading-stall">
+            <IconWarning />
+            Entladen dauert länger als erwartet — System wartet auf Bestätigung ({secondsWaiting}s)
+        </div>
     );
 }
 
@@ -249,6 +274,7 @@ export default function CargoManagementScreen({
                                 en_route: entry.paused
                                     ? "Reise unterbrochen"
                                     : `Unterwegs — noch ${Math.max(0, (entry.arrivalTick ?? 0) - (entry.currentTick ?? 0))} Tage`,
+                                customs_check: "Zoll wird überprüft …",
                                 unloading: "Wird entladen …",
                                 completed: `+${entry.reward?.toLocaleString("de-DE")} T`,
                             }[entry.phase] ?? "…";
@@ -365,6 +391,31 @@ export default function CargoManagementScreen({
                             );
                         })()}
 
+                        {selectedEntry.phase === "customs_check" && (() => {
+                            const pct = getTickPct(
+                                selectedEntry.currentTick,
+                                selectedEntry.customsCheckCompletedAtTick,
+                                selectedEntry.customsCheckStartTick
+                            );
+                            const remainingTicks = Math.max(
+                                0,
+                                (selectedEntry.customsCheckCompletedAtTick ?? 0) - (selectedEntry.currentTick ?? 0)
+                            );
+                            return (
+                                <div className="cm-travel-panel">
+                                    <div className="cm-travel-header">
+                                        <IconAnchor />
+                                        <div className="cm-travel-title">Zoll wird überprüft</div>
+                                    </div>
+                                    <div className="cm-travel-route">{selectedEntry.from} → {selectedEntry.to}</div>
+                                    <div className="cm-travel-ticks">
+                                        Noch {remainingTicks} {remainingTicks === 1 ? "Tag" : "Tagen"} bis Freigabe
+                                    </div>
+                                    <StaticProgressBar pct={pct} color="#a0521a" />
+                                </div>
+                            );
+                        })()}
+
                         {selectedEntry.phase === "unloading" && (
                             <div className="loading-panel">
                                 <div className="loading-title">
@@ -375,9 +426,9 @@ export default function CargoManagementScreen({
                                 </div>
 
                                 <div className="loading-ship-wrap">
-                                    <span className="unload-box"><IconCrate /></span>
-                                    <span className="unload-box"><IconCrate /></span>
-                                    <span className="unload-box"><IconCrate /></span>
+                                    <span className="unload-box">📦</span>
+                                    <span className="unload-box">📦</span>
+                                    <span className="unload-box">📦</span>
                                     <img
                                         src={selectedEntry.shipIconUrl ?? "/fallback-ship.png"}
                                         alt={selectedEntry.shipName}
@@ -412,6 +463,10 @@ export default function CargoManagementScreen({
                                         <div className="loading-progress-wrap">
                                             <div className="loading-progress-label">Entladevorgang</div>
                                             <StaticProgressBar pct={pct} color="#2196f3" />
+                                            <UnloadingStallNotice
+                                                currentTick={selectedEntry.currentTick}
+                                                completionTick={selectedEntry.unloadingCompletedAtTick}
+                                            />
                                         </div>
                                     );
                                 })()}
@@ -429,12 +484,17 @@ export default function CargoManagementScreen({
                             const bribePaid = customs?.bribePaid ?? 0;
                             const customsTotalOut = finePaid + bribePaid;
 
+                            const regress = selectedEntry.regressSummary;
+                            const regressTotal = regress?.totalFine ?? 0;
+                            const regressDelay = regress?.delayComponent ?? 0;
+                            const regressDamage = regress?.damageComponent ?? 0;
+
                             const cargoBaseTotal = cargoItems.reduce((s, r) => s + (r.actualReward - (r.bonusReward ?? 0)), 0);
                             const bonusTotal = cargoItems.reduce((s, r) => s + (r.bonusReward ?? 0), 0);
                             const smuggleTotal = smuggleItem?.actualReward ?? 0;
                             const ratPenalty = selectedEntry.ratMinigameSummary?.result === "FAILED"
                                 ? (selectedEntry.ratMinigameSummary.penaltyAmount ?? 0) : 0;
-                            const netTotal = cargoBaseTotal + bonusTotal + smuggleTotal - ratPenalty - customsTotalOut;
+                            const netTotal = cargoBaseTotal + bonusTotal + smuggleTotal - ratPenalty - customsTotalOut - regressTotal;
 
                             return (
                                 <div className="cm-reward-panel">
@@ -547,6 +607,39 @@ export default function CargoManagementScreen({
                                             <div className="cm-reward-row warn">
                                                 <span>Zollstrafe</span>
                                                 <span>-{finePaid.toLocaleString("de-DE")} T</span>
+                                            </div>
+                                        )}
+                                        {regress && regress.delayTicks > 0 && regressDelay > 0 && (
+                                            <div className="cm-reward-row warn">
+                                                <span>
+                                                    Regress — Verspätung
+                                                    <span className="cm-reward-row-sub">
+                                                        {" "}({regress.delayTicks} {regress.delayTicks === 1 ? "Tag" : "Tage"} zu spät
+                                                        {regress.toleranceTicks > 0
+                                                            ? `, davon ${regress.toleranceTicks} toleriert`
+                                                            : ""}
+                                                        {regress.specialCargoMultiplier > 1
+                                                            ? `, ×${regress.specialCargoMultiplier.toFixed(1)} ${regress.hadPerishableCargo ? "verderbliche" : regress.hadFragileCargo ? "zerbrechliche" : "empfindliche"} Ware`
+                                                            : ""})
+                                                    </span>
+                                                </span>
+                                                <span>-{Math.round(regressDelay).toLocaleString("de-DE")} T</span>
+                                            </div>
+                                        )}
+                                        {regressDamage > 0 && (
+                                            <div className="cm-reward-row warn">
+                                                <span>
+                                                    Regress — Schaden
+                                                    {regress && regress.damagePercent > 0 && (
+                                                        <span className="cm-reward-row-sub">
+                                                            {" "}({regress.damagePercent.toFixed(1)} % Zustand verloren
+                                                            {regress.specialCargoMultiplier > 1
+                                                                ? `, ×${regress.specialCargoMultiplier.toFixed(1)}`
+                                                                : ""})
+                                                        </span>
+                                                    )}
+                                                </span>
+                                                <span>-{Math.round(regressDamage).toLocaleString("de-DE")} T</span>
                                             </div>
                                         )}
                                         <div className="cm-reward-row total">

@@ -117,7 +117,6 @@ export const UnloadingPhaseScreen: React.FC<UnloadingPhaseScreenProps> = ({
                     <div className="ship-name">{shipName}</div>
                 </div>
 
-                {/* Cargo List - NEU */}
                 {cargoList.length > 0 && (
                     <div className="cargo-unloading-list">
                         <h3>📦 Frachtbestand ({cargoList.length})</h3>
@@ -143,7 +142,6 @@ export const UnloadingPhaseScreen: React.FC<UnloadingPhaseScreenProps> = ({
                     </div>
                 )}
 
-                {/* Progress Bar */}
                 <div className="progress-section">
                     <div className="progress-label">
                         <span>Entlade-Fortschritt</span>

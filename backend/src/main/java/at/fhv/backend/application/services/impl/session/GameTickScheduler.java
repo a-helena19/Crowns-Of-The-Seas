@@ -2,11 +2,8 @@ package at.fhv.backend.application.services.impl.session;
 
 import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.application.services.cargo.CustomsService;
-import at.fhv.backend.application.services.travel.TravelPauseService;
+import at.fhv.backend.application.services.travel.*;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
-import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
-import at.fhv.backend.application.services.travel.TravelArrivalService;
-import at.fhv.backend.application.services.travel.UnloadingStartService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
 import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
@@ -58,6 +55,7 @@ public class GameTickScheduler {
     private final RatMinigameService ratMinigameService;
     private final CustomsService customsService;
     private final UnloadingStartService unloadingStartService;
+    private final CustomsCheckCompletionService customsCheckCompletionService;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
     private final Map<UUID, ScheduledFuture<?>> runningTasks = new ConcurrentHashMap<>();
@@ -80,7 +78,9 @@ public class GameTickScheduler {
                              CargoSessionInitializer cargoSessionInitializer,
                              TravelPauseService travelPauseService,
                              RatMinigameService ratMinigameService,
-                             CustomsService customsService, UnloadingStartService unloadingStartService) {
+                             CustomsService customsService,
+                             UnloadingStartService unloadingStartService,
+                             CustomsCheckCompletionService customsCheckCompletionService) {
         this.gameSessionRepository = gameSessionRepository;
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
@@ -96,6 +96,7 @@ public class GameTickScheduler {
         this.ratMinigameService = ratMinigameService;
         this.customsService = customsService;
         this.unloadingStartService = unloadingStartService;
+        this.customsCheckCompletionService = customsCheckCompletionService;
     }
 
 
@@ -165,6 +166,24 @@ public class GameTickScheduler {
                 System.out.println("[GameTick] Ship " + ship.getId()
                         + " repairing completed at tick " + currentTick + " → AT_PORT");
             }
+        }
+    }
+
+    @Transactional
+    public void checkCustomsCheckCompletion(UUID sessionId, int currentTick) {
+        List<Travel> arrivedTravels = travelRepository
+                .findAllBySessionIdAndStatus(sessionId, TravelStatus.ARRIVED);
+
+        for (Travel travel : arrivedTravels) {
+            PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
+            if (ship == null) continue;
+            if (ship.getStatus() != ShipStatus.CUSTOMS_CHECK) continue;
+
+            int completedAtTick = ship.getCustomsCheckCompletedAtTick();
+            if (completedAtTick < 0) continue;
+            if (currentTick < completedAtTick) continue;
+
+            customsCheckCompletionService.completeCustomsCheck(travel.getTravelId());
         }
     }
 
@@ -274,7 +293,6 @@ public class GameTickScheduler {
 
             gameSessionRepository.save(session);
 
-            // Tick zuerst broadcasten — damit die Zeit immer aktualisiert wird
             webSocketController.broadcastTickUpdate(
                     sessionId.toString(),
                     new TickUpdateEvent(currentTick, session.getTotalTicks())
@@ -294,6 +312,7 @@ public class GameTickScheduler {
             checkLoadingCompletion(sessionId, currentTick);
             checkRefuelingCompletion(sessionId, currentTick);
             checkRepairingCompletion(sessionId, currentTick);
+            checkCustomsCheckCompletion(sessionId, currentTick);
             checkCustomsBlockCompletion(sessionId, currentTick);
             handleUnloadingPhase(sessionId, currentTick);
 
@@ -403,6 +422,7 @@ public class GameTickScheduler {
                         case REFUELING       -> "REFUELING";
                         case REPAIRING       -> "REPAIRING";
                         case BLOCKED         -> "BLOCKED";
+                        case CUSTOMS_CHECK   -> "CUSTOMS_CHECK";
                         default              -> "AT_PORT";
                     };
 
@@ -415,6 +435,8 @@ public class GameTickScheduler {
                         completionTick = playerShip.getRefuelingCompletedAtTick();
                     } else if (playerShip.getStatus() == ShipStatus.REPAIRING) {
                         completionTick = playerShip.getRepairingCompletedAtTick();
+                    } else if (playerShip.getStatus() == ShipStatus.CUSTOMS_CHECK) {
+                        completionTick = playerShip.getCustomsCheckCompletedAtTick();
                     }
 
                     positions.add(new ShipPositionsUpdateEvent.ShipPosition(
@@ -485,7 +507,6 @@ public class GameTickScheduler {
                 }
             }
 
-            // Spawn new disposable cargos to fill up
             while (activeCount < MAX_ACTIVE_CARGOS_PER_PORT) {
                 double spawnChance = 0.25;
                 if (rng.nextDouble() >= spawnChance) {

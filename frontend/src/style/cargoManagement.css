@@ -373,6 +373,36 @@
     color: #2e7d32;
 }
 
+.cm-reward-row-sub {
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: normal;
+    color: #8a6a3a;
+    opacity: 0.85;
+}
+
+.cm-reward-row.warn .cm-reward-row-sub {
+    color: #b07043;
+}
+
+.cm-unloading-stall {
+    margin-top: 8px;
+    padding: 6px 10px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: #a0521a;
+    background: rgba(160, 82, 26, 0.08);
+    border: 1px solid rgba(160, 82, 26, 0.25);
+    border-radius: 3px;
+    text-align: center;
+    animation: cm-stall-fade-in 0.4s ease-out;
+}
+
+@keyframes cm-stall-fade-in {
+    from { opacity: 0; transform: translateY(-2px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
 .cm-reward-btn {
     margin: 0 16px 16px;
     padding: 12px;

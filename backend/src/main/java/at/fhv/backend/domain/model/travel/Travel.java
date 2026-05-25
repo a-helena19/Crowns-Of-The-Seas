@@ -182,6 +182,14 @@ public class Travel {
         this.arrivalTick = this.arrivalTick + additionalTicks;
     }
 
+    public int getOriginalDurationTicks() {
+        return (int) Math.ceil(this.distance / Math.max(this.speedSetting, 0.01));
+    }
+
+    public int getOriginalArrivalTick() {
+        return this.startTick + getOriginalDurationTicks();
+    }
+
     public UUID getTravelId() {
         return travelId;
     }

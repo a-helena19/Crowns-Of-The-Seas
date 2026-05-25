@@ -16,10 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
-
 @Service
 public class UnloadingStartServiceImpl implements UnloadingStartService {
-
     private static final int BASE_UNLOADING_TICKS = 5;
 
     private final TravelRepository travelRepository;
@@ -52,6 +50,30 @@ public class UnloadingStartServiceImpl implements UnloadingStartService {
 
         System.out.println("[UnloadingStart] Ship " + ship.getId()
                 + " entered UNLOADING for " + unloadingDuration + " ticks"
+                + " (until tick " + unloadingCompletedAtTick + ")");
+    }
+
+    @Override
+    @Transactional
+    public void startUnloadingAfterCustomsCheck(UUID travelId) {
+        Travel travel = travelRepository.findById(travelId)
+                .orElseThrow(() -> new TravelNotFoundException("Travel", travelId));
+
+        PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
+        if (ship == null) {
+            return;
+        }
+
+        int unloadingDuration = computeUnloadingTicks(travel);
+        GameSession session = gameSessionRepository.findById(travel.getSessionId()).orElse(null);
+        int currentTick = session != null ? session.getCurrentTick() : travel.getArrivalTick();
+        int unloadingCompletedAtTick = currentTick + unloadingDuration;
+
+        ship.completeCustomsCheckAndStartUnloading(unloadingCompletedAtTick);
+        playerShipRepository.save(ship);
+
+        System.out.println("[UnloadingStart] Ship " + ship.getId()
+                + " left CUSTOMS_CHECK, entered UNLOADING for " + unloadingDuration + " ticks"
                 + " (until tick " + unloadingCompletedAtTick + ")");
     }
 

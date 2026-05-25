@@ -36,23 +36,7 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Customs service — fixed against bugs #3 and #5.
- *
- * <p>Bug #3 (fine / bribe not deducted): Both the fine AND the bribe cost are now deducted
- * directly from the player's balance in {@link #cooperate} and {@link #bribe}. Previously,
- * the fine was only subtracted from the unloading reward (and got swallowed if reward was 0).
- *
- * <p>Bug #5 (detention coupled to unloading): Detention is now a separate BLOCKED phase
- * BEFORE unloading. {@link #cooperate} and {@link #bribe} register a block-expiration-tick
- * which the {@link at.fhv.backend.application.services.impl.session.GameTickScheduler}
- * polls per tick. When the block expires, the scheduler calls
- * {@link UnloadingStartService#startUnloadingAfterDetention} which transitions the ship
- * BLOCKED -&gt; UNLOADING.
- *
- * <p>If no detention is incurred (bribe success, or cleared / hidden), unloading is started
- * immediately.
- */
+
 @Service
 public class CustomsServiceImpl implements CustomsService {
 
@@ -78,7 +62,6 @@ public class CustomsServiceImpl implements CustomsService {
     private final Map<UUID, CustomsInspection> inspectionsByTravelId = new ConcurrentHashMap<>();
     private final Map<UUID, CustomsInspection> inspectionsById = new ConcurrentHashMap<>();
 
-    /** travelId -&gt; tick at which the customs block expires (-1 means no block). */
     private final Map<UUID, Integer> blockExpirationTickByTravelId = new ConcurrentHashMap<>();
 
     private final Random random = new Random();
@@ -277,11 +260,7 @@ public class CustomsServiceImpl implements CustomsService {
         return inspection;
     }
 
-    /**
-     * Subtracts the given amount from the player's balance. Skipped if amount is zero or
-     * negative, or the player cannot be found (we don't want to break the customs flow
-     * over a missing player).
-     */
+
     private void deductFromPlayer(UUID playerId, UUID sessionId, BigDecimal amount, String reason) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             return;
@@ -297,10 +276,6 @@ public class CustomsServiceImpl implements CustomsService {
         System.out.println("[Customs] Deducted " + amount + " T from player " + playerId + " (" + reason + ")");
     }
 
-    /**
-     * Registers the tick at which the customs block for this travel expires. The scheduler
-     * polls this map every tick and transitions BLOCKED -&gt; UNLOADING when the tick is reached.
-     */
     private void scheduleBlockExpiration(CustomsInspection inspection) {
         GameSession session = gameSessionRepository.findById(inspection.getSessionId()).orElse(null);
         int currentTick = session != null ? session.getCurrentTick() : 0;

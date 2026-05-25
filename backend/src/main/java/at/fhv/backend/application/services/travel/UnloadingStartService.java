@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public interface UnloadingStartService {
     void startUnloadingImmediately(Travel travel);
+    void startUnloadingAfterCustomsCheck(UUID travelId);
     void startUnloadingAfterDetention(UUID travelId);
     int computeUnloadingTicks(Travel travel);
 }

@@ -169,7 +169,7 @@
     background: rgba(163, 124, 69, 0.08);
 }
 
-/* Content Grid */
+
 .lobby-content {
     display: grid;
     grid-template-columns: 1fr 1fr;

@@ -6,6 +6,7 @@ import at.fhv.backend.application.services.impl.session.GameTickScheduler;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CalculateFuelConsumptionService;
+import at.fhv.backend.application.services.travel.RegressService;
 import at.fhv.backend.application.services.travel.StartTravelService;
 import at.fhv.backend.application.services.travel.ValidateTravelService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
@@ -40,10 +41,8 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
 @Service
 public class StartTravelServiceImpl implements StartTravelService {
-
     private static final double GLOBAL_TRAVEL_SPEED_FACTOR = 0.75;
     private static final double CONDITION_WEAR_FACTOR = 0.08;
     private static final BigDecimal PILOTAGE_COST = new BigDecimal("600");
@@ -65,6 +64,7 @@ public class StartTravelServiceImpl implements StartTravelService {
     private final SessionPlayerRepository sessionPlayerRepository;
     private final SmuggleService smuggleService;
     private final PendingTravelStartServiceImpl pendingTravelStartService;
+    private final RegressService regressService;
 
     public StartTravelServiceImpl(PlayerShipRepository playerShipRepository,
                                   ShipRepository shipRepository,
@@ -80,7 +80,8 @@ public class StartTravelServiceImpl implements StartTravelService {
                                   PortDistanceForCargoService portDistanceForCargoService,
                                   SessionPlayerRepository sessionPlayerRepository,
                                   SmuggleService smuggleService,
-                                  PendingTravelStartServiceImpl pendingTravelStartService) {
+                                  PendingTravelStartServiceImpl pendingTravelStartService,
+                                  RegressService regressService) {
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
         this.portQueryService = portQueryService;
@@ -96,6 +97,7 @@ public class StartTravelServiceImpl implements StartTravelService {
         this.sessionPlayerRepository = sessionPlayerRepository;
         this.smuggleService = smuggleService;
         this.pendingTravelStartService = pendingTravelStartService;
+        this.regressService = regressService;
     }
 
     @Override
@@ -209,6 +211,8 @@ public class StartTravelServiceImpl implements StartTravelService {
                     + " — ship stays at port, travel stays PLANNED");
             return travelResponseMapper.toResponse(saved);
         }
+
+        regressService.recordConditionAtStart(saved.getTravelId(), playerShip.getCondition());
 
         playerShip.consumeFuel(requiredFuelPercent);
         playerShip.applyWear(conditionWearPercent);

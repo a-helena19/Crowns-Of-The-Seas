@@ -20,6 +20,19 @@ export interface CustomsSummary {
     wasCarryingIllegalCargo: boolean;
 }
 
+export interface RegressSummary {
+    delayTicks: number;
+    toleranceTicks: number;
+    overdueTicks: number;
+    delayComponent: number;
+    damageComponent: number;
+    damagePercent: number;
+    specialCargoMultiplier: number;
+    hadPerishableCargo: boolean;
+    hadFragileCargo: boolean;
+    totalFine: number;
+}
+
 export interface AssignedCargoEntry {
     cargoId: string;
     shipId: string;
@@ -34,7 +47,7 @@ export interface AssignedCargoEntry {
     loadingDurationSeconds: number;
     loadingStartedAt: number;
     loadingDone: boolean;
-    phase: "loading" | "en_route" | "unloading" | "completed";
+    phase: "loading" | "en_route" | "customs_check" | "unloading" | "completed";
     travelId?: string;
     currentTick?: number;
     arrivalTick?: number;
@@ -51,8 +64,11 @@ export interface AssignedCargoEntry {
         penaltyAmount?: number;
     };
     customsSummary?: CustomsSummary;
+    regressSummary?: RegressSummary;
     unloadingCompletedAtTick?: number;
     startTick?: number;
     unloadingStartTick?: number;
+    customsCheckStartTick?: number;
+    customsCheckCompletedAtTick?: number;
     paused?: boolean;
 }

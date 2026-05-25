@@ -1,4 +1,3 @@
-/* ── Travel Result Overlay ───────────────────────────────────── */
 .travel-result-overlay {
     position: fixed;
     inset: 0;
@@ -15,7 +14,6 @@
     to   { opacity: 1; }
 }
 
-/* ── Panel ───────────────────────────────────────────────────── */
 .tr-panel {
     background: #fff0e7;
     border: 4px solid #5a3a0a;
@@ -39,7 +37,6 @@
 .tr-panel::-webkit-scrollbar-track { background: #e8d8c4; }
 .tr-panel::-webkit-scrollbar-thumb { background: #5a3a0a; border-radius: 3px; }
 
-/* ── Header ──────────────────────────────────────────────────── */
 .tr-header {
     padding: 20px 24px 16px;
     border-bottom: 2px solid #c8a040;
@@ -76,7 +73,6 @@
     font-style: italic;
 }
 
-/* ── Customs Banner ──────────────────────────────────────────── */
 .tr-customs {
     margin: 14px 20px 0;
     padding: 11px 14px;
@@ -135,7 +131,6 @@
     font-size: 13px;
 }
 
-/* ── Section Label ───────────────────────────────────────────── */
 .tr-section-label {
     font-family: var(--font-game);
     font-size: 11px;
@@ -146,7 +141,6 @@
     border-bottom: 1px solid rgba(90, 58, 10, 0.18);
 }
 
-/* ── Cargo List ──────────────────────────────────────────────── */
 .tr-cargo-list {
     display: flex;
     flex-direction: column;
@@ -216,7 +210,6 @@
 .tr-cargo-amount.neutral  { color: #8a7050; }
 .tr-cargo-amount.negative { color: #8a3030; }
 
-/* ── Summary Table ───────────────────────────────────────────── */
 .tr-summary {
     margin: 4px 20px 0;
     border: 1px solid rgba(90, 58, 10, 0.2);
@@ -251,7 +244,6 @@
 .tr-summary-value.positive { color: #2a5c34; }
 .tr-summary-value.negative { color: #8a3030; }
 
-/* ── Balance Section ─────────────────────────────────────────── */
 .tr-balance {
     margin: 16px 20px 0;
     padding: 14px;
@@ -304,7 +296,6 @@
     margin-bottom: 2px;
 }
 
-/* ── Close Button ────────────────────────────────────────────── */
 .tr-close-btn {
     margin: 20px 20px 20px;
     padding: 13px;
@@ -322,7 +313,6 @@
 .tr-close-btn:hover  { background: #b8911f; transform: translateY(-1px); }
 .tr-close-btn:active { transform: translateY(0); }
 
-/* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 540px) {
     .tr-panel { width: 98%; max-height: 96vh; }
     .tr-title  { font-size: 16px; }

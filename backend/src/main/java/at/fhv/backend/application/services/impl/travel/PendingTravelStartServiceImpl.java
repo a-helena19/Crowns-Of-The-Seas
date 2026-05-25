@@ -3,6 +3,7 @@ package at.fhv.backend.application.services.impl.travel;
 import at.fhv.backend.application.dtos.mapper.TravelResponseMapper;
 import at.fhv.backend.application.services.impl.session.GameTickScheduler;
 import at.fhv.backend.application.services.travel.PendingTravelStartService;
+import at.fhv.backend.application.services.travel.RegressService;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
 import at.fhv.backend.domain.model.exception.TravelNotFoundException;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
@@ -43,6 +44,7 @@ public class PendingTravelStartServiceImpl implements PendingTravelStartService 
     private final CargoWebSocketController cargoWebSocketController;
     private final TravelResponseMapper travelResponseMapper;
     private final GameSessionRepository gameSessionRepository;
+    private final RegressService regressService;
 
     private final Map<UUID, PendingData> pendingByTravelId = new ConcurrentHashMap<>();
 
@@ -51,13 +53,15 @@ public class PendingTravelStartServiceImpl implements PendingTravelStartService 
                                          @Lazy GameTickScheduler gameTickScheduler,
                                          CargoWebSocketController cargoWebSocketController,
                                          TravelResponseMapper travelResponseMapper,
-                                         GameSessionRepository gameSessionRepository) {
+                                         GameSessionRepository gameSessionRepository,
+                                         RegressService regressService) {
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
         this.gameTickScheduler = gameTickScheduler;
         this.cargoWebSocketController = cargoWebSocketController;
         this.travelResponseMapper = travelResponseMapper;
         this.gameSessionRepository = gameSessionRepository;
+        this.regressService = regressService;
     }
 
     public void registerPendingData(UUID travelId, PendingData data) {
@@ -79,6 +83,8 @@ public class PendingTravelStartServiceImpl implements PendingTravelStartService 
 
         PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId())
                 .orElseThrow(() -> new ShipNotFoundException("PlayerShip", travel.getPlayerShipId()));
+
+        regressService.recordConditionAtStart(travelId, ship.getCondition());
 
         ship.consumeFuel(data.getRequiredFuelPercent());
         ship.applyWear(data.getConditionWearPercent());
@@ -111,4 +117,3 @@ public class PendingTravelStartServiceImpl implements PendingTravelStartService 
         System.out.println("[PendingTravelStart] Travel " + travelId + " cancelled");
     }
 }
-

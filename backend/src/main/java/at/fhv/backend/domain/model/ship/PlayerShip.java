@@ -18,6 +18,7 @@ public class PlayerShip {
     private int unloadingCompletedAtTick = -1;
     private int refuelingCompletedAtTick = -1;
     private int repairingCompletedAtTick = -1;
+    private int customsCheckCompletedAtTick = -1;
     private double pendingFuelAmount = 0.0;
     private double pendingRepairAmount = 0.0;
 
@@ -26,6 +27,7 @@ public class PlayerShip {
                        UUID currentPortId, UUID targetPortId,
                        int loadingCompletedAtTick, int unloadingCompletedAtTick,
                        int refuelingCompletedAtTick, int repairingCompletedAtTick,
+                       int customsCheckCompletedAtTick,
                        double pendingFuelAmount, double pendingRepairAmount) {
         this.id = id;
         this.shipId = shipId;
@@ -40,6 +42,7 @@ public class PlayerShip {
         this.unloadingCompletedAtTick = unloadingCompletedAtTick;
         this.refuelingCompletedAtTick = refuelingCompletedAtTick;
         this.repairingCompletedAtTick = repairingCompletedAtTick;
+        this.customsCheckCompletedAtTick = customsCheckCompletedAtTick;
         this.pendingFuelAmount = pendingFuelAmount;
         this.pendingRepairAmount = pendingRepairAmount;
     }
@@ -51,7 +54,7 @@ public class PlayerShip {
                 ShipStatus.IN_REGISTRATION,
                 100.0, 100.0,
                 startPortId, null,
-                -1, -1, -1, -1,
+                -1, -1, -1, -1, -1,
                 0.0, 0.0
         );
     }
@@ -64,7 +67,7 @@ public class PlayerShip {
                 ShipStatus.AT_PORT,
                 condition, fuel,
                 currentPortId, null,
-                -1, -1, -1, -1,
+                -1, -1, -1, -1, -1,
                 0.0, 0.0
         );
     }
@@ -75,6 +78,21 @@ public class PlayerShip {
                                          Integer loadingCompletedAtTick, Integer unloadingCompletedAtTick,
                                          Integer refuelingCompletedAtTick, Integer repairingCompletedAtTick,
                                          Double pendingFuelAmount, Double pendingRepairAmount) {
+        return reconstruct(id, shipId, playerId, sessionId, status,
+                condition, fuel, currentPortId, targetPortId,
+                loadingCompletedAtTick, unloadingCompletedAtTick,
+                refuelingCompletedAtTick, repairingCompletedAtTick,
+                null,
+                pendingFuelAmount, pendingRepairAmount);
+    }
+
+    public static PlayerShip reconstruct(UUID id, UUID shipId, UUID playerId, UUID sessionId, ShipStatus status,
+                                         double condition, double fuel,
+                                         UUID currentPortId, UUID targetPortId,
+                                         Integer loadingCompletedAtTick, Integer unloadingCompletedAtTick,
+                                         Integer refuelingCompletedAtTick, Integer repairingCompletedAtTick,
+                                         Integer customsCheckCompletedAtTick,
+                                         Double pendingFuelAmount, Double pendingRepairAmount) {
         return new PlayerShip(
                 id, shipId, playerId, sessionId,
                 status, condition, fuel,
@@ -83,6 +101,7 @@ public class PlayerShip {
                 unloadingCompletedAtTick == null ? -1 : unloadingCompletedAtTick,
                 refuelingCompletedAtTick == null ? -1 : refuelingCompletedAtTick,
                 repairingCompletedAtTick == null ? -1 : repairingCompletedAtTick,
+                customsCheckCompletedAtTick == null ? -1 : customsCheckCompletedAtTick,
                 pendingFuelAmount == null ? 0.0 : pendingFuelAmount,
                 pendingRepairAmount == null ? 0.0 : pendingRepairAmount);
     }
@@ -147,6 +166,47 @@ public class PlayerShip {
         this.currentPortId = portId;
         this.targetPortId = null;
         this.unloadingCompletedAtTick = unloadingCompletedAtTick;
+    }
+
+    public void arriveAndStartCustomsCheck(UUID portId, int customsCheckCompletedAtTick) {
+        if (this.status != ShipStatus.EN_ROUTE) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status EN_ROUTE to start the customs check", "shipId", shipId);
+        }
+        this.status = ShipStatus.CUSTOMS_CHECK;
+        this.currentPortId = portId;
+        this.targetPortId = null;
+        this.customsCheckCompletedAtTick = customsCheckCompletedAtTick;
+    }
+
+    public boolean isStillInCustomsCheck(int currentTick) {
+        return status == ShipStatus.CUSTOMS_CHECK
+                && customsCheckCompletedAtTick > 0
+                && currentTick < customsCheckCompletedAtTick;
+    }
+
+    public void completeCustomsCheckAndStartUnloading(int unloadingCompletedAtTick) {
+        if (this.status != ShipStatus.CUSTOMS_CHECK) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status CUSTOMS_CHECK to complete the customs check", "shipId", shipId);
+        }
+        this.status = ShipStatus.UNLOADING;
+        this.customsCheckCompletedAtTick = -1;
+        this.unloadingCompletedAtTick = unloadingCompletedAtTick;
+    }
+
+    public void completeCustomsCheckAndAwaitDecision() {
+        if (this.status != ShipStatus.CUSTOMS_CHECK) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status CUSTOMS_CHECK to await a customs decision",
+                    "shipId", shipId);
+        }
+        this.status = ShipStatus.BLOCKED;
+        this.customsCheckCompletedAtTick = -1;
+    }
+
+    public int getCustomsCheckCompletedAtTick() {
+        return customsCheckCompletedAtTick;
     }
 
     public void arriveAndAwaitCustoms(UUID portId) {

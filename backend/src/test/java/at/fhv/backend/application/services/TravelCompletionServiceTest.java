@@ -7,6 +7,7 @@ import at.fhv.backend.application.services.impl.travel.TravelArrivalServiceImpl;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
+import at.fhv.backend.application.services.travel.RegressService;
 import at.fhv.backend.application.services.travel.UnloadingStartService;
 import at.fhv.backend.domain.model.cargo.*;
 import at.fhv.backend.domain.model.customs.CustomsInspection;
@@ -204,7 +205,7 @@ class TravelCompletionServiceTest {
         @BeforeEach
         void setUp() {
             service = new TravelArrivalServiceImpl(
-                    travelRepository, playerShipRepository, customsService, unloadingStartService
+                    travelRepository, playerShipRepository, sessionCargoRepository, unloadingStartService
             );
         }
 
@@ -220,10 +221,7 @@ class TravelCompletionServiceTest {
             return ps;
         }
 
-        /**
-         * Helper: builds a CLEARED customs inspection (no fine, no detention) so the
-         * travel arrival flow proceeds without blocking.
-         */
+
         private CustomsInspection buildClearedInspection(Travel travel) {
             CustomsInspection inspection = new CustomsInspection(
                     travel.getPlayerId(), travel.getSessionId(), travel.getTravelId(),
@@ -332,6 +330,7 @@ class TravelCompletionServiceTest {
         @Mock private TravelRepository travelRepository;
         @Mock private RatMinigameService ratMinigameService;
         @Mock private CustomsService customsService;
+        @Mock private RegressService regressService;
 
         private CargoUnloadingPhaseServiceImpl service;
 
@@ -348,7 +347,8 @@ class TravelCompletionServiceTest {
                     smuggleService,
                     travelRepository,
                     ratMinigameService,
-                    customsService
+                    customsService,
+                    regressService
             );
 
             // Default: ratMinigameService passes reward through unchanged, no summary

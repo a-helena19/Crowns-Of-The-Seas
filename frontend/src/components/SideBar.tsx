@@ -38,7 +38,6 @@ export default function Sidebar({
                 onClick={onStartAction}
             />
 
-            {/* NEU: Frachtübersicht Button */}
             <SidebarButton
                 label={assignedCargoCount > 0 ? `Frachten (${assignedCargoCount})` : "Frachten"}
                 active={currentView === "cargoManagement"}

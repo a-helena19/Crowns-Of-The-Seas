@@ -14,13 +14,15 @@ public class TravelCompleteEvent {
     private BigDecimal newBalance;
     private RatMinigameTravelSummary ratMinigameSummary;
     private CustomsSummary customsSummary;
+    private RegressSummary regressSummary;
 
     public TravelCompleteEvent(String travelId, String playerId,
                                List<CargoRewardBreakdown> cargoRewards,
                                BigDecimal baseReward, BigDecimal totalReward, BigDecimal bonusReward,
                                BigDecimal previousBalance, BigDecimal newBalance,
                                RatMinigameTravelSummary ratMinigameSummary,
-                               CustomsSummary customsSummary) {
+                               CustomsSummary customsSummary,
+                               RegressSummary regressSummary) {
         this.travelId = travelId;
         this.playerId = playerId;
         this.cargoRewards = cargoRewards;
@@ -31,6 +33,7 @@ public class TravelCompleteEvent {
         this.newBalance = newBalance;
         this.ratMinigameSummary = ratMinigameSummary;
         this.customsSummary = customsSummary;
+        this.regressSummary = regressSummary;
     }
 
     public String getTravelId() {
@@ -71,5 +74,9 @@ public class TravelCompleteEvent {
 
     public CustomsSummary getCustomsSummary() {
         return customsSummary;
+    }
+
+    public RegressSummary getRegressSummary() {
+        return regressSummary;
     }
 }

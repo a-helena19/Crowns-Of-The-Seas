@@ -140,9 +140,21 @@ export default function GameScreen() {
             }>).detail;
 
             setAssignedCargos(prev => prev.map(entry => {
-                if (entry.phase !== "en_route" && entry.phase !== "unloading") return entry;
+                if (entry.phase !== "en_route"
+                    && entry.phase !== "customs_check"
+                    && entry.phase !== "unloading") return entry;
                 const ship = detail.ships.find(s => s.playerShipId === entry.shipId);
                 if (!ship) return entry;
+                if (ship.status === "CUSTOMS_CHECK") {
+                    return {
+                        ...entry,
+                        phase: "customs_check",
+                        currentTick: detail.currentTick,
+                        customsCheckCompletedAtTick: ship.arrivalTick,
+                        customsCheckStartTick: entry.customsCheckStartTick ?? detail.currentTick,
+                        paused: false,
+                    };
+                }
                 if (ship.status === "UNLOADING") {
                     return {
                         ...entry,
@@ -193,6 +205,18 @@ export default function GameScreen() {
                     detentionTicks: number;
                     wasCarryingIllegalCargo: boolean;
                 } | null;
+                regressSummary?: {
+                    delayTicks: number;
+                    toleranceTicks: number;
+                    overdueTicks: number;
+                    delayComponent: number;
+                    damageComponent: number;
+                    damagePercent: number;
+                    specialCargoMultiplier: number;
+                    hadPerishableCargo: boolean;
+                    hadFragileCargo: boolean;
+                    totalFine: number;
+                } | null;
             }>).detail;
             if (data.playerId !== playerId) return;
 
@@ -216,6 +240,7 @@ export default function GameScreen() {
                         cargoRewards: data.cargoRewards,
                         ratMinigameSummary: data.ratMinigameSummary,
                         customsSummary: data.customsSummary ?? undefined,
+                        regressSummary: data.regressSummary ?? undefined,
                     };
                 });
                 return updated;

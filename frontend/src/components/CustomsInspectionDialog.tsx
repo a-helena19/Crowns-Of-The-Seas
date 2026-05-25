@@ -67,7 +67,6 @@ export default function CustomsInspectionDialog({
     return (
         <div className="customs-overlay">
             <div className="customs-dialog">
-                {/* Ship identification badge */}
                 <div className="customs-ship-badge">
                     <span className="customs-ship-name">{shipName}</span>
                     <span className="customs-ship-route">{routeLabel}</span>

@@ -33,7 +33,6 @@ interface TravelResultScreenProps {
     onClose: () => void;
 }
 
-/* ── SVG Icons ─────────────────────────────────────────────────── */
 
 const IconAnchor = ({ className }: { className?: string }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -84,7 +83,6 @@ const IconArrowRight = ({ className }: { className?: string }) => (
     </svg>
 );
 
-/* ── Customs helpers ────────────────────────────────────────────── */
 
 function customsInfo(s: CustomsSummary): { good: boolean; title: string; detail: string } {
     switch (s.outcome) {
@@ -96,7 +94,6 @@ function customsInfo(s: CustomsSummary): { good: boolean; title: string; detail:
     }
 }
 
-/* ── Component ──────────────────────────────────────────────────── */
 
 export default function TravelResultScreen({
                                                cargos,
@@ -146,7 +143,6 @@ export default function TravelResultScreen({
         <div className="travel-result-overlay">
             <div className="tr-panel">
 
-                {/* ── Header ── */}
                 <div className="tr-header">
                     {isPerfect
                         ? <IconStar className="tr-header-icon" />
@@ -162,7 +158,6 @@ export default function TravelResultScreen({
                     </div>
                 </div>
 
-                {/* ── Customs Banner (only when relevant) ── */}
                 {customsSummary && customsSummary.outcome !== "CLEARED" && (() => {
                     const info = customsInfo(customsSummary);
                     return (
@@ -186,7 +181,6 @@ export default function TravelResultScreen({
                     );
                 })()}
 
-                {/* ── Cargo list ── */}
                 <div className="tr-section-label">
                     Frachtbilanz ({regularCargos.length + (smuggleCargo ? 1 : 0)})
                 </div>
@@ -228,7 +222,6 @@ export default function TravelResultScreen({
                     })()}
                 </div>
 
-                {/* ── Summary ── */}
                 <div className="tr-section-label" style={{ marginTop: 12 }}>Abrechnung</div>
                 <div className="tr-summary">
                     {cargoBase > 0 && (
@@ -269,7 +262,6 @@ export default function TravelResultScreen({
                     </div>
                 </div>
 
-                {/* ── Balance ── */}
                 <div className="tr-section-label" style={{ marginTop: 12 }}>Kontostand</div>
                 <div className="tr-balance">
                     <div className="tr-balance-col">
@@ -290,7 +282,6 @@ export default function TravelResultScreen({
                     </div>
                 </div>
 
-                {/* ── Close ── */}
                 <button className="tr-close-btn" onClick={onClose}>
                     Weiter zur nächsten Reise
                 </button>

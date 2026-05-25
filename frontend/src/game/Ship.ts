@@ -9,7 +9,6 @@ interface Segment {
     endX: number;
     endY: number;
     length: number;
-    /** Cumulative distance from the polyline start to the END of this segment. */
     cumulativeEnd: number;
 }
 
@@ -37,11 +36,6 @@ export default class Ship {
         this.sprite = sprite;
     }
 
-    /**
-     * Start the ship along a polyline. The polyline is origin + waypoints + destination
-     * in pixel space. The ship moves at constant speed along the total polyline length,
-     * arriving at the destination after totalMs.
-     */
     setRoute(
         polyline: Point[],
         elapsedMs: number,
