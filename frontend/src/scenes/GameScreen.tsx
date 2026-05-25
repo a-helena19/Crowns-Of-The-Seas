@@ -142,6 +142,7 @@ export default function GameScreen() {
             setAssignedCargos(prev => prev.map(entry => {
                 if (entry.phase !== "en_route"
                     && entry.phase !== "customs_check"
+                    && entry.phase !== "blocked"
                     && entry.phase !== "unloading") return entry;
                 const ship = detail.ships.find(s => s.playerShipId === entry.shipId);
                 if (!ship) return entry;
@@ -152,6 +153,18 @@ export default function GameScreen() {
                         currentTick: detail.currentTick,
                         customsCheckCompletedAtTick: ship.arrivalTick,
                         customsCheckStartTick: entry.customsCheckStartTick ?? detail.currentTick,
+                        paused: false,
+                    };
+                }
+                if (ship.status === "BLOCKED") {
+                    return {
+                        ...entry,
+                        phase: "blocked",
+                        currentTick: detail.currentTick,
+                        customsBlockedUntilTick: ship.arrivalTick,
+                        customsBlockStartTick: entry.phase === "blocked"
+                            ? (entry.customsBlockStartTick ?? detail.currentTick)
+                            : detail.currentTick,
                         paused: false,
                     };
                 }

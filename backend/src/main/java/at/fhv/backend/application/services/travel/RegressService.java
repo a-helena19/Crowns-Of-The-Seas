@@ -12,6 +12,7 @@ public interface RegressService {
     void clear(UUID travelId);
     RegressFine consumeFine(Travel travel, int currentTick, double currentCondition, List<SessionCargo> cargosForTravel);
     RegressFine evaluateAndStore(Travel travel, int currentTick, double currentCondition,
-                                        List<SessionCargo> cargosForTravel);
+                                 List<SessionCargo> cargosForTravel);
 
+    RegressFine addDetentionDelay(UUID travelId, int additionalDelayTicks);
 }

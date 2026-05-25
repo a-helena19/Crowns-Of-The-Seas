@@ -437,6 +437,9 @@ public class GameTickScheduler {
                         completionTick = playerShip.getRepairingCompletedAtTick();
                     } else if (playerShip.getStatus() == ShipStatus.CUSTOMS_CHECK) {
                         completionTick = playerShip.getCustomsCheckCompletedAtTick();
+                    } else if (playerShip.getStatus() == ShipStatus.BLOCKED) {
+                        int blockedUntil = playerShip.getCustomsBlockedUntilTick();
+                        completionTick = blockedUntil > 0 ? blockedUntil : null;
                     }
 
                     positions.add(new ShipPositionsUpdateEvent.ShipPosition(

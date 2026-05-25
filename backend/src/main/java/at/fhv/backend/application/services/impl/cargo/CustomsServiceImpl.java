@@ -1,6 +1,7 @@
 package at.fhv.backend.application.services.impl.cargo;
 
 import at.fhv.backend.application.services.cargo.CustomsService;
+import at.fhv.backend.application.services.travel.RegressService;
 import at.fhv.backend.application.services.travel.TravelPauseService;
 import at.fhv.backend.application.services.travel.UnloadingStartService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
@@ -60,6 +61,7 @@ public class CustomsServiceImpl implements CustomsService {
     private final GameSessionRepository gameSessionRepository;
     private final UnloadingStartService unloadingStartService;
     private final TravelRepository travelRepository;
+    private final RegressService regressService;
 
     private final Map<UUID, CustomsInspection> inspectionsByTravelId = new ConcurrentHashMap<>();
     private final Map<UUID, CustomsInspection> inspectionsById = new ConcurrentHashMap<>();
@@ -77,7 +79,8 @@ public class CustomsServiceImpl implements CustomsService {
                               SessionPlayerRepository sessionPlayerRepository,
                               GameSessionRepository gameSessionRepository,
                               UnloadingStartService unloadingStartService,
-                              TravelRepository travelRepository) {
+                              TravelRepository travelRepository,
+                              RegressService regressService) {
         this.sessionCargoRepository = sessionCargoRepository;
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
@@ -88,6 +91,7 @@ public class CustomsServiceImpl implements CustomsService {
         this.gameSessionRepository = gameSessionRepository;
         this.unloadingStartService = unloadingStartService;
         this.travelRepository = travelRepository;
+        this.regressService = regressService;
     }
 
     @Override
@@ -172,8 +176,7 @@ public class CustomsServiceImpl implements CustomsService {
             travelPauseService.resumeTravel(
                     inspection.getTravelId(), inspection.getSessionId(), playerId,
                     inspection.getPlayerShipId(), "CUSTOMS_RESOLVED");
-            shiftArrivalTickByDetention(inspection);
-            scheduleBlockExpiration(inspection);
+            applyDetention(inspection);
         } catch (RuntimeException e) {
             System.err.println("[Customs] cooperate post-deduction failure on inspection " + inspectionId
                     + ": " + e.getMessage());
@@ -203,8 +206,7 @@ public class CustomsServiceImpl implements CustomsService {
                     inspection.getPlayerShipId(), "CUSTOMS_RESOLVED");
 
             if (inspection.isDetained()) {
-                shiftArrivalTickByDetention(inspection);
-                scheduleBlockExpiration(inspection);
+                applyDetention(inspection);
             } else {
                 unloadingStartService.startUnloadingAfterDetention(inspection.getTravelId());
             }
@@ -220,6 +222,13 @@ public class CustomsServiceImpl implements CustomsService {
                 + ", fine paid: " + inspection.getFinePaid() + " T"
                 + ", detention: " + (inspection.isDetained() ? inspection.getDetentionTicks() : 0) + " ticks");
         return inspection;
+    }
+
+    private void applyDetention(CustomsInspection inspection) {
+        shiftArrivalTickByDetention(inspection);
+        scheduleBlockExpiration(inspection);
+        persistBlockExpirationOnShip(inspection);
+        regressService.addDetentionDelay(inspection.getTravelId(), inspection.getDetentionTicks());
     }
 
     @Override
@@ -295,6 +304,25 @@ public class CustomsServiceImpl implements CustomsService {
         blockExpirationTickByTravelId.put(inspection.getTravelId(), expirationTick);
         System.out.println("[Customs] Block for travel " + inspection.getTravelId()
                 + " expires at tick " + expirationTick + " (" + inspection.getDetentionTicks() + " ticks from now)");
+    }
+
+    private void persistBlockExpirationOnShip(CustomsInspection inspection) {
+        PlayerShip ship = playerShipRepository.findById(inspection.getPlayerShipId()).orElse(null);
+        if (ship == null) {
+            System.err.println("[Customs] Could not persist block expiration — ship "
+                    + inspection.getPlayerShipId() + " not found");
+            return;
+        }
+        int expirationTick = getBlockExpirationTick(inspection.getTravelId());
+        if (expirationTick < 0) {
+            System.err.println("[Customs] Could not persist block expiration — no expiration tick"
+                    + " stored for travel " + inspection.getTravelId());
+            return;
+        }
+        ship.startCustomsBlock(expirationTick);
+        playerShipRepository.save(ship);
+        System.out.println("[Customs] Persisted customsBlockedUntilTick=" + expirationTick
+                + " on ship " + ship.getId());
     }
 
     private void shiftArrivalTickByDetention(CustomsInspection inspection) {

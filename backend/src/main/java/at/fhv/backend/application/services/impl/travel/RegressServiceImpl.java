@@ -23,6 +23,7 @@ public class RegressServiceImpl implements RegressService {
 
     private final Map<UUID, Double> conditionAtStartByTravelId = new ConcurrentHashMap<>();
     private final Map<UUID, RegressFine> evaluatedFineByTravelId = new ConcurrentHashMap<>();
+    private final Map<UUID, EvaluationContext> evaluationContextByTravelId = new ConcurrentHashMap<>();
 
     @Override
     public void recordConditionAtStart(UUID travelId, double conditionAtStart) {
@@ -43,12 +44,57 @@ public class RegressServiceImpl implements RegressService {
     public RegressFine consumeFine(Travel travel, int currentTick, double currentCondition,
                                    List<SessionCargo> cargosForTravel) {
         RegressFine stored = evaluatedFineByTravelId.remove(travel.getTravelId());
+        evaluationContextByTravelId.remove(travel.getTravelId());
         if (stored != null) {
             return stored;
         }
         System.out.println("[Regress] WARNING — no stored fine for travel " + travel.getTravelId()
                 + ", falling back to live evaluation with currentTick=" + currentTick);
         return evaluateInternal(travel, currentTick, currentCondition, cargosForTravel);
+    }
+
+    @Override
+    public RegressFine addDetentionDelay(UUID travelId, int additionalDelayTicks) {
+        if (additionalDelayTicks <= 0) {
+            return evaluatedFineByTravelId.get(travelId);
+        }
+
+        RegressFine stored = evaluatedFineByTravelId.get(travelId);
+        EvaluationContext context = evaluationContextByTravelId.get(travelId);
+        if (stored == null || context == null) {
+            System.out.println("[Regress] WARNING — addDetentionDelay called for travel " + travelId
+                    + " but no stored fine/context found");
+            return stored;
+        }
+
+        int newDelayTicks = stored.getDelayTicks() + additionalDelayTicks;
+        BigDecimal newDelayComponent = BigDecimal.ZERO;
+        if (context.cargoValue.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal rawFraction = DELAY_FRACTION_PER_TICK.multiply(BigDecimal.valueOf(newDelayTicks));
+            BigDecimal cappedFraction = rawFraction.min(DELAY_FRACTION_CAP);
+            BigDecimal rawDelay = context.cargoValue.multiply(cappedFraction).setScale(0, RoundingMode.HALF_UP);
+            newDelayComponent = applyMultiplier(rawDelay, context.multiplier);
+        }
+
+        RegressFine updatedFine = new RegressFine(
+                newDelayTicks,
+                stored.getToleranceTicks(),
+                newDelayComponent,
+                stored.getDamageComponent(),
+                stored.getDamagePercent(),
+                stored.getSpecialCargoMultiplier(),
+                stored.hadPerishableCargo(),
+                stored.hadFragileCargo()
+        );
+        evaluatedFineByTravelId.put(travelId, updatedFine);
+
+        System.out.println("[Regress] Travel " + travelId
+                + " — detention added " + additionalDelayTicks + " delay ticks"
+                + " (new delayTicks=" + newDelayTicks + ")"
+                + " => delayComponent=" + newDelayComponent + " T"
+                + ", damageComponent=" + updatedFine.getDamageComponent() + " T"
+                + ", total=" + updatedFine.getTotalFine() + " T");
+        return updatedFine;
     }
 
     private RegressFine evaluateInternal(Travel travel, int currentTick, double currentCondition,
@@ -91,6 +137,9 @@ public class RegressServiceImpl implements RegressService {
                 flags.hasPerishable, flags.hasFragile
         );
 
+        evaluationContextByTravelId.put(travel.getTravelId(),
+                new EvaluationContext(cargoValue, multiplier));
+
         System.out.println("[Regress] Travel " + travel.getTravelId()
                 + " — arrivalTick=" + actualArrivalTick
                 + " originalArrivalTick=" + originalArrivalTick
@@ -109,6 +158,7 @@ public class RegressServiceImpl implements RegressService {
     public void clear(UUID travelId) {
         conditionAtStartByTravelId.remove(travelId);
         evaluatedFineByTravelId.remove(travelId);
+        evaluationContextByTravelId.remove(travelId);
     }
 
     private BigDecimal sumCargoValue(List<SessionCargo> cargosForTravel) {
@@ -154,5 +204,15 @@ public class RegressServiceImpl implements RegressService {
         boolean hasPerishable = false;
         boolean hasFragile = false;
         boolean hasElectronics = false;
+    }
+
+    private static final class EvaluationContext {
+        final BigDecimal cargoValue;
+        final double multiplier;
+
+        EvaluationContext(BigDecimal cargoValue, double multiplier) {
+            this.cargoValue = cargoValue;
+            this.multiplier = multiplier;
+        }
     }
 }

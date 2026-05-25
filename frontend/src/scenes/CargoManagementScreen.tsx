@@ -275,6 +275,7 @@ export default function CargoManagementScreen({
                                     ? "Reise unterbrochen"
                                     : `Unterwegs — noch ${Math.max(0, (entry.arrivalTick ?? 0) - (entry.currentTick ?? 0))} Tage`,
                                 customs_check: "Zoll wird überprüft …",
+                                blocked: `Festgehalten — noch ${Math.max(0, (entry.customsBlockedUntilTick ?? 0) - (entry.currentTick ?? 0))} Tage`,
                                 unloading: "Wird entladen …",
                                 completed: `+${entry.reward?.toLocaleString("de-DE")} T`,
                             }[entry.phase] ?? "…";
@@ -412,6 +413,44 @@ export default function CargoManagementScreen({
                                         Noch {remainingTicks} {remainingTicks === 1 ? "Tag" : "Tagen"} bis Freigabe
                                     </div>
                                     <StaticProgressBar pct={pct} color="#a0521a" />
+                                </div>
+                            );
+                        })()}
+
+                        {selectedEntry.phase === "blocked" && (() => {
+                            // Customs detention after cooperate / failed bribe.
+                            // The countdown runs on customsBlockedUntilTick which
+                            // is updated each tick by the ship-positions handler
+                            // in GameScreen, so unlike the old behaviour the
+                            // value here does not freeze.
+                            const pct = getTickPct(
+                                selectedEntry.currentTick,
+                                selectedEntry.customsBlockedUntilTick,
+                                selectedEntry.customsBlockStartTick
+                            );
+                            const remainingTicks = Math.max(
+                                0,
+                                (selectedEntry.customsBlockedUntilTick ?? 0) - (selectedEntry.currentTick ?? 0)
+                            );
+                            return (
+                                <div className="cm-travel-panel">
+                                    <div className="cm-travel-header">
+                                        <IconWarning />
+                                        <div className="cm-travel-title">Schiff festgehalten</div>
+                                    </div>
+                                    <div className="cm-travel-route">{selectedEntry.from} → {selectedEntry.to}</div>
+                                    <div className="cm-travel-ticks">
+                                        Noch {remainingTicks} {remainingTicks === 1 ? "Tag" : "Tagen"} bis Freigabe
+                                    </div>
+                                    <div className="cm-travel-paused" style={{
+                                        color: "#b04020",
+                                        background: "rgba(176,64,32,0.1)",
+                                        border: "1px solid rgba(176,64,32,0.35)",
+                                    }}>
+                                        <IconWarning />
+                                        Zoll-Verzögerung
+                                    </div>
+                                    <StaticProgressBar pct={pct} color="#b04020" />
                                 </div>
                             );
                         })()}
