@@ -12,6 +12,7 @@ public class UserMapper implements EntityMapper<User, UserEntity> {
         entity.setId(user.getId());
         entity.setUsername(user.getUsername());
         entity.setPasswordHash(user.getPasswordHash());
+        entity.setRole(user.getRole());
         return entity;
     }
 
@@ -20,7 +21,8 @@ public class UserMapper implements EntityMapper<User, UserEntity> {
         return User.reconstruct(
                 entity.getId(),
                 entity.getUsername(),
-                entity.getPasswordHash()
+                entity.getPasswordHash(),
+                entity.getRole()
         );
     }
 }

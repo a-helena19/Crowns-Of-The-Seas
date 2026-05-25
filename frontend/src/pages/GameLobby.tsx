@@ -125,6 +125,11 @@ export default function GameLobby() {
                 <div className="lobby-header">
                     <h1>Crown of the Seas</h1>
                     <p className="welcome-text">Willkommen, {user?.username}!</p>
+                    {user?.role === "ADMIN" && (
+                        <button className="admin-link-btn" onClick={() => navigate("/admin")}>
+                            ⚙ Verwaltung
+                        </button>
+                    )}
                     <button className="logout-btn" onClick={handleLogout}>
                         Ausloggen
                     </button>

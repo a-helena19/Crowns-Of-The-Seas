@@ -40,4 +40,16 @@ public class ShipRepositoryImpl implements ShipRepository {
                 .map(shipMapper::toDomainModel)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<Ship> findAll() {
+        return shipJpaRepository.findAll().stream()
+                .map(shipMapper::toDomainModel)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public void deleteById(UUID id) {
+        shipJpaRepository.deleteById(id);
+    }
 }

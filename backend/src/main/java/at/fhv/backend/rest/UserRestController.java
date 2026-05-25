@@ -1,8 +1,8 @@
 package at.fhv.backend.rest;
 
-import at.fhv.backend.rest.dtos.ship.request.LoginUserDTO;
-import at.fhv.backend.rest.dtos.ship.request.RegisterUserDTO;
-import at.fhv.backend.rest.dtos.ship.response.UserResponseDTO;
+import at.fhv.backend.rest.dtos.user.LoginUserDTO;
+import at.fhv.backend.rest.dtos.user.RegisterUserDTO;
+import at.fhv.backend.rest.dtos.user.UserResponseDTO;
 import at.fhv.backend.application.services.user.LoginUserService;
 import at.fhv.backend.application.services.user.RegisterUserService;
 import jakarta.validation.Valid;
