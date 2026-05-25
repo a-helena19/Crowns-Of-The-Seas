@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class SmuggleServiceImpl implements SmuggleService {
 
-    private static final double BASE_SMUGGLE_CHANCE = 0.30;
+    private static final double BASE_SMUGGLE_CHANCE = 0.90;
     private static final int MIN_REWARD = 5000;
     private static final int MAX_REWARD = 40000;
     private static final int REWARD_STEP = 1000;

@@ -199,13 +199,14 @@ class TravelCompletionServiceTest {
         @Mock private SessionCargoRepository sessionCargoRepository;
         @Mock private CustomsService customsService;
         @Mock private UnloadingStartService unloadingStartService;
+        @Mock private RegressService regressService;
 
         private TravelArrivalServiceImpl service;
 
         @BeforeEach
         void setUp() {
             service = new TravelArrivalServiceImpl(
-                    travelRepository, playerShipRepository, sessionCargoRepository, unloadingStartService
+                    travelRepository, playerShipRepository, sessionCargoRepository, unloadingStartService, regressService
             );
         }
 

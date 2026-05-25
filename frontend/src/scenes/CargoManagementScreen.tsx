@@ -615,9 +615,6 @@ export default function CargoManagementScreen({
                                                     Regress — Verspätung
                                                     <span className="cm-reward-row-sub">
                                                         {" "}({regress.delayTicks} {regress.delayTicks === 1 ? "Tag" : "Tage"} zu spät
-                                                        {regress.toleranceTicks > 0
-                                                            ? `, davon ${regress.toleranceTicks} toleriert`
-                                                            : ""}
                                                         {regress.specialCargoMultiplier > 1
                                                             ? `, ×${regress.specialCargoMultiplier.toFixed(1)} ${regress.hadPerishableCargo ? "verderbliche" : regress.hadFragileCargo ? "zerbrechliche" : "empfindliche"} Ware`
                                                             : ""})

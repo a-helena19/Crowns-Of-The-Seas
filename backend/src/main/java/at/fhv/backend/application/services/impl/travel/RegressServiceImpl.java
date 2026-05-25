@@ -16,8 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class RegressServiceImpl implements RegressService {
-    private static final int TOLERANCE_TICKS = 1;
-    private static final int CUSTOMS_CHECK_TICKS = 2;
+
     private static final BigDecimal DELAY_FRACTION_PER_TICK = new BigDecimal("0.08");
     private static final BigDecimal DAMAGE_RATE_PER_PERCENT = new BigDecimal("50");
     private static final BigDecimal DELAY_FRACTION_CAP = new BigDecimal("0.60");
@@ -47,6 +46,8 @@ public class RegressServiceImpl implements RegressService {
         if (stored != null) {
             return stored;
         }
+        System.out.println("[Regress] WARNING — no stored fine for travel " + travel.getTravelId()
+                + ", falling back to live evaluation with currentTick=" + currentTick);
         return evaluateInternal(travel, currentTick, currentCondition, cargosForTravel);
     }
 
@@ -54,15 +55,13 @@ public class RegressServiceImpl implements RegressService {
                                          List<SessionCargo> cargosForTravel) {
 
         int originalArrivalTick = travel.getOriginalArrivalTick();
-        int expectedArrivalTick = originalArrivalTick + CUSTOMS_CHECK_TICKS;
         int actualArrivalTick = currentTick;
-        int delayTicks = Math.max(0, actualArrivalTick - expectedArrivalTick);
-        int overdueTicks = Math.max(0, delayTicks - TOLERANCE_TICKS);
+        int delayTicks = Math.max(0, actualArrivalTick - originalArrivalTick);
 
         BigDecimal cargoValue = sumCargoValue(cargosForTravel);
         BigDecimal delayComponent = BigDecimal.ZERO;
-        if (overdueTicks > 0 && cargoValue.compareTo(BigDecimal.ZERO) > 0) {
-            BigDecimal rawFraction = DELAY_FRACTION_PER_TICK.multiply(BigDecimal.valueOf(overdueTicks));
+        if (delayTicks > 0 && cargoValue.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal rawFraction = DELAY_FRACTION_PER_TICK.multiply(BigDecimal.valueOf(delayTicks));
             BigDecimal cappedFraction = rawFraction.min(DELAY_FRACTION_CAP);
             delayComponent = cargoValue.multiply(cappedFraction).setScale(0, RoundingMode.HALF_UP);
         }
@@ -86,18 +85,16 @@ public class RegressServiceImpl implements RegressService {
         BigDecimal multipliedDamage = applyMultiplier(damageComponent, multiplier);
 
         RegressFine fine = new RegressFine(
-                delayTicks, TOLERANCE_TICKS,
+                delayTicks, 0,
                 multipliedDelay, multipliedDamage,
                 damagePercent, multiplier,
                 flags.hasPerishable, flags.hasFragile
         );
 
         System.out.println("[Regress] Travel " + travel.getTravelId()
-                + " — currentTick=" + currentTick
-                + " expectedArrivalTick=" + expectedArrivalTick
-                + " (originalArrivalTick=" + originalArrivalTick + " + customsCheckTicks=" + CUSTOMS_CHECK_TICKS + ")"
+                + " — arrivalTick=" + actualArrivalTick
+                + " originalArrivalTick=" + originalArrivalTick
                 + " delayTicks=" + delayTicks
-                + " (tolerance=" + TOLERANCE_TICKS + ", overdue=" + overdueTicks + ")"
                 + " cargoValue=" + cargoValue + " T"
                 + " damage=" + String.format("%.1f", damagePercent) + "%"
                 + " multiplier=" + multiplier

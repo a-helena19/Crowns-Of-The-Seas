@@ -21,6 +21,7 @@ import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.ship.Ship;
 import at.fhv.backend.domain.model.ship.ShipRepository;
 import at.fhv.backend.domain.model.travel.Travel;
+import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.rest.GameSessionWebSocketController;
 import at.fhv.backend.rest.dtos.websocket.CustomsInspectionDialogEvent;
 import at.fhv.backend.rest.dtos.websocket.CustomsInspectionPassEvent;
@@ -58,6 +59,7 @@ public class CustomsServiceImpl implements CustomsService {
     private final SessionPlayerRepository sessionPlayerRepository;
     private final GameSessionRepository gameSessionRepository;
     private final UnloadingStartService unloadingStartService;
+    private final TravelRepository travelRepository;
 
     private final Map<UUID, CustomsInspection> inspectionsByTravelId = new ConcurrentHashMap<>();
     private final Map<UUID, CustomsInspection> inspectionsById = new ConcurrentHashMap<>();
@@ -74,7 +76,8 @@ public class CustomsServiceImpl implements CustomsService {
                               GameSessionWebSocketController webSocketController,
                               SessionPlayerRepository sessionPlayerRepository,
                               GameSessionRepository gameSessionRepository,
-                              UnloadingStartService unloadingStartService) {
+                              UnloadingStartService unloadingStartService,
+                              TravelRepository travelRepository) {
         this.sessionCargoRepository = sessionCargoRepository;
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
@@ -84,6 +87,7 @@ public class CustomsServiceImpl implements CustomsService {
         this.sessionPlayerRepository = sessionPlayerRepository;
         this.gameSessionRepository = gameSessionRepository;
         this.unloadingStartService = unloadingStartService;
+        this.travelRepository = travelRepository;
     }
 
     @Override
@@ -130,9 +134,6 @@ public class CustomsServiceImpl implements CustomsService {
             System.out.println("[Customs] Ship " + shipName + " (player " + playerId + ") inspected — HIDDEN (lucky)");
             return inspection;
         }
-
-        // DETECTED: store and show dialog. The ship enters BLOCKED state — done by the caller
-        // (TravelArrivalServiceImpl) based on isAwaitingDecision().
         storeInspection(inspection);
         travelPauseService.pauseTravel(travelId, travel.getSessionId(), playerId, playerShipId, "CUSTOMS_INSPECTION");
 
@@ -163,16 +164,21 @@ public class CustomsServiceImpl implements CustomsService {
         CustomsInspection inspection = loadInspection(playerId, inspectionId);
         inspection.cooperate();
 
-        // Bug #3 fix: actually deduct the fine from the player's balance.
-        deductFromPlayer(inspection.getPlayerId(), inspection.getSessionId(), inspection.getFinePaid(), "fine");
+        forceDeductFromPlayer(inspection.getPlayerId(), inspection.getSessionId(),
+                inspection.getFinePaid(), "fine");
 
-        broadcastInspectionResolved(inspection);
-        travelPauseService.resumeTravel(
-                inspection.getTravelId(), inspection.getSessionId(), playerId,
-                inspection.getPlayerShipId(), "CUSTOMS_RESOLVED");
-
-        // Cooperate always incurs detention -> register block expiration tick.
-        scheduleBlockExpiration(inspection);
+        try {
+            broadcastInspectionResolved(inspection);
+            travelPauseService.resumeTravel(
+                    inspection.getTravelId(), inspection.getSessionId(), playerId,
+                    inspection.getPlayerShipId(), "CUSTOMS_RESOLVED");
+            shiftArrivalTickByDetention(inspection);
+            scheduleBlockExpiration(inspection);
+        } catch (RuntimeException e) {
+            System.err.println("[Customs] cooperate post-deduction failure on inspection " + inspectionId
+                    + ": " + e.getMessage());
+            throw e;
+        }
 
         System.out.println("[Customs] Player " + playerId + " COOPERATED on inspection " + inspectionId
                 + " — fine paid: " + inspection.getFinePaid() + " T"
@@ -186,20 +192,26 @@ public class CustomsServiceImpl implements CustomsService {
         boolean success = random.nextDouble() < BRIBE_SUCCESS_CHANCE;
         inspection.bribe(success);
 
-        // Bug #3 fix: deduct bribe cost AND (on failure) the doubled fine.
         BigDecimal totalDeduction = inspection.getBribePaid().add(inspection.getFinePaid());
-        deductFromPlayer(inspection.getPlayerId(), inspection.getSessionId(), totalDeduction, "bribe+fine");
+        forceDeductFromPlayer(inspection.getPlayerId(), inspection.getSessionId(),
+                totalDeduction, "bribe+fine");
 
-        broadcastInspectionResolved(inspection);
-        travelPauseService.resumeTravel(
-                inspection.getTravelId(), inspection.getSessionId(), playerId,
-                inspection.getPlayerShipId(), "CUSTOMS_RESOLVED");
+        try {
+            broadcastInspectionResolved(inspection);
+            travelPauseService.resumeTravel(
+                    inspection.getTravelId(), inspection.getSessionId(), playerId,
+                    inspection.getPlayerShipId(), "CUSTOMS_RESOLVED");
 
-        if (inspection.isDetained()) {
-            scheduleBlockExpiration(inspection);
-        } else {
-            // Bribe success -> ship goes from BLOCKED to UNLOADING immediately.
-            unloadingStartService.startUnloadingAfterDetention(inspection.getTravelId());
+            if (inspection.isDetained()) {
+                shiftArrivalTickByDetention(inspection);
+                scheduleBlockExpiration(inspection);
+            } else {
+                unloadingStartService.startUnloadingAfterDetention(inspection.getTravelId());
+            }
+        } catch (RuntimeException e) {
+            System.err.println("[Customs] bribe post-deduction failure on inspection " + inspectionId
+                    + ": " + e.getMessage());
+            throw e;
         }
 
         System.out.println("[Customs] Player " + playerId + " BRIBED on inspection " + inspectionId
@@ -242,8 +254,6 @@ public class CustomsServiceImpl implements CustomsService {
         blockExpirationTickByTravelId.remove(travelId);
     }
 
-    // --- Helpers ---
-
     private void storeInspection(CustomsInspection inspection) {
         inspectionsByTravelId.put(inspection.getTravelId(), inspection);
         inspectionsById.put(inspection.getId(), inspection);
@@ -260,8 +270,7 @@ public class CustomsServiceImpl implements CustomsService {
         return inspection;
     }
 
-
-    private void deductFromPlayer(UUID playerId, UUID sessionId, BigDecimal amount, String reason) {
+    private void forceDeductFromPlayer(UUID playerId, UUID sessionId, BigDecimal amount, String reason) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             return;
         }
@@ -271,9 +280,12 @@ public class CustomsServiceImpl implements CustomsService {
             System.err.println("[Customs] Could not deduct " + reason + " — player " + playerId + " not found");
             throw new PlayerNotFoundException(playerId);
         }
-        player.subtractBalance(amount);
+        BigDecimal balanceBefore = player.getBalance();
+        player.forceSubtractBalance(amount);
         sessionPlayerRepository.save(player);
-        System.out.println("[Customs] Deducted " + amount + " T from player " + playerId + " (" + reason + ")");
+        System.out.println("[Customs] Deducted " + amount + " T from player " + playerId
+                + " (" + reason + ") — balance: " + balanceBefore + " T -> " + player.getBalance() + " T"
+                + (player.getBalance().compareTo(BigDecimal.ZERO) < 0 ? " (NEGATIVE!)" : ""));
     }
 
     private void scheduleBlockExpiration(CustomsInspection inspection) {
@@ -283,6 +295,21 @@ public class CustomsServiceImpl implements CustomsService {
         blockExpirationTickByTravelId.put(inspection.getTravelId(), expirationTick);
         System.out.println("[Customs] Block for travel " + inspection.getTravelId()
                 + " expires at tick " + expirationTick + " (" + inspection.getDetentionTicks() + " ticks from now)");
+    }
+
+    private void shiftArrivalTickByDetention(CustomsInspection inspection) {
+        int detentionTicks = inspection.getDetentionTicks();
+        if (detentionTicks <= 0) {
+            return;
+        }
+        Travel travel = travelRepository.findById(inspection.getTravelId()).orElse(null);
+        if (travel == null) {
+            return;
+        }
+        travel.shiftArrivalTick(detentionTicks);
+        travelRepository.save(travel);
+        System.out.println("[Customs] Travel " + inspection.getTravelId()
+                + " arrivalTick shifted by +" + detentionTicks + " ticks (detention as delay)");
     }
 
     private void broadcastInspectionPass(CustomsInspection inspection) {
