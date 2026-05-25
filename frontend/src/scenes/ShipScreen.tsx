@@ -71,10 +71,7 @@ export default function ShipScreen({ onSelect, filterByPortId }: ShipScreenProps
             .then(data => {
                 const allShips: PlayerShip[] = data;
                 const sorted = filterByPortId
-                    ? [
-                        ...allShips.filter(s => s.currentPortId === filterByPortId && s.status === "AT_PORT"),
-                        ...allShips.filter(s => !(s.currentPortId === filterByPortId && s.status === "AT_PORT")),
-                    ]
+                    ? allShips.filter(s => s.currentPortId === filterByPortId)
                     : [
                         ...allShips.filter(s => s.status === "AT_PORT"),
                         ...allShips.filter(s => s.status !== "AT_PORT"),
