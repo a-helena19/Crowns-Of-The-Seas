@@ -1,12 +1,13 @@
 package at.fhv.backend.application.services.impl.travel;
 
 import at.fhv.backend.application.dtos.mapper.TravelResponseMapper;
-import at.fhv.backend.application.services.travel.DockingPenaltyService;
 import at.fhv.backend.application.services.cargo.PortDistanceForCargoService;
 import at.fhv.backend.application.services.impl.session.GameTickScheduler;
+import at.fhv.backend.application.services.pilotstrike.PilotStrikeService;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CalculateFuelConsumptionService;
+import at.fhv.backend.application.services.travel.DockingPenaltyService;
 import at.fhv.backend.application.services.travel.RegressService;
 import at.fhv.backend.application.services.travel.StartTravelService;
 import at.fhv.backend.application.services.travel.ValidateTravelService;
@@ -16,18 +17,7 @@ import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotAvailableException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
 import at.fhv.backend.domain.model.exception.InvalidShipStatusTransition;
-import at.fhv.backend.domain.model.ship.*;
-import at.fhv.backend.rest.CargoWebSocketController;
-import at.fhv.backend.rest.dtos.port.PortResponseDTO;
-import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
-import at.fhv.backend.rest.dtos.ship.response.TravelDTO;
-import at.fhv.backend.application.services.impl.session.GameTickScheduler;
-import at.fhv.backend.application.services.smuggle.SmuggleService;
-import at.fhv.backend.application.services.travel.CalculateFuelConsumptionService;
-import at.fhv.backend.application.services.pilotstrike.PilotStrikeService;
 import at.fhv.backend.domain.model.exception.PilotStrikeActiveException;
-import at.fhv.backend.application.services.travel.StartTravelService;
-import at.fhv.backend.application.services.travel.ValidateTravelService;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
 import at.fhv.backend.domain.model.exception.TravelNotFoundException;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
@@ -96,11 +86,10 @@ public class StartTravelServiceImpl implements StartTravelService {
                                   PortDistanceForCargoService portDistanceForCargoService,
                                   SessionPlayerRepository sessionPlayerRepository,
                                   SmuggleService smuggleService,
+                                  DockingPenaltyService dockingPenaltyService,
+                                  PilotStrikeService pilotStrikeService,
                                   PendingTravelStartServiceImpl pendingTravelStartService,
                                   RegressService regressService) {
-                                  SmuggleService smuggleService,
-                                  DockingPenaltyService dockingPenaltyService,
-                                  PilotStrikeService pilotStrikeService) {
         this.playerShipRepository = playerShipRepository;
         this.shipRepository = shipRepository;
         this.portQueryService = portQueryService;
@@ -162,6 +151,17 @@ public class StartTravelServiceImpl implements StartTravelService {
         ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
                 .orElseThrow(() -> new PlayerNotFoundException(playerId));
 
+        if (request.isPilotageService()) {
+            if (pilotStrikeService.isStrikeActive(sessionId, originPortId)) {
+                throw new PilotStrikeActiveException(
+                        "Lotsenstreik am Abfahrtshafen — Lotsendienst nicht verfügbar.", originPortId);
+            }
+            if (pilotStrikeService.isStrikeActive(sessionId, destinationPortId)) {
+                throw new PilotStrikeActiveException(
+                        "Lotsenstreik am Ankunftshafen — Lotsendienst nicht verfügbar.", destinationPortId);
+            }
+        }
+
         Integer loadingCompletedAtTick = playerShip.getLoadingCompletedAtTick();
         double loadingDurationSeconds = loadingCompletedAtTick != null && loadingCompletedAtTick > 0
                 ? loadingCompletedAtTick * session.getTickRateSeconds()
@@ -169,6 +169,7 @@ public class StartTravelServiceImpl implements StartTravelService {
 
         double distance = portDistanceForCargoService.distanceBetween(originPortId, destinationPortId);
         double speedSetting = Math.max(0.25, Math.min(1.0, request.getSpeedSetting()));
+
         double speedMultiplier = 0.5 + speedSetting;
         double baseFuelAbsolute = calculateFuelConsumptionService.calculateFuelConsumption(ship, distance);
         double requiredFuelAbsolute = baseFuelAbsolute * speedMultiplier;
@@ -178,19 +179,6 @@ public class StartTravelServiceImpl implements StartTravelService {
 
         double requiredFuelPercent = (requiredFuelAbsolute / ship.getMaxFuel().doubleValue()) * 100.0;
         double conditionWearPercent = requiredFuelPercent * CONDITION_WEAR_FACTOR;
-            if (request.isPilotageService()) {
-                if (pilotStrikeService.isStrikeActive(sessionId, originPortId)) {
-                    throw new PilotStrikeActiveException(
-                            "Lotsenstreik am Abfahrtshafen — Lotsendienst nicht verfügbar.", originPortId);
-                }
-                if (pilotStrikeService.isStrikeActive(sessionId, destinationPortId)) {
-                    throw new PilotStrikeActiveException(
-                            "Lotsenstreik am Ankunftshafen — Lotsendienst nicht verfügbar.", destinationPortId);
-                }
-            }
-
-            double requiredFuelPercent = (requiredFuelAbsolute / ship.getMaxFuel().doubleValue()) * 100.0;
-            double conditionWearPercent = requiredFuelPercent * CONDITION_WEAR_FACTOR;
 
         double riskFactor = calculateRiskFactor(playerShip, ship);
         BigDecimal baseReward = cargo.getReward();
@@ -204,13 +192,7 @@ public class StartTravelServiceImpl implements StartTravelService {
             startTickDelay = delayForOverlay + DEPARTURE_START_BUFFER_TICKS;
         }
 
-        if (request.isPilotageService()) {
-            player.subtractBalance(PILOTAGE_COST);
-            sessionPlayerRepository.save(player);
-        }
-
         int currentTick = session.getCurrentTick();
-
         Travel plannedTravel = Travel.plan(
                 playerShip.getId(), playerId, sessionId,
                 originPortId, destinationPortId,
@@ -219,25 +201,13 @@ public class StartTravelServiceImpl implements StartTravelService {
                 currentTick, startTickDelay
         );
         plannedTravel.setLoadingDurationSeconds(loadingDurationSeconds);
+        plannedTravel.setPilotageServiceBooked(request.isPilotageService());
         Travel saved = travelRepository.save(plannedTravel);
-            Travel travel = Travel.start(
-                    playerShip.getId(), playerId, sessionId,
-                    originPortId, destinationPortId,
-                    distance, effectiveSpeed,
-                    riskFactor, baseReward,
-                    currentTick,
-                    startTickDelay
-            );
 
-            travel.setLoadingDurationSeconds(loadingDurationSeconds);
-            travel.setPilotageServiceBooked(request.isPilotageService());
-
-            Travel saved = travelRepository.save(travel);
-
-            if (request.isPilotageService()) {
-                player.subtractBalance(PILOTAGE_COST);
-                sessionPlayerRepository.save(player);
-            }
+        if (request.isMiniGameFailedDeparture()) {
+            dockingPenaltyService.applyDepartureFailurePenalty(
+                    saved.getTravelId(), playerId, sessionId);
+        }
 
         boolean smuggleOfferGenerated;
         try {
@@ -258,24 +228,15 @@ public class StartTravelServiceImpl implements StartTravelService {
 
             gameTickScheduler.triggerImmediateBroadcast(sessionId);
             cargoWebSocketController.broadcastMarketUpdate(sessionId);
-            if (request.isMiniGameFailedDeparture()) {
-                dockingPenaltyService.applyDepartureFailurePenalty(
-                        saved.getTravelId(), playerId, sessionId);
-            }
-
-            gameTickScheduler.triggerImmediateBroadcast(sessionId);
-            cargoWebSocketController.broadcastMarketUpdate(sessionId);
-
-            try {
-                smuggleService.tryGenerateSmuggleOffer(playerId, sessionId, originPortId, saved.getTravelId(), playerShip.getId());
-                gameTickScheduler.triggerImmediateBroadcast(sessionId);
-            } catch (Exception e) {
-                System.err.println("[StartTravel] Error generating smuggle offer: " + e.getMessage());
-            }
 
             System.out.println("[StartTravel] Smuggle offer pending for travel " + saved.getTravelId()
                     + " — ship stays at port, travel stays PLANNED");
             return travelResponseMapper.toResponse(saved);
+        }
+
+        if (request.isPilotageService()) {
+            player.subtractBalance(PILOTAGE_COST);
+            sessionPlayerRepository.save(player);
         }
 
         regressService.recordConditionAtStart(saved.getTravelId(), playerShip.getCondition());

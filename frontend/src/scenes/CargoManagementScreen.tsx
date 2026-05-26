@@ -37,8 +37,6 @@ function IconAnchor() {
     );
 }
 
-
-
 function IconWarning() {
     return (
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ verticalAlign: "middle", marginRight: 5, opacity: 0.8 }}>
@@ -80,8 +78,6 @@ function UnloadingStallNotice({ currentTick, completionTick }: {
         return () => clearInterval(interval);
     }, [isOverdue, completionTick]);
 
-    // Only show notice after 3 seconds of stalling so it doesn't appear during the
-    // normal handoff between server ticks.
     if (!isOverdue || secondsWaiting < 3) return null;
 
     return (
@@ -398,47 +394,47 @@ export default function CargoManagementScreen({
                                             : null,
                                     ].filter(Boolean);
                                     return (
-                                    <div className="cm-actions">
-                                        <div className="pilotage-row">
-                                            <button
-                                                type="button"
-                                                className={`pilotage-toggle ${pilotageMap[selectedEntry.cargoId] ? "active" : ""}${pilotBlocked ? " disabled" : ""}`}
-                                                disabled={pilotBlocked}
-                                                onClick={() => {
-                                                    if (pilotBlocked) return;
-                                                    setPilotageMap(m => ({
-                                                        ...m,
-                                                        [selectedEntry.cargoId]: !m[selectedEntry.cargoId],
-                                                    }));
-                                                }}
-                                            >
+                                        <div className="cm-actions">
+                                            <div className="pilotage-row">
+                                                <button
+                                                    type="button"
+                                                    className={`pilotage-toggle ${pilotageMap[selectedEntry.cargoId] ? "active" : ""}${pilotBlocked ? " disabled" : ""}`}
+                                                    disabled={pilotBlocked}
+                                                    onClick={() => {
+                                                        if (pilotBlocked) return;
+                                                        setPilotageMap(m => ({
+                                                            ...m,
+                                                            [selectedEntry.cargoId]: !m[selectedEntry.cargoId],
+                                                        }));
+                                                    }}
+                                                >
                                                 <span className="pilotage-check">
                                                     {pilotageMap[selectedEntry.cargoId] ? "✓" : "○"}
                                                 </span>
-                                                <span className="pilotage-label">Lotsendienst</span>
-                                                <span className="pilotage-cost">600 Taler</span>
+                                                    <span className="pilotage-label">Lotsendienst</span>
+                                                    <span className="pilotage-cost">600 Taler</span>
+                                                </button>
+                                            </div>
+                                            {pilotBlocked && (
+                                                <div className="pilot-strike-info">
+                                                    ⚠ Lotsenstreik in {strikeNames.join(" und ")} — Lotsendienst derzeit nicht verfügbar.
+                                                </div>
+                                            )}
+                                            {errorMap[selectedEntry.cargoId] && (
+                                                <div className="harbor-error-toast" style={{ position: "relative", transform: "none", marginBottom: 8 }}>
+                                                    {errorMap[selectedEntry.cargoId]}
+                                                </div>
+                                            )}
+                                            <button
+                                                className="game-btn danger"
+                                                onClick={() => handleDepartButton(selectedEntry)}
+                                                disabled={startingMap[selectedEntry.cargoId]}
+                                            >
+                                                {startingMap[selectedEntry.cargoId]
+                                                    ? "Reise wird gestartet …"
+                                                    : "Reise starten"}
                                             </button>
                                         </div>
-                                        {pilotBlocked && (
-                                            <div className="pilot-strike-info">
-                                                ⚠ Lotsenstreik in {strikeNames.join(" und ")} — Lotsendienst derzeit nicht verfügbar.
-                                            </div>
-                                        )}
-                                        {errorMap[selectedEntry.cargoId] && (
-                                            <div className="harbor-error-toast" style={{ position: "relative", transform: "none", marginBottom: 8 }}>
-                                                {errorMap[selectedEntry.cargoId]}
-                                            </div>
-                                        )}
-                                        <button
-                                            className="game-btn danger"
-                                            onClick={() => handleDepartButton(selectedEntry)}
-                                            disabled={startingMap[selectedEntry.cargoId]}
-                                        >
-                                            {startingMap[selectedEntry.cargoId]
-                                                ? "Reise wird gestartet …"
-                                                : "Reise starten"}
-                                        </button>
-                                    </div>
                                     );
                                 })()}
                             </>
@@ -504,11 +500,6 @@ export default function CargoManagementScreen({
                         })()}
 
                         {selectedEntry.phase === "blocked" && (() => {
-                            // Customs detention after cooperate / failed bribe.
-                            // The countdown runs on customsBlockedUntilTick which
-                            // is updated each tick by the ship-positions handler
-                            // in GameScreen, so unlike the old behaviour the
-                            // value here does not freeze.
                             const pct = getTickPct(
                                 selectedEntry.currentTick,
                                 selectedEntry.customsBlockedUntilTick,
@@ -602,7 +593,6 @@ export default function CargoManagementScreen({
                             const allRewards = selectedEntry.cargoRewards ?? [];
                             const cargoItems = allRewards.filter(r => r.cargoType !== "SMUGGLE");
                             const smuggleItem = allRewards.find(r => r.cargoType === "SMUGGLE");
-                            const isPerfect = cargoItems.every(r => r.percentage >= 100);
 
                             const customs = selectedEntry.customsSummary;
                             const finePaid = customs?.finePaid ?? 0;
@@ -614,18 +604,22 @@ export default function CargoManagementScreen({
                             const regressDelay = regress?.delayComponent ?? 0;
                             const regressDamage = regress?.damageComponent ?? 0;
 
+                            const dockingFine = selectedEntry.dockingFine ?? 0;
+                            const departureDockingFine = selectedEntry.departureDockingFine ?? 0;
+                            const pilotageRefund = selectedEntry.pilotageRefund ?? 0;
+                            const hasDockingPenalty = dockingFine > 0 || departureDockingFine > 0;
+
                             const cargoBaseTotal = cargoItems.reduce((s, r) => s + (r.actualReward - (r.bonusReward ?? 0)), 0);
                             const bonusTotal = cargoItems.reduce((s, r) => s + (r.bonusReward ?? 0), 0);
                             const smuggleTotal = smuggleItem?.actualReward ?? 0;
                             const ratPenalty = selectedEntry.ratMinigameSummary?.result === "FAILED"
                                 ? (selectedEntry.ratMinigameSummary.penaltyAmount ?? 0) : 0;
-                            const netTotal = cargoBaseTotal + bonusTotal + smuggleTotal - ratPenalty - customsTotalOut - regressTotal;
+                            const netTotal = cargoBaseTotal + bonusTotal + smuggleTotal
+                                - ratPenalty - customsTotalOut - regressTotal
+                                - dockingFine - departureDockingFine + pilotageRefund;
 
-                            const dockingFine = selectedEntry.dockingFine ?? 0;
-                            const departureDockingFine = selectedEntry.departureDockingFine ?? 0;
-                            const pilotageRefund = selectedEntry.pilotageRefund ?? 0;
-                            const hasDockingPenalty = dockingFine > 0 || departureDockingFine > 0;
                             const isPerfect = cargoItems.every(r => r.percentage >= 100) && !hasDockingPenalty;
+
                             return (
                                 <div className="cm-reward-panel">
                                     <div className="cm-reward-header">

@@ -56,7 +56,6 @@ public class GlobalExceptionHandler {
                  SESSION_NOT_IN_LOBBY,
                  SESSION_NOT_RUNNING,
                  INVALID_TICK_RATE,
-                 HOME_PORT_NOT_ASSIGNED,
                  CUSTOMS_INSPECTION_INVALID_STATE,
                  HOME_PORT_NOT_ASSIGNED,
                  PILOT_STRIKE_ACTIVE -> HttpStatus.BAD_REQUEST;

@@ -23,6 +23,19 @@ export interface CustomsSummary {
     wasCarryingIllegalCargo: boolean;
 }
 
+export interface RegressSummary {
+    delayTicks: number;
+    toleranceTicks: number;
+    overdueTicks: number;
+    delayComponent: number;
+    damageComponent: number;
+    damagePercent: number;
+    specialCargoMultiplier: number;
+    hadPerishableCargo: boolean;
+    hadFragileCargo: boolean;
+    totalFine: number;
+}
+
 interface TravelResultScreenProps {
     cargos: CargoRewardBreakdown[];
     baseReward: number;
@@ -30,6 +43,10 @@ interface TravelResultScreenProps {
     previousBalance: number;
     newBalance: number;
     customsSummary?: CustomsSummary;
+    regressSummary?: RegressSummary;
+    dockingFine?: number;
+    departureDockingFine?: number;
+    pilotageRefund?: number;
     onClose: () => void;
 }
 
@@ -86,11 +103,11 @@ const IconArrowRight = ({ className }: { className?: string }) => (
 
 function customsInfo(s: CustomsSummary): { good: boolean; title: string; detail: string } {
     switch (s.outcome) {
-        case "CLEARED":     return { good: true,  title: "Zollkontrolle — ohne Befund",      detail: "Routinekontrolle, keine Beanstandung." };
-        case "HIDDEN":      return { good: true,  title: "Zollkontrolle — unentdeckt",        detail: "Die Ladung blieb verborgen." };
-        case "COOPERATED":  return { good: false, title: "Zollkontrolle — Strafe bezahlt",    detail: s.detained ? `Schiff für ${s.detentionTicks} Ticks festgehalten.` : "Strafe beglichen, Fahrt freigegeben." };
-        case "BRIBE_SUCCESS": return { good: true, title: "Bestechung — angenommen",          detail: "Der Beamte sah weg. Keine Strafe." };
-        case "BRIBE_FAILED":  return { good: false, title: "Bestechung — abgelehnt",          detail: s.detained ? `Strafe verdoppelt. Schiff für ${s.detentionTicks} Ticks festgehalten.` : "Strafe verdoppelt." };
+        case "CLEARED":     return { good: true,  title: "Zollkontrolle - ohne Befund",      detail: "Routinekontrolle, keine Beanstandung." };
+        case "HIDDEN":      return { good: true,  title: "Zollkontrolle - unentdeckt",        detail: "Die Ladung blieb verborgen." };
+        case "COOPERATED":  return { good: false, title: "Zollkontrolle - Strafe bezahlt",    detail: s.detained ? `Schiff fuer ${s.detentionTicks} Ticks festgehalten.` : "Strafe beglichen, Fahrt freigegeben." };
+        case "BRIBE_SUCCESS": return { good: true, title: "Bestechung - angenommen",          detail: "Der Beamte sah weg. Keine Strafe." };
+        case "BRIBE_FAILED":  return { good: false, title: "Bestechung - abgelehnt",          detail: s.detained ? `Strafe verdoppelt. Schiff fuer ${s.detentionTicks} Ticks festgehalten.` : "Strafe verdoppelt." };
     }
 }
 
@@ -101,6 +118,10 @@ export default function TravelResultScreen({
                                                previousBalance,
                                                newBalance,
                                                customsSummary,
+                                               regressSummary,
+                                               dockingFine = 0,
+                                               departureDockingFine = 0,
+                                               pilotageRefund = 0,
                                                onClose,
                                            }: TravelResultScreenProps) {
     const balanceGain = newBalance - previousBalance;
@@ -127,11 +148,20 @@ export default function TravelResultScreen({
 
     const regularCargos = cargos.filter(c => c.cargoType !== "SMUGGLE");
     const smuggleCargo  = cargos.find(c => c.cargoType === "SMUGGLE");
-    const isPerfect     = regularCargos.length > 0 && regularCargos.every(c => c.status === "DELIVERED");
 
     const customsFine  = customsSummary?.finePaid  ?? 0;
     const customsBribe = customsSummary?.bribePaid ?? 0;
     const customsTotal = customsFine + customsBribe;
+
+    const regressTotal  = regressSummary?.totalFine       ?? 0;
+    const regressDelay  = regressSummary?.delayComponent  ?? 0;
+    const regressDamage = regressSummary?.damageComponent ?? 0;
+
+    const hasDockingPenalty = dockingFine > 0 || departureDockingFine > 0;
+    const isPerfect = regularCargos.length > 0
+        && regularCargos.every(c => c.status === "DELIVERED")
+        && !hasDockingPenalty
+        && regressTotal === 0;
 
     // Summary numbers
     const cargoBase    = regularCargos.reduce((s, c) => s + (c.actualReward - (c.bonusReward ?? 0)), 0);
@@ -153,7 +183,7 @@ export default function TravelResultScreen({
                             {isPerfect ? "Perfekte Reise" : "Reise abgeschlossen"}
                         </div>
                         {isPerfect && (
-                            <div className="tr-subtitle">Alle Frachten pünktlich abgeliefert</div>
+                            <div className="tr-subtitle">Alle Frachten puenktlich abgeliefert</div>
                         )}
                     </div>
                 </div>
@@ -193,7 +223,7 @@ export default function TravelResultScreen({
                                 <div className="tr-cargo-info">
                                     <div className="tr-cargo-name">{c.cargoName}</div>
                                     <div className="tr-cargo-dest">
-                                        {c.destinationPort}{isExpired ? ` — ${c.percentage}% Wert` : ""}
+                                        {c.destinationPort}{isExpired ? ` - ${c.percentage}% Wert` : ""}
                                     </div>
                                 </div>
                                 <div className={`tr-cargo-amount ${isExpired ? "neutral" : "positive"}`}>
@@ -211,7 +241,7 @@ export default function TravelResultScreen({
                                 <div className="tr-cargo-info">
                                     <div className="tr-cargo-name">{smuggleCargo.cargoName}</div>
                                     <div className="tr-cargo-dest">
-                                        Schmuggelware{confiscated ? " — Konfisziert" : ""}
+                                        Schmuggelware{confiscated ? " - Konfisziert" : ""}
                                     </div>
                                 </div>
                                 <div className={`tr-cargo-amount ${confiscated ? "neutral" : "positive"}`}>
@@ -242,6 +272,12 @@ export default function TravelResultScreen({
                             <span className="tr-summary-value positive">+{fmt(smuggleTotal)} T</span>
                         </div>
                     )}
+                    {pilotageRefund > 0 && (
+                        <div className="cm-reward-row bonus">
+                            <span>Lotsenerstattung (Streik)</span>
+                            <span className="cm-reward-row-value">+{pilotageRefund.toLocaleString("de-DE")}T</span>
+                        </div>
+                    )}
                     {customsBribe > 0 && (
                         <div className="tr-summary-row deduction">
                             <span className="tr-summary-label">Bestechung</span>
@@ -252,6 +288,54 @@ export default function TravelResultScreen({
                         <div className="tr-summary-row deduction">
                             <span className="tr-summary-label">Zollstrafe</span>
                             <span className="tr-summary-value negative">-{fmt(customsFine)} T</span>
+                        </div>
+                    )}
+                    {regressSummary && regressSummary.delayTicks > 0 && regressDelay > 0 && (
+                        <div className="tr-summary-row deduction">
+                            <span className="tr-summary-label">
+                                Regress - Verspaetung
+                                <span className="tr-summary-sub">
+                                    {" "}({regressSummary.delayTicks} {regressSummary.delayTicks === 1 ? "Tag" : "Tage"} zu spaet
+                                    {regressSummary.specialCargoMultiplier > 1
+                                        ? `, x${regressSummary.specialCargoMultiplier.toFixed(1)} ${
+                                            regressSummary.hadPerishableCargo
+                                                ? "verderbliche"
+                                                : regressSummary.hadFragileCargo
+                                                    ? "zerbrechliche"
+                                                    : "empfindliche"
+                                        } Ware`
+                                        : ""})
+                                </span>
+                            </span>
+                            <span className="tr-summary-value negative">-{fmt(Math.round(regressDelay))} T</span>
+                        </div>
+                    )}
+                    {regressDamage > 0 && (
+                        <div className="tr-summary-row deduction">
+                            <span className="tr-summary-label">
+                                Regress - Schaden
+                                {regressSummary && regressSummary.damagePercent > 0 && (
+                                    <span className="tr-summary-sub">
+                                        {" "}({regressSummary.damagePercent.toFixed(1)} % Zustand verloren
+                                        {regressSummary.specialCargoMultiplier > 1
+                                            ? `, x${regressSummary.specialCargoMultiplier.toFixed(1)}`
+                                            : ""})
+                                    </span>
+                                )}
+                            </span>
+                            <span className="tr-summary-value negative">-{fmt(Math.round(regressDamage))} T</span>
+                        </div>
+                    )}
+                    {departureDockingFine > 0 && (
+                        <div className="cm-reward-row warn">
+                            <span>⚠ Ablege-Schaden (Kollision)</span>
+                            <span className="cm-reward-row-value">-{departureDockingFine.toLocaleString("de-DE")}T</span>
+                        </div>
+                    )}
+                    {dockingFine > 0 && (
+                        <div className="cm-reward-row warn">
+                            <span>⚠ Anlege-Schaden (Kollision)</span>
+                            <span className="cm-reward-row-value">-{dockingFine.toLocaleString("de-DE")}T</span>
                         </div>
                     )}
                     <div className="tr-summary-row total">
@@ -279,61 +363,11 @@ export default function TravelResultScreen({
                         <div className={`tr-balance-amount ${newBalance >= previousBalance ? "new" : "negative-new"}`}>
                             {fmt(displayedBalance)} T
                         </div>
-                    {/* Summary */}
-                    <div className="reward-summary">
-                        {cargos.length > 0 && (
-                            <div className="summary-item">
-                                <span className="summary-label">Frachtbelohnung:</span>
-                                <span className="summary-value">
-                                    +{cargos.reduce((sum, c) => sum + c.actualReward, 0).toLocaleString()}G
-                                </span>
-                            </div>
-                        )}
-
-                        {baseReward > 0 && (
-                            <div className="summary-item bonus">
-                                <span className="summary-label">🎁 Reisebonus:</span>
-                                <span className="summary-value">+{baseReward.toLocaleString()}G</span>
-                            </div>
-                        )}
-
-                        <div className="summary-divider"></div>
-
-                        <div className="summary-item total">
-                            <span className="summary-label">Gesamtbelohnung:</span>
-                            <span className="summary-value total-amount">
-                                +{totalReward.toLocaleString()}G
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Balance Update */}
-                <div className="balance-update">
-                    <h3>Kontostand</h3>
-
-                    <div className="balance-row">
-                        <span className="balance-label">Vorher:</span>
-                        <span className="balance-amount">{previousBalance.toLocaleString()}G</span>
-                    </div>
-
-                    <div className="balance-change">
-                        <div className="change-arrow">
-                            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                                <path d="M7 10l5 5 5-5z" />
-                            </svg>
-                        </div>
-                        <div className="change-amount">+{displayedReward.toLocaleString()}G</div>
-                    </div>
-
-                    <div className="balance-row new">
-                        <span className="balance-label">Nachher:</span>
-                        <span className="balance-amount new-amount">{displayedBalance.toLocaleString()}G</span>
                     </div>
                 </div>
 
                 <button className="tr-close-btn" onClick={onClose}>
-                    Weiter zur nächsten Reise
+                    Weiter zur naechsten Reise
                 </button>
 
             </div>

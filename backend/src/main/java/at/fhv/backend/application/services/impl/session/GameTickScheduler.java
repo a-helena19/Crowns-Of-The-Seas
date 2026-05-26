@@ -2,12 +2,14 @@ package at.fhv.backend.application.services.impl.session;
 
 import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.application.services.cargo.CustomsService;
-import at.fhv.backend.application.services.travel.*;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
-import at.fhv.backend.application.services.travel.TravelPauseService;
 import at.fhv.backend.application.services.pilotstrike.PilotStrikeService;
+import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
+import at.fhv.backend.application.services.travel.CustomsCheckCompletionService;
 import at.fhv.backend.application.services.travel.TravelArrivalService;
+import at.fhv.backend.application.services.travel.TravelPauseService;
+import at.fhv.backend.application.services.travel.UnloadingStartService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
 import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
@@ -20,20 +22,24 @@ import at.fhv.backend.domain.model.ship.ShipRepository;
 import at.fhv.backend.domain.model.ship.ShipStatus;
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.domain.model.travel.TravelRepository;
-import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.domain.model.travel.TravelStatus;
 import at.fhv.backend.rest.CargoWebSocketController;
-import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.GameSessionWebSocketController;
+import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.dtos.websocket.SessionUpdateEvent;
 import at.fhv.backend.rest.dtos.websocket.ShipPositionsUpdateEvent;
 import at.fhv.backend.rest.dtos.websocket.TickUpdateEvent;
+import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import jakarta.annotation.PreDestroy;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -68,8 +74,8 @@ public class GameTickScheduler {
     private final Map<UUID, Long> lastTickProcessedAtMs = new ConcurrentHashMap<>();
     private final Map<UUID, ReentrantLock> tickLocks = new ConcurrentHashMap<>();
     private static final int MAX_ACTIVE_CARGOS_PER_PORT = 7;
-    private final Random rng = new Random();
 
+    private final Random rng = new Random();
 
     public GameTickScheduler(GameSessionRepository gameSessionRepository,
                              TravelRepository travelRepository,
@@ -83,8 +89,7 @@ public class GameTickScheduler {
                              CargoUnloadingPhaseService cargoUnloadingPhaseService,
                              CargoSessionInitializer cargoSessionInitializer,
                              TravelPauseService travelPauseService,
-                             PilotStrikeService pilotStrikeService) {
-                             TravelPauseService travelPauseService,
+                             PilotStrikeService pilotStrikeService,
                              RatMinigameService ratMinigameService,
                              CustomsService customsService,
                              UnloadingStartService unloadingStartService,
@@ -107,7 +112,6 @@ public class GameTickScheduler {
         this.unloadingStartService = unloadingStartService;
         this.customsCheckCompletionService = customsCheckCompletionService;
     }
-
 
     public void startForSession(UUID sessionId, int tickRateSeconds) {
         runningTasks.computeIfAbsent(sessionId, ignored ->
@@ -514,7 +518,7 @@ public class GameTickScheduler {
             all = sessionCargoRepository.findAllBySessionId(sessionId);
         }
 
-        Map<UUID, List<SessionCargo>> byPort = new java.util.HashMap<>();
+        Map<UUID, List<SessionCargo>> byPort = new HashMap<>();
         for (SessionCargo sc : all) {
             byPort.computeIfAbsent(sc.getOriginPortId(), k -> new ArrayList<>()).add(sc);
         }

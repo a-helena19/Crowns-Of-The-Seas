@@ -8,7 +8,19 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * Aggregate Root fuer eine Reise zwischen zwei Haefen.
+ * <p>
+ * Lifecycle:
+ * <pre>
+ *   PLANNED -> IN_PROGRESS -> ARRIVED -> COMPLETED
+ *                       \-> CANCELLED
+ * </pre>
+ * PLANNED wird verwendet wenn vor der Abfahrt noch eine Entscheidung
+ * aussteht (z.B. Schmuggel-Angebot).
+ */
 public class Travel {
+
     private final UUID travelId;
     private final UUID playerShipId;
     private final UUID playerId;
@@ -26,6 +38,7 @@ public class Travel {
     private int startTick;
     private int arrivalTick;
     private double loadingDurationSeconds;
+
     /** Ankunfts-Strafe (Anlege-Minispiel fehlgeschlagen) */
     private BigDecimal dockingFine = BigDecimal.ZERO;
     /** Abfahrts-Strafe (Ablege-Minispiel fehlgeschlagen) */
@@ -67,6 +80,14 @@ public class Travel {
         this.arrivalMiniGamePending = arrivalMiniGamePending;
     }
 
+    // ============================================================
+    //  Factory-Methoden
+    // ============================================================
+
+    /**
+     * Startet eine Reise direkt im Status IN_PROGRESS.
+     * Wird verwendet wenn keine Pre-Departure-Entscheidung ansteht.
+     */
     public static Travel start(UUID playerShipId, UUID playerId, UUID sessionId,
                                UUID originPortId, UUID destinationPortId,
                                double distance, double speedSetting,
@@ -94,11 +115,17 @@ public class Travel {
                 distance, speedSetting, riskFactor, baseReward,
                 TravelStatus.IN_PROGRESS,
                 Instant.now(), null, 0.0,
-                effectiveStartTick, arrivalTick, BigDecimal.ZERO, BigDecimal.ZERO,
+                effectiveStartTick, arrivalTick,
+                BigDecimal.ZERO, BigDecimal.ZERO,
                 false, false, BigDecimal.ZERO, false
         );
     }
 
+    /**
+     * Plant eine Reise im Status PLANNED.
+     * Muss spaeter mit {@link #activate(int, int)} aktiviert werden, sobald
+     * Pre-Departure-Entscheidungen (z.B. Schmuggel) getroffen wurden.
+     */
     public static Travel plan(UUID playerShipId, UUID playerId, UUID sessionId,
                               UUID originPortId, UUID destinationPortId,
                               double distance, double speedSetting,
@@ -117,10 +144,16 @@ public class Travel {
                 distance, speedSetting, riskFactor, baseReward,
                 TravelStatus.PLANNED,
                 Instant.now(), null, 0.0,
-                effectiveStartTick, arrivalTick
+                effectiveStartTick, arrivalTick,
+                BigDecimal.ZERO, BigDecimal.ZERO,
+                false, false, BigDecimal.ZERO, false
         );
     }
 
+    /**
+     * Aktiviert eine PLANNED Reise: setzt sie auf IN_PROGRESS und berechnet
+     * Start- und Ankunftstick basierend auf dem aktuellen Tick neu.
+     */
     public void activate(int currentTick, int startTickDelay) {
         if (this.travelStatus != TravelStatus.PLANNED) {
             throw new InvalidTravelStateException(
@@ -144,6 +177,10 @@ public class Travel {
             throw new InvalidTravelDataException("Distance must be more than 0", "distance", destinationPortId);
         }
     }
+
+    // ============================================================
+    //  Reconstruct (fuer Repository-Loading)
+    // ============================================================
 
     public static Travel reconstruct(UUID travelId, UUID playerShipId, UUID playerId, UUID sessionId,
                                      UUID originPortId, UUID destinationPortId,
@@ -194,6 +231,10 @@ public class Travel {
                 false, false, BigDecimal.ZERO, false);
     }
 
+    // ============================================================
+    //  State Transitions
+    // ============================================================
+
     public void markDockingFailure(BigDecimal fine) {
         this.dockingFine = fine != null ? fine : BigDecimal.ZERO;
     }
@@ -211,6 +252,10 @@ public class Travel {
         this.pilotageRefund = refund != null ? refund : BigDecimal.ZERO;
     }
 
+    public void setArrivalMiniGamePending(boolean arrivalMiniGamePending) {
+        this.arrivalMiniGamePending = arrivalMiniGamePending;
+    }
+
     public void markAsArrived(double fuelConsumed) {
         if (this.travelStatus != TravelStatus.IN_PROGRESS) {
             throw new InvalidTravelStateException(
@@ -218,7 +263,6 @@ public class Travel {
                     this.travelStatus
             );
         }
-
         this.travelStatus = TravelStatus.ARRIVED;
         this.arrivedAt = Instant.now();
         this.fuelConsumed = fuelConsumed;
@@ -226,31 +270,39 @@ public class Travel {
 
     public void markAsCompleted() {
         if (this.travelStatus != TravelStatus.ARRIVED) {
-            throw new InvalidTravelStateException("Only travels with status ARRIVED can be marked as COMPLETED", travelStatus);
+            throw new InvalidTravelStateException(
+                    "Only travels with status ARRIVED can be marked as COMPLETED", travelStatus);
         }
         this.travelStatus = TravelStatus.COMPLETED;
     }
 
     public void cancel() {
         if (this.travelStatus != TravelStatus.IN_PROGRESS && this.travelStatus != TravelStatus.PLANNED) {
-            throw new InvalidTravelStateException("Only PLANNED or IN_PROGRESS travels can be cancelled.", travelStatus);
+            throw new InvalidTravelStateException(
+                    "Only PLANNED or IN_PROGRESS travels can be cancelled.", travelStatus);
         }
         this.travelStatus = TravelStatus.CANCELLED;
     }
 
+    public void shiftArrivalTick(int additionalTicks) {
+        this.arrivalTick = this.arrivalTick + additionalTicks;
+    }
 
+    public void setLoadingDurationSeconds(double loadingDurationSeconds) {
+        this.loadingDurationSeconds = loadingDurationSeconds;
+    }
 
+    // ============================================================
+    //  Berechnungen
+    // ============================================================
+
+    /**
+     * Fortschritt der Reise zwischen 0.0 (gerade gestartet) und 1.0 (angekommen).
+     */
     public double getProgress(int currentTick) {
         if (arrivalTick <= startTick) return 1.0;
         double raw = (double) (currentTick - startTick) / (arrivalTick - startTick);
         return Math.max(0.0, Math.min(1.0, raw));
-    }
-
-    public double getLoadingDurationSeconds() { return loadingDurationSeconds; }
-    public void setLoadingDurationSeconds(double loadingDurationSeconds) { this.loadingDurationSeconds = loadingDurationSeconds; }
-
-    public void shiftArrivalTick(int additionalTicks) {
-        this.arrivalTick = this.arrivalTick + additionalTicks;
     }
 
     public int getOriginalDurationTicks() {
@@ -261,87 +313,27 @@ public class Travel {
         return this.startTick + getOriginalDurationTicks();
     }
 
-    public UUID getTravelId() {
-        return travelId;
-    }
+    // ============================================================
+    //  Getter
+    // ============================================================
 
-    public UUID getPlayerShipId() {
-        return playerShipId;
-    }
-
-    public UUID getPlayerId() {
-        return playerId;
-    }
-
-    public UUID getSessionId() {
-        return sessionId;
-    }
-
-    public UUID getOriginPortId() {
-        return originPortId;
-    }
-
-    public UUID getDestinationPortId() {
-        return destinationPortId;
-    }
-
-    public double getDistance() {
-        return distance;
-    }
-
-    public double getSpeedSetting() {
-        return speedSetting;
-    }
-
-    public double getRiskFactor() {
-        return riskFactor;
-    }
-
-    public BigDecimal getBaseReward() {
-        return baseReward;
-    }
-
-    public TravelStatus getTravelStatus() {
-        return travelStatus;
-    }
-
-    public Instant getStartedAt() {
-        return startedAt;
-    }
-
-    public Instant getArrivedAt() {
-        return arrivedAt;
-    }
-
-    public double getFuelConsumed() {
-        return fuelConsumed;
-    }
-
-    public int getStartTick() {
-        return startTick;
-    }
-
-    public int getArrivalTick() {
-        return arrivalTick;
-    }
-
-    public double getProgress(int currentTick) {
-        if (arrivalTick <= startTick) return 1.0;
-        double raw = (double) (currentTick - startTick) / (arrivalTick - startTick);
-        return Math.max(0.0, Math.min(1.0, raw));
-    }
-
-    public double getLoadingDurationSeconds() {
-        return loadingDurationSeconds;
-    }
-
-    public void setLoadingDurationSeconds(double loadingDurationSeconds) {
-        this.loadingDurationSeconds = loadingDurationSeconds;
-    }
-
-    public void shiftArrivalTick(int additionalTicks) {
-        this.arrivalTick = this.arrivalTick + additionalTicks;
-    }
+    public UUID getTravelId() { return travelId; }
+    public UUID getPlayerShipId() { return playerShipId; }
+    public UUID getPlayerId() { return playerId; }
+    public UUID getSessionId() { return sessionId; }
+    public UUID getOriginPortId() { return originPortId; }
+    public UUID getDestinationPortId() { return destinationPortId; }
+    public double getDistance() { return distance; }
+    public double getSpeedSetting() { return speedSetting; }
+    public double getRiskFactor() { return riskFactor; }
+    public BigDecimal getBaseReward() { return baseReward; }
+    public TravelStatus getTravelStatus() { return travelStatus; }
+    public Instant getStartedAt() { return startedAt; }
+    public Instant getArrivedAt() { return arrivedAt; }
+    public double getFuelConsumed() { return fuelConsumed; }
+    public int getStartTick() { return startTick; }
+    public int getArrivalTick() { return arrivalTick; }
+    public double getLoadingDurationSeconds() { return loadingDurationSeconds; }
 
     public BigDecimal getDockingFine() {
         return dockingFine != null ? dockingFine : BigDecimal.ZERO;
@@ -365,9 +357,5 @@ public class Travel {
 
     public boolean isArrivalMiniGamePending() {
         return arrivalMiniGamePending;
-    }
-
-    public void setArrivalMiniGamePending(boolean arrivalMiniGamePending) {
-        this.arrivalMiniGamePending = arrivalMiniGamePending;
     }
 }

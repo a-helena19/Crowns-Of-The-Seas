@@ -24,8 +24,7 @@ public class TravelCompleteEvent {
                                BigDecimal baseReward, BigDecimal totalReward, BigDecimal bonusReward,
                                BigDecimal previousBalance, BigDecimal newBalance,
                                BigDecimal departureDockingFine, BigDecimal dockingFine,
-                               BigDecimal pilotageRefund) {
-                               BigDecimal previousBalance, BigDecimal newBalance,
+                               BigDecimal pilotageRefund,
                                RatMinigameTravelSummary ratMinigameSummary,
                                CustomsSummary customsSummary,
                                RegressSummary regressSummary) {

@@ -105,6 +105,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
 
         markCargosAsDelivered(travel, cargosForPlayer);
         BigDecimal cargoReward = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
+
         CustomsInspection inspection = customsService.consumeInspection(travel.getTravelId());
         boolean smuggleConfiscated = inspection != null
                 && (inspection.getOutcome() == CustomsInspectionOutcome.COOPERATED
@@ -122,36 +123,42 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         PlayerShip shipForRegress = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
         double currentCondition = shipForRegress != null ? shipForRegress.getCondition() : 100.0;
         GameSession sessionForRegress = gameSessionRepository.findById(travel.getSessionId()).orElse(null);
-        int currentTickForRegress = sessionForRegress != null ? sessionForRegress.getCurrentTick() : travel.getArrivalTick();
+        int currentTickForRegress = sessionForRegress != null
+                ? sessionForRegress.getCurrentTick()
+                : travel.getArrivalTick();
         RegressFine regressFine = regressService.consumeFine(
                 travel, currentTickForRegress, currentCondition, cargosForThisTravel
         );
 
-        BigDecimal grossReward = cargoReward.add(totalBonus).add(smuggleReward);
-        BigDecimal arrivalFine = travel.getDockingFine();
-        BigDecimal departureFine = travel.getDepartureDockingFine();
-        BigDecimal pilotageRefund = travel.getPilotageRefund();
+        BigDecimal gross = cargoReward.add(totalBonus).add(smuggleReward);
+        gross = ratMinigameService.applyRewardModifier(travel.getTravelId(), gross);
+
+        BigDecimal arrivalFine = travel.getDockingFine() != null
+                ? travel.getDockingFine() : BigDecimal.ZERO;
+        BigDecimal departureFine = travel.getDepartureDockingFine() != null
+                ? travel.getDepartureDockingFine() : BigDecimal.ZERO;
         BigDecimal totalFine = departureFine.add(arrivalFine);
-        BigDecimal netReward = grossReward.subtract(totalFine).add(pilotageRefund).max(BigDecimal.ZERO);
-        BigDecimal totalReward = cargoReward.add(totalBonus).add(smuggleReward);
-        totalReward = ratMinigameService.applyRewardModifier(travel.getTravelId(), totalReward);
 
-        BigDecimal regressTotal = regressFine.getTotalFine();
-        BigDecimal payoutBeforeRegress = totalReward.compareTo(BigDecimal.ZERO) < 0
-                ? BigDecimal.ZERO : totalReward;
-        BigDecimal payout = payoutBeforeRegress.subtract(regressTotal);
-        if (payout.compareTo(BigDecimal.ZERO) < 0) {
-            payout = BigDecimal.ZERO;
-        }
+        BigDecimal pilotageRefund = travel.getPilotageRefund() != null
+                ? travel.getPilotageRefund() : BigDecimal.ZERO;
 
-        BigDecimal previousBalance = BigDecimal.ZERO;
-        BigDecimal newBalance = BigDecimal.ZERO;
+        BigDecimal regressTotal = regressFine != null ? regressFine.getTotalFine() : BigDecimal.ZERO;
+
+        BigDecimal payout = gross
+                .subtract(totalFine)
+                .add(pilotageRefund)
+                .subtract(regressTotal)
+                .max(BigDecimal.ZERO);
+
         BigDecimal customsAlreadyDeducted = BigDecimal.ZERO;
         if (inspection != null) {
             BigDecimal fine = inspection.getFinePaid() != null ? inspection.getFinePaid() : BigDecimal.ZERO;
             BigDecimal bribe = inspection.getBribePaid() != null ? inspection.getBribePaid() : BigDecimal.ZERO;
             customsAlreadyDeducted = fine.add(bribe);
         }
+
+        BigDecimal previousBalance = BigDecimal.ZERO;
+        BigDecimal newBalance = BigDecimal.ZERO;
 
         UUID playerId = travel.getPlayerId();
         GameSession session = gameSessionRepository.findById(travel.getSessionId()).orElse(null);
@@ -167,11 +174,9 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             if (player != null) {
                 BigDecimal currentBalance = player.getBalance();
                 previousBalance = currentBalance.add(customsAlreadyDeducted);
+
                 if (payout.compareTo(BigDecimal.ZERO) > 0) {
                     player.addBalance(payout);
-                previousBalance = player.getBalance();
-                if (netReward.compareTo(BigDecimal.ZERO) > 0) {
-                    player.addBalance(netReward);
                 }
                 newBalance = player.getBalance();
                 gameSessionRepository.save(session);
@@ -179,11 +184,12 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         }
 
         RegressSummary regressSummary = toRegressSummary(regressFine);
-        sendUnloadingCompleteEvent(travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffers, bonusPerCargo, totalBonus, departureFine, arrivalFine, pilotageRefund, netReward);
-
         sendUnloadingCompleteEvent(
-                travel, playerId, cargosForPlayer, previousBalance, newBalance,
-                acceptedOffer, bonusPerCargo, totalBonus, payout, inspection, smuggleConfiscated,
+                travel, playerId, cargosForPlayer,
+                previousBalance, newBalance,
+                acceptedOffer, bonusPerCargo, totalBonus,
+                payout, departureFine, arrivalFine, pilotageRefund,
+                inspection, smuggleConfiscated,
                 regressSummary
         );
 
@@ -209,7 +215,6 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         regressService.clear(travel.getTravelId());
 
         return payout;
-        return netReward;
     }
 
     @Override
@@ -222,7 +227,9 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
     }
 
     private RegressSummary toRegressSummary(RegressFine fine) {
-        if (fine == null) return null;
+        if (fine == null) {
+            return null;
+        }
         return new RegressSummary(
                 fine.getDelayTicks(),
                 fine.getToleranceTicks(),
@@ -258,17 +265,18 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         return isForThisShipAndPort && isAssignedOrExpired;
     }
 
-    private void sendUnloadingCompleteEvent(Travel travel, UUID playerId,
+    private void sendUnloadingCompleteEvent(Travel travel,
+                                            UUID playerId,
                                             List<SessionCargo> cargosForPlayer,
-                                            BigDecimal previousBalance, BigDecimal newBalance,
-                                            List<SmuggleOffer> smuggleOffers,
-                                            Map<UUID, BigDecimal> bonusPerCargo, BigDecimal totalBonus,
-                                            BigDecimal departureDockingFine, BigDecimal dockingFine,
-                                            BigDecimal pilotageRefund,
-                                            BigDecimal netReward) {
+                                            BigDecimal previousBalance,
+                                            BigDecimal newBalance,
                                             SmuggleOffer acceptedOffer,
-                                            Map<UUID, BigDecimal> bonusPerCargo, BigDecimal totalBonus,
-                                            BigDecimal finalTotalReward,
+                                            Map<UUID, BigDecimal> bonusPerCargo,
+                                            BigDecimal totalBonus,
+                                            BigDecimal finalPayout,
+                                            BigDecimal departureDockingFine,
+                                            BigDecimal arrivalDockingFine,
+                                            BigDecimal pilotageRefund,
                                             CustomsInspection inspection,
                                             boolean smuggleConfiscated,
                                             RegressSummary regressSummary) {
@@ -287,6 +295,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                 if (!(isForThisPort && isDeliveredOrExpired)) {
                     continue;
                 }
+
                 BigDecimal cargoBase = rewardCalculationService.calculateCargoReward(sessionCargo);
                 BigDecimal bonus = bonusPerCargo.getOrDefault(sessionCargo.getId(), BigDecimal.ZERO);
                 BigDecimal actualReward = cargoBase.add(bonus);
@@ -352,15 +361,13 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                     playerId.toString(),
                     cargoRewards,
                     baseReward,
-                    netReward,
-                    finalTotalReward,
+                    finalPayout,
                     totalBonus,
                     previousBalance,
                     newBalance,
                     departureDockingFine,
-                    dockingFine,
-                    pilotageRefund
-                    newBalance,
+                    arrivalDockingFine,
+                    pilotageRefund,
                     ratMinigameService.consumeTravelSummary(travel.getTravelId()),
                     customsSummary,
                     regressSummary
