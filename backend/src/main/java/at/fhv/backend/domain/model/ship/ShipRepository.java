@@ -8,4 +8,6 @@ public interface ShipRepository {
     Ship save(Ship ship);
     Optional<Ship> findById(UUID id);
     List<Ship> findAllAvailableOnMarket();
+    List<Ship> findAll();
+    void deleteById(UUID id);
 }
