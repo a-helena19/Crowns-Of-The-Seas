@@ -35,13 +35,15 @@ export default function GameLobby() {
 
         // Convert duration from "1h" to "PT1H" format
         const durationMap: { [key: string]: string } = {
+            '20s': 'PT20S',
+            '1m': 'PT1M',
             '1h': 'PT1H',
             '2h': 'PT2H',
             '3h': 'PT3H',
             '4h': 'PT4H'
         };
         const isoDuration = durationMap[createForm.duration] || 'PT1H';
-        const durationSeconds = { '1h': 3600, '2h': 7200, '3h': 10800, '4h': 14400 }[createForm.duration] ?? 3600;
+        const durationSeconds = { '20s': 20, '1m': 60,'1h': 3600, '2h': 7200, '3h': 10800, '4h': 14400 }[createForm.duration] ?? 3600;
         const totalTicks = Math.round(durationSeconds / createForm.tickRateSeconds);
 
         // Create session using context (now async)
@@ -69,7 +71,7 @@ export default function GameLobby() {
         setError('');
 
         if (!joinForm.gameCode.trim()) {
-            setError('Bitte gib einen Game Code ein.');
+            setError('Bitte gib einen Spielcode ein.');
             return;
         }
 
@@ -123,6 +125,11 @@ export default function GameLobby() {
                 <div className="lobby-header">
                     <h1>Crown of the Seas</h1>
                     <p className="welcome-text">Willkommen, {user?.username}!</p>
+                    {user?.role === "ADMIN" && (
+                        <button className="admin-link-btn" onClick={() => navigate("/admin")}>
+                            ⚙ Verwaltung
+                        </button>
+                    )}
                     <button className="logout-btn" onClick={handleLogout}>
                         Ausloggen
                     </button>
@@ -162,7 +169,7 @@ export default function GameLobby() {
                                         type="text"
                                         value={createForm.hostName}
                                         onChange={(e) => setCreateForm({ ...createForm, hostName: e.target.value })}
-                                        placeholder="z.B. Captain Jack"
+                                        placeholder="z.B. Kapitän Jack"
                                         required
                                     />
                                 </div>
@@ -181,7 +188,7 @@ export default function GameLobby() {
                                 </div>
 
                                 <div className="form-group">
-                                    <label htmlFor="tickRate">Tick Rate (Spieltempo):</label>
+                                    <label htmlFor="tickRate">Tickrate (Spieltempo):</label>
                                     <select
                                         id="tickRate"
                                         value={createForm.tickRateSeconds}
@@ -199,6 +206,8 @@ export default function GameLobby() {
                                         value={createForm.duration}
                                         onChange={(e) => setCreateForm({ ...createForm, duration: e.target.value })}
                                     >
+                                        <option value="20s">20 Sekunden (Test)</option>
+                                        <option value="1m">1 Minute (Test)</option>
                                         <option value="1h">1 Stunde</option>
                                         <option value="2h">2 Stunden</option>
                                         <option value="3h">3 Stunden</option>
@@ -207,7 +216,7 @@ export default function GameLobby() {
                                 </div>
 
                                 <button type="submit" className="submit-btn">
-                                    Session Erstellen
+                                    Session erstellen
                                 </button>
                             </form>
                         )}
@@ -221,13 +230,13 @@ export default function GameLobby() {
                                         type="text"
                                         value={joinForm.playerName}
                                         onChange={(e) => setJoinForm({ ...joinForm, playerName: e.target.value })}
-                                        placeholder="z.B. Captain Jack"
+                                        placeholder="z.B. Kapitän Jack"
                                         required
                                     />
                                 </div>
 
                                 <div className="form-group">
-                                    <label htmlFor="gameCode">Game Code:</label>
+                                    <label htmlFor="gameCode">Spielcode:</label>
                                     <input
                                         id="gameCode"
                                         type="text"

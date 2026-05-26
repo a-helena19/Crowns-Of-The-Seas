@@ -57,7 +57,9 @@ public class GlobalExceptionHandler {
                  SESSION_NOT_RUNNING,
                  INVALID_TICK_RATE,
                  HOME_PORT_NOT_ASSIGNED,
-                 CUSTOMS_INSPECTION_INVALID_STATE -> HttpStatus.BAD_REQUEST;
+                 CUSTOMS_INSPECTION_INVALID_STATE,
+                 HOME_PORT_NOT_ASSIGNED,
+                 PILOT_STRIKE_ACTIVE -> HttpStatus.BAD_REQUEST;
 
             case PLAYER_NOT_FOUND,
                  SESSION_NOT_FOUND,

@@ -279,6 +279,56 @@ export default function TravelResultScreen({
                         <div className={`tr-balance-amount ${newBalance >= previousBalance ? "new" : "negative-new"}`}>
                             {fmt(displayedBalance)} T
                         </div>
+                    {/* Summary */}
+                    <div className="reward-summary">
+                        {cargos.length > 0 && (
+                            <div className="summary-item">
+                                <span className="summary-label">Frachtbelohnung:</span>
+                                <span className="summary-value">
+                                    +{cargos.reduce((sum, c) => sum + c.actualReward, 0).toLocaleString()}G
+                                </span>
+                            </div>
+                        )}
+
+                        {baseReward > 0 && (
+                            <div className="summary-item bonus">
+                                <span className="summary-label">🎁 Reisebonus:</span>
+                                <span className="summary-value">+{baseReward.toLocaleString()}G</span>
+                            </div>
+                        )}
+
+                        <div className="summary-divider"></div>
+
+                        <div className="summary-item total">
+                            <span className="summary-label">Gesamtbelohnung:</span>
+                            <span className="summary-value total-amount">
+                                +{totalReward.toLocaleString()}G
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Balance Update */}
+                <div className="balance-update">
+                    <h3>Kontostand</h3>
+
+                    <div className="balance-row">
+                        <span className="balance-label">Vorher:</span>
+                        <span className="balance-amount">{previousBalance.toLocaleString()}G</span>
+                    </div>
+
+                    <div className="balance-change">
+                        <div className="change-arrow">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                                <path d="M7 10l5 5 5-5z" />
+                            </svg>
+                        </div>
+                        <div className="change-amount">+{displayedReward.toLocaleString()}G</div>
+                    </div>
+
+                    <div className="balance-row new">
+                        <span className="balance-label">Nachher:</span>
+                        <span className="balance-amount new-amount">{displayedBalance.toLocaleString()}G</span>
                     </div>
                 </div>
 

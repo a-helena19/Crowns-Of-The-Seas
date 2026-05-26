@@ -9,6 +9,7 @@ import OfficeScene from "../scenes/OfficeScene.tsx";
 import PortProfileScreen from "../scenes/PortProfileScreen.tsx";
 import { useGameSessionWebSocket } from "../hooks/useGameSessionWebSocket.ts";
 import CargoManagementScreen from "../scenes/CargoManagementScreen";
+import DockingMiniGame from "../scenes/DockingMiniGame";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
 import RewardToast from "../components/RewardToast.tsx";
 import SmuggleOfferDialog from "../components/SmuggleOfferDialog.tsx";
@@ -18,6 +19,7 @@ import RatMinigameOverlay from "../minigame/rats/RatMinigameOverlay.tsx";
 import type { RatMinigameEventPayload, RatMinigameResult } from "../minigame/rats/RatMinigameTypes.ts";
 import EventNotificationDialog from "../components/EventNotificationDialog.tsx";
 import ratImage from "../assets/Rat.png";
+import GameOverScreen from "../components/GameOverScreen";
 
 export const TOP_BAR_HEIGHT = '9vh';
 export const BOTTOM_BAR_HEIGHT = '20vh';
@@ -56,6 +58,8 @@ export default function GameScreen() {
     const userData = localStorage.getItem('crowns_user');
     const playerId: string | null = userData ? JSON.parse(userData).id : null;
 
+    const [gameOver, setGameOver] = useState(false);
+
     const [assignedCargos, setAssignedCargos] = useState<AssignedCargoEntry[]>([]);
     const [rewardToasts, setRewardToasts] = useState<{
         id: string; shipName: string; from: string; to: string; reward: number;
@@ -78,6 +82,12 @@ export default function GameScreen() {
         offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
     } | null>(null);
     const departureActiveRef = useRef(false);
+    const arrivedMiniGameShown = useRef<Set<string>>(new Set());
+    const [showArrivalDocking, setShowArrivalDocking] = useState<AssignedCargoEntry | null>(null);
+    const [activePilotStrikes, setActivePilotStrikes] = useState<Record<string, { portName: string }>>({});
+    const [strikeNotice, setStrikeNotice] = useState<string | null>(null);
+
+    const authToken = localStorage.getItem("auth_token") ?? "";
 
     function handleCargoAssigned(entry: AssignedCargoEntry) {
         setAssignedCargos(prev => {
@@ -101,6 +111,67 @@ export default function GameScreen() {
             e.cargoId === cargoId ? { ...e, phase, ...(travelId ? { travelId } : {}) } : e
         ));
     }
+
+    function handleTravelStarted(cargoId: string, pilotageUsed: boolean, pilotageStrikeRevoked?: boolean) {
+        setAssignedCargos(prev => prev.map(e =>
+            e.cargoId === cargoId
+                ? { ...e, pilotageUsed, ...(pilotageStrikeRevoked != null ? { pilotageStrikeRevoked } : {}) }
+                : e
+        ));
+    }
+
+    useEffect(() => {
+        if (!sessionId || !authToken) return;
+        fetch(`/api/sessions/${sessionId}/pilot-strikes`, {
+            headers: { Authorization: `Bearer ${authToken}` },
+        })
+            .then(r => (r.ok ? r.json() : []))
+            .then((strikes: { portId: string; portName: string }[]) => {
+                const map: Record<string, { portName: string }> = {};
+                for (const s of strikes) {
+                    map[s.portId] = { portName: s.portName };
+                }
+                setActivePilotStrikes(map);
+            })
+            .catch(() => { /* noop */ });
+    }, [sessionId, authToken]);
+
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const detail = (e as CustomEvent<{
+                eventType: string;
+                portId: string;
+                portName: string;
+                endTick?: number;
+                revokedTravels?: { travelId: string; playerId: string }[];
+            }>).detail;
+
+            if (detail.eventType === "PILOT_STRIKE_STARTED") {
+                setActivePilotStrikes(prev => ({
+                    ...prev,
+                    [detail.portId]: { portName: detail.portName },
+                }));
+                const myRevoked = detail.revokedTravels?.filter(r => r.playerId === playerId) ?? [];
+                if (myRevoked.length > 0) {
+                    setStrikeNotice(
+                        `Lotsenstreik in ${detail.portName}! Du musst selbst anlegen. Die Lotsengebühr wird beim Reiseabschluss erstattet.`
+                    );
+                    setAssignedCargos(prev => prev.map(entry => {
+                        if (!myRevoked.some(r => r.travelId === entry.travelId)) return entry;
+                        return { ...entry, pilotageStrikeRevoked: true };
+                    }));
+                }
+            } else if (detail.eventType === "PILOT_STRIKE_ENDED") {
+                setActivePilotStrikes(prev => {
+                    const next = { ...prev };
+                    delete next[detail.portId];
+                    return next;
+                });
+            }
+        };
+        window.addEventListener("pilot-strike-update", handler);
+        return () => window.removeEventListener("pilot-strike-update", handler);
+    }, [playerId]);
 
     useEffect(() => {
         viewRef.current = view;
@@ -196,6 +267,49 @@ export default function GameScreen() {
         return () => window.removeEventListener("backend-ship-positions", handler);
     }, [playerId]);
 
+    // Ankunfts-Minispiel automatisch starten (Vollbild über der Karte)
+    useEffect(() => {
+        if (showArrivalDocking) return;
+        for (const entry of assignedCargos) {
+            if (
+                entry.phase === "unloading" &&
+                entry.travelId &&
+                (!entry.pilotageUsed || entry.pilotageStrikeRevoked) &&
+                !arrivedMiniGameShown.current.has(entry.travelId)
+            ) {
+                arrivedMiniGameShown.current.add(entry.travelId);
+                setShowArrivalDocking(entry);
+                break;
+            }
+        }
+    }, [assignedCargos, showArrivalDocking]);
+
+    const handleArrivalDockingSuccess = useCallback(async () => {
+        const entry = showArrivalDocking;
+        setShowArrivalDocking(null);
+        if (!entry?.travelId || !playerId || !sessionId) return;
+        try {
+            await fetch(
+                `/api/travels/${entry.travelId}/docking-success?playerId=${playerId}&sessionId=${sessionId}`,
+                { method: "POST", headers: { Authorization: `Bearer ${authToken}` } }
+            );
+        } catch { /* nicht-fatal */ }
+    }, [showArrivalDocking, playerId, sessionId, authToken]);
+
+    const handleArrivalDockingFailure = useCallback(async () => {
+        const entry = showArrivalDocking;
+        setShowArrivalDocking(null);
+        if (!entry?.travelId || !playerId || !sessionId) return;
+        try {
+            await fetch(
+                `/api/travels/${entry.travelId}/docking-failed?playerId=${playerId}&sessionId=${sessionId}`,
+                { method: "POST", headers: { Authorization: `Bearer ${authToken}` } }
+            );
+            window.dispatchEvent(new CustomEvent("player-balance-updated"));
+        } catch { /* nicht-fatal */ }
+    }, [showArrivalDocking, playerId, sessionId, authToken]);
+
+    // Travel complete → reward
     useEffect(() => {
         const handler = (e: Event) => {
             const data = (e as CustomEvent<{
@@ -203,6 +317,9 @@ export default function GameScreen() {
                 playerId: string;
                 totalReward: number;
                 baseReward: number;
+                dockingFine?: number;
+                departureDockingFine?: number;
+                pilotageRefund?: number;
                 cargoRewards: { cargoId: string; cargoName: string; destinationPort: string; baseReward: number; bonusReward: number; actualReward: number; percentage: number; status: string; cargoType: string }[];
                 ratMinigameSummary?: {
                     triggered: boolean;
@@ -243,6 +360,9 @@ export default function GameScreen() {
                         ...entry,
                         phase: "completed" as const,
                         reward: data.totalReward,
+                        dockingFine: data.dockingFine ?? 0,
+                        departureDockingFine: data.departureDockingFine ?? 0,
+                        pilotageRefund: data.pilotageRefund ?? 0,
                         rewardDetails: firstCargo
                             ? {
                                 baseReward: firstCargo.baseReward,
@@ -280,6 +400,25 @@ export default function GameScreen() {
         return () => window.removeEventListener("travel-complete", handler);
     }, [playerId]);
 
+    // Game Over Erkennung
+    useEffect(() => {
+        const handleTick = (e: Event) => {
+            const { currentTick, totalTicks } = (e as CustomEvent<{
+                currentTick: number;
+                totalTicks: number;
+            }>).detail;
+
+            if (currentTick >= totalTicks && totalTicks > 0) {
+                // Kurze Verzögerung damit der letzte Tick noch angezeigt wird
+                setTimeout(() => setGameOver(true), 500);
+            }
+        };
+
+        window.addEventListener("backend-tick", handleTick);
+        return () => window.removeEventListener("backend-tick", handleTick);
+    }, []);
+
+    // Smuggle offer
     useEffect(() => {
         const handler = (e: Event) => {
             const data = (e as CustomEvent<{
@@ -564,7 +703,11 @@ export default function GameScreen() {
         return () => clearInterval(interval);
     }, [assignedCargos]);
 
-    const handleSessionUpdate = useCallback(() => {}, []);
+    const handleSessionUpdate = useCallback((event: { type?: string; status?: string }) => {
+        if (event.status === "FINISHED" || event.type === "GAME_FINISHED") {
+            setTimeout(() => setGameOver(true), 500);
+        }
+    }, []);
 
     const { isConnected, stompClient } = useGameSessionWebSocket({
         sessionId,
@@ -622,9 +765,11 @@ export default function GameScreen() {
                 {view === "cargoManagement" && (
                     <CargoManagementScreen
                         assignedCargos={assignedCargos}
+                        activePilotStrikes={activePilotStrikes}
                         onCargoLoadingDone={handleCargoCompleted}
                         onCargoRemoved={handleCargoRemoved}
                         onCargoPhaseChange={handleCargoPhaseChange}
+                        onTravelStarted={handleTravelStarted}
                         onClose={() => setView("map")}
                         onDepartureStarted={handleDepartureStarted}
                         onDepartureComplete={handleDepartureComplete}
@@ -707,6 +852,44 @@ export default function GameScreen() {
                     cargoDescription={smuggleOffer.cargoDescription}
                     onAccept={handleSmuggleAccept}
                     onDecline={handleSmuggleDecline}
+                />
+            )}
+
+            {strikeNotice && (
+                <div className="pilot-strike-banner">
+                    {strikeNotice}
+                    <button
+                        type="button"
+                        onClick={() => setStrikeNotice(null)}
+                        style={{
+                            marginLeft: 12,
+                            background: "transparent",
+                            border: "none",
+                            color: "#fadbd8",
+                            cursor: "pointer",
+                            fontSize: 16,
+                        }}
+                        aria-label="Schließen"
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
+
+            {showArrivalDocking && (
+                <DockingMiniGame
+                    mode="arrival"
+                    shipIconUrl={showArrivalDocking.shipIconUrl ?? "/fallback-ship.png"}
+                    portName={showArrivalDocking.to}
+                    onSuccess={handleArrivalDockingSuccess}
+                    onFailure={handleArrivalDockingFailure}
+                />
+            )}
+
+            {gameOver && sessionId && (
+                <GameOverScreen
+                    sessionId={sessionId}
+                    currentUserId={playerId}
                 />
             )}
 

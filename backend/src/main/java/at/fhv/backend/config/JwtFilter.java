@@ -51,7 +51,9 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         UUID userId = jwtService.extractUserId(token);
+        String role = jwtService.extractRole(token);
         request.setAttribute("userId", userId);
+        request.setAttribute("role", role);
 
         filterChain.doFilter(request, response);
     }

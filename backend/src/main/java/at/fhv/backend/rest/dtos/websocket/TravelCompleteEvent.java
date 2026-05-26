@@ -15,10 +15,16 @@ public class TravelCompleteEvent {
     private RatMinigameTravelSummary ratMinigameSummary;
     private CustomsSummary customsSummary;
     private RegressSummary regressSummary;
+    private BigDecimal departureDockingFine;
+    private BigDecimal dockingFine;
+    private BigDecimal pilotageRefund;
 
     public TravelCompleteEvent(String travelId, String playerId,
                                List<CargoRewardBreakdown> cargoRewards,
                                BigDecimal baseReward, BigDecimal totalReward, BigDecimal bonusReward,
+                               BigDecimal previousBalance, BigDecimal newBalance,
+                               BigDecimal departureDockingFine, BigDecimal dockingFine,
+                               BigDecimal pilotageRefund) {
                                BigDecimal previousBalance, BigDecimal newBalance,
                                RatMinigameTravelSummary ratMinigameSummary,
                                CustomsSummary customsSummary,
@@ -34,6 +40,9 @@ public class TravelCompleteEvent {
         this.ratMinigameSummary = ratMinigameSummary;
         this.customsSummary = customsSummary;
         this.regressSummary = regressSummary;
+        this.departureDockingFine = departureDockingFine != null ? departureDockingFine : BigDecimal.ZERO;
+        this.dockingFine = dockingFine != null ? dockingFine : BigDecimal.ZERO;
+        this.pilotageRefund = pilotageRefund != null ? pilotageRefund : BigDecimal.ZERO;
     }
 
     public String getTravelId() {
@@ -66,6 +75,18 @@ public class TravelCompleteEvent {
 
     public BigDecimal getBonusReward() {
         return bonusReward;
+    }
+
+    public BigDecimal getDepartureDockingFine() {
+        return departureDockingFine;
+    }
+
+    public BigDecimal getDockingFine() {
+        return dockingFine;
+    }
+
+    public BigDecimal getPilotageRefund() {
+        return pilotageRefund;
     }
 
     public RatMinigameTravelSummary getRatMinigameSummary() {

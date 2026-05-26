@@ -1,4 +1,4 @@
-package at.fhv.backend.rest.dtos.ship.response;
+package at.fhv.backend.rest.dtos.user;
 
 import java.util.UUID;
 
@@ -6,14 +6,16 @@ public class UserResponseDTO {
     private UUID id;
     private String username;
     private String token;
+    private String role;
 
     public UserResponseDTO() {
     }
 
-    public UserResponseDTO(UUID id, String username, String token) {
+    public UserResponseDTO(UUID id, String username, String token, String role) {
         this.id = id;
         this.username = username;
         this.token = token;
+        this.role = role;
     }
 
     public UUID getId() {
@@ -38,5 +40,13 @@ public class UserResponseDTO {
 
     public void setToken(String token) {
         this.token = token;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 }

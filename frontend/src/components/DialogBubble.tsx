@@ -12,18 +12,18 @@ export default function DialogBubble({
 }) {
     return (
         <PixelPanel className="bubble">
-            <p>Wohin geht's hin, Captain?</p>
+            <p>Wohin geht's hin, Kapitän?</p>
             {selectedShipName && (
                 <div className="harbor-selected-ship-hint">
-                    {selectedShipName} ausgewaehlt
+                    {selectedShipName} ausgewählt
                 </div>
             )}
             <div className="options">
                 <GameButton onClick={onOpenShip}>
-                    {selectedShipName ? "Schiff wechseln" : "Schiff auswaehlen"}
+                    {selectedShipName ? "Schiff wechseln" : "Schiff auswählen"}
                 </GameButton>
                 <GameButton onClick={onOpenCargo ?? (() => {})}>
-                    Frachtboerse oeffnen
+                    Frachtbörse öffnen
                 </GameButton>
             </div>
         </PixelPanel>

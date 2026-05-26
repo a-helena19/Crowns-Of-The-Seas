@@ -520,9 +520,7 @@ export default class MainScene extends Phaser.Scene {
                 this.harborHitZones[i].setPosition(px, py);
             }
             if (this.harborLabels[i]) {
-                const LABEL_OFFSETS: Record<string, { dx: number; dy: number }> = {
-                    'Rotterdam': { dx: -80, dy: 10 },
-                };
+                const LABEL_OFFSETS: Record<string, { dx: number; dy: number }> = {};
                 const offset = LABEL_OFFSETS[port.name] ?? { dx: 10, dy: -10 };
                 this.harborLabels[i].setPosition(px + offset.dx, py + offset.dy);
             }
@@ -621,9 +619,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     private renderHarbors(ports: PortData[]) {
-        const LABEL_OFFSETS: Record<string, { dx: number; dy: number }> = {
-            'Rotterdam': { dx: -80, dy: 10 },
-        };
+        const LABEL_OFFSETS: Record<string, { dx: number; dy: number }> = {};
 
         this.harborPortData = ports;
 

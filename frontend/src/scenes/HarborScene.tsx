@@ -95,7 +95,7 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
 
     function handleCargoAccepted(c: {
         id: string; from: string; to: string;
-        weight: number; destinationPortId: string;
+        weight: number; originPortId: string; destinationPortId: string;
         speedSetting: number; loadingDurationSeconds?: number;
     }) {
         if (!selectedShip) return;
@@ -108,6 +108,7 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
             to: c.to,
             weight: c.weight,
             maxCargoCapacity: selectedShip.maxCargoCapacity ?? c.weight,
+            originPortId: c.originPortId,
             destinationPortId: c.destinationPortId,
             speedSetting: c.speedSetting,
             loadingDurationSeconds: c.loadingDurationSeconds ?? 10,
@@ -123,7 +124,7 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
         <div className="scene">
             <img src={background} className="background" alt="" />
             <div className="back-icon-btn" onClick={handleBack}>
-                <img src={backIcon} alt="Zurueck" />
+                <img src={backIcon} alt="Zurück" />
             </div>
 
             {view === "main" && (
@@ -132,7 +133,7 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
 
                     {myPorts.length > 1 && (
                         <div className="harbor-port-selector">
-                            <span className="harbor-port-selector-label">Hafen waehlen:</span>
+                            <span className="harbor-port-selector-label">Hafen wählen:</span>
                             {myPorts.map(p => (
                                 <button
                                     key={p.id}

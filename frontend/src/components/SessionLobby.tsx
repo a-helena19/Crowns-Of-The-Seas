@@ -89,34 +89,34 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
         return (
             <div className="session-lobby-container">
                 <div className="session-info-card">
-                    <h2>Game Lobby</h2>
+                    <h2>Spiel-Lobby</h2>
 
                     <div className="session-details">
                         <div className="detail-row">
-                            <span className="label">Game Code:</span>
+                            <span className="label">Spielcode:</span>
                             <span className="value code">{session.gameCode}</span>
                         </div>
                         <div className="detail-row">
-                            <span className="label">Players:</span>
+                            <span className="label">Spieler:</span>
                             <span className="value">{session.players.length} / {session.maxPlayers}</span>
                         </div>
                         <div className="detail-row">
-                            <span className="label">Tick Rate:</span>
+                            <span className="label">Tickrate:</span>
                             <span className="value">{session.tickRateSeconds}s</span>
                         </div>
                         <div className="detail-row">
                             <span className="label">Status:</span>
-                            <span className="value status">{session.status}</span>
+                            <span className="value status">{formatSessionStatus(session.status)}</span>
                         </div>
                     </div>
 
                     <div className="players-list">
-                        <h3>Players ({session.players.length})</h3>
+                        <h3>Spieler ({session.players.length})</h3>
                         <ul>
                             {session.players.map((player) => (
                                 <li key={player.id} className={player.isHost ? 'host' : ''}>
                                     <span className="player-name">{player.playerName}</span>
-                                    {player.isHost && <span className="host-badge">Host</span>}
+                                    {player.isHost && <span className="host-badge">Gastgeber</span>}
                                 </li>
                             ))}
                         </ul>
@@ -128,7 +128,7 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
                             onClick={handleStartGame}
                             disabled={loading}
                         >
-                            {loading ? 'Starting...' : 'Start Game'}
+                            {loading ? 'Startet...' : 'Spiel starten'}
                         </button>
                     )}
 
@@ -149,34 +149,34 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
                         className={`tab ${activeTab === 'create' ? 'active' : ''}`}
                         onClick={() => setActiveTab('create')}
                     >
-                        Create Game
+                        Spiel erstellen
                     </button>
                     <button
                         className={`tab ${activeTab === 'join' ? 'active' : ''}`}
                         onClick={() => setActiveTab('join')}
                     >
-                        Join Game
+                        Spiel beitreten
                     </button>
                 </div>
 
                 {activeTab === 'create' && (
                     <form onSubmit={handleCreateSession} className="form">
                         <div className="form-group">
-                            <label>Your Name</label>
+                            <label>Dein Name</label>
                             <input
                                 type="text"
                                 value={createForm.hostName}
                                 onChange={(e) =>
                                     setCreateForm({ ...createForm, hostName: e.target.value })
                                 }
-                                placeholder="Enter your name"
+                                placeholder="Dein Name"
                                 required
                             />
                         </div>
 
                         <div className="form-row">
                             <div className="form-group">
-                                <label>Max Players</label>
+                                <label>Max. Spieler</label>
                                 <select
                                     value={String(createForm.maxPlayers)}
                                     onChange={(e) =>
@@ -186,14 +186,14 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
                                         })
                                     }
                                 >
-                                    <option value="2">2 Players</option>
-                                    <option value="3">3 Players</option>
-                                    <option value="4">4 Players</option>
+                                    <option value="2">2 Spieler</option>
+                                    <option value="3">3 Spieler</option>
+                                    <option value="4">4 Spieler</option>
                                 </select>
                             </div>
 
                             <div className="form-group">
-                                <label>Tick Rate (seconds)</label>
+                                <label>Tickrate (Sekunden)</label>
                                 <input
                                     type="number"
                                     min="1"
@@ -210,7 +210,7 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
                         </div>
 
                         <div className="form-group">
-                            <label>Game Duration (HH:MM:SS)</label>
+                            <label>Spieldauer (HH:MM:SS)</label>
                             <input
                                 type="text"
                                 value={createForm.duration}
@@ -227,7 +227,7 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
                             className="btn btn-primary btn-block"
                             disabled={loading}
                         >
-                            {loading ? 'Creating...' : 'Create Game'}
+                            {loading ? 'Wird erstellt...' : 'Spiel erstellen'}
                         </button>
                     </form>
                 )}
@@ -235,27 +235,27 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
                 {activeTab === 'join' && (
                     <form onSubmit={handleJoinSession} className="form">
                         <div className="form-group">
-                            <label>Game Code</label>
+                            <label>Spielcode</label>
                             <input
                                 type="text"
                                 value={joinForm.gameCode}
                                 onChange={(e) =>
                                     setJoinForm({ ...joinForm, gameCode: e.target.value })
                                 }
-                                placeholder="Enter game code"
+                                placeholder="Spielcode eingeben"
                                 required
                             />
                         </div>
 
                         <div className="form-group">
-                            <label>Your Name</label>
+                            <label>Dein Name</label>
                             <input
                                 type="text"
                                 value={joinForm.playerName}
                                 onChange={(e) =>
                                     setJoinForm({ ...joinForm, playerName: e.target.value })
                                 }
-                                placeholder="Enter your name"
+                                placeholder="Dein Name"
                                 required
                             />
                         </div>
@@ -265,7 +265,7 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
                             className="btn btn-primary btn-block"
                             disabled={loading}
                         >
-                            {loading ? 'Joining...' : 'Join Game'}
+                            {loading ? 'Tritt bei...' : 'Spiel beitreten'}
                         </button>
                     </form>
                 )}
@@ -275,4 +275,15 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
         </div>
     );
 };
+
+function formatSessionStatus(status: string) {
+    const labels: Record<string, string> = {
+        WAITING: "Wartet",
+        ACTIVE: "Aktiv",
+        RUNNING: "Läuft",
+        FINISHED: "Beendet",
+        COMPLETED: "Abgeschlossen",
+    };
+    return labels[status] ?? status;
+}
 

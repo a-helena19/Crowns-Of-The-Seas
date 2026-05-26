@@ -4,6 +4,10 @@ import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.application.services.cargo.CustomsService;
 import at.fhv.backend.application.services.travel.*;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
+import at.fhv.backend.application.services.travel.TravelPauseService;
+import at.fhv.backend.application.services.pilotstrike.PilotStrikeService;
+import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
+import at.fhv.backend.application.services.travel.TravelArrivalService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
 import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
@@ -21,6 +25,7 @@ import at.fhv.backend.domain.model.travel.TravelStatus;
 import at.fhv.backend.rest.CargoWebSocketController;
 import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.GameSessionWebSocketController;
+import at.fhv.backend.rest.dtos.websocket.SessionUpdateEvent;
 import at.fhv.backend.rest.dtos.websocket.ShipPositionsUpdateEvent;
 import at.fhv.backend.rest.dtos.websocket.TickUpdateEvent;
 import org.springframework.stereotype.Service;
@@ -56,6 +61,7 @@ public class GameTickScheduler {
     private final CustomsService customsService;
     private final UnloadingStartService unloadingStartService;
     private final CustomsCheckCompletionService customsCheckCompletionService;
+    private final PilotStrikeService pilotStrikeService;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
     private final Map<UUID, ScheduledFuture<?>> runningTasks = new ConcurrentHashMap<>();
@@ -77,6 +83,8 @@ public class GameTickScheduler {
                              CargoUnloadingPhaseService cargoUnloadingPhaseService,
                              CargoSessionInitializer cargoSessionInitializer,
                              TravelPauseService travelPauseService,
+                             PilotStrikeService pilotStrikeService) {
+                             TravelPauseService travelPauseService,
                              RatMinigameService ratMinigameService,
                              CustomsService customsService,
                              UnloadingStartService unloadingStartService,
@@ -93,6 +101,7 @@ public class GameTickScheduler {
         this.cargoUnloadingPhaseService = cargoUnloadingPhaseService;
         this.cargoSessionInitializer = cargoSessionInitializer;
         this.travelPauseService = travelPauseService;
+        this.pilotStrikeService = pilotStrikeService;
         this.ratMinigameService = ratMinigameService;
         this.customsService = customsService;
         this.unloadingStartService = unloadingStartService;
@@ -223,6 +232,8 @@ public class GameTickScheduler {
 
             if (ship.getStatus() != ShipStatus.UNLOADING) continue;
 
+            if (travel.isArrivalMiniGamePending()) continue;
+
             if (ship.getUnloadingCompletedAtTick() != null
                     && currentTick >= ship.getUnloadingCompletedAtTick()) {
                 handleUnloadingComplete(travel, currentTick);
@@ -287,6 +298,29 @@ public class GameTickScheduler {
                         sessionId.toString(),
                         new TickUpdateEvent(currentTick, session.getTotalTicks())
                 );
+
+                SessionUpdateEvent finishedEvent = new SessionUpdateEvent(
+                        session.getId(),
+                        session.getGameCode(),
+                        session.getStatus().toString(),
+                        session.getPlayers().size(),
+                        session.getMaxPlayers(),
+                        session.getPlayers().stream()
+                                .map(p -> new SessionUpdateEvent.PlayerInfo(
+                                        p.getUserId(),
+                                        p.getPlayerName(),
+                                        p.isHost(),
+                                        session.getPlayerFactions().get(p.getUserId()) != null
+                                                ? session.getPlayerFactions().get(p.getUserId()).name()
+                                                : null,
+                                        session.getPlayerHomePorts().get(p.getUserId()),
+                                        session.getReadyPlayers().contains(p.getUserId())))
+                                .collect(Collectors.toList()),
+                        "GAME_FINISHED"
+                );
+
+                webSocketController.broadcastSessionUpdate(sessionId.toString(), finishedEvent);
+
                 stopForSession(sessionId);
                 return;
             }
@@ -315,6 +349,7 @@ public class GameTickScheduler {
             checkCustomsCheckCompletion(sessionId, currentTick);
             checkCustomsBlockCompletion(sessionId, currentTick);
             handleUnloadingPhase(sessionId, currentTick);
+            pilotStrikeService.processTick(sessionId, currentTick);
 
             List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
             for (Travel travel : activeTravels) {

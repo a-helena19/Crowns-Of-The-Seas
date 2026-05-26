@@ -127,6 +127,12 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                 travel, currentTickForRegress, currentCondition, cargosForThisTravel
         );
 
+        BigDecimal grossReward = cargoReward.add(totalBonus).add(smuggleReward);
+        BigDecimal arrivalFine = travel.getDockingFine();
+        BigDecimal departureFine = travel.getDepartureDockingFine();
+        BigDecimal pilotageRefund = travel.getPilotageRefund();
+        BigDecimal totalFine = departureFine.add(arrivalFine);
+        BigDecimal netReward = grossReward.subtract(totalFine).add(pilotageRefund).max(BigDecimal.ZERO);
         BigDecimal totalReward = cargoReward.add(totalBonus).add(smuggleReward);
         totalReward = ratMinigameService.applyRewardModifier(travel.getTravelId(), totalReward);
 
@@ -163,6 +169,9 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                 previousBalance = currentBalance.add(customsAlreadyDeducted);
                 if (payout.compareTo(BigDecimal.ZERO) > 0) {
                     player.addBalance(payout);
+                previousBalance = player.getBalance();
+                if (netReward.compareTo(BigDecimal.ZERO) > 0) {
+                    player.addBalance(netReward);
                 }
                 newBalance = player.getBalance();
                 gameSessionRepository.save(session);
@@ -170,6 +179,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         }
 
         RegressSummary regressSummary = toRegressSummary(regressFine);
+        sendUnloadingCompleteEvent(travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffers, bonusPerCargo, totalBonus, departureFine, arrivalFine, pilotageRefund, netReward);
 
         sendUnloadingCompleteEvent(
                 travel, playerId, cargosForPlayer, previousBalance, newBalance,
@@ -199,6 +209,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         regressService.clear(travel.getTravelId());
 
         return payout;
+        return netReward;
     }
 
     @Override
@@ -250,6 +261,11 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
     private void sendUnloadingCompleteEvent(Travel travel, UUID playerId,
                                             List<SessionCargo> cargosForPlayer,
                                             BigDecimal previousBalance, BigDecimal newBalance,
+                                            List<SmuggleOffer> smuggleOffers,
+                                            Map<UUID, BigDecimal> bonusPerCargo, BigDecimal totalBonus,
+                                            BigDecimal departureDockingFine, BigDecimal dockingFine,
+                                            BigDecimal pilotageRefund,
+                                            BigDecimal netReward) {
                                             SmuggleOffer acceptedOffer,
                                             Map<UUID, BigDecimal> bonusPerCargo, BigDecimal totalBonus,
                                             BigDecimal finalTotalReward,
@@ -336,9 +352,14 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                     playerId.toString(),
                     cargoRewards,
                     baseReward,
+                    netReward,
                     finalTotalReward,
                     totalBonus,
                     previousBalance,
+                    newBalance,
+                    departureDockingFine,
+                    dockingFine,
+                    pilotageRefund
                     newBalance,
                     ratMinigameService.consumeTravelSummary(travel.getTravelId()),
                     customsSummary,

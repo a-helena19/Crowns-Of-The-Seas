@@ -56,6 +56,11 @@ public class GameSessionWebSocketController {
         messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/customs-pass", event);
     }
 
+    public void broadcastPilotStrike(String sessionId, PilotStrikeEvent event) {
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/pilot-strike", event);
+    }
+}
+
     public void broadcastCustomsInspectionResolved(String sessionId, CustomsInspectionPassEvent event) {
         messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/customs-resolved", event);
     }

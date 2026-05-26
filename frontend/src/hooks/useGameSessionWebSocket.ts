@@ -85,6 +85,9 @@ interface TravelCompleteEvent {
     totalReward: number;
     previousBalance: number;
     newBalance: number;
+    dockingFine?: number;
+    departureDockingFine?: number;
+    pilotageRefund?: number;
     customsSummary?: CustomsSummary | null;
 }
 
@@ -240,6 +243,15 @@ export function useGameSessionWebSocket({
                                 window.dispatchEvent(new CustomEvent('travel-resumed', { detail: event }));
                             } catch (error) {
                                 console.error('Error parsing travel-resumed event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/pilot-strike`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body);
+                                window.dispatchEvent(new CustomEvent('pilot-strike-update', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing pilot-strike event:', error);
                             }
                         });
 

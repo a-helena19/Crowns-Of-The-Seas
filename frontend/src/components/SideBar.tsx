@@ -22,7 +22,7 @@ export default function Sidebar({
     return (
         <div className="sidebar">
             <SidebarButton
-                label="Office"
+                label="Büro"
                 active={currentView === "office"}
                 onClick={onOpenOffice}
             />

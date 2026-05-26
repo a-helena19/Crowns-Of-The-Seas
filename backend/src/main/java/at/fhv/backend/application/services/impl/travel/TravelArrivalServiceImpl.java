@@ -72,6 +72,14 @@ public class TravelArrivalServiceImpl implements TravelArrivalService {
                 + " arrived at port " + travel.getDestinationPortId()
                 + " — entered CUSTOMS_CHECK (2 ticks, until tick " + customsCheckCompletedAtTick + ")");
     }
+            boolean miniGameRequired = !travel.isPilotageServiceBooked() || travel.isPilotageStrikeRevoked();
+            travel.setArrivalMiniGamePending(miniGameRequired);
+            travelRepository.save(travel);
+
+            System.out.println("[TravelArrival] Ship " + ship.getId() + " arrived at port " + travel.getDestinationPortId());
+            System.out.println("[TravelArrival] Ship set to UNLOADING status for " + unloadingDuration + " ticks (until tick " + unloadingCompletedAtTick + ")");
+            System.out.println("[TravelArrival] arrivalMiniGamePending=" + miniGameRequired);
+        }
 
     private List<SessionCargo> collectCargosOnBoardForTravel(Travel travel) {
         List<SessionCargo> result = new ArrayList<>();

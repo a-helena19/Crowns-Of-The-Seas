@@ -42,6 +42,7 @@ export interface AssignedCargoEntry {
     to: string;
     weight: number;
     maxCargoCapacity: number;
+    originPortId?: string;
     destinationPortId: string;
     speedSetting: number;
     loadingDurationSeconds: number;
@@ -73,4 +74,9 @@ export interface AssignedCargoEntry {
     customsBlockedUntilTick?: number;
     customsBlockStartTick?: number;
     paused?: boolean;
+    pilotageUsed?: boolean;
+    pilotageStrikeRevoked?: boolean;
+    dockingFine?: number;
+    departureDockingFine?: number;
+    pilotageRefund?: number;
 }

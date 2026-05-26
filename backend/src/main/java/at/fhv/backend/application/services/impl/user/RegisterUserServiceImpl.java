@@ -1,8 +1,8 @@
 package at.fhv.backend.application.services.impl.user;
 
 import at.fhv.backend.application.dtos.mapper.UserDTOMapper;
-import at.fhv.backend.rest.dtos.ship.request.RegisterUserDTO;
-import at.fhv.backend.rest.dtos.ship.response.UserResponseDTO;
+import at.fhv.backend.rest.dtos.user.RegisterUserDTO;
+import at.fhv.backend.rest.dtos.user.UserResponseDTO;
 import at.fhv.backend.application.services.user.RegisterUserService;
 import at.fhv.backend.config.JwtService;
 import at.fhv.backend.domain.model.user.exception.UsernameTakenException;
@@ -41,7 +41,7 @@ public class RegisterUserServiceImpl implements RegisterUserService {
         User user = User.register(id, request.getUsername(), passwordHash);
         try {
             User saved = userRepository.save(user);
-            String token = jwtService.generateToken(saved.getId(), saved.getUsername());
+            String token = jwtService.generateToken(saved.getId(), saved.getUsername(), saved.getRole());
             return userDTOMapper.toResponseDTO(saved, token);
         } catch (DataIntegrityViolationException e) {
             throw new UsernameTakenException(request.getUsername());

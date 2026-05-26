@@ -10,6 +10,8 @@ import JoinSessionPage from './pages/JoinSessionPage';
 import GameScreen from './scenes/GameScreen';
 import IntroAnimation from './pages/IntroAnimation.tsx';
 import './App.css';
+import GameOverStandalone from "./components/GameOverStandalone.tsx";
+import AdminPage from "./pages/AdminPage.tsx";
 
 function App() {
     return (
@@ -33,6 +35,12 @@ function App() {
                             <ProtectedRoute><GameScreen /></ProtectedRoute>
                         } />
                         <Route path="*" element={<Navigate to="/lobby" />} />
+                        <Route path="/game-over" element={
+                            <ProtectedRoute><GameOverStandalone /></ProtectedRoute>
+                        } />
+                        <Route path="/admin" element={
+                            <ProtectedRoute><AdminPage /></ProtectedRoute>
+                        } />
                     </Routes>
                 </BrowserRouter>
             </SessionProvider>

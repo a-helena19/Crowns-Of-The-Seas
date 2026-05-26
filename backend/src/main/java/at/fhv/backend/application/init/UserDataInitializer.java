@@ -14,6 +14,7 @@ import java.util.UUID;
 public class UserDataInitializer implements ApplicationRunner {
 
     private static final String DEFAULT_PASSWORD = "12345678";
+    private static final String DEFAULT_ADMIN_PASSWORD = "admin1234";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -38,6 +39,15 @@ public class UserDataInitializer implements ApplicationRunner {
                     passwordEncoder.encode(DEFAULT_PASSWORD)
             );
             userRepository.save(user);
+        }
+
+        if (!userRepository.existsByUsername("admin")) {
+            User admin = User.registerAdmin(
+                    UUID.randomUUID(),
+                    "admin",
+                    passwordEncoder.encode(DEFAULT_ADMIN_PASSWORD)
+            );
+            userRepository.save(admin);
         }
     }
 }
