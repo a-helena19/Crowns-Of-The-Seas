@@ -2,11 +2,9 @@ export type SoundCategory = 'music' | 'sfx';
 
 export interface SoundDefinition {
     key: string;
-    /** Aufgelöster URL-Pfad (von Vite-Import oder public/-Pfad) */
     url: string | null;
     category: SoundCategory;
     loop?: boolean;
-    /** Standard-Lautstärke relativ (0-1) */
     volume?: number;
 }
 
@@ -14,17 +12,15 @@ import introMusicUrl from '../assets/audio/intro-music.mp3';
 import gameMusicUrl from '../assets/audio/game-music.mp3';
 import lobbyMusicUrl from '../assets/audio/lobby-music.mp3';
 
-// Sobald du diese Dateien hast, entkommentiere die Imports:
-
 // SFX – sobald du diese Dateien hast, entkommentiere:
-// import clickSfxUrl from '../assets/audio/sfx/click.mp3';
+import clickSfxUrl from '../assets/audio/sfx/click.mp3';
 // import shipDepartSfxUrl from '../assets/audio/sfx/ship-depart.mp3';
 // import shipArriveSfxUrl from '../assets/audio/sfx/ship-arrive.mp3';
-// import coinSfxUrl from '../assets/audio/sfx/coin.mp3';
+import coinSfxUrl from '../assets/audio/sfx/coin.mp3';
 // import cargoLoadSfxUrl from '../assets/audio/sfx/cargo-load.mp3';
-// import notificationSfxUrl from '../assets/audio/sfx/notification.mp3';
-// import errorSfxUrl from '../assets/audio/sfx/error.mp3';
-// import gameOverSfxUrl from '../assets/audio/sfx/game-over.mp3';
+import notificationSfxUrl from '../assets/audio/sfx/notification.mp3';
+import errorSfxUrl from '../assets/audio/sfx/error.mp3';
+import gameOverSfxUrl from '../assets/audio/sfx/game-over.mp3';
 
 // ─── Musik-Tracks ───
 export const MUSIC_TRACKS: Record<string, SoundDefinition> = {
@@ -47,7 +43,7 @@ export const MUSIC_TRACKS: Record<string, SoundDefinition> = {
         url: gameMusicUrl,
         category: 'music',
         loop: true,
-        volume: 0.35,
+        volume: 0.7,
     },
 };
 
@@ -55,7 +51,7 @@ export const MUSIC_TRACKS: Record<string, SoundDefinition> = {
 export const SFX: Record<string, SoundDefinition> = {
     buttonClick: {
         key: 'sfx_click',
-        url: null,                    // ← clickSfxUrl wenn vorhanden
+        url: clickSfxUrl,
         category: 'sfx',
         volume: 0.6,
     },
@@ -73,7 +69,7 @@ export const SFX: Record<string, SoundDefinition> = {
     },
     coinReward: {
         key: 'sfx_coin',
-        url: null,                    // ← coinSfxUrl wenn vorhanden
+        url: coinSfxUrl,
         category: 'sfx',
         volume: 0.5,
     },
@@ -85,19 +81,19 @@ export const SFX: Record<string, SoundDefinition> = {
     },
     notification: {
         key: 'sfx_notification',
-        url: null,                    // ← notificationSfxUrl wenn vorhanden
+        url: notificationSfxUrl,
         category: 'sfx',
         volume: 0.4,
     },
     error: {
         key: 'sfx_error',
-        url: null,                    // ← errorSfxUrl wenn vorhanden
+        url: errorSfxUrl,
         category: 'sfx',
         volume: 0.5,
     },
     gameOver: {
         key: 'sfx_gameover',
-        url: null,                    // ← gameOverSfxUrl wenn vorhanden
+        url: gameOverSfxUrl,
         category: 'sfx',
         volume: 0.8,
     },
