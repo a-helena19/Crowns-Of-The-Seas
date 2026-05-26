@@ -39,6 +39,7 @@ export default function AdminPage() {
 
     const [saving, setSaving] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
+    const [toastError, setToastError] = useState(false);
 
     useEffect(() => {
         if (!user || user.role !== "ADMIN") {
@@ -58,8 +59,9 @@ export default function AdminPage() {
         }
     }
 
-    function showToast(msg: string) {
+    function showToast(msg: string, isError = false) {
         setToast(msg);
+        setToastError(isError);
         setTimeout(() => setToast(null), 3000);
     }
 
@@ -76,6 +78,9 @@ export default function AdminPage() {
     }
 
     async function handleSaveShip() {
+        const error = validateShipForm();
+        if (error) { showToast(error); return; }
+
         setSaving(true);
         try {
             if (editShip?.id) {
@@ -116,6 +121,9 @@ export default function AdminPage() {
     }
 
     async function handleSaveCargo() {
+        const error = validateCargoForm();
+        if (error) { showToast(error); return; }
+
         setSaving(true);
         try {
             if (editCargo?.id) {
@@ -141,6 +149,30 @@ export default function AdminPage() {
             showToast(`Fracht "${name}" gelöscht`);
             await loadData();
         } catch { showToast("Fehler beim Löschen"); }
+    }
+
+    function validateShipForm(): string | null {
+        if (!shipForm.name.trim()) return "Name ist erforderlich";
+        if (!shipForm.description.trim()) return "Beschreibung ist erforderlich";
+        if (shipForm.price <= 0) return "Preis muss größer als 0 sein";
+        if (shipForm.maxCargoCapacity <= 0) return "Cargo-Kapazität muss größer als 0 sein";
+        if (shipForm.maxSpeed <= 0) return "Geschwindigkeit muss größer als 0 sein";
+        if (shipForm.fuelConsumption <= 0) return "Treibstoffverbrauch muss größer als 0 sein";
+        if (shipForm.maxFuel <= 0) return "Max. Treibstoff muss größer als 0 sein";
+        if (shipForm.operatingCost < 0) return "Betriebskosten dürfen nicht negativ sein";
+        if (shipForm.baseReliability < 0 || shipForm.baseReliability > 1) return "Zuverlässigkeit muss zwischen 0 und 1 liegen";
+        if (shipForm.stock < 0) return "Bestand darf nicht negativ sein";
+        if (!shipForm.iconUrl.trim()) return "Icon URL ist erforderlich";
+        return null;
+    }
+
+    function validateCargoForm(): string | null {
+        if (!cargoForm.name.trim()) return "Name ist erforderlich";
+        if (!cargoForm.description.trim()) return "Beschreibung ist erforderlich";
+        if (cargoForm.baseReward <= 0) return "Belohnung muss größer als 0 sein";
+        if (cargoForm.capacity <= 0) return "Kapazität muss größer als 0 sein";
+        if (cargoForm.risk < 0 || cargoForm.risk > 1) return "Risiko muss zwischen 0 und 1 liegen";
+        return null;
     }
 
     // ── Render ──
@@ -184,12 +216,12 @@ export default function AdminPage() {
                             <div className="admin-form-grid">
                                 <label>
                                     Name
-                                    <input value={shipForm.name}
+                                    <input value={shipForm.name} required
                                            onChange={e => setShipForm(f => ({ ...f, name: e.target.value }))} />
                                 </label>
                                 <label>
                                     Beschreibung
-                                    <input value={shipForm.description}
+                                    <input value={shipForm.description} required
                                            onChange={e => setShipForm(f => ({ ...f, description: e.target.value }))} />
                                 </label>
                                 <label>
@@ -236,7 +268,7 @@ export default function AdminPage() {
                                 </label>
                                 <label>
                                     Icon URL
-                                    <input value={shipForm.iconUrl}
+                                    <input value={shipForm.iconUrl} required
                                            onChange={e => setShipForm(f => ({ ...f, iconUrl: e.target.value }))} />
                                 </label>
                                 <label>
@@ -302,12 +334,12 @@ export default function AdminPage() {
                             <div className="admin-form-grid">
                                 <label>
                                     Name
-                                    <input value={cargoForm.name}
+                                    <input value={cargoForm.name} required
                                            onChange={e => setCargoForm(f => ({ ...f, name: e.target.value }))} />
                                 </label>
                                 <label>
                                     Beschreibung
-                                    <input value={cargoForm.description}
+                                    <input value={cargoForm.description} required
                                            onChange={e => setCargoForm(f => ({ ...f, description: e.target.value }))} />
                                 </label>
                                 <label>
@@ -376,7 +408,7 @@ export default function AdminPage() {
             </div>
 
             {/* Toast */}
-            {toast && <div className="admin-toast">{toast}</div>}
+            {toast && <div className={`admin-toast ${toastError ? 'error' : ''}`}>{toast}</div>}
         </div>
     );
 }

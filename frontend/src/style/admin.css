@@ -230,6 +230,10 @@
     animation: adminToastIn 0.3s ease-out;
 }
 
+.admin-toast.error {
+    background: #8b2020;
+}
+
 @keyframes adminToastIn {
     from { opacity: 0; transform: translateX(-50%) translateY(10px); }
     to   { opacity: 1; transform: translateX(-50%) translateY(0); }
