@@ -23,6 +23,7 @@ import at.fhv.backend.domain.model.travel.TravelStatus;
 import at.fhv.backend.rest.CargoWebSocketController;
 import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.GameSessionWebSocketController;
+import at.fhv.backend.rest.dtos.websocket.SessionUpdateEvent;
 import at.fhv.backend.rest.dtos.websocket.ShipPositionsUpdateEvent;
 import at.fhv.backend.rest.dtos.websocket.TickUpdateEvent;
 import org.springframework.stereotype.Service;
@@ -240,6 +241,29 @@ public class GameTickScheduler {
                         sessionId.toString(),
                         new TickUpdateEvent(currentTick, session.getTotalTicks())
                 );
+
+                SessionUpdateEvent finishedEvent = new SessionUpdateEvent(
+                        session.getId(),
+                        session.getGameCode(),
+                        session.getStatus().toString(),
+                        session.getPlayers().size(),
+                        session.getMaxPlayers(),
+                        session.getPlayers().stream()
+                                .map(p -> new SessionUpdateEvent.PlayerInfo(
+                                        p.getUserId(),
+                                        p.getPlayerName(),
+                                        p.isHost(),
+                                        session.getPlayerFactions().get(p.getUserId()) != null
+                                                ? session.getPlayerFactions().get(p.getUserId()).name()
+                                                : null,
+                                        session.getPlayerHomePorts().get(p.getUserId()),
+                                        session.getReadyPlayers().contains(p.getUserId())))
+                                .collect(Collectors.toList()),
+                        "GAME_FINISHED"
+                );
+
+                webSocketController.broadcastSessionUpdate(sessionId.toString(), finishedEvent);
+
                 stopForSession(sessionId);
                 return;
             }
