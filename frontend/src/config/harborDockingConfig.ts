@@ -5,6 +5,7 @@ import newYorkImg    from '../assets/harbors/New_York.png';
 import santosImg     from '../assets/harbors/Santos.png';
 import shanghaiImg   from '../assets/harbors/Shanghai.png';
 import singapurImg   from '../assets/harbors/Singapur.png';
+import mumbaiImg     from '../assets/harbors/Mumbai.png';
 import sydneyImg     from '../assets/harbors/Sydney.png';
 
 export interface HarborDockConfig {
@@ -39,6 +40,12 @@ export const HARBOR_DOCK_CONFIG: Record<string, HarborDockConfig> = {
         landBoundaryY: 0.38,
         arrivalZone: { x: 0.24, y: 0.58, w: 0.12, h: 0.09 },
         arrivalSpawn: { x: 0.72, y: 0.92 },
+    },
+    'Mumbai': {
+        backgroundImage: mumbaiImg,
+        landBoundaryY: 0.28,
+        arrivalZone: { x: 0.57, y: 0.50, w: 0.14, h: 0.10 },
+        arrivalSpawn: { x: 0.20, y: 0.92 },
     },
     'Los Angeles': {
         backgroundImage: losAngelesImg,
@@ -78,7 +85,7 @@ export const HARBOR_DOCK_CONFIG: Record<string, HarborDockConfig> = {
     },
 };
 
-/** Fallback für Mumbai (kein Bild konfiguriert) */
+/** Fallback für unbekannte Häfen */
 export const DEFAULT_HARBOR_CONFIG: HarborDockConfig = {
     backgroundImage: '',
     landBoundaryY: 0.45,

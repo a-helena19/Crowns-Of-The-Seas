@@ -258,9 +258,11 @@ export default function CargoManagementScreen({
     return (
         <div className="scene">
             <img src={background} className="background" alt="" />
-            <div className="back-icon-btn" onClick={onClose}>
-                <img src={backIcon} alt="Zurück" />
-            </div>
+            {!showDeparture && (
+                <div className="back-icon-btn" onClick={onClose}>
+                    <img src={backIcon} alt="Zurück" />
+                </div>
+            )}
 
             <div className="cm-layout">
                 {/* Linke Spalte */}
