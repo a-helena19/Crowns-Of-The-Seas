@@ -7,6 +7,7 @@ import backIcon from "../assets/goback.png";
 import background from "../assets/background.jpg";
 import "../style/harbor.css";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
+import audioEngine from '../audio/AudioEngine';
 
 interface Port {
     id: string;
@@ -116,6 +117,7 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
             phase: "loading",
         };
         onCargoAssigned(entry);
+        audioEngine.playSfx('cargoLoad');
         onClose();
     }
 

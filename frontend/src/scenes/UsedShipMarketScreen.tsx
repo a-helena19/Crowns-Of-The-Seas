@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import GameButton from "../components/GameButton";
 import backIcon from "../assets/goback.png";
 import "../style/shipclass.css";
+import audioEngine from '../audio/AudioEngine';
 
 interface UsedShipListing {
     id: string;
@@ -89,6 +90,7 @@ export default function UsedShipMarketScreen({ onBack }: Props) {
             setShips(prev => prev.filter(ship => ship.id !== listing.id));
             setBalance(prev => prev !== null ? prev - listing.price : prev);
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
+            audioEngine.playSfx('coinReward');
             showToast(`${listing.name} gekauft!`);
 
             const port = (window.__latestPorts ?? []).find(p => p.id === data.currentPortId);

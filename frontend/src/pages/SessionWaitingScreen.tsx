@@ -6,6 +6,7 @@ import '../style/sessionWaiting.css';
 import FactionSelectionDialog from '../components/FactionSelectionDialog';
 import type { PlayerFaction } from '../types/faction';
 import { sessionApi } from '../api/sessionApi';
+import audioEngine from '../audio/AudioEngine';
 
 interface PlayerInfo {
     userId: string;
@@ -145,6 +146,12 @@ export default function SessionWaitingScreen() {
             })
             .catch(err => console.warn('Initial session fetch failed:', err));
     }, [sessionId]);
+
+    useEffect(() => {
+        if (!audioEngine.isMusicPlaying) {
+            audioEngine.playMusic('lobby');
+        }
+    }, []);
 
     const handleFactionSelected = (faction: PlayerFaction) => {
         setSelectedFaction(faction);

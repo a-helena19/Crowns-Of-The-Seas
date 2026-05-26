@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSessionContext } from '../context/useSessionContext';
 import '../style/gameLobby.css';
+import AudioSettingsPanel from '../components/AudioSettingsPanel';
+import audioEngine from '../audio/AudioEngine';
+import { useEffect } from 'react';
 
 export default function GameLobby() {
     const { user, logout } = useAuth();
@@ -118,6 +121,11 @@ export default function GameLobby() {
         logout();
         navigate('/login');
     };
+
+    useEffect(() => {
+        audioEngine.playMusic('lobby');
+        return () => {};
+    }, []);
 
     return (
         <div className="game-lobby-page">
@@ -254,6 +262,7 @@ export default function GameLobby() {
                             </form>
                         )}
                     </div>
+                    <AudioSettingsPanel />
                 </div>
             </div>
         </div>

@@ -4,6 +4,7 @@ import backIcon from "../assets/goback.png";
 import officeBackground from "../assets/office-background.png";
 import "../style/shipclass.css";
 import "../style/office.css";
+import audioEngine from '../audio/AudioEngine';
 
 interface PlayerShip {
     id: string;
@@ -229,6 +230,7 @@ export default function OfficeScene({ onClose }: Props) {
                 detail: { currentTick, ships: window.__latestShips ?? [] },
             }));
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
+            audioEngine.playSfx('coinReward');
             showToast(`${selectedShip.name} verkauft.`);
         } catch {
             setError("Verkauf fehlgeschlagen.");

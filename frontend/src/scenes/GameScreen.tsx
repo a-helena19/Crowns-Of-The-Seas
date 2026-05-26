@@ -13,6 +13,8 @@ import type { AssignedCargoEntry } from "../types/assignedCargo";
 import RewardToast from "../components/RewardToast.tsx";
 import SmuggleOfferDialog from "../components/SmuggleOfferDialog.tsx";
 import GameOverScreen from "../components/GameOverScreen";
+import audioEngine from '../audio/AudioEngine';
+import AudioSettingsPanel from '../components/AudioSettingsPanel';
 
 export const TOP_BAR_HEIGHT = '9vh';
 export const BOTTOM_BAR_HEIGHT = '20vh';
@@ -149,6 +151,8 @@ export default function GameScreen() {
             }>).detail;
             if (data.playerId !== playerId) return;
 
+            audioEngine.playSfx('coinReward');
+
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
 
             setAssignedCargos(prev => {
@@ -220,6 +224,7 @@ export default function GameScreen() {
                 reward: number; cargoDescription: string;
             }>).detail;
             if (data.playerId !== playerId) return;
+            audioEngine.playSfx('notification');
             const offer = {
                 offerId: data.offerId,
                 portId: data.portId,
@@ -308,6 +313,8 @@ export default function GameScreen() {
 
     const handleSessionUpdate = useCallback((event: { type?: string; status?: string }) => {
         if (event.status === "FINISHED" || event.type === "GAME_FINISHED") {
+            audioEngine.playSfx('gameOver');
+            audioEngine.fadeOutMusic(2000);
             setTimeout(() => setGameOver(true), 500);
         }
     }, []);
@@ -346,6 +353,13 @@ export default function GameScreen() {
             .catch(err => console.warn('Failed to load home port:', err));
     }, [playerId, sessionId]);
 
+    useEffect(() => {
+        audioEngine.playMusic('game');
+        return () => {
+            audioEngine.stopMusic();
+        };
+    }, []);
+
     const send = useCallback((message: object) => {
         if (!stompClient?.connected) return;
         stompClient.send('/app/game', {}, JSON.stringify(message));
@@ -353,7 +367,12 @@ export default function GameScreen() {
 
     return (
         <div className={`app-layout ${view}`}>
-            <div className="top"><TopBar /></div>
+            <div className="top">
+                <TopBar />
+                <div style={{ position: 'absolute', top: '8px', right: '12px', zIndex: 100 }}>
+                    <AudioSettingsPanel compact />
+                </div>
+            </div>
             <div className="game"><Game view={view} /></div>
             <div className={`fullscreen-overlay ${
                 (view === "harbor" || view === "broker" || view === "cargoManagement" || view === "office") ? "open" : "closed"

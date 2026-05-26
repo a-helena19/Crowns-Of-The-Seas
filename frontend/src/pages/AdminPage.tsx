@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminApi, type AdminShip, type AdminCargo } from "../api/adminApi";
 import "../style/admin.css";
+import audioEngine from "../audio/AudioEngine.ts";
 
 const SHIP_CLASSES = ["BUDGET", "STANDARD", "PREMIUM"] as const;
 const CARGO_TYPES = [
@@ -48,6 +49,11 @@ export default function AdminPage() {
         }
         loadData();
     }, [user, navigate]);
+
+    useEffect(() => {
+        audioEngine.playMusic('lobby');
+        return () => {};
+    }, []);
 
     async function loadData() {
         try {
