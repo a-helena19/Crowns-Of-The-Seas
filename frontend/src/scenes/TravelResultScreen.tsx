@@ -211,87 +211,88 @@ export default function TravelResultScreen({
                     );
                 })()}
 
-                <div className="tr-section-label">
-                    Frachtbilanz ({regularCargos.length + (smuggleCargo ? 1 : 0)})
-                </div>
-                <div className="tr-cargo-list">
-                    {regularCargos.map((c) => {
-                        const isExpired = c.status === "EXPIRED";
-                        return (
-                            <div key={c.cargoId} className={`tr-cargo-row ${isExpired ? "expired" : "delivered"}`}>
-                                <IconCargo className="tr-cargo-type-icon" />
-                                <div className="tr-cargo-info">
-                                    <div className="tr-cargo-name">{c.cargoName}</div>
-                                    <div className="tr-cargo-dest">
-                                        {c.destinationPort}{isExpired ? ` - ${c.percentage}% Wert` : ""}
+                <div className="tr-body">
+                    <div className="tr-section-label">
+                        Frachtbilanz ({regularCargos.length + (smuggleCargo ? 1 : 0)})
+                    </div>
+                    <div className="tr-cargo-list">
+                        {regularCargos.map((c) => {
+                            const isExpired = c.status === "EXPIRED";
+                            return (
+                                <div key={c.cargoId} className={`tr-cargo-row ${isExpired ? "expired" : "delivered"}`}>
+                                    <IconCargo className="tr-cargo-type-icon" />
+                                    <div className="tr-cargo-info">
+                                        <div className="tr-cargo-name">{c.cargoName}</div>
+                                        <div className="tr-cargo-dest">
+                                            {c.destinationPort}{isExpired ? ` - ${c.percentage}% Wert` : ""}
+                                        </div>
+                                    </div>
+                                    <div className={`tr-cargo-amount ${isExpired ? "neutral" : "positive"}`}>
+                                        +{fmt(c.actualReward)} T
                                     </div>
                                 </div>
-                                <div className={`tr-cargo-amount ${isExpired ? "neutral" : "positive"}`}>
-                                    +{fmt(c.actualReward)} T
-                                </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
 
-                    {smuggleCargo && (() => {
-                        const confiscated = smuggleCargo.actualReward === 0;
-                        return (
-                            <div className={`tr-cargo-row ${confiscated ? "confiscated" : "smuggle"}`}>
-                                <IconSmuggle className="tr-cargo-type-icon" />
-                                <div className="tr-cargo-info">
-                                    <div className="tr-cargo-name">{smuggleCargo.cargoName}</div>
-                                    <div className="tr-cargo-dest">
-                                        Schmuggelware{confiscated ? " - Konfisziert" : ""}
+                        {smuggleCargo && (() => {
+                            const confiscated = smuggleCargo.actualReward === 0;
+                            return (
+                                <div className={`tr-cargo-row ${confiscated ? "confiscated" : "smuggle"}`}>
+                                    <IconSmuggle className="tr-cargo-type-icon" />
+                                    <div className="tr-cargo-info">
+                                        <div className="tr-cargo-name">{smuggleCargo.cargoName}</div>
+                                        <div className="tr-cargo-dest">
+                                            Schmuggelware{confiscated ? " - Konfisziert" : ""}
+                                        </div>
+                                    </div>
+                                    <div className={`tr-cargo-amount ${confiscated ? "neutral" : "positive"}`}>
+                                        {confiscated ? "0 T" : `+${fmt(smuggleCargo.actualReward)} T`}
                                     </div>
                                 </div>
-                                <div className={`tr-cargo-amount ${confiscated ? "neutral" : "positive"}`}>
-                                    {confiscated ? "0 T" : `+${fmt(smuggleCargo.actualReward)} T`}
-                                </div>
-                            </div>
-                        );
-                    })()}
-                </div>
+                            );
+                        })()}
+                    </div>
 
-                <div className="tr-section-label" style={{ marginTop: 12 }}>Abrechnung</div>
-                <div className="tr-summary">
-                    {cargoBase > 0 && (
-                        <div className="tr-summary-row">
-                            <span className="tr-summary-label">Cargo</span>
-                            <span className="tr-summary-value positive">+{fmt(cargoBase)} T</span>
-                        </div>
-                    )}
-                    {baseReward > 0 && (
-                        <div className="tr-summary-row bonus">
-                            <span className="tr-summary-label">Reisebonus</span>
-                            <span className="tr-summary-value positive">+{fmt(baseReward)} T</span>
-                        </div>
-                    )}
-                    {smuggleTotal > 0 && (
-                        <div className="tr-summary-row bonus">
-                            <span className="tr-summary-label">Schmuggel</span>
-                            <span className="tr-summary-value positive">+{fmt(smuggleTotal)} T</span>
-                        </div>
-                    )}
-                    {pilotageRefund > 0 && (
-                        <div className="cm-reward-row bonus">
-                            <span>Lotsenerstattung (Streik)</span>
-                            <span className="cm-reward-row-value">+{pilotageRefund.toLocaleString("de-DE")}T</span>
-                        </div>
-                    )}
-                    {customsBribe > 0 && (
-                        <div className="tr-summary-row deduction">
-                            <span className="tr-summary-label">Bestechung</span>
-                            <span className="tr-summary-value negative">-{fmt(customsBribe)} T</span>
-                        </div>
-                    )}
-                    {customsFine > 0 && (
-                        <div className="tr-summary-row deduction">
-                            <span className="tr-summary-label">Zollstrafe</span>
-                            <span className="tr-summary-value negative">-{fmt(customsFine)} T</span>
-                        </div>
-                    )}
-                    {regressSummary && regressSummary.delayTicks > 0 && regressDelay > 0 && (
-                        <div className="tr-summary-row deduction">
+                    <div className="tr-section-label" style={{ marginTop: 12 }}>Abrechnung</div>
+                    <div className="tr-summary">
+                        {cargoBase > 0 && (
+                            <div className="tr-summary-row">
+                                <span className="tr-summary-label">Cargo</span>
+                                <span className="tr-summary-value positive">+{fmt(cargoBase)} T</span>
+                            </div>
+                        )}
+                        {baseReward > 0 && (
+                            <div className="tr-summary-row bonus">
+                                <span className="tr-summary-label">Reisebonus</span>
+                                <span className="tr-summary-value positive">+{fmt(baseReward)} T</span>
+                            </div>
+                        )}
+                        {smuggleTotal > 0 && (
+                            <div className="tr-summary-row bonus">
+                                <span className="tr-summary-label">Schmuggel</span>
+                                <span className="tr-summary-value positive">+{fmt(smuggleTotal)} T</span>
+                            </div>
+                        )}
+                        {pilotageRefund > 0 && (
+                            <div className="cm-reward-row bonus">
+                                <span>Lotsenerstattung (Streik)</span>
+                                <span className="cm-reward-row-value">+{pilotageRefund.toLocaleString("de-DE")}T</span>
+                            </div>
+                        )}
+                        {customsBribe > 0 && (
+                            <div className="tr-summary-row deduction">
+                                <span className="tr-summary-label">Bestechung</span>
+                                <span className="tr-summary-value negative">-{fmt(customsBribe)} T</span>
+                            </div>
+                        )}
+                        {customsFine > 0 && (
+                            <div className="tr-summary-row deduction">
+                                <span className="tr-summary-label">Zollstrafe</span>
+                                <span className="tr-summary-value negative">-{fmt(customsFine)} T</span>
+                            </div>
+                        )}
+                        {regressSummary && regressSummary.delayTicks > 0 && regressDelay > 0 && (
+                            <div className="tr-summary-row deduction">
                             <span className="tr-summary-label">
                                 Regress - Verspaetung
                                 <span className="tr-summary-sub">
@@ -307,11 +308,11 @@ export default function TravelResultScreen({
                                         : ""})
                                 </span>
                             </span>
-                            <span className="tr-summary-value negative">-{fmt(Math.round(regressDelay))} T</span>
-                        </div>
-                    )}
-                    {regressDamage > 0 && (
-                        <div className="tr-summary-row deduction">
+                                <span className="tr-summary-value negative">-{fmt(Math.round(regressDelay))} T</span>
+                            </div>
+                        )}
+                        {regressDamage > 0 && (
+                            <div className="tr-summary-row deduction">
                             <span className="tr-summary-label">
                                 Regress - Schaden
                                 {regressSummary && regressSummary.damagePercent > 0 && (
@@ -323,52 +324,56 @@ export default function TravelResultScreen({
                                     </span>
                                 )}
                             </span>
-                            <span className="tr-summary-value negative">-{fmt(Math.round(regressDamage))} T</span>
-                        </div>
-                    )}
-                    {departureDockingFine > 0 && (
-                        <div className="cm-reward-row warn">
-                            <span>⚠ Ablege-Schaden (Kollision)</span>
-                            <span className="cm-reward-row-value">-{departureDockingFine.toLocaleString("de-DE")}T</span>
-                        </div>
-                    )}
-                    {dockingFine > 0 && (
-                        <div className="cm-reward-row warn">
-                            <span>⚠ Anlege-Schaden (Kollision)</span>
-                            <span className="cm-reward-row-value">-{dockingFine.toLocaleString("de-DE")}T</span>
-                        </div>
-                    )}
-                    <div className="tr-summary-row total">
-                        <span className="tr-summary-label">Netto</span>
-                        <span className={`tr-summary-value ${balanceGain >= 0 ? "positive" : "negative"}`}>
+                                <span className="tr-summary-value negative">-{fmt(Math.round(regressDamage))} T</span>
+                            </div>
+                        )}
+                        {departureDockingFine > 0 && (
+                            <div className="cm-reward-row warn">
+                                <span>⚠ Ablege-Schaden (Kollision)</span>
+                                <span className="cm-reward-row-value">-{departureDockingFine.toLocaleString("de-DE")}T</span>
+                            </div>
+                        )}
+                        {dockingFine > 0 && (
+                            <div className="cm-reward-row warn">
+                                <span>⚠ Anlege-Schaden (Kollision)</span>
+                                <span className="cm-reward-row-value">-{dockingFine.toLocaleString("de-DE")}T</span>
+                            </div>
+                        )}
+                        <div className="tr-summary-row total">
+                            <span className="tr-summary-label">Netto</span>
+                            <span className={`tr-summary-value ${balanceGain >= 0 ? "positive" : "negative"}`}>
                             {balanceGain >= 0 ? "+" : ""}{fmt(balanceGain)} T
                         </span>
-                    </div>
-                </div>
-
-                <div className="tr-section-label" style={{ marginTop: 12 }}>Kontostand</div>
-                <div className="tr-balance">
-                    <div className="tr-balance-col">
-                        <div className="tr-balance-label">Vorher</div>
-                        <div className="tr-balance-amount">{fmt(previousBalance)} T</div>
-                    </div>
-                    <div className="tr-balance-col center">
-                        <IconArrowRight className="tr-balance-arrow" />
-                        <div className={`tr-balance-delta ${displayedDelta >= 0 ? "positive" : "negative"}`}>
-                            {displayedDelta >= 0 ? "+" : ""}{fmt(displayedDelta)} T
                         </div>
                     </div>
-                    <div className="tr-balance-col" style={{ alignItems: "flex-end" }}>
-                        <div className="tr-balance-label">Nachher</div>
-                        <div className={`tr-balance-amount ${newBalance >= previousBalance ? "new" : "negative-new"}`}>
-                            {fmt(displayedBalance)} T
+
+                </div>{/* end tr-body */}
+
+                <div className="tr-footer">
+                    <div className="tr-section-label" style={{ marginTop: 12 }}>Kontostand</div>
+                    <div className="tr-balance">
+                        <div className="tr-balance-col">
+                            <div className="tr-balance-label">Vorher</div>
+                            <div className="tr-balance-amount">{fmt(previousBalance)} T</div>
+                        </div>
+                        <div className="tr-balance-col center">
+                            <IconArrowRight className="tr-balance-arrow" />
+                            <div className={`tr-balance-delta ${displayedDelta >= 0 ? "positive" : "negative"}`}>
+                                {displayedDelta >= 0 ? "+" : ""}{fmt(displayedDelta)} T
+                            </div>
+                        </div>
+                        <div className="tr-balance-col" style={{ alignItems: "flex-end" }}>
+                            <div className="tr-balance-label">Nachher</div>
+                            <div className={`tr-balance-amount ${newBalance >= previousBalance ? "new" : "negative-new"}`}>
+                                {fmt(displayedBalance)} T
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <button className="tr-close-btn" onClick={onClose}>
-                    Weiter zur naechsten Reise
-                </button>
+                    <button className="tr-close-btn" onClick={onClose}>
+                        Weiter zur naechsten Reise
+                    </button>
+                </div>{/* end tr-footer */}
 
             </div>
         </div>

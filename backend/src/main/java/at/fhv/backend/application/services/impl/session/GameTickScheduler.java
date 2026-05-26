@@ -404,14 +404,23 @@ public class GameTickScheduler {
                 .collect(Collectors.toMap(PortResponseDTO::id, p -> p));
 
         List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
-        Map<UUID, Travel> travelByShipId = activeTravels.stream()
-                .collect(Collectors.toMap(Travel::getPlayerShipId, t -> t));
+        List<Travel> awaitingDockingTravels = travelRepository
+                .findAllBySessionIdAndStatus(sessionId, TravelStatus.ARRIVED)
+                .stream()
+                .filter(Travel::isArrivalMiniGamePending)
+                .toList();
+        Map<UUID, Travel> travelByShipId = new HashMap<>(activeTravels.stream()
+                .collect(Collectors.toMap(Travel::getPlayerShipId, t -> t)));
+        for (Travel t : awaitingDockingTravels) {
+            travelByShipId.putIfAbsent(t.getPlayerShipId(), t);
+        }
 
         List<PlayerShip> allShips = playerShipRepository.findAllBySessionId(sessionId);
 
         System.out.println("[ShipBroadcast] tick=" + currentTick
                 + " ships=" + allShips.size()
                 + " activeTravels=" + activeTravels.size()
+                + " awaitingDocking=" + awaitingDockingTravels.size()
                 + " ports=" + portMap.size());
 
         List<ShipPositionsUpdateEvent.ShipPosition> positions = new ArrayList<>();
@@ -433,6 +442,16 @@ public class GameTickScheduler {
             if (travel != null) {
                 PortResponseDTO origin = portMap.get(travel.getOriginPortId());
                 PortResponseDTO dest = portMap.get(travel.getDestinationPortId());
+
+                if (travel.isArrivalMiniGamePending() && dest != null) {
+                    positions.add(new ShipPositionsUpdateEvent.ShipPosition(
+                            playerShip.getId(), playerShip.getPlayerId(), playerName,
+                            iconUrl, dest.x(), dest.y(), "AWAITING_DOCKING", null,
+                            null, null, null, null, null,
+                            travel.getDestinationPortId()
+                    ));
+                    continue;
+                }
 
                 System.out.println("[ShipBroadcast] EN_ROUTE ship=" + playerShip.getId()
                         + " originPort=" + travel.getOriginPortId() + " found=" + (origin != null)

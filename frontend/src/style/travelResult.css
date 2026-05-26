@@ -22,7 +22,7 @@
     width: 90%;
     max-width: 640px;
     max-height: 90vh;
-    overflow-y: auto;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     animation: tr-pop-in 0.35s cubic-bezier(0.22, 1, 0.36, 1);
@@ -36,6 +36,25 @@
 .tr-panel::-webkit-scrollbar { width: 6px; }
 .tr-panel::-webkit-scrollbar-track { background: #e8d8c4; }
 .tr-panel::-webkit-scrollbar-thumb { background: #5a3a0a; border-radius: 3px; }
+
+/* Scrollbarer Mittelbereich — Header und Footer bleiben fixiert */
+.tr-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.tr-body::-webkit-scrollbar { width: 6px; }
+.tr-body::-webkit-scrollbar-track { background: #e8d8c4; }
+.tr-body::-webkit-scrollbar-thumb { background: #5a3a0a; border-radius: 3px; }
+
+/* Footer (Kontostand + Button) bleibt unten fixiert */
+.tr-footer {
+    flex-shrink: 0;
+    border-top: 2px solid #c8a040;
+    background: #fff0e7;
+    box-shadow: 0 -4px 12px rgba(90, 58, 10, 0.08);
+}
 
 .tr-header {
     padding: 20px 24px 16px;

@@ -59,6 +59,13 @@ public class TravelArrivalServiceImpl implements TravelArrivalService {
                 cargosForRegress
         );
 
+        if (miniGameRequired) {
+            System.out.println("[TravelArrival] Ship " + ship.getId()
+                    + " arrived at port " + travel.getDestinationPortId()
+                    + " — awaiting manual docking (miniGame pending), customs deferred");
+            return;
+        }
+
         if (!hasCargoForArrival(travel)) {
             unloadingStartService.startUnloadingImmediately(travel);
             System.out.println("[TravelArrival] Ship " + ship.getId()
@@ -74,7 +81,6 @@ public class TravelArrivalServiceImpl implements TravelArrivalService {
         System.out.println("[TravelArrival] Ship " + ship.getId()
                 + " arrived at port " + travel.getDestinationPortId()
                 + " — entered CUSTOMS_CHECK (2 ticks, until tick " + customsCheckCompletedAtTick + ")");
-        System.out.println("[TravelArrival] arrivalMiniGamePending=" + miniGameRequired);
     }
 
     private List<SessionCargo> collectCargosOnBoardForTravel(Travel travel) {

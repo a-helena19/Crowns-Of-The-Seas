@@ -212,11 +212,20 @@ export default function GameScreen() {
 
             setAssignedCargos(prev => prev.map(entry => {
                 if (entry.phase !== "en_route"
+                    && entry.phase !== "awaiting_docking"
                     && entry.phase !== "customs_check"
                     && entry.phase !== "blocked"
                     && entry.phase !== "unloading") return entry;
                 const ship = detail.ships.find(s => s.playerShipId === entry.shipId);
                 if (!ship) return entry;
+                if (ship.status === "AWAITING_DOCKING") {
+                    return {
+                        ...entry,
+                        phase: "awaiting_docking",
+                        currentTick: detail.currentTick,
+                        paused: false,
+                    };
+                }
                 if (ship.status === "CUSTOMS_CHECK") {
                     return {
                         ...entry,
@@ -272,9 +281,8 @@ export default function GameScreen() {
         if (showArrivalDocking) return;
         for (const entry of assignedCargos) {
             if (
-                entry.phase === "unloading" &&
+                entry.phase === "awaiting_docking" &&
                 entry.travelId &&
-                (!entry.pilotageUsed || entry.pilotageStrikeRevoked) &&
                 !arrivedMiniGameShown.current.has(entry.travelId)
             ) {
                 arrivedMiniGameShown.current.add(entry.travelId);

@@ -48,7 +48,7 @@ export interface AssignedCargoEntry {
     loadingDurationSeconds: number;
     loadingStartedAt: number;
     loadingDone: boolean;
-    phase: "loading" | "en_route" | "customs_check" | "blocked" | "unloading" | "completed";
+    phase: "loading" | "en_route" | "awaiting_docking" | "customs_check" | "blocked" | "unloading" | "completed";
     travelId?: string;
     currentTick?: number;
     arrivalTick?: number;
