@@ -133,12 +133,12 @@ export default function UsedShipMarketScreen({ onBack }: Props) {
     return (
         <div className="shipclass-scene">
             <div className="back-icon-btn" onClick={onBack}>
-                <img src={backIcon} alt="Zurueck" />
+                <img src={backIcon} alt="Zurück" />
             </div>
 
             <div className="shipclass-title-area">
                 <div className="shipclass-title-main">Gebrauchte Schiffe</div>
-                <div className="shipclass-title-sub">Schiffe anderer Kapitaene mit echtem Zustand</div>
+                <div className="shipclass-title-sub">Schiffe anderer Kapitäne mit echtem Zustand</div>
                 <div className="shipclass-ornament">
                     <div className="shipclass-orn-line" />
                     <div className="shipclass-orn-diamond" />
@@ -149,7 +149,7 @@ export default function UsedShipMarketScreen({ onBack }: Props) {
             {loading && <p className="shipclass-status">Lade Schiffe...</p>}
             {error && <p className="shipclass-status">{error}</p>}
             {!loading && !error && ships.length === 0 && (
-                <p className="shipclass-status">Keine gebrauchten Schiffe verfuegbar.</p>
+                <p className="shipclass-status">Keine gebrauchten Schiffe verfügbar.</p>
             )}
 
             <div className="ship-grid-wrapper">
@@ -166,10 +166,10 @@ export default function UsedShipMarketScreen({ onBack }: Props) {
                                     <div className="ship-listing-name">{ship.name}</div>
                                     <div className="ship-listing-desc">{ship.description}</div>
                                     <div className="ship-listing-stats">
-                                        <StatRow label="Klasse" value={ship.shipClass} />
+                                        <StatRow label="Klasse" value={formatShipClass(ship.shipClass)} />
                                         <StatRow label="Tank" value={`${Math.round(ship.fuel)}%`} />
                                         <StatRow label="Zustand" value={`${Math.round(ship.condition)}%`} />
-                                        <StatRow label="Kapazitaet" value={`${ship.maxCargoCapacity} t`} />
+                                        <StatRow label="Kapazität" value={`${ship.maxCargoCapacity} t`} />
                                         <StatRow label="Geschw." value={`${ship.maxSpeed} kn`} />
                                         <StatRow label="Verbrauch" value={`${ship.fuelConsumption} t/d`} />
                                     </div>
@@ -206,4 +206,13 @@ function StatRow({ label, value }: { label: string; value: string }) {
 
 function formatMoney(value: number) {
     return Number(value).toLocaleString("de-DE", { maximumFractionDigits: 2 });
+}
+
+function formatShipClass(shipClass: string) {
+    const labels: Record<string, string> = {
+        BUDGET: "Einsteiger-Klasse",
+        STANDARD: "Standard-Klasse",
+        PREMIUM: "Premium-Klasse",
+    };
+    return labels[shipClass.toUpperCase()] ?? shipClass;
 }

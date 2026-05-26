@@ -1,9 +1,15 @@
 package at.fhv.backend.application.services.impl.session;
 
 import at.fhv.backend.application.init.CargoSessionInitializer;
-import at.fhv.backend.application.services.travel.TravelPauseService;
+import at.fhv.backend.application.services.cargo.CustomsService;
+import at.fhv.backend.application.services.minigame.RatMinigameService;
+import at.fhv.backend.application.services.pilotstrike.PilotStrikeService;
+import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
+import at.fhv.backend.application.services.travel.CustomsCheckCompletionService;
 import at.fhv.backend.application.services.travel.TravelArrivalService;
+import at.fhv.backend.application.services.travel.TravelPauseService;
+import at.fhv.backend.application.services.travel.UnloadingStartService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
 import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
@@ -16,20 +22,24 @@ import at.fhv.backend.domain.model.ship.ShipRepository;
 import at.fhv.backend.domain.model.ship.ShipStatus;
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.domain.model.travel.TravelRepository;
-import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.domain.model.travel.TravelStatus;
 import at.fhv.backend.rest.CargoWebSocketController;
-import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.GameSessionWebSocketController;
+import at.fhv.backend.rest.dtos.port.PortResponseDTO;
 import at.fhv.backend.rest.dtos.websocket.SessionUpdateEvent;
 import at.fhv.backend.rest.dtos.websocket.ShipPositionsUpdateEvent;
 import at.fhv.backend.rest.dtos.websocket.TickUpdateEvent;
+import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import jakarta.annotation.PreDestroy;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -53,14 +63,19 @@ public class GameTickScheduler {
     private final CargoUnloadingPhaseService cargoUnloadingPhaseService;
     private final CargoSessionInitializer cargoSessionInitializer;
     private final TravelPauseService travelPauseService;
+    private final RatMinigameService ratMinigameService;
+    private final CustomsService customsService;
+    private final UnloadingStartService unloadingStartService;
+    private final CustomsCheckCompletionService customsCheckCompletionService;
+    private final PilotStrikeService pilotStrikeService;
 
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
     private final Map<UUID, ScheduledFuture<?>> runningTasks = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastTickProcessedAtMs = new ConcurrentHashMap<>();
     private final Map<UUID, ReentrantLock> tickLocks = new ConcurrentHashMap<>();
     private static final int MAX_ACTIVE_CARGOS_PER_PORT = 7;
-    private final Random rng = new Random();
 
+    private final Random rng = new Random();
 
     public GameTickScheduler(GameSessionRepository gameSessionRepository,
                              TravelRepository travelRepository,
@@ -73,7 +88,12 @@ public class GameTickScheduler {
                              TravelArrivalService travelArrivalService,
                              CargoUnloadingPhaseService cargoUnloadingPhaseService,
                              CargoSessionInitializer cargoSessionInitializer,
-                             TravelPauseService travelPauseService) {
+                             TravelPauseService travelPauseService,
+                             PilotStrikeService pilotStrikeService,
+                             RatMinigameService ratMinigameService,
+                             CustomsService customsService,
+                             UnloadingStartService unloadingStartService,
+                             CustomsCheckCompletionService customsCheckCompletionService) {
         this.gameSessionRepository = gameSessionRepository;
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
@@ -86,8 +106,12 @@ public class GameTickScheduler {
         this.cargoUnloadingPhaseService = cargoUnloadingPhaseService;
         this.cargoSessionInitializer = cargoSessionInitializer;
         this.travelPauseService = travelPauseService;
+        this.pilotStrikeService = pilotStrikeService;
+        this.ratMinigameService = ratMinigameService;
+        this.customsService = customsService;
+        this.unloadingStartService = unloadingStartService;
+        this.customsCheckCompletionService = customsCheckCompletionService;
     }
-
 
     public void startForSession(UUID sessionId, int tickRateSeconds) {
         runningTasks.computeIfAbsent(sessionId, ignored ->
@@ -159,6 +183,49 @@ public class GameTickScheduler {
     }
 
     @Transactional
+    public void checkCustomsCheckCompletion(UUID sessionId, int currentTick) {
+        List<Travel> arrivedTravels = travelRepository
+                .findAllBySessionIdAndStatus(sessionId, TravelStatus.ARRIVED);
+
+        for (Travel travel : arrivedTravels) {
+            PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
+            if (ship == null) continue;
+            if (ship.getStatus() != ShipStatus.CUSTOMS_CHECK) continue;
+
+            int completedAtTick = ship.getCustomsCheckCompletedAtTick();
+            if (completedAtTick < 0) continue;
+            if (currentTick < completedAtTick) continue;
+
+            customsCheckCompletionService.completeCustomsCheck(travel.getTravelId());
+        }
+    }
+
+    @Transactional
+    public void checkCustomsBlockCompletion(UUID sessionId, int currentTick) {
+        List<Travel> arrivedTravels = travelRepository
+                .findAllBySessionIdAndStatus(sessionId, TravelStatus.ARRIVED);
+
+        for (Travel travel : arrivedTravels) {
+            PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
+            if (ship == null) continue;
+            if (ship.getStatus() != ShipStatus.BLOCKED) continue;
+
+            int expirationTick = customsService.getBlockExpirationTick(travel.getTravelId());
+            if (expirationTick < 0) {
+                continue;
+            }
+            if (currentTick < expirationTick) {
+                continue;
+            }
+
+            unloadingStartService.startUnloadingAfterDetention(travel.getTravelId());
+            customsService.clearBlockTracking(travel.getTravelId());
+            System.out.println("[GameTick] Customs block expired for travel " + travel.getTravelId()
+                    + " — ship now UNLOADING");
+        }
+    }
+
+    @Transactional
     public void handleUnloadingPhase(UUID sessionId, int currentTick) {
         List<Travel> arrivedTravels = travelRepository
                 .findAllBySessionIdAndStatus(sessionId, TravelStatus.ARRIVED);
@@ -168,6 +235,8 @@ public class GameTickScheduler {
             if (ship == null) continue;
 
             if (ship.getStatus() != ShipStatus.UNLOADING) continue;
+
+            if (travel.isArrivalMiniGamePending()) continue;
 
             if (ship.getUnloadingCompletedAtTick() != null
                     && currentTick >= ship.getUnloadingCompletedAtTick()) {
@@ -262,7 +331,6 @@ public class GameTickScheduler {
 
             gameSessionRepository.save(session);
 
-            // Tick zuerst broadcasten — damit die Zeit immer aktualisiert wird
             webSocketController.broadcastTickUpdate(
                     sessionId.toString(),
                     new TickUpdateEvent(currentTick, session.getTotalTicks())
@@ -282,10 +350,15 @@ public class GameTickScheduler {
             checkLoadingCompletion(sessionId, currentTick);
             checkRefuelingCompletion(sessionId, currentTick);
             checkRepairingCompletion(sessionId, currentTick);
+            checkCustomsCheckCompletion(sessionId, currentTick);
+            checkCustomsBlockCompletion(sessionId, currentTick);
             handleUnloadingPhase(sessionId, currentTick);
+            pilotStrikeService.processTick(sessionId, currentTick);
 
             List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
             for (Travel travel : activeTravels) {
+                ratMinigameService.tryTriggerForTravel(travel, sessionId);
+
                 if (travelPauseService.isTravelPaused(travel.getTravelId())) {
                     continue;
                 }
@@ -331,14 +404,23 @@ public class GameTickScheduler {
                 .collect(Collectors.toMap(PortResponseDTO::id, p -> p));
 
         List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
-        Map<UUID, Travel> travelByShipId = activeTravels.stream()
-                .collect(Collectors.toMap(Travel::getPlayerShipId, t -> t));
+        List<Travel> awaitingDockingTravels = travelRepository
+                .findAllBySessionIdAndStatus(sessionId, TravelStatus.ARRIVED)
+                .stream()
+                .filter(Travel::isArrivalMiniGamePending)
+                .toList();
+        Map<UUID, Travel> travelByShipId = new HashMap<>(activeTravels.stream()
+                .collect(Collectors.toMap(Travel::getPlayerShipId, t -> t)));
+        for (Travel t : awaitingDockingTravels) {
+            travelByShipId.putIfAbsent(t.getPlayerShipId(), t);
+        }
 
         List<PlayerShip> allShips = playerShipRepository.findAllBySessionId(sessionId);
 
         System.out.println("[ShipBroadcast] tick=" + currentTick
                 + " ships=" + allShips.size()
                 + " activeTravels=" + activeTravels.size()
+                + " awaitingDocking=" + awaitingDockingTravels.size()
                 + " ports=" + portMap.size());
 
         List<ShipPositionsUpdateEvent.ShipPosition> positions = new ArrayList<>();
@@ -360,6 +442,16 @@ public class GameTickScheduler {
             if (travel != null) {
                 PortResponseDTO origin = portMap.get(travel.getOriginPortId());
                 PortResponseDTO dest = portMap.get(travel.getDestinationPortId());
+
+                if (travel.isArrivalMiniGamePending() && dest != null) {
+                    positions.add(new ShipPositionsUpdateEvent.ShipPosition(
+                            playerShip.getId(), playerShip.getPlayerId(), playerName,
+                            iconUrl, dest.x(), dest.y(), "AWAITING_DOCKING", null,
+                            null, null, null, null, null,
+                            travel.getDestinationPortId()
+                    ));
+                    continue;
+                }
 
                 System.out.println("[ShipBroadcast] EN_ROUTE ship=" + playerShip.getId()
                         + " originPort=" + travel.getOriginPortId() + " found=" + (origin != null)
@@ -387,6 +479,8 @@ public class GameTickScheduler {
                         case UNLOADING       -> "UNLOADING";
                         case REFUELING       -> "REFUELING";
                         case REPAIRING       -> "REPAIRING";
+                        case BLOCKED         -> "BLOCKED";
+                        case CUSTOMS_CHECK   -> "CUSTOMS_CHECK";
                         default              -> "AT_PORT";
                     };
 
@@ -399,6 +493,11 @@ public class GameTickScheduler {
                         completionTick = playerShip.getRefuelingCompletedAtTick();
                     } else if (playerShip.getStatus() == ShipStatus.REPAIRING) {
                         completionTick = playerShip.getRepairingCompletedAtTick();
+                    } else if (playerShip.getStatus() == ShipStatus.CUSTOMS_CHECK) {
+                        completionTick = playerShip.getCustomsCheckCompletedAtTick();
+                    } else if (playerShip.getStatus() == ShipStatus.BLOCKED) {
+                        int blockedUntil = playerShip.getCustomsBlockedUntilTick();
+                        completionTick = blockedUntil > 0 ? blockedUntil : null;
                     }
 
                     positions.add(new ShipPositionsUpdateEvent.ShipPosition(
@@ -438,7 +537,7 @@ public class GameTickScheduler {
             all = sessionCargoRepository.findAllBySessionId(sessionId);
         }
 
-        Map<UUID, List<SessionCargo>> byPort = new java.util.HashMap<>();
+        Map<UUID, List<SessionCargo>> byPort = new HashMap<>();
         for (SessionCargo sc : all) {
             byPort.computeIfAbsent(sc.getOriginPortId(), k -> new ArrayList<>()).add(sc);
         }
@@ -469,7 +568,6 @@ public class GameTickScheduler {
                 }
             }
 
-            // Spawn new disposable cargos to fill up
             while (activeCount < MAX_ACTIVE_CARGOS_PER_PORT) {
                 double spawnChance = 0.25;
                 if (rng.nextDouble() >= spawnChance) {

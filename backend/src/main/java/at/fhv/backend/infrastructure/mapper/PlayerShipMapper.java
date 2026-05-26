@@ -22,6 +22,8 @@ public class PlayerShipMapper implements EntityMapper<PlayerShip, PlayerShipEnti
         entity.setUnloadingCompletedAtTick(playerShip.getUnloadingCompletedAtTick());
         entity.setRefuelingCompletedAtTick(playerShip.getRefuelingCompletedAtTick());
         entity.setRepairingCompletedAtTick(playerShip.getRepairingCompletedAtTick());
+        entity.setCustomsCheckCompletedAtTick(playerShip.getCustomsCheckCompletedAtTick());
+        entity.setCustomsBlockedUntilTick(playerShip.getCustomsBlockedUntilTick());
         entity.setPendingFuelAmount(playerShip.getPendingFuelAmount());
         entity.setPendingRepairAmount(playerShip.getPendingRepairAmount());
         return entity;
@@ -43,6 +45,8 @@ public class PlayerShipMapper implements EntityMapper<PlayerShip, PlayerShipEnti
                 entity.getUnloadingCompletedAtTick(),
                 entity.getRefuelingCompletedAtTick(),
                 entity.getRepairingCompletedAtTick(),
+                entity.getCustomsCheckCompletedAtTick(),
+                entity.getCustomsBlockedUntilTick(),
                 entity.getPendingFuelAmount(),
                 entity.getPendingRepairAmount()
         );

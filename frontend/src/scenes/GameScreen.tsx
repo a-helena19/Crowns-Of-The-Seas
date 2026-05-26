@@ -9,15 +9,44 @@ import OfficeScene from "../scenes/OfficeScene.tsx";
 import PortProfileScreen from "../scenes/PortProfileScreen.tsx";
 import { useGameSessionWebSocket } from "../hooks/useGameSessionWebSocket.ts";
 import CargoManagementScreen from "../scenes/CargoManagementScreen";
+import DockingMiniGame from "../scenes/DockingMiniGame";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
 import RewardToast from "../components/RewardToast.tsx";
 import SmuggleOfferDialog from "../components/SmuggleOfferDialog.tsx";
+import CustomsInspectionDialog from "../components/CustomsInspectionDialog.tsx";
+import CustomsResultToast, { type CustomsToastKind } from "../components/CustomsResultToast.tsx";
+import RatMinigameOverlay from "../minigame/rats/RatMinigameOverlay.tsx";
+import type { RatMinigameEventPayload, RatMinigameResult } from "../minigame/rats/RatMinigameTypes.ts";
+import EventNotificationDialog from "../components/EventNotificationDialog.tsx";
+import ratImage from "../assets/Rat.png";
 import GameOverScreen from "../components/GameOverScreen";
 import audioEngine from '../audio/AudioEngine';
 import AudioSettingsPanel from '../components/AudioSettingsPanel';
 
 export const TOP_BAR_HEIGHT = '9vh';
 export const BOTTOM_BAR_HEIGHT = '20vh';
+
+interface CustomsInspectionPayload {
+    inspectionId: string;
+    playerId: string;
+    travelId: string;
+    playerShipId: string;
+    shipName: string;
+    originPortName: string;
+    destinationPortName: string;
+    fineAmount: number;
+    bribeCost: number;
+    detentionTicks: number;
+    illegalCargoLabels: string[];
+}
+
+interface CustomsToast {
+    id: string;
+    kind: CustomsToastKind;
+    shipName: string;
+    from: string;
+    to: string;
+}
 
 export default function GameScreen() {
     const [view, setView] = useState<"map" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office">("map");
@@ -37,14 +66,30 @@ export default function GameScreen() {
     const [rewardToasts, setRewardToasts] = useState<{
         id: string; shipName: string; from: string; to: string; reward: number;
     }[]>([]);
+    const [ratResultToasts, setRatResultToasts] = useState<{
+        id: string;
+        success: boolean;
+        message: string;
+    }[]>([]);
+    const [customsToasts, setCustomsToasts] = useState<CustomsToast[]>([]);
     const [smuggleOffer, setSmuggleOffer] = useState<{
         offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
     } | null>(null);
+    const [customsInspection, setCustomsInspection] = useState<CustomsInspectionPayload | null>(null);
+    const customsQueueRef = useRef<CustomsInspectionPayload[]>([]);
+    const [ratEventOffer, setRatEventOffer] = useState<RatMinigameEventPayload | null>(null);
+    const [activeRatMinigame, setActiveRatMinigame] = useState<RatMinigameEventPayload | null>(null);
 
     const pendingSmuggleRef = useRef<{
         offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
     } | null>(null);
     const departureActiveRef = useRef(false);
+    const arrivedMiniGameShown = useRef<Set<string>>(new Set());
+    const [showArrivalDocking, setShowArrivalDocking] = useState<AssignedCargoEntry | null>(null);
+    const [activePilotStrikes, setActivePilotStrikes] = useState<Record<string, { portName: string }>>({});
+    const [strikeNotice, setStrikeNotice] = useState<string | null>(null);
+
+    const authToken = localStorage.getItem("auth_token") ?? "";
 
     function handleCargoAssigned(entry: AssignedCargoEntry) {
         setAssignedCargos(prev => {
@@ -69,6 +114,67 @@ export default function GameScreen() {
         ));
     }
 
+    function handleTravelStarted(cargoId: string, pilotageUsed: boolean, pilotageStrikeRevoked?: boolean) {
+        setAssignedCargos(prev => prev.map(e =>
+            e.cargoId === cargoId
+                ? { ...e, pilotageUsed, ...(pilotageStrikeRevoked != null ? { pilotageStrikeRevoked } : {}) }
+                : e
+        ));
+    }
+
+    useEffect(() => {
+        if (!sessionId || !authToken) return;
+        fetch(`/api/sessions/${sessionId}/pilot-strikes`, {
+            headers: { Authorization: `Bearer ${authToken}` },
+        })
+            .then(r => (r.ok ? r.json() : []))
+            .then((strikes: { portId: string; portName: string }[]) => {
+                const map: Record<string, { portName: string }> = {};
+                for (const s of strikes) {
+                    map[s.portId] = { portName: s.portName };
+                }
+                setActivePilotStrikes(map);
+            })
+            .catch(() => { /* noop */ });
+    }, [sessionId, authToken]);
+
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const detail = (e as CustomEvent<{
+                eventType: string;
+                portId: string;
+                portName: string;
+                endTick?: number;
+                revokedTravels?: { travelId: string; playerId: string }[];
+            }>).detail;
+
+            if (detail.eventType === "PILOT_STRIKE_STARTED") {
+                setActivePilotStrikes(prev => ({
+                    ...prev,
+                    [detail.portId]: { portName: detail.portName },
+                }));
+                const myRevoked = detail.revokedTravels?.filter(r => r.playerId === playerId) ?? [];
+                if (myRevoked.length > 0) {
+                    setStrikeNotice(
+                        `Lotsenstreik in ${detail.portName}! Du musst selbst anlegen. Die Lotsengebühr wird beim Reiseabschluss erstattet.`
+                    );
+                    setAssignedCargos(prev => prev.map(entry => {
+                        if (!myRevoked.some(r => r.travelId === entry.travelId)) return entry;
+                        return { ...entry, pilotageStrikeRevoked: true };
+                    }));
+                }
+            } else if (detail.eventType === "PILOT_STRIKE_ENDED") {
+                setActivePilotStrikes(prev => {
+                    const next = { ...prev };
+                    delete next[detail.portId];
+                    return next;
+                });
+            }
+        };
+        window.addEventListener("pilot-strike-update", handler);
+        return () => window.removeEventListener("pilot-strike-update", handler);
+    }, [playerId]);
+
     useEffect(() => {
         viewRef.current = view;
         window.__activeGameView = view;
@@ -91,7 +197,6 @@ export default function GameScreen() {
         return () => window.removeEventListener('port-clicked', onPortClicked);
     }, []);
 
-    // Ship positions → update cargo entries with tick data + paused state
     useEffect(() => {
         const handler = (e: Event) => {
             const detail = (e as CustomEvent<{
@@ -108,9 +213,43 @@ export default function GameScreen() {
             }>).detail;
 
             setAssignedCargos(prev => prev.map(entry => {
-                if (entry.phase !== "en_route" && entry.phase !== "unloading") return entry;
+                if (entry.phase !== "en_route"
+                    && entry.phase !== "awaiting_docking"
+                    && entry.phase !== "customs_check"
+                    && entry.phase !== "blocked"
+                    && entry.phase !== "unloading") return entry;
                 const ship = detail.ships.find(s => s.playerShipId === entry.shipId);
                 if (!ship) return entry;
+                if (ship.status === "AWAITING_DOCKING") {
+                    return {
+                        ...entry,
+                        phase: "awaiting_docking",
+                        currentTick: detail.currentTick,
+                        paused: false,
+                    };
+                }
+                if (ship.status === "CUSTOMS_CHECK") {
+                    return {
+                        ...entry,
+                        phase: "customs_check",
+                        currentTick: detail.currentTick,
+                        customsCheckCompletedAtTick: ship.arrivalTick,
+                        customsCheckStartTick: entry.customsCheckStartTick ?? detail.currentTick,
+                        paused: false,
+                    };
+                }
+                if (ship.status === "BLOCKED") {
+                    return {
+                        ...entry,
+                        phase: "blocked",
+                        currentTick: detail.currentTick,
+                        customsBlockedUntilTick: ship.arrivalTick,
+                        customsBlockStartTick: entry.phase === "blocked"
+                            ? (entry.customsBlockStartTick ?? detail.currentTick)
+                            : detail.currentTick,
+                        paused: false,
+                    };
+                }
                 if (ship.status === "UNLOADING") {
                     return {
                         ...entry,
@@ -139,6 +278,47 @@ export default function GameScreen() {
         return () => window.removeEventListener("backend-ship-positions", handler);
     }, [playerId]);
 
+    // Ankunfts-Minispiel automatisch starten (Vollbild über der Karte)
+    useEffect(() => {
+        if (showArrivalDocking) return;
+        for (const entry of assignedCargos) {
+            if (
+                entry.phase === "awaiting_docking" &&
+                entry.travelId &&
+                !arrivedMiniGameShown.current.has(entry.travelId)
+            ) {
+                arrivedMiniGameShown.current.add(entry.travelId);
+                setShowArrivalDocking(entry);
+                break;
+            }
+        }
+    }, [assignedCargos, showArrivalDocking]);
+
+    const handleArrivalDockingSuccess = useCallback(async () => {
+        const entry = showArrivalDocking;
+        setShowArrivalDocking(null);
+        if (!entry?.travelId || !playerId || !sessionId) return;
+        try {
+            await fetch(
+                `/api/travels/${entry.travelId}/docking-success?playerId=${playerId}&sessionId=${sessionId}`,
+                { method: "POST", headers: { Authorization: `Bearer ${authToken}` } }
+            );
+        } catch { /* nicht-fatal */ }
+    }, [showArrivalDocking, playerId, sessionId, authToken]);
+
+    const handleArrivalDockingFailure = useCallback(async () => {
+        const entry = showArrivalDocking;
+        setShowArrivalDocking(null);
+        if (!entry?.travelId || !playerId || !sessionId) return;
+        try {
+            await fetch(
+                `/api/travels/${entry.travelId}/docking-failed?playerId=${playerId}&sessionId=${sessionId}`,
+                { method: "POST", headers: { Authorization: `Bearer ${authToken}` } }
+            );
+            window.dispatchEvent(new CustomEvent("player-balance-updated"));
+        } catch { /* nicht-fatal */ }
+    }, [showArrivalDocking, playerId, sessionId, authToken]);
+
     // Travel complete → reward
     useEffect(() => {
         const handler = (e: Event) => {
@@ -147,7 +327,36 @@ export default function GameScreen() {
                 playerId: string;
                 totalReward: number;
                 baseReward: number;
+                dockingFine?: number;
+                departureDockingFine?: number;
+                pilotageRefund?: number;
                 cargoRewards: { cargoId: string; cargoName: string; destinationPort: string; baseReward: number; bonusReward: number; actualReward: number; percentage: number; status: string; cargoType: string }[];
+                ratMinigameSummary?: {
+                    triggered: boolean;
+                    result?: "SUCCESS" | "FAILED";
+                    penaltyAmount?: number;
+                };
+                customsSummary?: {
+                    outcome: "CLEARED" | "HIDDEN" | "COOPERATED" | "BRIBE_SUCCESS" | "BRIBE_FAILED";
+                    finePaid: number;
+                    bribePaid: number;
+                    bribeAttempted: boolean;
+                    detained: boolean;
+                    detentionTicks: number;
+                    wasCarryingIllegalCargo: boolean;
+                } | null;
+                regressSummary?: {
+                    delayTicks: number;
+                    toleranceTicks: number;
+                    overdueTicks: number;
+                    delayComponent: number;
+                    damageComponent: number;
+                    damagePercent: number;
+                    specialCargoMultiplier: number;
+                    hadPerishableCargo: boolean;
+                    hadFragileCargo: boolean;
+                    totalFine: number;
+                } | null;
             }>).detail;
             if (data.playerId !== playerId) return;
 
@@ -163,6 +372,9 @@ export default function GameScreen() {
                         ...entry,
                         phase: "completed" as const,
                         reward: data.totalReward,
+                        dockingFine: data.dockingFine ?? 0,
+                        departureDockingFine: data.departureDockingFine ?? 0,
+                        pilotageRefund: data.pilotageRefund ?? 0,
                         rewardDetails: firstCargo
                             ? {
                                 baseReward: firstCargo.baseReward,
@@ -171,6 +383,9 @@ export default function GameScreen() {
                             }
                             : undefined,
                         cargoRewards: data.cargoRewards,
+                        ratMinigameSummary: data.ratMinigameSummary,
+                        customsSummary: data.customsSummary ?? undefined,
+                        regressSummary: data.regressSummary ?? undefined,
                     };
                 });
                 return updated;
@@ -243,6 +458,66 @@ export default function GameScreen() {
         return () => window.removeEventListener("smuggle-offer", handler);
     }, [playerId]);
 
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const data = (e as CustomEvent<CustomsInspectionPayload>).detail;
+            if (data.playerId !== playerId) return;
+            setCustomsInspection(current => {
+                if (current !== null) {
+                    customsQueueRef.current.push(data);
+                    return current;
+                }
+                return data;
+            });
+        };
+        window.addEventListener("customs-inspection", handler);
+        return () => window.removeEventListener("customs-inspection", handler);
+    }, [playerId]);
+
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const data = (e as CustomEvent<{
+                playerId: string;
+                travelId: string;
+                shipName: string;
+                originPortName: string;
+                destinationPortName: string;
+                outcome: CustomsToastKind;
+            }>).detail;
+            if (data.playerId !== playerId) return;
+            const id = `customs-${data.travelId}-${Date.now()}`;
+            setCustomsToasts(prev => [
+                ...prev,
+                {
+                    id,
+                    kind: data.outcome,
+                    shipName: data.shipName,
+                    from: data.originPortName,
+                    to: data.destinationPortName,
+                },
+            ]);
+        };
+        window.addEventListener("customs-pass", handler);
+        window.addEventListener("customs-resolved", handler);
+        return () => {
+            window.removeEventListener("customs-pass", handler);
+            window.removeEventListener("customs-resolved", handler);
+        };
+    }, [playerId]);
+
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const data = (e as CustomEvent<RatMinigameEventPayload>).detail;
+            if (data.playerId !== playerId) return;
+            if (window.__activeRatEventId === data.eventId) return;
+            window.__activeRatEventId = data.eventId;
+            setRatEventOffer(data);
+        };
+
+        window.addEventListener("rats-event", handler);
+        return () => window.removeEventListener("rats-event", handler);
+    }, [playerId]);
+
     const handleDepartureComplete = useCallback(() => {
         departureActiveRef.current = false;
         const pending = pendingSmuggleRef.current;
@@ -285,7 +560,137 @@ export default function GameScreen() {
         setSmuggleOffer(null);
     }
 
-    // Auto-complete loading phase
+    const handleCustomsCooperate = useCallback(async () => {
+        if (!customsInspection) return;
+        const token = localStorage.getItem("auth_token") ?? "";
+        try {
+            await fetch(
+                `/api/customs/cooperate?playerId=${playerId}&inspectionId=${customsInspection.inspectionId}`,
+                { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+            );
+        } catch (err) {
+            console.error("Customs cooperate failed:", err);
+        }
+    }, [customsInspection, playerId]);
+
+    const handleCustomsBribe = useCallback(async (): Promise<"BRIBE_SUCCESS" | "BRIBE_FAILED" | "ERROR"> => {
+        if (!customsInspection) return "ERROR";
+        const token = localStorage.getItem("auth_token") ?? "";
+        try {
+            const res = await fetch(
+                `/api/customs/bribe?playerId=${playerId}&inspectionId=${customsInspection.inspectionId}`,
+                { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (!res.ok) return "ERROR";
+            const data = await res.json();
+            const outcome = data.outcome as string;
+            if (outcome === "BRIBE_SUCCESS" || outcome === "BRIBE_FAILED") {
+                return outcome;
+            }
+            return "ERROR";
+        } catch (err) {
+            console.error("Customs bribe failed:", err);
+            return "ERROR";
+        }
+    }, [customsInspection, playerId]);
+
+    const handleCustomsDismiss = useCallback(() => {
+        setCustomsInspection(() => {
+            const next = customsQueueRef.current.shift();
+            return next ?? null;
+        });
+    }, []);
+
+    const submitRatResult = useCallback(async (payload: {
+        eventId: string;
+        travelId: string;
+        result: "SUCCESS" | "FAILED";
+        hits: number;
+        requiredHits: number;
+        remainingSeconds: number;
+        timeLimitSeconds: number;
+    }) => {
+        const token = localStorage.getItem("auth_token") ?? "";
+        try {
+            await fetch(`/api/minigames/rats/result?playerId=${playerId}&sessionId=${sessionId}`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    eventId: payload.eventId,
+                    travelId: payload.travelId,
+                    result: payload.result,
+                    hits: payload.hits,
+                    requiredHits: payload.requiredHits,
+                    remainingSeconds: payload.remainingSeconds,
+                    timeLimitSeconds: payload.timeLimitSeconds,
+                }),
+            });
+        } catch {
+        }
+    }, [playerId, sessionId]);
+
+    const handleRatEventAccept = useCallback(() => {
+        if (!ratEventOffer) return;
+        setActiveRatMinigame(ratEventOffer);
+        setRatEventOffer(null);
+    }, [ratEventOffer]);
+
+    const handleRatEventDecline = useCallback(async () => {
+        if (!ratEventOffer) return;
+
+        await submitRatResult({
+            eventId: ratEventOffer.eventId,
+            travelId: ratEventOffer.travelId,
+            result: "FAILED",
+            hits: 0,
+            requiredHits: ratEventOffer.requiredHits,
+            remainingSeconds: 0,
+            timeLimitSeconds: ratEventOffer.timeLimitSeconds,
+        });
+
+        window.__activeRatEventId = undefined;
+        setRatEventOffer(null);
+        const id = `rat-result-${Date.now()}`;
+        setRatResultToasts(prev => [...prev, {
+            id,
+            success: false,
+            message: "Ratten-Event nicht bestanden",
+        }]);
+        setTimeout(() => {
+            setRatResultToasts(prev => prev.filter(toast => toast.id !== id));
+        }, 2600);
+    }, [ratEventOffer, submitRatResult]);
+
+    const handleRatMinigameFinished = useCallback(async (result: RatMinigameResult) => {
+        if (!activeRatMinigame) return;
+
+        await submitRatResult({
+            eventId: activeRatMinigame.eventId,
+            travelId: activeRatMinigame.travelId,
+            result: result.result,
+            hits: result.hits,
+            requiredHits: result.requiredHits,
+            remainingSeconds: result.remainingSeconds,
+            timeLimitSeconds: result.timeLimitSeconds,
+        });
+
+        window.__activeRatEventId = undefined;
+        setActiveRatMinigame(null);
+        const id = `rat-result-${Date.now()}`;
+        const success = result.result === "SUCCESS";
+        setRatResultToasts(prev => [...prev, {
+            id,
+            success,
+            message: success ? "Ratten-Event erfolgreich" : "Ratten-Event nicht bestanden",
+        }]);
+        setTimeout(() => {
+            setRatResultToasts(prev => prev.filter(toast => toast.id !== id));
+        }, 2600);
+    }, [activeRatMinigame, submitRatResult]);
+
     useEffect(() => {
         const hasPendingLoading = assignedCargos.some(
             e => e.phase === "loading" && !e.loadingDone
@@ -337,7 +742,6 @@ export default function GameScreen() {
             .catch(err => console.error('Failed to load ports:', err));
     }, []);
 
-    // Heimathafen beim Game-Start laden
     useEffect(() => {
         if (!playerId || !sessionId) return;
         const token = localStorage.getItem('auth_token') ?? '';
@@ -388,9 +792,11 @@ export default function GameScreen() {
                 {view === "cargoManagement" && (
                     <CargoManagementScreen
                         assignedCargos={assignedCargos}
+                        activePilotStrikes={activePilotStrikes}
                         onCargoLoadingDone={handleCargoCompleted}
                         onCargoRemoved={handleCargoRemoved}
                         onCargoPhaseChange={handleCargoPhaseChange}
+                        onTravelStarted={handleTravelStarted}
                         onClose={() => setView("map")}
                         onDepartureStarted={handleDepartureStarted}
                         onDepartureComplete={handleDepartureComplete}
@@ -429,6 +835,42 @@ export default function GameScreen() {
                 />
             ))}
 
+            {ratResultToasts.map((toast, index) => (
+                <div
+                    key={toast.id}
+                    style={{
+                        position: "fixed",
+                        right: 20,
+                        bottom: 110 + index * 74,
+                        zIndex: 1002,
+                        minWidth: 280,
+                        maxWidth: 380,
+                        background: toast.success ? "#e7f6ea" : "#ffe7e7",
+                        border: `3px solid ${toast.success ? "#2f7a45" : "#a23f3f"}`,
+                        borderRadius: 8,
+                        boxShadow: "0 6px 14px rgba(0,0,0,0.25)",
+                        padding: "10px 12px",
+                        color: toast.success ? "#1f5e35" : "#7d2a2a",
+                        fontWeight: 700,
+                    }}
+                >
+                    {toast.success ? "✅ " : "⚠️ "}
+                    {toast.message}
+                </div>
+            ))}
+
+            {customsToasts.map((toast, index) => (
+                <CustomsResultToast
+                    key={toast.id}
+                    kind={toast.kind}
+                    shipName={toast.shipName}
+                    from={toast.from}
+                    to={toast.to}
+                    bottomOffset={60 + index * 42}
+                    onDismiss={() => setCustomsToasts(prev => prev.filter(t => t.id !== toast.id))}
+                />
+            ))}
+
             {smuggleOffer && (
                 <SmuggleOfferDialog
                     offerId={smuggleOffer.offerId}
@@ -440,10 +882,82 @@ export default function GameScreen() {
                 />
             )}
 
+            {strikeNotice && (
+                <div className="pilot-strike-banner">
+                    {strikeNotice}
+                    <button
+                        type="button"
+                        onClick={() => setStrikeNotice(null)}
+                        style={{
+                            marginLeft: 12,
+                            background: "transparent",
+                            border: "none",
+                            color: "#fadbd8",
+                            cursor: "pointer",
+                            fontSize: 16,
+                        }}
+                        aria-label="Schließen"
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
+
+            {showArrivalDocking && (
+                <DockingMiniGame
+                    mode="arrival"
+                    shipIconUrl={showArrivalDocking.shipIconUrl ?? "/fallback-ship.png"}
+                    portName={showArrivalDocking.to}
+                    onSuccess={handleArrivalDockingSuccess}
+                    onFailure={handleArrivalDockingFailure}
+                />
+            )}
+
             {gameOver && sessionId && (
                 <GameOverScreen
                     sessionId={sessionId}
                     currentUserId={playerId}
+                />
+            )}
+
+            {customsInspection && (
+                <CustomsInspectionDialog
+                    inspectionId={customsInspection.inspectionId}
+                    travelId={customsInspection.travelId}
+                    shipName={customsInspection.shipName}
+                    originPortName={customsInspection.originPortName}
+                    destinationPortName={customsInspection.destinationPortName}
+                    fineAmount={customsInspection.fineAmount}
+                    bribeCost={customsInspection.bribeCost}
+                    detentionTicks={customsInspection.detentionTicks}
+                    illegalCargoLabels={customsInspection.illegalCargoLabels}
+                    onCooperate={handleCustomsCooperate}
+                    onBribe={handleCustomsBribe}
+                    onDismiss={handleCustomsDismiss}
+                />
+            )}
+
+            {ratEventOffer && (
+                <EventNotificationDialog
+                    title="Event: Rattenbefall"
+                    successText="Wenn du das Event schaffst, werden die Ratten abgewehrt und die Fracht bleibt unbeschädigt."
+                    failText="Wenn du das Event nicht schaffst oder ablehnst, wird das Minispiel als nicht bestanden gewertet und ein Teil der Fracht geht verloren."
+                    imageSrc={ratImage}
+                    imageAlt="Ratte"
+                    onAccept={handleRatEventAccept}
+                    onDecline={handleRatEventDecline}
+                />
+            )}
+
+            {activeRatMinigame && (
+                <RatMinigameOverlay
+                    config={{
+                        eventId: activeRatMinigame.eventId,
+                        travelId: activeRatMinigame.travelId,
+                        timeLimitSeconds: activeRatMinigame.timeLimitSeconds,
+                        requiredHits: activeRatMinigame.requiredHits,
+                    }}
+                    onFinished={handleRatMinigameFinished}
                 />
             )}
         </div>

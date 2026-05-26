@@ -18,6 +18,8 @@ public class PlayerShip {
     private int unloadingCompletedAtTick = -1;
     private int refuelingCompletedAtTick = -1;
     private int repairingCompletedAtTick = -1;
+    private int customsCheckCompletedAtTick = -1;
+    private int customsBlockedUntilTick = -1;
     private double pendingFuelAmount = 0.0;
     private double pendingRepairAmount = 0.0;
 
@@ -26,6 +28,8 @@ public class PlayerShip {
                        UUID currentPortId, UUID targetPortId,
                        int loadingCompletedAtTick, int unloadingCompletedAtTick,
                        int refuelingCompletedAtTick, int repairingCompletedAtTick,
+                       int customsCheckCompletedAtTick,
+                       int customsBlockedUntilTick,
                        double pendingFuelAmount, double pendingRepairAmount) {
         this.id = id;
         this.shipId = shipId;
@@ -40,6 +44,8 @@ public class PlayerShip {
         this.unloadingCompletedAtTick = unloadingCompletedAtTick;
         this.refuelingCompletedAtTick = refuelingCompletedAtTick;
         this.repairingCompletedAtTick = repairingCompletedAtTick;
+        this.customsCheckCompletedAtTick = customsCheckCompletedAtTick;
+        this.customsBlockedUntilTick = customsBlockedUntilTick;
         this.pendingFuelAmount = pendingFuelAmount;
         this.pendingRepairAmount = pendingRepairAmount;
     }
@@ -47,20 +53,13 @@ public class PlayerShip {
     public static PlayerShip createFromPurchase(UUID shipId, UUID playerId, UUID sessionId, UUID startPortId) {
         return new PlayerShip(
                 UUID.randomUUID(),
-                shipId,
-                playerId,
-                sessionId,
+                shipId, playerId, sessionId,
                 ShipStatus.IN_REGISTRATION,
-                100.0,
-                100.0,
-                startPortId,
-                null,
+                100.0, 100.0,
+                startPortId, null,
+                -1, -1, -1, -1, -1,
                 -1,
-                -1,
-                -1,
-                -1,
-                0.0,
-                0.0
+                0.0, 0.0
         );
     }
 
@@ -68,40 +67,65 @@ public class PlayerShip {
                                                    double condition, double fuel) {
         return new PlayerShip(
                 UUID.randomUUID(),
-                shipId,
-                playerId,
-                sessionId,
+                shipId, playerId, sessionId,
                 ShipStatus.AT_PORT,
-                condition,
-                fuel,
-                currentPortId,
-                null,
+                condition, fuel,
+                currentPortId, null,
+                -1, -1, -1, -1, -1,
                 -1,
-                -1,
-                -1,
-                -1,
-                0.0,
-                0.0
+                0.0, 0.0
         );
     }
 
-    public static PlayerShip reconstruct(UUID id, UUID shipId, UUID playerId, UUID sessionId, ShipStatus status, double condition, double fuel,
-                                         UUID currentPortId, UUID targetPortId, Integer loadingCompletedAtTick, Integer unloadingCompletedAtTick,
-                                         Integer refuelingCompletedAtTick, Integer repairingCompletedAtTick,Double pendingFuelAmount, Double pendingRepairAmount) {
+    public static PlayerShip reconstruct(UUID id, UUID shipId, UUID playerId, UUID sessionId, ShipStatus status,
+                                         double condition, double fuel,
+                                         UUID currentPortId, UUID targetPortId,
+                                         Integer loadingCompletedAtTick, Integer unloadingCompletedAtTick,
+                                         Integer refuelingCompletedAtTick, Integer repairingCompletedAtTick,
+                                         Double pendingFuelAmount, Double pendingRepairAmount) {
+        return reconstruct(id, shipId, playerId, sessionId, status,
+                condition, fuel, currentPortId, targetPortId,
+                loadingCompletedAtTick, unloadingCompletedAtTick,
+                refuelingCompletedAtTick, repairingCompletedAtTick,
+                null,
+                null,
+                pendingFuelAmount, pendingRepairAmount);
+    }
+
+    public static PlayerShip reconstruct(UUID id, UUID shipId, UUID playerId, UUID sessionId, ShipStatus status,
+                                         double condition, double fuel,
+                                         UUID currentPortId, UUID targetPortId,
+                                         Integer loadingCompletedAtTick, Integer unloadingCompletedAtTick,
+                                         Integer refuelingCompletedAtTick, Integer repairingCompletedAtTick,
+                                         Integer customsCheckCompletedAtTick,
+                                         Double pendingFuelAmount, Double pendingRepairAmount) {
+        return reconstruct(id, shipId, playerId, sessionId, status,
+                condition, fuel, currentPortId, targetPortId,
+                loadingCompletedAtTick, unloadingCompletedAtTick,
+                refuelingCompletedAtTick, repairingCompletedAtTick,
+                customsCheckCompletedAtTick,
+                null,
+                pendingFuelAmount, pendingRepairAmount);
+    }
+
+    public static PlayerShip reconstruct(UUID id, UUID shipId, UUID playerId, UUID sessionId, ShipStatus status,
+                                         double condition, double fuel,
+                                         UUID currentPortId, UUID targetPortId,
+                                         Integer loadingCompletedAtTick, Integer unloadingCompletedAtTick,
+                                         Integer refuelingCompletedAtTick, Integer repairingCompletedAtTick,
+                                         Integer customsCheckCompletedAtTick,
+                                         Integer customsBlockedUntilTick,
+                                         Double pendingFuelAmount, Double pendingRepairAmount) {
         return new PlayerShip(
-                id,
-                shipId,
-                playerId,
-                sessionId,
-                status,
-                condition,
-                fuel,
-                currentPortId,
-                targetPortId,
-                loadingCompletedAtTick==null ? -1 : loadingCompletedAtTick,
+                id, shipId, playerId, sessionId,
+                status, condition, fuel,
+                currentPortId, targetPortId,
+                loadingCompletedAtTick == null ? -1 : loadingCompletedAtTick,
                 unloadingCompletedAtTick == null ? -1 : unloadingCompletedAtTick,
                 refuelingCompletedAtTick == null ? -1 : refuelingCompletedAtTick,
                 repairingCompletedAtTick == null ? -1 : repairingCompletedAtTick,
+                customsCheckCompletedAtTick == null ? -1 : customsCheckCompletedAtTick,
+                customsBlockedUntilTick == null ? -1 : customsBlockedUntilTick,
                 pendingFuelAmount == null ? 0.0 : pendingFuelAmount,
                 pendingRepairAmount == null ? 0.0 : pendingRepairAmount);
     }
@@ -110,7 +134,6 @@ public class PlayerShip {
         if (this.status != ShipStatus.IN_REGISTRATION) {
             throw new InvalidShipStatusTransition("Ship must have the status IN_REGISTRATION", "shipId", shipId);
         }
-
         this.status = ShipStatus.AT_PORT;
     }
 
@@ -126,10 +149,7 @@ public class PlayerShip {
     public void startLoading(UUID destinationPortId, int loadingCompletedAtTick) {
         if (this.status != ShipStatus.AT_PORT) {
             throw new InvalidShipStatusTransition(
-                    "Ship must have the status AT_PORT to start loading",
-                    "shipId",
-                    shipId
-            );
+                    "Ship must have the status AT_PORT to start loading", "shipId", shipId);
         }
         this.status = ShipStatus.LOADING;
         this.targetPortId = destinationPortId;
@@ -143,10 +163,7 @@ public class PlayerShip {
     public void completeLoading() {
         if (this.status != ShipStatus.LOADING) {
             throw new InvalidShipStatusTransition(
-                    "Ship must have the status LOADING to complete loading",
-                    "shipId",
-                    shipId
-            );
+                    "Ship must have the status LOADING to complete loading", "shipId", shipId);
         }
         this.status = ShipStatus.READY_TO_DEPART;
         this.loadingCompletedAtTick = -1;
@@ -155,10 +172,7 @@ public class PlayerShip {
     public void depart() {
         if (this.status != ShipStatus.READY_TO_DEPART) {
             throw new InvalidShipStatusTransition(
-                    "Ship must have the status READY_TO_DEPART to depart",
-                    "shipId",
-                    shipId
-            );
+                    "Ship must have the status READY_TO_DEPART to depart", "shipId", shipId);
         }
         this.status = ShipStatus.EN_ROUTE;
         this.currentPortId = null;
@@ -178,6 +192,80 @@ public class PlayerShip {
         this.unloadingCompletedAtTick = unloadingCompletedAtTick;
     }
 
+    public void arriveAndStartCustomsCheck(UUID portId, int customsCheckCompletedAtTick) {
+        if (this.status != ShipStatus.EN_ROUTE) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status EN_ROUTE to start the customs check", "shipId", shipId);
+        }
+        this.status = ShipStatus.CUSTOMS_CHECK;
+        this.currentPortId = portId;
+        this.targetPortId = null;
+        this.customsCheckCompletedAtTick = customsCheckCompletedAtTick;
+    }
+
+    public boolean isStillInCustomsCheck(int currentTick) {
+        return status == ShipStatus.CUSTOMS_CHECK
+                && customsCheckCompletedAtTick > 0
+                && currentTick < customsCheckCompletedAtTick;
+    }
+
+    public void completeCustomsCheckAndStartUnloading(int unloadingCompletedAtTick) {
+        if (this.status != ShipStatus.CUSTOMS_CHECK) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status CUSTOMS_CHECK to complete the customs check", "shipId", shipId);
+        }
+        this.status = ShipStatus.UNLOADING;
+        this.customsCheckCompletedAtTick = -1;
+        this.unloadingCompletedAtTick = unloadingCompletedAtTick;
+    }
+
+    public void completeCustomsCheckAndAwaitDecision() {
+        if (this.status != ShipStatus.CUSTOMS_CHECK) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status CUSTOMS_CHECK to await a customs decision",
+                    "shipId", shipId);
+        }
+        this.status = ShipStatus.BLOCKED;
+        this.customsCheckCompletedAtTick = -1;
+    }
+
+    public int getCustomsCheckCompletedAtTick() {
+        return customsCheckCompletedAtTick;
+    }
+
+    public void arriveAndAwaitCustoms(UUID portId) {
+        if (this.status != ShipStatus.EN_ROUTE) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status EN_ROUTE to start a customs block", "shipId", shipId);
+        }
+        this.status = ShipStatus.BLOCKED;
+        this.currentPortId = portId;
+        this.targetPortId = null;
+    }
+
+    public void startCustomsBlock(int customsBlockedUntilTick) {
+        if (this.status != ShipStatus.BLOCKED) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status BLOCKED to start a customs detention block",
+                    "shipId", shipId);
+        }
+        this.customsBlockedUntilTick = customsBlockedUntilTick;
+    }
+
+    public int getCustomsBlockedUntilTick() {
+        return customsBlockedUntilTick;
+    }
+
+    public void completeCustomsBlockAndStartUnloading(int unloadingCompletedAtTick) {
+        if (this.status != ShipStatus.BLOCKED) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status BLOCKED to complete customs hold", "shipId", shipId);
+        }
+        this.status = ShipStatus.UNLOADING;
+        this.unloadingCompletedAtTick = unloadingCompletedAtTick;
+        this.customsBlockedUntilTick = -1;
+    }
+
     public boolean isStillUnloading(int currentTick) {
         return status == ShipStatus.UNLOADING && unloadingCompletedAtTick > 0 && currentTick < unloadingCompletedAtTick;
     }
@@ -185,10 +273,7 @@ public class PlayerShip {
     public void completeUnloading() {
         if (this.status != ShipStatus.UNLOADING) {
             throw new InvalidShipStatusTransition(
-                    "Ship must have the status UNLOADING to complete unloading",
-                    "shipId",
-                    shipId
-            );
+                    "Ship must have the status UNLOADING to complete unloading", "shipId", shipId);
         }
         this.status = ShipStatus.AT_PORT;
         this.unloadingCompletedAtTick = -1;
@@ -197,8 +282,7 @@ public class PlayerShip {
     public void startRefueling(int refuelingCompletedAtTick, double fuelAmount) {
         if (this.status != ShipStatus.AT_PORT) {
             throw new InvalidShipStatusTransition(
-                    "Ship must have the status AT_PORT to start refueling",
-                    "shipId", shipId);
+                    "Ship must have the status AT_PORT to start refueling", "shipId", shipId);
         }
         this.status = ShipStatus.REFUELING;
         this.refuelingCompletedAtTick = refuelingCompletedAtTick;
@@ -214,8 +298,7 @@ public class PlayerShip {
     public void completeRefueling() {
         if (this.status != ShipStatus.REFUELING) {
             throw new InvalidShipStatusTransition(
-                    "Ship must have the status REFUELING to complete refueling",
-                    "shipId", shipId);
+                    "Ship must have the status REFUELING to complete refueling", "shipId", shipId);
         }
         addFuel(pendingFuelAmount);
         this.status = ShipStatus.AT_PORT;
@@ -234,8 +317,7 @@ public class PlayerShip {
     public void startRepairing(int repairingCompletedAtTick, double repairAmount) {
         if (this.status != ShipStatus.AT_PORT) {
             throw new InvalidShipStatusTransition(
-                    "Ship must have the status AT_PORT to start repairing",
-                    "shipId", shipId);
+                    "Ship must have the status AT_PORT to start repairing", "shipId", shipId);
         }
         this.status = ShipStatus.REPAIRING;
         this.repairingCompletedAtTick = repairingCompletedAtTick;
@@ -251,8 +333,7 @@ public class PlayerShip {
     public void completeRepairing() {
         if (this.status != ShipStatus.REPAIRING) {
             throw new InvalidShipStatusTransition(
-                    "Ship must have the status REPAIRING to complete repairing",
-                    "shipId", shipId);
+                    "Ship must have the status REPAIRING to complete repairing", "shipId", shipId);
         }
         applyRepair(pendingRepairAmount);
         this.status = ShipStatus.AT_PORT;
@@ -291,6 +372,7 @@ public class PlayerShip {
     public boolean isOwnedBy(UUID playerId) {
         return this.playerId.equals(playerId);
     }
+
 
     public UUID getId() {
         return id;

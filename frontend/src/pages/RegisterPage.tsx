@@ -18,7 +18,7 @@ export default function RegisterPage() {
         setError('');
 
         if (password !== confirmPassword) {
-            setError('Passwoerter stimmen nicht ueberein.');
+            setError('Passwörter stimmen nicht überein.');
             return;
         }
 
@@ -87,7 +87,7 @@ export default function RegisterPage() {
                     </div>
 
                     <div className="form-group">
-                        <label htmlFor="confirmPassword">Passwort bestaetigen</label>
+                        <label htmlFor="confirmPassword">Passwort bestätigen</label>
                         <input
                             id="confirmPassword"
                             type="password"

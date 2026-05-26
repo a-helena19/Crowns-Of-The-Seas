@@ -1,11 +1,16 @@
 package at.fhv.backend.application.services;
 
+import at.fhv.backend.application.services.cargo.CustomsService;
 import at.fhv.backend.application.services.impl.travel.CargoUnloadingPhaseServiceImpl;
 import at.fhv.backend.application.services.impl.travel.RewardCalculationServiceImpl;
 import at.fhv.backend.application.services.impl.travel.TravelArrivalServiceImpl;
+import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
+import at.fhv.backend.application.services.travel.RegressService;
+import at.fhv.backend.application.services.travel.UnloadingStartService;
 import at.fhv.backend.domain.model.cargo.*;
+import at.fhv.backend.domain.model.customs.CustomsInspection;
 import at.fhv.backend.domain.model.player.BaseSessionPlayer;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.port.PortRepository;
@@ -192,14 +197,16 @@ class TravelCompletionServiceTest {
         @Mock private GameSessionRepository gameSessionRepository;
         @Mock private CargoUnloadingPhaseService cargoUnloadingPhaseService;
         @Mock private SessionCargoRepository sessionCargoRepository;
+        @Mock private CustomsService customsService;
+        @Mock private UnloadingStartService unloadingStartService;
+        @Mock private RegressService regressService;
 
         private TravelArrivalServiceImpl service;
 
         @BeforeEach
         void setUp() {
             service = new TravelArrivalServiceImpl(
-                    travelRepository, playerShipRepository, sessionCargoRepository,
-                    cargoUnloadingPhaseService, gameSessionRepository
+                    travelRepository, playerShipRepository, sessionCargoRepository, unloadingStartService, regressService
             );
         }
 
@@ -215,6 +222,18 @@ class TravelCompletionServiceTest {
             return ps;
         }
 
+
+        private CustomsInspection buildClearedInspection(Travel travel) {
+            CustomsInspection inspection = new CustomsInspection(
+                    travel.getPlayerId(), travel.getSessionId(), travel.getTravelId(),
+                    travel.getPlayerShipId(), travel.getDestinationPortId(),
+                    "TestShip", "OriginPort", "DestPort",
+                    false, BigDecimal.ZERO, BigDecimal.ZERO, 0
+            );
+            inspection.completeAsCleared();
+            return inspection;
+        }
+
         @Test
         void givenValidTravel_whenHandleArrival_thenTravelMarkedAsArrived() {
             UUID playerShipId = UUID.randomUUID();
@@ -228,6 +247,7 @@ class TravelCompletionServiceTest {
             when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
             when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
             when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.empty());
+            when(customsService.inspectOnArrival(any(Travel.class))).thenReturn(buildClearedInspection(travel));
 
             service.handleArrival(travel);
 
@@ -248,6 +268,7 @@ class TravelCompletionServiceTest {
             when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
             when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
             when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.empty());
+            when(customsService.inspectOnArrival(any(Travel.class))).thenReturn(buildClearedInspection(travel));
 
             service.handleArrival(travel);
 
@@ -269,10 +290,31 @@ class TravelCompletionServiceTest {
             when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
             when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
             when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.empty());
+            when(customsService.inspectOnArrival(any(Travel.class))).thenReturn(buildClearedInspection(travel));
 
             service.handleArrival(travel);
 
             assertThat(playerShip.getStatus()).isEqualTo(ShipStatus.UNLOADING);
+        }
+
+        @Test
+        void givenValidTravel_whenHandleArrival_thenCustomsInspectionTriggered() {
+            UUID playerShipId = UUID.randomUUID();
+            UUID sessionId = UUID.randomUUID();
+            UUID destinationPortId = UUID.randomUUID();
+            Travel travel = buildTravel(playerShipId, destinationPortId, sessionId);
+            PlayerShip playerShip = buildPlayerShip(playerShipId);
+
+            when(sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId())).thenReturn(List.of());
+            when(travelRepository.save(any(Travel.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
+            when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.empty());
+            when(customsService.inspectOnArrival(any(Travel.class))).thenReturn(buildClearedInspection(travel));
+
+            service.handleArrival(travel);
+
+            verify(customsService, times(1)).inspectOnArrival(travel);
         }
     }
 
@@ -287,12 +329,14 @@ class TravelCompletionServiceTest {
         @Mock private CargoRepository cargoRepository;
         @Mock private SmuggleService smuggleService;
         @Mock private TravelRepository travelRepository;
+        @Mock private RatMinigameService ratMinigameService;
+        @Mock private CustomsService customsService;
+        @Mock private RegressService regressService;
 
         private CargoUnloadingPhaseServiceImpl service;
 
         @BeforeEach
         void setUp() {
-            // Use the real RewardCalculationService so we test the full reward flow end-to-end.
             service = new CargoUnloadingPhaseServiceImpl(
                     sessionCargoRepository,
                     playerShipRepository,
@@ -302,8 +346,24 @@ class TravelCompletionServiceTest {
                     portRepository,
                     cargoRepository,
                     smuggleService,
-                    travelRepository
+                    travelRepository,
+                    ratMinigameService,
+                    customsService,
+                    regressService
             );
+
+            // Default: ratMinigameService passes reward through unchanged, no summary
+            when(ratMinigameService.applyRewardModifier(any(UUID.class), any(BigDecimal.class)))
+                    .thenAnswer(inv -> inv.getArgument(1));
+            when(ratMinigameService.consumeTravelSummary(any(UUID.class)))
+                    .thenReturn(null);
+
+            // Default: no customs inspection result (fine = 0)
+            when(customsService.consumeInspection(any(UUID.class)))
+                    .thenReturn(null);
+
+            // Default: no smuggle offers
+            // when(smuggleService.getAllAcceptedOffers(any(UUID.class))).thenReturn(List.of());
         }
 
         private PlayerShip buildPlayerShipInUnloading(UUID destinationPortId) {
@@ -419,6 +479,51 @@ class TravelCompletionServiceTest {
 
             assertThat(player.getBalance()).isEqualByComparingTo(new BigDecimal("41000.00"));
             assertThat(cargo.getCargoStatus()).isEqualTo(CargoStatus.DELIVERED);
+        }
+
+        @Test
+        void givenCustomsFine_whenCompleteUnloadingPhase_thenFineSubtractedFromPayout() {
+            UUID userId = UUID.randomUUID();
+            UUID sessionId = UUID.randomUUID();
+            UUID playerShipId = UUID.randomUUID();
+            UUID destinationPortId = UUID.randomUUID();
+
+            Travel travel = Travel.start(playerShipId, userId, sessionId,
+                    UUID.randomUUID(), destinationPortId, 5.0, 1.0, 0.1, BigDecimal.ZERO, 0);
+
+            PlayerShip playerShip = buildPlayerShipInUnloading(destinationPortId);
+            ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
+            GameSession session = buildSessionWithPlayer(player);
+
+            SessionCargo cargo = SessionCargo.reconstruct(
+                    UUID.randomUUID(), UUID.randomUUID(), sessionId,
+                    UUID.randomUUID(), destinationPortId,
+                    BigDecimal.valueOf(10000), false, 50,
+                    CargoType.GENERAL_GOODS, 0.1,
+                    CargoStatus.ASSIGNED, userId, playerShipId, 0, 0, -1, -1
+            );
+
+            // Build a COOPERATED inspection with a 5000 T fine
+            CustomsInspection inspection = new CustomsInspection(
+                    userId, sessionId, travel.getTravelId(), playerShipId, destinationPortId,
+                    "TestShip", "Origin", "Destination",
+                    true, BigDecimal.valueOf(5000), BigDecimal.valueOf(1000), 5
+            );
+            inspection.cooperate();
+
+            when(customsService.consumeInspection(travel.getTravelId())).thenReturn(inspection);
+            when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
+            when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+            when(gameSessionRepository.save(any(GameSession.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(sessionCargoRepository.save(any(SessionCargo.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(portRepository.findById(any())).thenReturn(Optional.empty());
+            when(cargoRepository.findById(any())).thenReturn(Optional.empty());
+
+            service.completeUnloadingPhase(travel, List.of(cargo));
+
+            // 40000 (start) + 10000 (cargo) - 5000 (customs fine) = 45000
+            assertThat(player.getBalance()).isEqualByComparingTo(new BigDecimal("45000.00"));
         }
     }
 }

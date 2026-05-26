@@ -313,7 +313,7 @@ function StatRow({ label, value }: { label: string; value: string }) {
 
 function formatShipClass(shipClass: string) {
     const map: Record<string, string> = {
-        BUDGET: "Budget-Klasse",
+        BUDGET: "Einsteiger-Klasse",
         STANDARD: "Standard-Klasse",
         PREMIUM: "Premium-Klasse",
     };

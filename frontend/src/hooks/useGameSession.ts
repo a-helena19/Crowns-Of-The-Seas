@@ -28,7 +28,7 @@ export const useGameSession = (): UseGameSessionReturn => {
             setSession(session);
             return session;
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to create session';
+            const message = err instanceof Error ? err.message : 'Session konnte nicht erstellt werden';
             setError(message);
             throw err;
         } finally {
@@ -44,7 +44,7 @@ export const useGameSession = (): UseGameSessionReturn => {
             setSession(session);
             return session;
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to join session';
+            const message = err instanceof Error ? err.message : 'Session konnte nicht betreten werden';
             setError(message);
             throw err;
         } finally {
@@ -57,7 +57,7 @@ export const useGameSession = (): UseGameSessionReturn => {
             setLoading(true);
             setError(null);
             if (!currentSession) {
-                const error = new Error('No active session');
+                const error = new Error('Keine aktive Session');
                 setError(error.message);
                 throw error;
             }
@@ -65,7 +65,7 @@ export const useGameSession = (): UseGameSessionReturn => {
             setSession(session);
             return session;
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to start game';
+            const message = err instanceof Error ? err.message : 'Spiel konnte nicht gestartet werden';
             setError(message);
             throw err;
         } finally {
@@ -80,7 +80,7 @@ export const useGameSession = (): UseGameSessionReturn => {
             const session = await sessionApi.getSession(sessionId);
             setSession(session);
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to load session';
+            const message = err instanceof Error ? err.message : 'Session konnte nicht geladen werden';
             setError(message);
             throw err;
         } finally {

@@ -35,7 +35,7 @@ export default function SmuggleOfferDialog({reward, onAccept, onDecline} : Smugg
         <div className="smuggle-overlay">
             <div className="smuggle-container">
             <div className="smuggler-info">
-                <img src={smuggler} alt="Smuggler" className="smuggler-portrait"/>
+                <img src={smuggler} alt="Schmuggler" className="smuggler-portrait"/>
                 <p className="smuggler-name">Verdächtiger Mann</p>
             </div>
             <div className="smuggle-dialog">

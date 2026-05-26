@@ -155,13 +155,11 @@ export default function ShipManagementScene({ playerShipId, onActionComplete, on
         <div className="mgmt-scene">
             <div className="mgmt-panel">
 
-                {/* Header */}
                 <div className="mgmt-header">
                     <span className="mgmt-header-icon">⚙️</span>
                     <h2 className="mgmt-title">Schiffsverwaltung</h2>
                 </div>
 
-                {/* Ship overview */}
                 <div className="mgmt-ship-overview">
                     <div className="mgmt-ship-name">{ship.name}</div>
                     <div className="mgmt-bars">
@@ -185,10 +183,7 @@ export default function ShipManagementScene({ playerShipId, onActionComplete, on
                     )}
                 </div>
 
-                {/* Action cards */}
                 <div className="mgmt-actions-grid">
-
-                    {/* Betanken */}
                     <div className="mgmt-action-card">
                         <div className="mgmt-action-title">⛽ Betanken</div>
                         {alreadyFull ? (
@@ -214,7 +209,6 @@ export default function ShipManagementScene({ playerShipId, onActionComplete, on
                         </GameButton>
                     </div>
 
-                    {/* Reparieren */}
                     <div className="mgmt-action-card">
                         <div className="mgmt-action-title">🔧 Reparieren</div>
                         {alreadyRepaired ? (

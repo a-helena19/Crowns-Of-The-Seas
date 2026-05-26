@@ -21,6 +21,8 @@ public class TravelDTO {
     private Instant arrivedAt;
     private double fuelConsumed;
     private double loadingDurationSeconds;
+    private boolean pilotageServiceBooked;
+    private boolean pilotageStrikeRevoked;
 
     public TravelDTO() {}
 
@@ -134,5 +136,21 @@ public class TravelDTO {
 
     public void setLoadingDurationSeconds(double loadingDurationSeconds) {
         this.loadingDurationSeconds = loadingDurationSeconds;
+    }
+
+    public boolean isPilotageServiceBooked() {
+        return pilotageServiceBooked;
+    }
+
+    public void setPilotageServiceBooked(boolean pilotageServiceBooked) {
+        this.pilotageServiceBooked = pilotageServiceBooked;
+    }
+
+    public boolean isPilotageStrikeRevoked() {
+        return pilotageStrikeRevoked;
+    }
+
+    public void setPilotageStrikeRevoked(boolean pilotageStrikeRevoked) {
+        this.pilotageStrikeRevoked = pilotageStrikeRevoked;
     }
 }
