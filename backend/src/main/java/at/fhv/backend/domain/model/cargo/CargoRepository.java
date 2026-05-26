@@ -8,4 +8,5 @@ public interface CargoRepository {
     Cargo save(Cargo cargo);
     Optional<Cargo> findById(UUID id);
     List<Cargo> findAll();
+    void deleteById(UUID id);
 }

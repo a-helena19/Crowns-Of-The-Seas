@@ -1,4 +1,4 @@
-package at.fhv.backend.rest.dtos.ship.request;
+package at.fhv.backend.rest.dtos.user;
 
 import jakarta.validation.constraints.NotBlank;
 

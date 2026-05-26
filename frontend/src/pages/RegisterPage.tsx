@@ -32,7 +32,7 @@ export default function RegisterPage() {
         try {
             const response = await registerUser(username, password);
             // Auto-login after registration
-            login({ id: response.id, username: response.username });
+            login({ id: response.id, username: response.username, role: response.role });
             // Redirect to lobby
             navigate('/lobby');
         } catch (err) {
