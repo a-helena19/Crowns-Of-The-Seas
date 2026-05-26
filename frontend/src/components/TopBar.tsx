@@ -252,13 +252,13 @@ export default function TopBar() {
                         onClick={() => setLbOpen(o => !o)}
                         aria-expanded={lbOpen}
                         aria-haspopup="dialog"
-                        title="Leaderboard"
+                        title="Rangliste"
                     >
-                        <span className="topbar-value">Leaderboard ▾</span>
+                        <span className="topbar-value">Rangliste ▾</span>
                     </button>
 
                     {lbOpen && (
-                        <div className="lb-popover" role="dialog" aria-label="Leaderboard">
+                        <div className="lb-popover" role="dialog" aria-label="Rangliste">
                             {sortedLb.length === 0 ? (
                                 <div className="lb-popover-empty">Lade…</div>
                             ) : (

@@ -219,9 +219,17 @@ export default function GameScreen() {
         }
     }, [assignedCargos, showArrivalDocking]);
 
-    const handleArrivalDockingSuccess = useCallback(() => {
+    const handleArrivalDockingSuccess = useCallback(async () => {
+        const entry = showArrivalDocking;
         setShowArrivalDocking(null);
-    }, []);
+        if (!entry?.travelId || !playerId || !sessionId) return;
+        try {
+            await fetch(
+                `/api/travels/${entry.travelId}/docking-success?playerId=${playerId}&sessionId=${sessionId}`,
+                { method: "POST", headers: { Authorization: `Bearer ${authToken}` } }
+            );
+        } catch { /* nicht-fatal */ }
+    }, [showArrivalDocking, playerId, sessionId, authToken]);
 
     const handleArrivalDockingFailure = useCallback(async () => {
         const entry = showArrivalDocking;

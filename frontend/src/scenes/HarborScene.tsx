@@ -124,7 +124,7 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
         <div className="scene">
             <img src={background} className="background" alt="" />
             <div className="back-icon-btn" onClick={handleBack}>
-                <img src={backIcon} alt="Zurueck" />
+                <img src={backIcon} alt="Zurück" />
             </div>
 
             {view === "main" && (
@@ -133,7 +133,7 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
 
                     {myPorts.length > 1 && (
                         <div className="harbor-port-selector">
-                            <span className="harbor-port-selector-label">Hafen waehlen:</span>
+                            <span className="harbor-port-selector-label">Hafen wählen:</span>
                             {myPorts.map(p => (
                                 <button
                                     key={p.id}

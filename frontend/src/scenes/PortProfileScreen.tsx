@@ -42,13 +42,13 @@ const PORT_INFO: Record<string, { country: string; flag: string; facts: [string,
 };
 
 const TYPE_LABELS: Record<string, string> = {
-    GENERAL_GOODS: "General",
-    FOOD: "Food",
-    INDUSTRIAL_GOODS: "Industrial",
-    ELECTRONICS: "Electronics",
-    FRAGILE: "Fragile",
-    HAZARDOUS: "Hazardous",
-    LUXURY_GOODS: "Luxury",
+    GENERAL_GOODS: "Stückgut",
+    FOOD: "Lebensmittel",
+    INDUSTRIAL_GOODS: "Industriegüter",
+    ELECTRONICS: "Elektronik",
+    FRAGILE: "Zerbrechlich",
+    HAZARDOUS: "Gefahrgut",
+    LUXURY_GOODS: "Luxusgüter",
 };
 
 const TYPE_COLORS: Record<string, string> = {

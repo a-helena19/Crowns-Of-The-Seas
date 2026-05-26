@@ -1,13 +1,13 @@
 import "../style/panel.css";
 
 const TYPE_LABELS: Record<string, string> = {
-    GENERAL_GOODS: "General Goods",
-    FOOD: "Food",
-    INDUSTRIAL_GOODS: "Industrial",
-    ELECTRONICS: "Electronics",
-    FRAGILE: "Fragile",
-    HAZARDOUS: "Hazardous",
-    LUXURY_GOODS: "Luxury Goods",
+    GENERAL_GOODS: "Stückgut",
+    FOOD: "Lebensmittel",
+    INDUSTRIAL_GOODS: "Industriegüter",
+    ELECTRONICS: "Elektronik",
+    FRAGILE: "Zerbrechlich",
+    HAZARDOUS: "Gefahrgut",
+    LUXURY_GOODS: "Luxusgüter",
 };
 
 const TYPE_COLORS: Record<string, string> = {

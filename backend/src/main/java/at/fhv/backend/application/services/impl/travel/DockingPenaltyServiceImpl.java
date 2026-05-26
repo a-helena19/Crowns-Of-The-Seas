@@ -32,6 +32,15 @@ public class DockingPenaltyServiceImpl implements DockingPenaltyService {
         Travel travel = loadAndVerifyTravel(travelId, playerId);
         applyWear(travel.getPlayerShipId());
         travel.markDockingFailure(DOCKING_FINE);
+        travel.setArrivalMiniGamePending(false);
+        travelRepository.save(travel);
+    }
+
+    @Override
+    @Transactional
+    public void clearArrivalMiniGamePending(UUID travelId, UUID playerId, UUID sessionId) {
+        Travel travel = loadAndVerifyTravel(travelId, playerId);
+        travel.setArrivalMiniGamePending(false);
         travelRepository.save(travel);
     }
 

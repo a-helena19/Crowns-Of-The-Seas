@@ -153,4 +153,21 @@ public class TravelRestController {
                     .body(Map.of("error", "NOT_FOUND", "message", e.getMessage()));
         }
     }
+
+    @PostMapping("/{travelId}/docking-success")
+    public ResponseEntity<?> reportDockingSuccess(
+            @PathVariable UUID travelId,
+            @RequestParam UUID playerId,
+            @RequestParam UUID sessionId) {
+        try {
+            dockingPenaltyService.clearArrivalMiniGamePending(travelId, playerId, sessionId);
+            return ResponseEntity.ok(Map.of("success", true));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "FORBIDDEN", "message", e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "NOT_FOUND", "message", e.getMessage()));
+        }
+    }
 }

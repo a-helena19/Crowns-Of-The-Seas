@@ -172,6 +172,8 @@ public class GameTickScheduler {
 
             if (ship.getStatus() != ShipStatus.UNLOADING) continue;
 
+            if (travel.isArrivalMiniGamePending()) continue;
+
             if (ship.getUnloadingCompletedAtTick() != null
                     && currentTick >= ship.getUnloadingCompletedAtTick()) {
                 handleUnloadingComplete(travel, currentTick);

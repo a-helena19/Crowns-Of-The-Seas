@@ -56,8 +56,13 @@ public class TravelArrivalServiceImpl implements TravelArrivalService {
             ship.arriveAndStartUnloading(travel.getDestinationPortId(), unloadingCompletedAtTick);
             playerShipRepository.save(ship);
 
+            boolean miniGameRequired = !travel.isPilotageServiceBooked() || travel.isPilotageStrikeRevoked();
+            travel.setArrivalMiniGamePending(miniGameRequired);
+            travelRepository.save(travel);
+
             System.out.println("[TravelArrival] Ship " + ship.getId() + " arrived at port " + travel.getDestinationPortId());
             System.out.println("[TravelArrival] Ship set to UNLOADING status for " + unloadingDuration + " ticks (until tick " + unloadingCompletedAtTick + ")");
+            System.out.println("[TravelArrival] arrivalMiniGamePending=" + miniGameRequired);
         }
 
         System.out.println("[TravelArrival] Found " + cargosForPlayer.size() + " cargos for player " + travel.getPlayerId());

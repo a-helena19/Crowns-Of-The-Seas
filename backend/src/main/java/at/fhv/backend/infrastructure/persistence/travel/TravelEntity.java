@@ -75,6 +75,9 @@ public class TravelEntity {
     @Column(name = "pilotage_refund", nullable = false, precision = 12, scale = 2, columnDefinition = "decimal(12,2) default 0")
     private BigDecimal pilotageRefund = BigDecimal.ZERO;
 
+    @Column(name = "arrival_mini_game_pending", nullable = false, columnDefinition = "boolean default false")
+    private boolean arrivalMiniGamePending = false;
+
     public TravelEntity() {}
 
     public UUID getTravelId() {
@@ -243,5 +246,13 @@ public class TravelEntity {
 
     public void setPilotageRefund(BigDecimal pilotageRefund) {
         this.pilotageRefund = pilotageRefund;
+    }
+
+    public boolean isArrivalMiniGamePending() {
+        return arrivalMiniGamePending;
+    }
+
+    public void setArrivalMiniGamePending(boolean arrivalMiniGamePending) {
+        this.arrivalMiniGamePending = arrivalMiniGamePending;
     }
 }

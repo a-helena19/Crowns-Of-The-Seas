@@ -69,7 +69,7 @@ export default function GameLobby() {
         setError('');
 
         if (!joinForm.gameCode.trim()) {
-            setError('Bitte gib einen Game Code ein.');
+            setError('Bitte gib einen Spielcode ein.');
             return;
         }
 
@@ -162,7 +162,7 @@ export default function GameLobby() {
                                         type="text"
                                         value={createForm.hostName}
                                         onChange={(e) => setCreateForm({ ...createForm, hostName: e.target.value })}
-                                        placeholder="z.B. Captain Jack"
+                                        placeholder="z.B. Kapitän Jack"
                                         required
                                     />
                                 </div>
@@ -181,7 +181,7 @@ export default function GameLobby() {
                                 </div>
 
                                 <div className="form-group">
-                                    <label htmlFor="tickRate">Tick Rate (Spieltempo):</label>
+                                    <label htmlFor="tickRate">Tickrate (Spieltempo):</label>
                                     <select
                                         id="tickRate"
                                         value={createForm.tickRateSeconds}
@@ -207,7 +207,7 @@ export default function GameLobby() {
                                 </div>
 
                                 <button type="submit" className="submit-btn">
-                                    Session Erstellen
+                                    Session erstellen
                                 </button>
                             </form>
                         )}
@@ -221,13 +221,13 @@ export default function GameLobby() {
                                         type="text"
                                         value={joinForm.playerName}
                                         onChange={(e) => setJoinForm({ ...joinForm, playerName: e.target.value })}
-                                        placeholder="z.B. Captain Jack"
+                                        placeholder="z.B. Kapitän Jack"
                                         required
                                     />
                                 </div>
 
                                 <div className="form-group">
-                                    <label htmlFor="gameCode">Game Code:</label>
+                                    <label htmlFor="gameCode">Spielcode:</label>
                                     <input
                                         id="gameCode"
                                         type="text"

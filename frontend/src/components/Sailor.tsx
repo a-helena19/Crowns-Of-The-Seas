@@ -17,7 +17,7 @@ export default function Sailor() {
         <img
             src={currentFrame}
             className="sailor"
-            alt={"Sailor animation frame"}
+            alt="Matrose"
         />
     );
 }

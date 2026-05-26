@@ -171,7 +171,7 @@ export default function TravelResultScreen({
                     <div className="reward-summary">
                         {cargos.length > 0 && (
                             <div className="summary-item">
-                                <span className="summary-label">Cargo Belohnung:</span>
+                                <span className="summary-label">Frachtbelohnung:</span>
                                 <span className="summary-value">
                                     +{cargos.reduce((sum, c) => sum + c.actualReward, 0).toLocaleString()}G
                                 </span>
@@ -180,7 +180,7 @@ export default function TravelResultScreen({
 
                         {baseReward > 0 && (
                             <div className="summary-item bonus">
-                                <span className="summary-label">🎁 Reise Bonus:</span>
+                                <span className="summary-label">🎁 Reisebonus:</span>
                                 <span className="summary-value">+{baseReward.toLocaleString()}G</span>
                             </div>
                         )}
@@ -188,7 +188,7 @@ export default function TravelResultScreen({
                         <div className="summary-divider"></div>
 
                         <div className="summary-item total">
-                            <span className="summary-label">Gesamt Belohnung:</span>
+                            <span className="summary-label">Gesamtbelohnung:</span>
                             <span className="summary-value total-amount">
                                 +{totalReward.toLocaleString()}G
                             </span>
