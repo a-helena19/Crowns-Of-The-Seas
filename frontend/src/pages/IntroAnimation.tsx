@@ -29,6 +29,7 @@ export default function IntroAnimation() {
         (event: { type: string; status: string }) => {
             if (event.status === 'RUNNING' && !hasNavigatedRef.current) {
                 hasNavigatedRef.current = true;
+                audioEngine.stopMusic();          // ← SOFORT stoppen
                 navigate('/game');
             }
         },
@@ -43,12 +44,15 @@ export default function IntroAnimation() {
     const goBackToWaiting = useCallback(() => {
         if (hasNavigatedRef.current) return;
         hasNavigatedRef.current = true;
+        audioEngine.stopMusic();
         navigate('/session-waiting');
     }, [navigate]);
 
+    // Intro-Musik starten
     useEffect(() => {
         audioEngine.crossfadeTo('intro', 500);
 
+        // Sicherheits-Cleanup falls React langsam unmountet
         return () => {
             audioEngine.stopMusic();
         };
@@ -66,13 +70,11 @@ export default function IntroAnimation() {
 
     const handleSkip = () => goBackToWaiting();
 
-    // Audio-Settings aus der Engine lesen
     const audioSettings = audioEngine.getSettings();
     const isMuted = !audioSettings.musicEnabled;
 
     return (
         <div className="intro-container">
-            {/* Mute/Unmute Button nutzt die Engine */}
             <div
                 className={isMuted ? 'unmute-button' : 'mute-button'}
                 onClick={() => {

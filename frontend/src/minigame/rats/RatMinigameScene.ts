@@ -4,6 +4,7 @@ import type { RatMinigameConfig, RatMinigameResult } from "./RatMinigameTypes";
 import shipDeskImage from "../../assets/ship-desk.png";
 import swordImage from "../../assets/sword.png";
 import ratImage from "../../assets/Rat.png";
+import audioEngine from '../../audio/AudioEngine';
 
 export class RatMinigameScene extends Phaser.Scene {
     static readonly KEY = "RatMinigameScene";
@@ -37,6 +38,8 @@ export class RatMinigameScene extends Phaser.Scene {
     }
 
     create() {
+        audioEngine.crossfadeTo('rats', 300);
+
         this.add.image(0, 0, "rat-minigame-bg")
             .setOrigin(0, 0)
             .setDisplaySize(this.scale.width, this.scale.height);
@@ -62,6 +65,7 @@ export class RatMinigameScene extends Phaser.Scene {
         this.requiredText = this.add.text(16, 116, `Ziel: ${this.config.requiredHits}`, { fontSize: "22px", color: "#ffffff" });
 
         this.spawner = new RatSpawner(this);
+        audioEngine.playSfx('ratSqueak');
         this.spawnNextRat();
         this.updateHud();
 
@@ -72,6 +76,9 @@ export class RatMinigameScene extends Phaser.Scene {
                 if (this.finished) return;
                 this.remainingSeconds = Math.max(0, this.remainingSeconds - 1);
                 this.updateHud();
+                if (this.remainingSeconds == 2) {
+                    audioEngine.playSfx('ratTickingClock');
+                }
                 if (this.remainingSeconds <= 0) {
                     this.finish("FAILED");
                 }
@@ -90,12 +97,15 @@ export class RatMinigameScene extends Phaser.Scene {
         this.rat = this.spawner.spawnRat(() => {
             if (this.finished) return;
             this.hits += 1;
+            audioEngine.playSfx('ratKill');
             this.updateHud();
 
             if (this.hits >= this.config.requiredHits) {
                 this.finish("SUCCESS");
                 return;
             }
+
+            audioEngine.playSfx('ratSqueak');
 
             this.spawnNextRat();
         });
@@ -105,6 +115,9 @@ export class RatMinigameScene extends Phaser.Scene {
         if (this.finished) return;
         this.finished = true;
         this.rat?.destroy();
+
+        audioEngine.stopMusic();
+        audioEngine.playMusic('game');
 
         const result: RatMinigameResult = {
             eventType: "RATS",
