@@ -7,9 +7,33 @@ interface CargoRewardBreakdown {
     destinationPort: string;
     baseReward: number;
     actualReward: number;
+    bonusReward?: number;
     percentage: number;
     status: "DELIVERED" | "EXPIRED";
     cargoType: string;
+}
+
+export interface CustomsSummary {
+    outcome: "CLEARED" | "HIDDEN" | "COOPERATED" | "BRIBE_SUCCESS" | "BRIBE_FAILED";
+    finePaid: number;
+    bribePaid: number;
+    bribeAttempted: boolean;
+    detained: boolean;
+    detentionTicks: number;
+    wasCarryingIllegalCargo: boolean;
+}
+
+export interface RegressSummary {
+    delayTicks: number;
+    toleranceTicks: number;
+    overdueTicks: number;
+    delayComponent: number;
+    damageComponent: number;
+    damagePercent: number;
+    specialCargoMultiplier: number;
+    hadPerishableCargo: boolean;
+    hadFragileCargo: boolean;
+    totalFine: number;
 }
 
 interface TravelResultScreenProps {
@@ -18,212 +42,339 @@ interface TravelResultScreenProps {
     totalReward: number;
     previousBalance: number;
     newBalance: number;
+    customsSummary?: CustomsSummary;
+    regressSummary?: RegressSummary;
+    dockingFine?: number;
+    departureDockingFine?: number;
+    pilotageRefund?: number;
     onClose: () => void;
 }
+
+
+const IconAnchor = ({ className }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="5" r="2" />
+        <line x1="12" y1="7" x2="12" y2="19" />
+        <path d="M5 12H3a9 9 0 0 0 18 0h-2" />
+    </svg>
+);
+
+const IconStar = ({ className }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+    </svg>
+);
+
+const IconCargo = ({ className }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+    </svg>
+);
+
+const IconSmuggle = ({ className }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="11" width="18" height="10" rx="1" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        <circle cx="12" cy="16" r="1" fill="currentColor" />
+    </svg>
+);
+
+const IconWarning = ({ className }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+        <line x1="12" y1="9" x2="12" y2="13" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+);
+
+const IconShield = ({ className }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+);
+
+const IconArrowRight = ({ className }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
+        <line x1="5" y1="12" x2="19" y2="12" />
+        <polyline points="12 5 19 12 12 19" />
+    </svg>
+);
+
+
+function customsInfo(s: CustomsSummary): { good: boolean; title: string; detail: string } {
+    switch (s.outcome) {
+        case "CLEARED":     return { good: true,  title: "Zollkontrolle - ohne Befund",      detail: "Routinekontrolle, keine Beanstandung." };
+        case "HIDDEN":      return { good: true,  title: "Zollkontrolle - unentdeckt",        detail: "Die Ladung blieb verborgen." };
+        case "COOPERATED":  return { good: false, title: "Zollkontrolle - Strafe bezahlt",    detail: s.detained ? `Schiff fuer ${s.detentionTicks} Ticks festgehalten.` : "Strafe beglichen, Fahrt freigegeben." };
+        case "BRIBE_SUCCESS": return { good: true, title: "Bestechung - angenommen",          detail: "Der Beamte sah weg. Keine Strafe." };
+        case "BRIBE_FAILED":  return { good: false, title: "Bestechung - abgelehnt",          detail: s.detained ? `Strafe verdoppelt. Schiff fuer ${s.detentionTicks} Ticks festgehalten.` : "Strafe verdoppelt." };
+    }
+}
+
 
 export default function TravelResultScreen({
                                                cargos,
                                                baseReward,
-                                               totalReward,
                                                previousBalance,
                                                newBalance,
+                                               customsSummary,
+                                               regressSummary,
+                                               dockingFine = 0,
+                                               departureDockingFine = 0,
+                                               pilotageRefund = 0,
                                                onClose,
                                            }: TravelResultScreenProps) {
     const balanceGain = newBalance - previousBalance;
     const [displayedBalance, setDisplayedBalance] = useState(previousBalance);
-    const [displayedReward, setDisplayedReward] = useState(0);
+    const [displayedDelta, setDisplayedDelta] = useState(0);
 
-    // Animate Balance Counter
     useEffect(() => {
-        const duration = 2000;
         const steps = 60;
-        const stepDuration = duration / steps;
-        const increment = balanceGain / steps;
-
-        let current = 0;
-        const interval = setInterval(() => {
-            current++;
-            setDisplayedBalance(Math.floor(previousBalance + increment * current));
-            setDisplayedReward(Math.floor(increment * current));
-
-            if (current >= steps) {
-                clearInterval(interval);
+        const stepMs = 2000 / steps;
+        const inc = balanceGain / steps;
+        let i = 0;
+        const t = setInterval(() => {
+            i++;
+            setDisplayedBalance(Math.floor(previousBalance + inc * i));
+            setDisplayedDelta(Math.floor(inc * i));
+            if (i >= steps) {
+                clearInterval(t);
                 setDisplayedBalance(newBalance);
-                setDisplayedReward(balanceGain);
+                setDisplayedDelta(balanceGain);
             }
-        }, stepDuration);
-
-        return () => clearInterval(interval);
+        }, stepMs);
+        return () => clearInterval(t);
     }, [previousBalance, newBalance, balanceGain]);
 
-    // Sorting: DELIVERED first, then EXPIRED
-    const sortedCargos = [...cargos].sort((a, b) => {
-        if (a.status === b.status) return 0;
-        return a.status === "DELIVERED" ? -1 : 1;
-    });
+    const regularCargos = cargos.filter(c => c.cargoType !== "SMUGGLE");
+    const smuggleCargo  = cargos.find(c => c.cargoType === "SMUGGLE");
 
-    const deliveredCount = sortedCargos.filter(c => c.status === "DELIVERED").length;
-    const expiredCount = sortedCargos.filter(c => c.status === "EXPIRED").length;
-    const isPerfect = expiredCount === 0 && deliveredCount > 0;
+    const customsFine  = customsSummary?.finePaid  ?? 0;
+    const customsBribe = customsSummary?.bribePaid ?? 0;
+    const customsTotal = customsFine + customsBribe;
 
-    // Get cargo type icon
-    const getCargoIcon = (cargoType: string): string => {
-        switch (cargoType) {
-            case 'FOOD': return '🍎';
-            case 'HAZARDOUS': return '☢️';
-            case 'FRAGILE': return '🔨';
-            case 'ELECTRONICS': return '📱';
-            case 'LUXURY_GOODS': return '💎';
-            case 'GENERAL_GOODS': return '📦';
-            case 'INDUSTRIAL_GOODS': return '⚙️';
-            default: return '📦';
-        }
-    };
+    const regressTotal  = regressSummary?.totalFine       ?? 0;
+    const regressDelay  = regressSummary?.delayComponent  ?? 0;
+    const regressDamage = regressSummary?.damageComponent ?? 0;
+
+    const hasDockingPenalty = dockingFine > 0 || departureDockingFine > 0;
+    const isPerfect = regularCargos.length > 0
+        && regularCargos.every(c => c.status === "DELIVERED")
+        && !hasDockingPenalty
+        && regressTotal === 0;
+
+    // Summary numbers
+    const cargoBase    = regularCargos.reduce((s, c) => s + (c.actualReward - (c.bonusReward ?? 0)), 0);
+    const smuggleTotal = smuggleCargo?.actualReward ?? 0;
+
+    const fmt = (n: number) => n.toLocaleString("de-DE");
 
     return (
         <div className="travel-result-overlay">
-            {isPerfect && <div className="confetti-container">
-                {Array.from({ length: 20 }).map((_, i) => (
-                    <div key={i} className="confetti" style={{
-                        left: `${Math.random() * 100}%`,
-                        animationDelay: `${Math.random() * 0.3}s`
-                    }}>
-                        {['🎉', '✨', '🌟', '💰'][Math.floor(Math.random() * 4)]}
-                    </div>
-                ))}
-            </div>}
+            <div className="tr-panel">
 
-            <div className="travel-result-panel">
-                {/* Header */}
-                <div className="result-header">
-                    <h2>
-                        {isPerfect ? '🌟 Perfekte Reise!' : '⚓ Reise abgeschlossen!'}
-                    </h2>
-                    {isPerfect && <p className="perfect-bonus">100% Lieferquote Bonus!</p>}
+                <div className="tr-header">
+                    {isPerfect
+                        ? <IconStar className="tr-header-icon" />
+                        : <IconAnchor className="tr-header-icon" />
+                    }
+                    <div className="tr-header-text">
+                        <div className="tr-title">
+                            {isPerfect ? "Perfekte Reise" : "Reise abgeschlossen"}
+                        </div>
+                        {isPerfect && (
+                            <div className="tr-subtitle">Alle Frachten puenktlich abgeliefert</div>
+                        )}
+                    </div>
                 </div>
 
-                {/* Cargo Breakdown */}
-                <div className="cargo-breakdown">
-                    <h3>Frachtbilanz ({cargos.length} Einträge)</h3>
-
-                    {deliveredCount > 0 && (
-                        <div className="cargo-status-group">
-                            <div className="status-group-header">
-                                <span className="status-icon delivered">✅</span>
-                                <span className="status-title">Erfolgreich abgeliefert ({deliveredCount})</span>
+                {customsSummary && customsSummary.outcome !== "CLEARED" && (() => {
+                    const info = customsInfo(customsSummary);
+                    return (
+                        <div className={`tr-customs ${info.good ? "good" : "bad"}`}>
+                            {info.good
+                                ? <IconShield className="tr-customs-icon" />
+                                : <IconWarning className="tr-customs-icon" />
+                            }
+                            <div className="tr-customs-body">
+                                <div className="tr-customs-title">{info.title}</div>
+                                <div>{info.detail}</div>
                             </div>
-                            <div className="cargo-items delivered-items">
-                                {sortedCargos.filter(c => c.status === "DELIVERED").map((cargo, idx) => (
-                                    <div
-                                        key={cargo.cargoId}
-                                        className="cargo-result-item cargo-result-delivered"
-                                        style={{ animationDelay: `${idx * 0.1}s` }}
-                                    >
-                                        <div className="cargo-result-info">
-                                            <span className="cargo-icon">{getCargoIcon(cargo.cargoType)}</span>
-                                            <div className="cargo-details">
-                                                <span className="cargo-result-name">{cargo.cargoName}</span>
-                                                <span className="cargo-result-port">→ {cargo.destinationPort}</span>
-                                            </div>
-                                        </div>
+                            {customsTotal > 0 && (
+                                <div className="tr-customs-costs">
+                                    {customsBribe > 0 && <div>Bestechung: -{fmt(customsBribe)} T</div>}
+                                    {customsFine  > 0 && <div>Strafe: -{fmt(customsFine)} T</div>}
+                                    <div className="tr-customs-costs-total">-{fmt(customsTotal)} T</div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })()}
 
-                                        <div className="cargo-result-reward">
-                                            <span className="reward-amount delivered-amount">+{cargo.actualReward.toLocaleString()}G</span>
+                <div className="tr-body">
+                    <div className="tr-section-label">
+                        Frachtbilanz ({regularCargos.length + (smuggleCargo ? 1 : 0)})
+                    </div>
+                    <div className="tr-cargo-list">
+                        {regularCargos.map((c) => {
+                            const isExpired = c.status === "EXPIRED";
+                            return (
+                                <div key={c.cargoId} className={`tr-cargo-row ${isExpired ? "expired" : "delivered"}`}>
+                                    <IconCargo className="tr-cargo-type-icon" />
+                                    <div className="tr-cargo-info">
+                                        <div className="tr-cargo-name">{c.cargoName}</div>
+                                        <div className="tr-cargo-dest">
+                                            {c.destinationPort}{isExpired ? ` - ${c.percentage}% Wert` : ""}
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                                    <div className={`tr-cargo-amount ${isExpired ? "neutral" : "positive"}`}>
+                                        +{fmt(c.actualReward)} T
+                                    </div>
+                                </div>
+                            );
+                        })}
 
-                    {expiredCount > 0 && (
-                        <div className="cargo-status-group">
-                            <div className="status-group-header">
-                                <span className="status-icon expired">⚠️</span>
-                                <span className="status-title">Abgelaufen oder verzögert ({expiredCount})</span>
-                            </div>
-                            <div className="cargo-items expired-items">
-                                {sortedCargos.filter(c => c.status === "EXPIRED").map((cargo, idx) => (
-                                    <div
-                                        key={cargo.cargoId}
-                                        className="cargo-result-item cargo-result-expired"
-                                        style={{ animationDelay: `${idx * 0.1}s` }}
-                                    >
-                                        <div className="cargo-result-info">
-                                            <span className="cargo-icon">{getCargoIcon(cargo.cargoType)}</span>
-                                            <div className="cargo-details">
-                                                <span className="cargo-result-name">{cargo.cargoName}</span>
-                                                <span className="cargo-result-port">→ {cargo.destinationPort}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="cargo-result-reward">
-                                            <span className="reward-percentage">({cargo.percentage}%)</span>
-                                            <span className="reward-amount expired-amount">+{cargo.actualReward.toLocaleString()}G</span>
+                        {smuggleCargo && (() => {
+                            const confiscated = smuggleCargo.actualReward === 0;
+                            return (
+                                <div className={`tr-cargo-row ${confiscated ? "confiscated" : "smuggle"}`}>
+                                    <IconSmuggle className="tr-cargo-type-icon" />
+                                    <div className="tr-cargo-info">
+                                        <div className="tr-cargo-name">{smuggleCargo.cargoName}</div>
+                                        <div className="tr-cargo-dest">
+                                            Schmuggelware{confiscated ? " - Konfisziert" : ""}
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                                    <div className={`tr-cargo-amount ${confiscated ? "neutral" : "positive"}`}>
+                                        {confiscated ? "0 T" : `+${fmt(smuggleCargo.actualReward)} T`}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                    </div>
 
-                    {/* Summary */}
-                    <div className="reward-summary">
-                        {cargos.length > 0 && (
-                            <div className="summary-item">
-                                <span className="summary-label">Cargo Belohnung:</span>
-                                <span className="summary-value">
-                                    +{cargos.reduce((sum, c) => sum + c.actualReward, 0).toLocaleString()}G
-                                </span>
+                    <div className="tr-section-label" style={{ marginTop: 12 }}>Abrechnung</div>
+                    <div className="tr-summary">
+                        {cargoBase > 0 && (
+                            <div className="tr-summary-row">
+                                <span className="tr-summary-label">Cargo</span>
+                                <span className="tr-summary-value positive">+{fmt(cargoBase)} T</span>
                             </div>
                         )}
-
                         {baseReward > 0 && (
-                            <div className="summary-item bonus">
-                                <span className="summary-label">🎁 Reise Bonus:</span>
-                                <span className="summary-value">+{baseReward.toLocaleString()}G</span>
+                            <div className="tr-summary-row bonus">
+                                <span className="tr-summary-label">Reisebonus</span>
+                                <span className="tr-summary-value positive">+{fmt(baseReward)} T</span>
                             </div>
                         )}
-
-                        <div className="summary-divider"></div>
-
-                        <div className="summary-item total">
-                            <span className="summary-label">Gesamt Belohnung:</span>
-                            <span className="summary-value total-amount">
-                                +{totalReward.toLocaleString()}G
+                        {smuggleTotal > 0 && (
+                            <div className="tr-summary-row bonus">
+                                <span className="tr-summary-label">Schmuggel</span>
+                                <span className="tr-summary-value positive">+{fmt(smuggleTotal)} T</span>
+                            </div>
+                        )}
+                        {pilotageRefund > 0 && (
+                            <div className="cm-reward-row bonus">
+                                <span>Lotsenerstattung (Streik)</span>
+                                <span className="cm-reward-row-value">+{pilotageRefund.toLocaleString("de-DE")}T</span>
+                            </div>
+                        )}
+                        {customsBribe > 0 && (
+                            <div className="tr-summary-row deduction">
+                                <span className="tr-summary-label">Bestechung</span>
+                                <span className="tr-summary-value negative">-{fmt(customsBribe)} T</span>
+                            </div>
+                        )}
+                        {customsFine > 0 && (
+                            <div className="tr-summary-row deduction">
+                                <span className="tr-summary-label">Zollstrafe</span>
+                                <span className="tr-summary-value negative">-{fmt(customsFine)} T</span>
+                            </div>
+                        )}
+                        {regressSummary && regressSummary.delayTicks > 0 && regressDelay > 0 && (
+                            <div className="tr-summary-row deduction">
+                            <span className="tr-summary-label">
+                                Regress - Verspaetung
+                                <span className="tr-summary-sub">
+                                    {" "}({regressSummary.delayTicks} {regressSummary.delayTicks === 1 ? "Tag" : "Tage"} zu spaet
+                                    {regressSummary.specialCargoMultiplier > 1
+                                        ? `, x${regressSummary.specialCargoMultiplier.toFixed(1)} ${
+                                            regressSummary.hadPerishableCargo
+                                                ? "verderbliche"
+                                                : regressSummary.hadFragileCargo
+                                                    ? "zerbrechliche"
+                                                    : "empfindliche"
+                                        } Ware`
+                                        : ""})
+                                </span>
                             </span>
+                                <span className="tr-summary-value negative">-{fmt(Math.round(regressDelay))} T</span>
+                            </div>
+                        )}
+                        {regressDamage > 0 && (
+                            <div className="tr-summary-row deduction">
+                            <span className="tr-summary-label">
+                                Regress - Schaden
+                                {regressSummary && regressSummary.damagePercent > 0 && (
+                                    <span className="tr-summary-sub">
+                                        {" "}({regressSummary.damagePercent.toFixed(1)} % Zustand verloren
+                                        {regressSummary.specialCargoMultiplier > 1
+                                            ? `, x${regressSummary.specialCargoMultiplier.toFixed(1)}`
+                                            : ""})
+                                    </span>
+                                )}
+                            </span>
+                                <span className="tr-summary-value negative">-{fmt(Math.round(regressDamage))} T</span>
+                            </div>
+                        )}
+                        {departureDockingFine > 0 && (
+                            <div className="cm-reward-row warn">
+                                <span>⚠ Ablege-Schaden (Kollision)</span>
+                                <span className="cm-reward-row-value">-{departureDockingFine.toLocaleString("de-DE")}T</span>
+                            </div>
+                        )}
+                        {dockingFine > 0 && (
+                            <div className="cm-reward-row warn">
+                                <span>⚠ Anlege-Schaden (Kollision)</span>
+                                <span className="cm-reward-row-value">-{dockingFine.toLocaleString("de-DE")}T</span>
+                            </div>
+                        )}
+                        <div className="tr-summary-row total">
+                            <span className="tr-summary-label">Netto</span>
+                            <span className={`tr-summary-value ${balanceGain >= 0 ? "positive" : "negative"}`}>
+                            {balanceGain >= 0 ? "+" : ""}{fmt(balanceGain)} T
+                        </span>
                         </div>
                     </div>
-                </div>
 
-                {/* Balance Update */}
-                <div className="balance-update">
-                    <h3>Kontostand</h3>
+                </div>{/* end tr-body */}
 
-                    <div className="balance-row">
-                        <span className="balance-label">Vorher:</span>
-                        <span className="balance-amount">{previousBalance.toLocaleString()}G</span>
-                    </div>
-
-                    <div className="balance-change">
-                        <div className="change-arrow">
-                            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                                <path d="M7 10l5 5 5-5z" />
-                            </svg>
+                <div className="tr-footer">
+                    <div className="tr-section-label" style={{ marginTop: 12 }}>Kontostand</div>
+                    <div className="tr-balance">
+                        <div className="tr-balance-col">
+                            <div className="tr-balance-label">Vorher</div>
+                            <div className="tr-balance-amount">{fmt(previousBalance)} T</div>
                         </div>
-                        <div className="change-amount">+{displayedReward.toLocaleString()}G</div>
+                        <div className="tr-balance-col center">
+                            <IconArrowRight className="tr-balance-arrow" />
+                            <div className={`tr-balance-delta ${displayedDelta >= 0 ? "positive" : "negative"}`}>
+                                {displayedDelta >= 0 ? "+" : ""}{fmt(displayedDelta)} T
+                            </div>
+                        </div>
+                        <div className="tr-balance-col" style={{ alignItems: "flex-end" }}>
+                            <div className="tr-balance-label">Nachher</div>
+                            <div className={`tr-balance-amount ${newBalance >= previousBalance ? "new" : "negative-new"}`}>
+                                {fmt(displayedBalance)} T
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="balance-row new">
-                        <span className="balance-label">Nachher:</span>
-                        <span className="balance-amount new-amount">{displayedBalance.toLocaleString()}G</span>
-                    </div>
-                </div>
+                    <button className="tr-close-btn" onClick={onClose}>
+                        Weiter zur naechsten Reise
+                    </button>
+                </div>{/* end tr-footer */}
 
-                {/* Action Button */}
-                <button className="close-button" onClick={onClose}>
-                    Weiter zur nächsten Reise →
-                </button>
             </div>
         </div>
     );

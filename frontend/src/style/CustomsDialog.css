@@ -1,0 +1,204 @@
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&display=swap');
+
+.customs-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 999999;
+    pointer-events: all;
+    animation: customs-fade-in 220ms ease-out;
+}
+
+@keyframes customs-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.customs-dialog {
+    position: relative;
+    width: 780px;
+    max-width: 92vw;
+    background-color: #fbece0;
+    border: 4px solid #4a2f1f;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px #d5a878;
+    animation: customs-slide-up 260ms cubic-bezier(0.2, 0.9, 0.3, 1.05);
+    overflow: visible;
+}
+
+@keyframes customs-slide-up {
+    from { opacity: 0; transform: translateY(30px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+
+.customs-ship-badge {
+    position: absolute;
+    top: -16px;
+    left: 18px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fbece0;
+    border: 2px solid #4a2f1f;
+    border-radius: 5px;
+    padding: 3px 12px;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+    font-family: 'Crimson Pro', serif;
+    color: #3b1d10;
+    font-size: 14px;
+}
+
+.customs-ship-name {
+    font-weight: 700;
+    font-size: 15px;
+}
+
+.customs-ship-route {
+    font-style: italic;
+    opacity: 0.8;
+}
+
+.customs-body {
+    display: flex;
+    align-items: stretch;
+    min-height: 280px;
+}
+
+.customs-officer-col {
+    flex: 0 0 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 10px 10px;
+    background: linear-gradient(135deg, #fbece0 0%, #fbece0 100%);
+    border-right: 3px solid #fbece0;
+    border-radius: 4px 0 0 4px;
+}
+
+.customs-officer-img {
+    width: 50px;
+    height: auto;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+}
+
+.customs-officer-label {
+    font-family: 'Crimson Pro', serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: #474132;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 12px 0 0;
+}
+
+.customs-content-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 32px 32px 24px;
+    gap: 12px;
+}
+
+.customs-title {
+    font-family: 'Crimson Pro', serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: #3b1d10;
+    margin: 0;
+    letter-spacing: 0.01em;
+}
+
+.customs-text {
+    font-family: 'Crimson Pro', serif;
+    font-size: 20px;
+    font-weight: 400;
+    line-height: 1.35;
+    color: #3b1d10;
+    margin: 0;
+}
+
+.customs-text-success { color: #2b6a3a; }
+.customs-text-failure { color: #9b2a2a; }
+
+.customs-detail {
+    font-family: 'Crimson Pro', serif;
+    font-size: 16px;
+    color: #5a3a25;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.customs-cargo-hint {
+    font-family: 'Crimson Pro', serif;
+    font-size: 15px;
+    color: #6a3b22;
+    font-style: italic;
+    margin: 0;
+}
+
+.customs-buttons {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.customs-btn {
+    font-family: 'Crimson Pro', serif;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 10px 22px;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    min-width: 200px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    transition: transform 80ms ease-out, filter 120ms ease-out;
+}
+
+.customs-btn-sub {
+    font-size: 12px;
+    font-weight: 400;
+    opacity: 0.85;
+}
+
+.customs-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.customs-btn:not(:disabled):hover {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+}
+
+.customs-btn:not(:disabled):active {
+    transform: translateY(1px);
+    filter: brightness(0.92);
+}
+
+.customs-btn-cooperate {
+    background-color: #335c2a;
+    border-color: #1f3818;
+    color: #f4ead7;
+}
+
+.customs-btn-bribe {
+    background-color: #872422;
+    border-color: #4f1311;
+    color: #f4ead7;
+}

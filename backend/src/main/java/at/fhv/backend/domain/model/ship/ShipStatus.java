@@ -1,6 +1,5 @@
 package at.fhv.backend.domain.model.ship;
 
-// können wir später aktualisieren
 public enum ShipStatus {
     AT_MARKET,
     IN_REGISTRATION,
@@ -8,6 +7,7 @@ public enum ShipStatus {
     LOADING,
     UNLOADING,
     BLOCKED,
+    CUSTOMS_CHECK,
     EN_ROUTE,
     DAMAGED,
     READY_TO_DEPART,

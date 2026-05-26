@@ -31,7 +31,6 @@ interface Props {
 
 const PORT_INFO: Record<string, { country: string; flag: string; facts: [string, string] }> = {
     "Hamburg":     { country: "Deutschland",  flag: "🇩🇪", facts: ["Drittgrößter Hafen Europas", "Gegründet im Jahr 1189"] },
-    "Rotterdam":   { country: "Niederlande",  flag: "🇳🇱", facts: ["Größter Hafen Europas", "Über 450 Mio. Tonnen/Jahr"] },
     "New York":    { country: "USA",          flag: "🇺🇸", facts: ["Historisches Gateway der USA", "Ellis Island in der Nähe"] },
     "Santos":      { country: "Brasilien",    flag: "🇧🇷", facts: ["Größter Hafen Südamerikas", "Wichtig für Kaffeeexport"] },
     "Kapstadt":    { country: "Südafrika",    flag: "🇿🇦", facts: ["Südlichster Großhafen Afrikas", "Am Fuß des Tafelbergs"] },
@@ -43,13 +42,13 @@ const PORT_INFO: Record<string, { country: string; flag: string; facts: [string,
 };
 
 const TYPE_LABELS: Record<string, string> = {
-    GENERAL_GOODS: "General",
-    FOOD: "Food",
-    INDUSTRIAL_GOODS: "Industrial",
-    ELECTRONICS: "Electronics",
-    FRAGILE: "Fragile",
-    HAZARDOUS: "Hazardous",
-    LUXURY_GOODS: "Luxury",
+    GENERAL_GOODS: "Stückgut",
+    FOOD: "Lebensmittel",
+    INDUSTRIAL_GOODS: "Industriegüter",
+    ELECTRONICS: "Elektronik",
+    FRAGILE: "Zerbrechlich",
+    HAZARDOUS: "Gefahrgut",
+    LUXURY_GOODS: "Luxusgüter",
 };
 
 const TYPE_COLORS: Record<string, string> = {

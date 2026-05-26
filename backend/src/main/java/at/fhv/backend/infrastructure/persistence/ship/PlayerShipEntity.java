@@ -49,6 +49,12 @@ public class PlayerShipEntity {
     @Column(name = "repairing_completed_at_tick")
     private Integer repairingCompletedAtTick;
 
+    @Column(name = "customs_check_completed_at_tick")
+    private Integer customsCheckCompletedAtTick;
+
+    @Column(name = "customs_blocked_until_tick")
+    private Integer customsBlockedUntilTick;
+
     @Column(name = "pending_fuel_amount")
     private Double pendingFuelAmount;
 
@@ -157,6 +163,22 @@ public class PlayerShipEntity {
     }
     public void setRepairingCompletedAtTick(Integer repairingCompletedAtTick) {
         this.repairingCompletedAtTick = repairingCompletedAtTick;
+    }
+
+    public Integer getCustomsCheckCompletedAtTick() {
+        return customsCheckCompletedAtTick;
+    }
+
+    public void setCustomsCheckCompletedAtTick(Integer customsCheckCompletedAtTick) {
+        this.customsCheckCompletedAtTick = customsCheckCompletedAtTick;
+    }
+
+    public Integer getCustomsBlockedUntilTick() {
+        return customsBlockedUntilTick;
+    }
+
+    public void setCustomsBlockedUntilTick(Integer customsBlockedUntilTick) {
+        this.customsBlockedUntilTick = customsBlockedUntilTick;
     }
 
     public Double getPendingFuelAmount() {

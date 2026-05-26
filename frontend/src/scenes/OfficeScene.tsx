@@ -145,7 +145,7 @@ export default function OfficeScene({ onClose }: Props) {
                     return shipData[0]?.id ?? null;
                 });
             })
-            .catch(() => setError("Office konnte die Flotte nicht laden."))
+            .catch(() => setError("Büro konnte die Flotte nicht laden."))
             .finally(() => setLoading(false));
     }
 
@@ -241,10 +241,10 @@ export default function OfficeScene({ onClose }: Props) {
         <div className="shipclass-scene office-scene">
             <img src={officeBackground} className="office-background" alt="" />
             <div className="back-icon-btn" onClick={onClose}>
-                <img src={backIcon} alt="Zurueck" />
+                <img src={backIcon} alt="Zurück" />
             </div>
 
-            {loading && <p className="shipclass-status">Lade Office...</p>}
+            {loading && <p className="shipclass-status">Lade Büro...</p>}
             {error && <p className="shipclass-status">{error}</p>}
 
             {!loading && !error && (
@@ -274,7 +274,7 @@ export default function OfficeScene({ onClose }: Props) {
 
                     <section className="office-detail">
                         {!selectedShip && (
-                            <div className="office-placeholder">Waehle ein Schiff aus.</div>
+                            <div className="office-placeholder">Wähle ein Schiff aus.</div>
                         )}
 
                         {selectedShip && (
@@ -306,7 +306,7 @@ export default function OfficeScene({ onClose }: Props) {
                                 <div className="office-stats-grid">
                                     <OfficeStat label="Tank" value={`${Math.round(selectedShip.fuel)}%`} />
                                     <OfficeStat label="Zustand" value={`${Math.round(selectedShip.condition)}%`} />
-                                    <OfficeStat label="Kapazitaet" value={`${selectedShip.maxCargoCapacity} t`} />
+                                    <OfficeStat label="Kapazität" value={`${selectedShip.maxCargoCapacity} t`} />
                                     <OfficeStat label="Tempo" value={`${selectedShip.maxSpeed} kn`} />
                                     <OfficeStat label="Standort" value={portName(selectedShip.currentPortId)} />
                                     <OfficeStat label="Verbrauch" value={`${selectedShip.fuelConsumption} t/d`} />
@@ -314,7 +314,7 @@ export default function OfficeScene({ onClose }: Props) {
 
                                 {!canUseActions && (
                                     <div className="office-action-lock">
-                                        Aktionen sind nur fuer Schiffe im Hafen verfuegbar.
+                                        Aktionen sind nur für Schiffe im Hafen verfügbar.
                                     </div>
                                 )}
 
@@ -324,15 +324,15 @@ export default function OfficeScene({ onClose }: Props) {
                                         info={alreadyFull ? "Tank ist voll" : `Fehlend ${fuelNeededPercent.toFixed(0)}%`}
                                         cost={alreadyFull ? undefined : `${formatMoney(fuelCost)} T`}
                                         disabled={!canUseActions || alreadyFull || !canAffordFuel || actionBusy !== null}
-                                        buttonText={actionBusy === "refuel" ? "Laeuft..." : "Betanken"}
+                                        buttonText={actionBusy === "refuel" ? "Läuft..." : "Betanken"}
                                         onClick={handleRefuel}
                                     />
                                     <ActionCard
                                         title="Reparieren"
-                                        info={alreadyRepaired ? "Schiff ist heil" : `Schaeden ${repairNeededPercent.toFixed(0)}%`}
+                                        info={alreadyRepaired ? "Schiff ist heil" : `Schäden ${repairNeededPercent.toFixed(0)}%`}
                                         cost={alreadyRepaired ? undefined : `${formatMoney(repairCost)} T`}
                                         disabled={!canUseActions || alreadyRepaired || !canAffordRepair || actionBusy !== null}
-                                        buttonText={actionBusy === "repair" ? "Laeuft..." : "Reparieren"}
+                                        buttonText={actionBusy === "repair" ? "Läuft..." : "Reparieren"}
                                         onClick={handleRepair}
                                     />
                                     <ActionCard
@@ -364,7 +364,7 @@ export default function OfficeScene({ onClose }: Props) {
                         <div className="office-modal-actions">
                             <GameButton onClick={() => setShowSellConfirm(false)} disabled={actionBusy === "sell"}>Abbrechen</GameButton>
                             <GameButton onClick={handleSell} disabled={actionBusy === "sell"}>
-                                {actionBusy === "sell" ? "Verkaufe..." : "Verkauf bestaetigen"}
+                                {actionBusy === "sell" ? "Verkaufe..." : "Verkauf bestätigen"}
                             </GameButton>
                         </div>
                     </div>
@@ -428,11 +428,11 @@ function statusLabel(status: string) {
     const labels: Record<string, string> = {
         AT_PORT: "Im Hafen",
         EN_ROUTE: "Auf Reise",
-        LOADING: "Laedt",
-        UNLOADING: "Entlaedt",
+        LOADING: "Lädt",
+        UNLOADING: "Entlädt",
         READY_TO_DEPART: "Bereit",
         IN_REGISTRATION: "Registrierung",
-        DAMAGED: "Beschaedigt",
+        DAMAGED: "Beschädigt",
         REFUELING: "Tankt",
         REPAIRING: "Repariert",
     };

@@ -21,7 +21,7 @@ export default function LeaderboardOverlay({ sessionId, currentUserId }: Props) 
             const data = await getLeaderboard(sessionId);
             setEntries(data);
         } catch {
-            setError("Leaderboard konnte nicht geladen werden.");
+            setError("Rangliste konnte nicht geladen werden.");
         } finally {
             setLoading(false);
         }
@@ -39,7 +39,7 @@ export default function LeaderboardOverlay({ sessionId, currentUserId }: Props) 
     return (
         <div className={`lb-overlay ${open ? "open" : "closed"}`}>
             <button className="lb-toggle" onClick={() => setOpen(v => !v)}>
-                {open ? "Leaderboard ▾" : "Leaderboard ▸"}
+                {open ? "Rangliste ▾" : "Rangliste ▸"}
             </button>
 
             {open && (
