@@ -26,20 +26,34 @@ stages:
       - job: TestBackend
         displayName: 'Backend Tests'
         steps:
+          # VORAB-RETTUNG: Falls noch alte Root-Leichen da sind, räumt dieser Schritt sie als root weg
           - script: |
               docker run --rm -v "$(Build.SourcesDirectory)/backend":/app -w /app eclipse-temurin:17-jdk bash -c "rm -rf .gradle build"
-            displayName: 'Cleanup old root files'
-
-          - script: |
-              docker run --rm -v "$(Build.SourcesDirectory)/backend":/app -w /app eclipse-temurin:17-jdk bash -c "chmod +x ./gradlew && ./gradlew test --project-cache-dir /tmp/.gradle && rm -rf build .gradle"
-            displayName: 'Run Backend Tests'
+            displayName: 'Emergency Cleanup old root files'
             continueOnError: true
+
+          # SAUBERER TEST-RUN: Läuft als 'student' und ignoriert Fehlschläge beim Deployment
+          - script: |
+              docker run --rm \
+                --user "$(id -u):$(id -g)" \
+                -v "$(Build.SourcesDirectory)/backend":/app \
+                -w /app \
+                eclipse-temurin:17-jdk \
+                bash -c "chmod +x ./gradlew && ./gradlew test -g /tmp/.gradlehome --project-cache-dir /tmp/.gradle"
+            displayName: 'Run Backend Tests'
+            continueOnError: true  # <--- Bleibt drin, Pipeline läuft bei Test-Fehlern weiter
 
       - job: TestFrontend
         displayName: 'Frontend Build Check'
         steps:
+          # AUCH HIER: User-ID mitgeben, damit node_modules als 'student' angelegt wird
           - script: |
-              docker run --rm -v "$(Build.SourcesDirectory)/frontend":/app -w /app node:24-alpine sh -c "npm install && npm run build && rm -rf node_modules dist"
+              docker run --rm \
+                --user "$(id -u):$(id -g)" \
+                -v "$(Build.SourcesDirectory)/frontend":/app \
+                -w /app \
+                node:24-alpine \
+                sh -c "npm install && npm run build"
             displayName: 'Build Frontend'
 
   - stage: Build
