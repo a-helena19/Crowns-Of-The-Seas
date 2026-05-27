@@ -1,6 +1,7 @@
 import { useState } from "react";
 import customsOfficer from "../assets/customs_officer.png";
 import "../style/customsDialog.css";
+import audioEngine from "../audio/AudioEngine.ts";
 
 type Phase = "initial" | "bribe_success" | "bribe_failed";
 
@@ -51,8 +52,10 @@ export default function CustomsInspectionDialog({
         try {
             const outcome = await onBribe();
             if (outcome === "BRIBE_SUCCESS") {
+                audioEngine.playSfx('success');
                 setPhase("bribe_success");
             } else if (outcome === "BRIBE_FAILED") {
+                audioEngine.playSfx('failed');
                 setPhase("bribe_failed");
             } else {
                 onDismiss();

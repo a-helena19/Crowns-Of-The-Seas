@@ -149,6 +149,7 @@ export default function GameScreen() {
             }>).detail;
 
             if (detail.eventType === "PILOT_STRIKE_STARTED") {
+                audioEngine.playSfx('notification');
                 setActivePilotStrikes(prev => ({
                     ...prev,
                     [detail.portId]: { portName: detail.portName },
@@ -462,6 +463,7 @@ export default function GameScreen() {
         const handler = (e: Event) => {
             const data = (e as CustomEvent<CustomsInspectionPayload>).detail;
             if (data.playerId !== playerId) return;
+            audioEngine.playSfx('notification');
             setCustomsInspection(current => {
                 if (current !== null) {
                     customsQueueRef.current.push(data);
@@ -511,6 +513,7 @@ export default function GameScreen() {
             if (data.playerId !== playerId) return;
             if (window.__activeRatEventId === data.eventId) return;
             window.__activeRatEventId = data.eventId;
+            audioEngine.playSfx('notification');
             setRatEventOffer(data);
         };
 

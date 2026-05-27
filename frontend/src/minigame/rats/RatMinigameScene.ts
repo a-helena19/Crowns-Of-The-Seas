@@ -80,6 +80,7 @@ export class RatMinigameScene extends Phaser.Scene {
                     audioEngine.playSfx('ratTickingClock');
                 }
                 if (this.remainingSeconds <= 0) {
+                    audioEngine.playSfx('failed');
                     this.finish("FAILED");
                 }
             },
@@ -101,6 +102,7 @@ export class RatMinigameScene extends Phaser.Scene {
             this.updateHud();
 
             if (this.hits >= this.config.requiredHits) {
+                audioEngine.playSfx('success');
                 this.finish("SUCCESS");
                 return;
             }

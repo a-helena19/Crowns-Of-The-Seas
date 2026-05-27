@@ -27,12 +27,17 @@ export default function GameLobby() {
         playerName: user?.username || ''
     });
 
+    function showError(msg: string) {
+        audioEngine.playSfx('error');
+        setError(msg);
+    }
+
     const handleCreateSession = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
         if (!createForm.hostName.trim()) {
-            setError('Bitte gib einen Namen ein.');
+            showError('Bitte gib einen Namen ein.');
             return;
         }
 
@@ -59,7 +64,7 @@ export default function GameLobby() {
         );
 
         if (!newSession) {
-            setError('Fehler beim Erstellen der Session. Ist das Backend aktiv?');
+            showError('Fehler beim Erstellen der Session. Ist das Backend aktiv?');
             return;
         }
 
@@ -74,12 +79,12 @@ export default function GameLobby() {
         setError('');
 
         if (!joinForm.gameCode.trim()) {
-            setError('Bitte gib einen Spielcode ein.');
+            showError('Bitte gib einen Spielcode ein.');
             return;
         }
 
         if (!joinForm.playerName.trim()) {
-            setError('Bitte gib einen Namen ein.');
+            showError('Bitte gib einen Namen ein.');
             return;
         }
 
@@ -100,19 +105,19 @@ export default function GameLobby() {
             const axiosError = error as { response?: { data?: { code?: string; message?: string }; status?: number } };
 
             if (axiosError.response?.data?.code === 'PLAYER_ALREADY_IN_SESSION') {
-                setError('Du bist bereits dieser Session beigetreten!');
+                showError('Du bist bereits dieser Session beigetreten!');
             } else if (axiosError.response?.data?.code === 'SESSION_FULL') {
-                setError('Diese Session ist voll.');
+                showError('Diese Session ist voll.');
             } else if (axiosError.response?.data?.code === 'SESSION_NOT_FOUND') {
-                setError('Session mit diesem Code nicht gefunden. Ist das Backend aktiv?');
+                showError('Session mit diesem Code nicht gefunden. Ist das Backend aktiv?');
             } else if (axiosError.response?.status === 404) {
-                setError('Session mit diesem Code nicht gefunden. Ist das Backend aktiv?');
+                showError('Session mit diesem Code nicht gefunden. Ist das Backend aktiv?');
             } else if (axiosError.response?.status === 409) {
-                setError('Konflikt beim Beitritt - versuche es später erneut.');
+                showError('Konflikt beim Beitritt - versuche es später erneut.');
             } else if (axiosError.response?.data?.message) {
-                setError(axiosError.response.data.message);
+                showError(axiosError.response.data.message);
             } else {
-                setError('Fehler beim Beitritt zur Session. Bitte versuche es später erneut.');
+                showError('Fehler beim Beitritt zur Session. Bitte versuche es später erneut.');
             }
         }
     };
@@ -149,6 +154,7 @@ export default function GameLobby() {
                             <button
                                 className={`tab-btn ${activeTab === 'create' ? 'active' : ''}`}
                                 onClick={() => {
+                                    audioEngine.playSfx('buttonClick');
                                     setActiveTab('create');
                                     setError('');
                                 }}
@@ -158,6 +164,7 @@ export default function GameLobby() {
                             <button
                                 className={`tab-btn ${activeTab === 'join' ? 'active' : ''}`}
                                 onClick={() => {
+                                    audioEngine.playSfx('buttonClick');
                                     setActiveTab('join');
                                     setError('');
                                 }}

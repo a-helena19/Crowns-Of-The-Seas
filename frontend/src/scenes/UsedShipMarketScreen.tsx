@@ -50,6 +50,11 @@ export default function UsedShipMarketScreen({ onBack }: Props) {
     const sessionId = sessionData ? JSON.parse(sessionData).id : null;
     const token = localStorage.getItem("auth_token") ?? "";
 
+    function showError(msg: string) {
+        audioEngine.playSfx('error');
+        setError(msg);
+    }
+
     useEffect(() => {
         if (!sessionId || !playerId) return;
         setLoading(true);
@@ -68,7 +73,7 @@ export default function UsedShipMarketScreen({ onBack }: Props) {
                 setShips(usedShips);
                 setBalance(Number(balanceData));
             })
-            .catch(() => setError("Gebrauchte Schiffe konnten nicht geladen werden."))
+            .catch(() => showError("Gebrauchte Schiffe konnten nicht geladen werden."))
             .finally(() => setLoading(false));
     }, [sessionId, playerId, token]);
 

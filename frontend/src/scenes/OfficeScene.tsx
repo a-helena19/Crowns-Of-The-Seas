@@ -81,6 +81,11 @@ export default function OfficeScene({ onClose }: Props) {
     const alreadyFull = fuelNeededPercent < 0.01;
     const alreadyRepaired = repairNeededPercent < 0.01;
 
+    function showError(msg: string) {
+        audioEngine.playSfx('error');
+        setError(msg);
+    }
+
     useEffect(() => {
         loadOfficeData();
     }, [playerId, sessionId, token]);
@@ -146,7 +151,7 @@ export default function OfficeScene({ onClose }: Props) {
                     return shipData[0]?.id ?? null;
                 });
             })
-            .catch(() => setError("Büro konnte die Flotte nicht laden."))
+            .catch(() => showError("Büro konnte die Flotte nicht laden."))
             .finally(() => setLoading(false));
     }
 
@@ -178,7 +183,7 @@ export default function OfficeScene({ onClose }: Props) {
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
             showToast(`${selectedShip.name} wird betankt… (${data.refuelingDurationTicks} Ticks)`);
         } catch {
-            setError("Betanken fehlgeschlagen.");
+            showError("Betanken fehlgeschlagen.");
         } finally {
             setActionBusy(null);
         }
@@ -203,7 +208,7 @@ export default function OfficeScene({ onClose }: Props) {
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
             showToast(`${selectedShip.name} wird repariert… (${data.repairingDurationTicks} Ticks)`);
         } catch {
-            setError("Reparatur fehlgeschlagen.");
+            showError("Reparatur fehlgeschlagen.");
         } finally {
             setActionBusy(null);
         }
@@ -233,7 +238,7 @@ export default function OfficeScene({ onClose }: Props) {
             audioEngine.playSfx('coinReward');
             showToast(`${selectedShip.name} verkauft.`);
         } catch {
-            setError("Verkauf fehlgeschlagen.");
+            showError("Verkauf fehlgeschlagen.");
         } finally {
             setActionBusy(null);
         }

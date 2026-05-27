@@ -330,7 +330,7 @@ export default class DockingScene extends Phaser.Scene {
         this.gameEnded = true;
         this.shipBody?.setVelocity(0, 0);
         audioEngine.stopMusic();
-        audioEngine.playSfx('dockingSuccess');
+        audioEngine.playSfx('success');
         this.showEndMessage(
             this.sceneData.mode === 'departure' ? 'Leinen los! ⛵' : 'Perfekt angelegt! ⚓',
             0x27ae60,

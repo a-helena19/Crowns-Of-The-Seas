@@ -174,6 +174,7 @@ export default function SessionWaitingScreen() {
             await sessionApi.startGame(sessionId, {});
         } catch (error) {
             console.error('Error starting game:', error);
+            audioEngine.playSfx('error');
             setErrorMessage('Fehler beim Starten des Spiels. Bitte versuchen Sie es später erneut.');
         }
     };

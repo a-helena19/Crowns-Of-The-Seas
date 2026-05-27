@@ -5,6 +5,7 @@ import "../style/cargo.css";
 import { useTravelDuration } from "./TravelDurationInfo";
 import CargoRouteMapView from "./CargoRouteMapView";
 import Briefmarke from "../assets/Briefmarke.png";
+import audioEngine from '../audio/AudioEngine';
 
 interface SessionCargoDTO {
     id: string; name: string; description: string;
@@ -69,6 +70,15 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
     const [shipInTransit, setShipInTransit] = useState(false);
     const [currentTick, setCurrentTick] = useState<number>(window.__latestTick?.currentTick ?? 0);
     const [routeDescription, setRouteDescription] = useState<string>("");
+
+    function showFuelErr(msg: string) {
+        audioEngine.playSfx('error');
+        setFuelError(msg);
+    }
+    function showAcceptErr(msg: string) {
+        audioEngine.playSfx('error');
+        setAcceptError(msg);
+    }
 
     useEffect(() => {
         if (!selected || !currentPortId) {
@@ -155,7 +165,7 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
                         setCargos(f);
                         setSelected(prev => {
                             if (prev && f.some(c => c.id === prev.id)) return prev;
-                            if (prev) setAcceptError("Diese Fracht wurde gerade von einem anderen Kapitän übernommen.");
+                            if (prev) showAcceptErr("Diese Fracht wurde gerade von einem anderen Kapitän übernommen.");
                             return f[0] ?? null;
                         });
                     })
@@ -200,9 +210,9 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
 
     async function handleAcceptCargo() {
         if (!selected) return;
-        if (!playerShipId) { setAcceptError("Bitte zuerst ein Schiff auswählen."); return; }
-        if (hasNoAffordableOption) { setFuelError("Nicht genug Treibstoff für diese Fracht."); return; }
-        if (!canAfford) { setFuelError("Nicht genug Treibstoff für dieses Speed-Setting."); return; }
+        if (!playerShipId) { showAcceptErr("Bitte zuerst ein Schiff auswählen."); return; }
+        if (hasNoAffordableOption) { showFuelErr("Nicht genug Treibstoff für diese Fracht."); return; }
+        if (!canAfford) { showFuelErr("Nicht genug Treibstoff für dieses Speed-Setting."); return; }
         setFuelError(null);
         try {
             const res = await fetch(`/api/cargo/accept?playerId=${playerId}&sessionId=${sessionId}`, {
@@ -210,13 +220,13 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                 body: JSON.stringify({ playerShipId, sessionCargoId: selected.id, destinationPortId: selected.destinationPortId }),
             });
-            if (!res.ok) { const e = await res.json(); setFuelError(e.message || "Fehler"); return; }
+            if (!res.ok) { const e = await res.json(); showFuelErr(e.message || "Fehler"); return; }
             const lr = await res.json() as LoadingStartResponse;
             onCargoAccepted({ id: selected.id, from: selected.originPortName, to: selected.destinationPortName,
                 weight: selected.capacity, originPortId: selected.originPortId,
                 destinationPortId: selected.destinationPortId,
                 speedSetting: SPEED_SETTINGS[speedIndex], loadingDurationSeconds: lr.loadingDurationSeconds });
-        } catch { setFuelError("Verbindungsfehler beim Akzeptieren der Fracht"); }
+        } catch { showFuelErr("Verbindungsfehler beim Akzeptieren der Fracht"); }
     }
 
     const riskLabel = (r: number) => r < 0.1 ? "Niedrig" : r < 0.25 ? "Mittel" : r < 0.4 ? "Hoch" : "Extrem";

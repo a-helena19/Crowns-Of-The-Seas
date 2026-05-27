@@ -29,6 +29,8 @@ import dockingSuccessSfxUrl from '../assets/audio/sfx/docking-success.mp3';
 import ratKillSfxUrl from '../assets/audio/sfx/rat-kill.mp3';
 import ratSqueaksSfxUrl from '../assets/audio/sfx/rat-squeaks.mp3';
 import ratTickingSfxUrl from '../assets/audio/sfx/rat-ticking.mp3';
+import failedSfxUrl from '../assets/audio/sfx/failed.mp3';
+import successSfxUrl from '../assets/audio/sfx/success.mp3';
 
 // ─── Musik-Tracks ───
 export const MUSIC_TRACKS: Record<string, SoundDefinition> = {
@@ -92,6 +94,20 @@ export const SFX: Record<string, SoundDefinition> = {
     },
 
     // ── Gameplay ──
+    failed: {
+        key: 'sfx_failed',
+        url: failedSfxUrl,
+        category: 'sfx',
+        volume: 0.5,
+    },
+
+    success: {
+        key: 'sfx_success',
+        url: successSfxUrl,
+        category: 'sfx',
+        volume: 0.6,
+    },
+
     coinReward: {
         key: 'sfx_coin',
         url: coinSfxUrl,
