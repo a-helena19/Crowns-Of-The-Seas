@@ -506,3 +506,191 @@
 .ending-toast-close:hover {
     background: #e8d5be;
 }
+
+
+/* ── Audio-Menü ── */
+.topbar-audio-wrapper {
+    position: relative;
+}
+
+.topbar-audio-btn {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: filter 0.15s ease, transform 0.15s ease;
+    min-width: auto;
+    height: 35px;
+    padding: 4px 14px;
+}
+
+.topbar-audio-btn:hover {
+    filter: brightness(1.1);
+}
+
+.topbar-audio-btn:active {
+    transform: translateY(1px);
+}
+
+.topbar-audio-btn.is-open {
+    filter: brightness(1.15);
+}
+
+.topbar-hamburger {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.audio-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 280px;
+    z-index: 200;
+
+    background: linear-gradient(160deg, #f4ecd2 0%, #f9f3df 50%, #ebe2c2 100%);
+    border: 1px solid rgba(120, 90, 40, 0.5);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    color: #2b2418;
+    font-family: 'Crimson Pro', Georgia, serif;
+
+    padding: 14px 16px 16px;
+
+    animation: faction-popover-fade 0.15s ease-out;
+}
+
+.audio-popover-title {
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #3a2f1a;
+    margin: 0 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(120, 90, 40, 0.25);
+    letter-spacing: 1px;
+}
+
+.audio-popover-row {
+    margin-bottom: 10px;
+}
+
+.audio-popover-row:last-child {
+    margin-bottom: 0;
+}
+
+.audio-popover-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #3a2f1a;
+    margin-bottom: 6px;
+}
+
+.audio-popover-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.audio-popover-toggle {
+    min-width: 40px;
+    padding: 3px 8px;
+    border: 2px solid rgba(120, 90, 40, 0.4);
+    border-radius: 4px;
+    font-family: 'Crimson Pro', Georgia, serif;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.15s;
+}
+
+.audio-popover-toggle.on {
+    background: rgba(74, 124, 58, 0.25);
+    color: #3a6628;
+    border-color: rgba(74, 124, 58, 0.5);
+}
+
+.audio-popover-toggle.off {
+    background: rgba(139, 46, 31, 0.15);
+    color: #8b2e1f;
+    border-color: rgba(139, 46, 31, 0.4);
+}
+
+.audio-popover-toggle:hover {
+    filter: brightness(1.1);
+}
+
+.audio-popover-slider {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(120, 90, 40, 0.25);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.audio-popover-slider:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.audio-popover-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #7a6a4a;
+    border: 2px solid #f4ecd2;
+    cursor: pointer;
+    transition: transform 0.15s;
+}
+
+.audio-popover-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+.audio-popover-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #7a6a4a;
+    border: 2px solid #f4ecd2;
+    cursor: pointer;
+}
+
+.audio-popover-pct {
+    font-size: 11px;
+    color: #7a6a4a;
+    min-width: 32px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.audio-popover-divider {
+    height: 1px;
+    background: rgba(120, 90, 40, 0.25);
+    margin: 12px 0;
+}
+
+.audio-popover-leave {
+    width: 100%;
+    padding: 8px 0;
+    background: transparent;
+    border: 1px solid rgba(139, 46, 31, 0.3);
+    color: #8b2e1f;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.audio-popover-leave:hover {
+    background: rgba(139, 46, 31, 0.08);
+    border-color: rgba(139, 46, 31, 0.5);
+}

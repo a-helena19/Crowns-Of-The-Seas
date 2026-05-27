@@ -21,7 +21,6 @@ import EventNotificationDialog from "../components/EventNotificationDialog.tsx";
 import ratImage from "../assets/Rat.png";
 import GameOverScreen from "../components/GameOverScreen";
 import audioEngine from '../audio/AudioEngine';
-import AudioSettingsPanel from '../components/AudioSettingsPanel';
 
 export const TOP_BAR_HEIGHT = '9vh';
 export const BOTTOM_BAR_HEIGHT = '20vh';
@@ -149,13 +148,13 @@ export default function GameScreen() {
             }>).detail;
 
             if (detail.eventType === "PILOT_STRIKE_STARTED") {
-                audioEngine.playSfx('notification');
                 setActivePilotStrikes(prev => ({
                     ...prev,
                     [detail.portId]: { portName: detail.portName },
                 }));
                 const myRevoked = detail.revokedTravels?.filter(r => r.playerId === playerId) ?? [];
                 if (myRevoked.length > 0) {
+                    audioEngine.playSfx('notification');
                     setStrikeNotice(
                         `Lotsenstreik in ${detail.portName}! Du musst selbst anlegen. Die Lotsengebühr wird beim Reiseabschluss erstattet.`
                     );
@@ -440,7 +439,7 @@ export default function GameScreen() {
                 reward: number; cargoDescription: string;
             }>).detail;
             if (data.playerId !== playerId) return;
-            audioEngine.playSfx('notification');
+            audioEngine.playSfx('smuggleNotification');
             const offer = {
                 offerId: data.offerId,
                 portId: data.portId,
@@ -776,9 +775,6 @@ export default function GameScreen() {
         <div className={`app-layout ${view}`}>
             <div className="top">
                 <TopBar />
-                <div style={{ position: 'absolute', top: '8px', right: '12px', zIndex: 100 }}>
-                    <AudioSettingsPanel compact />
-                </div>
             </div>
             <div className="game"><Game view={view} /></div>
             <div className={`fullscreen-overlay ${

@@ -31,6 +31,8 @@ import ratSqueaksSfxUrl from '../assets/audio/sfx/rat-squeaks.mp3';
 import ratTickingSfxUrl from '../assets/audio/sfx/rat-ticking.mp3';
 import failedSfxUrl from '../assets/audio/sfx/failed.mp3';
 import successSfxUrl from '../assets/audio/sfx/success.mp3';
+import evilLaughSfxUrl from '../assets/audio/sfx/evil-laugh.mp3';
+import smuggleNotificationSfxUrl from '../assets/audio/sfx/smuggle-notification.mp3';
 
 // ─── Musik-Tracks ───
 export const MUSIC_TRACKS: Record<string, SoundDefinition> = {
@@ -60,14 +62,14 @@ export const MUSIC_TRACKS: Record<string, SoundDefinition> = {
         url: dockingMusicUrl,
         category: 'music',
         loop: true,
-        volume: 0.5,
+        volume: 0.8,
     },
     rats: {
         key: 'music_rats',
         url: ratMusicUrl,
         category: 'music',
         loop: true,
-        volume: 0.5,
+        volume: 0.8,
     },
 };
 
@@ -180,5 +182,19 @@ export const SFX: Record<string, SoundDefinition> = {
         url: ratTickingSfxUrl,
         category: 'sfx',
         volume: 0.9,
+    },
+
+    evilLaugh: {
+        key: 'sfx_evil_laugh',
+        url: evilLaughSfxUrl,
+        category: 'sfx',
+        volume: 0.4,
+    },
+
+    smuggleNotification: {
+        key: 'sfx_smuggle_notification',
+        url: smuggleNotificationSfxUrl,
+        category: 'sfx',
+        volume: 0.4,
     },
 };

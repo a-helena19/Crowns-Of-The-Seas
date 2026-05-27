@@ -1,20 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSessionContext } from '../context/useSessionContext';
-import '../style/gameLobby.css';
-import AudioSettingsPanel from '../components/AudioSettingsPanel';
+import { useAudioSettings } from '../audio/AudioSettingsContext';
 import audioEngine from '../audio/AudioEngine';
-import { useEffect } from 'react';
+import '../style/gameLobby.css';
 
 export default function GameLobby() {
     const { user, logout } = useAuth();
     const { createSession, joinSession } = useSessionContext();
+    const { settings, setMusicEnabled, setSfxEnabled, setMusicVolume, setSfxVolume } = useAudioSettings();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'create' | 'join'>('create');
     const [error, setError] = useState('');
 
-    // Create Session Form State
+    // Audio-Menü
+    const [audioMenuOpen, setAudioMenuOpen] = useState(false);
+    const audioMenuRef = useRef<HTMLDivElement | null>(null);
+
     const [createForm, setCreateForm] = useState({
         hostName: user?.username || '',
         maxPlayers: 2,
@@ -41,7 +44,6 @@ export default function GameLobby() {
             return;
         }
 
-        // Convert duration from "1h" to "PT1H" format
         const durationMap: { [key: string]: string } = {
             '20s': 'PT20S',
             '1m': 'PT1M',
@@ -54,7 +56,6 @@ export default function GameLobby() {
         const durationSeconds = { '20s': 20, '1m': 60,'1h': 3600, '2h': 7200, '3h': 10800, '4h': 14400 }[createForm.duration] ?? 3600;
         const totalTicks = Math.round(durationSeconds / createForm.tickRateSeconds);
 
-        // Create session using context (now async)
         const newSession = await createSession(
             createForm.hostName,
             createForm.maxPlayers,
@@ -68,7 +69,6 @@ export default function GameLobby() {
             return;
         }
 
-        // Redirect to session waiting screen
         sessionStorage.setItem('currentSession', JSON.stringify(newSession));
         sessionStorage.setItem('userRole', 'host');
         navigate('/session-waiting');
@@ -88,12 +88,10 @@ export default function GameLobby() {
             return;
         }
 
-        // Try to join session using context
         try {
             const session = await joinSession(joinForm.gameCode, joinForm.playerName);
 
             if (session) {
-                // Redirect to session waiting screen
                 sessionStorage.setItem('currentSession', JSON.stringify(session));
                 sessionStorage.setItem('userRole', 'guest');
                 sessionStorage.setItem('playerName', joinForm.playerName);
@@ -132,20 +130,108 @@ export default function GameLobby() {
         return () => {};
     }, []);
 
+    // Audio-Menü: Klick außerhalb schließt es
+    useEffect(() => {
+        if (!audioMenuOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (audioMenuRef.current && !audioMenuRef.current.contains(e.target as Node)) {
+                setAudioMenuOpen(false);
+            }
+        };
+        const t = setTimeout(() => document.addEventListener('mousedown', handler), 0);
+        return () => {
+            clearTimeout(t);
+            document.removeEventListener('mousedown', handler);
+        };
+    }, [audioMenuOpen]);
+
     return (
         <div className="game-lobby-page">
             <div className="lobby-container">
                 <div className="lobby-header">
                     <h1>Crown of the Seas</h1>
                     <p className="welcome-text">Willkommen, {user?.username}!</p>
-                    {user?.role === "ADMIN" && (
-                        <button className="admin-link-btn" onClick={() => navigate("/admin")}>
-                            ⚙ Verwaltung
-                        </button>
-                    )}
-                    <button className="logout-btn" onClick={handleLogout}>
-                        Ausloggen
-                    </button>
+
+                    <div className="lobby-header-actions">
+                        {user?.role === "ADMIN" && (
+                            <button className="admin-link-btn" onClick={() => navigate("/admin")}>
+                                ⚙ Verwaltung
+                            </button>
+                        )}
+
+                        {/* Audio-Menü */}
+                        <div className="lobby-audio-wrapper" ref={audioMenuRef}>
+                            <button
+                                type="button"
+                                className={`lobby-menu-btn ${audioMenuOpen ? 'is-open' : ''}`}
+                                onClick={() => setAudioMenuOpen(o => !o)}
+                                title="Einstellungen"
+                            >
+                                ☰
+                            </button>
+
+                            {audioMenuOpen && (
+                                <div className="lobby-audio-popover">
+                                    <h3 className="lobby-audio-title">Audio</h3>
+
+                                    <div className="lobby-audio-row">
+                                        <span className="lobby-audio-label">🎵 Musik</span>
+                                        <div className="lobby-audio-controls">
+                                            <button
+                                                className={`lobby-audio-toggle ${settings.musicEnabled ? 'on' : 'off'}`}
+                                                onClick={() => setMusicEnabled(!settings.musicEnabled)}
+                                            >
+                                                {settings.musicEnabled ? 'AN' : 'AUS'}
+                                            </button>
+                                            <input
+                                                type="range"
+                                                min={0}
+                                                max={100}
+                                                value={Math.round(settings.musicVolume * 100)}
+                                                onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
+                                                disabled={!settings.musicEnabled}
+                                                className="lobby-audio-slider"
+                                            />
+                                            <span className="lobby-audio-pct">
+                                                {Math.round(settings.musicVolume * 100)}%
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="lobby-audio-row">
+                                        <span className="lobby-audio-label">🔔 Effekte</span>
+                                        <div className="lobby-audio-controls">
+                                            <button
+                                                className={`lobby-audio-toggle ${settings.sfxEnabled ? 'on' : 'off'}`}
+                                                onClick={() => setSfxEnabled(!settings.sfxEnabled)}
+                                            >
+                                                {settings.sfxEnabled ? 'AN' : 'AUS'}
+                                            </button>
+                                            <input
+                                                type="range"
+                                                min={0}
+                                                max={100}
+                                                value={Math.round(settings.sfxVolume * 100)}
+                                                onChange={(e) => setSfxVolume(Number(e.target.value) / 100)}
+                                                disabled={!settings.sfxEnabled}
+                                                className="lobby-audio-slider"
+                                            />
+                                            <span className="lobby-audio-pct">
+                                                {Math.round(settings.sfxVolume * 100)}%
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="lobby-menu-divider" />
+
+                                    <button className="lobby-menu-logout" onClick={handleLogout}>
+                                        Ausloggen
+                                    </button>
+
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 <div className="lobby-content">
@@ -269,10 +355,8 @@ export default function GameLobby() {
                             </form>
                         )}
                     </div>
-                    <AudioSettingsPanel />
                 </div>
             </div>
         </div>
     );
 }
-

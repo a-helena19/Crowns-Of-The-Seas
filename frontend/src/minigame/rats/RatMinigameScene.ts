@@ -76,7 +76,7 @@ export class RatMinigameScene extends Phaser.Scene {
                 if (this.finished) return;
                 this.remainingSeconds = Math.max(0, this.remainingSeconds - 1);
                 this.updateHud();
-                if (this.remainingSeconds == 2) {
+                if (this.remainingSeconds == 3) {
                     audioEngine.playSfx('ratTickingClock');
                 }
                 if (this.remainingSeconds <= 0) {
