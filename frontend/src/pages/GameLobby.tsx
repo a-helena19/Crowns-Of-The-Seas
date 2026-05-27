@@ -126,7 +126,9 @@ export default function GameLobby() {
     };
 
     useEffect(() => {
-        audioEngine.playMusic('lobby');
+        if (audioEngine.userHasInteracted) {
+            audioEngine.playMusic('lobby');
+        }
         return () => {};
     }, []);
 

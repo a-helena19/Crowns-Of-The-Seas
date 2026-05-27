@@ -3,7 +3,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { SessionProvider } from './context/SessionContext';
-import { AudioSettingsProvider } from './audio/AudioSettingsContext';   // ← NEU
+import { AudioSettingsProvider } from './audio/AudioSettingsContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -15,6 +15,8 @@ import IntroAnimation from './pages/IntroAnimation.tsx';
 import './App.css';
 import GameOverStandalone from "./components/GameOverStandalone.tsx";
 import AdminPage from "./pages/AdminPage.tsx";
+import StartScreen from './pages/StartScreen';
+
 
 function App() {
     return (
@@ -38,7 +40,8 @@ function App() {
                             <Route path="/game" element={
                                 <ProtectedRoute><GameScreen /></ProtectedRoute>
                             } />
-                            <Route path="*" element={<Navigate to="/lobby" />} />
+                            <Route path="/" element={<StartScreen />} />
+                            <Route path="*" element={<Navigate to="/" />} />
                             <Route path="/game-over" element={
                                 <ProtectedRoute><GameOverStandalone /></ProtectedRoute>
                             } />

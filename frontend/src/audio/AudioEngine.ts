@@ -26,6 +26,7 @@ class AudioEngine {
 
     // ★ Abbruch-Mechanismus für laufende Fades/Crossfades
     private fadeAbortController: AbortController | null = null;
+    private _userHasInteracted = false;
 
     private constructor() {
         this.settings = this.loadSettings();
@@ -303,6 +304,14 @@ class AudioEngine {
 
     destroyAll(): void {
         this.stopMusic();
+    }
+
+    markInteracted(): void {
+        this._userHasInteracted = true;
+    }
+
+    get userHasInteracted(): boolean {
+        return this._userHasInteracted;
     }
 
     get isMusicPlaying(): boolean {

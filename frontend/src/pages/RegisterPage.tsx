@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { registerUser, type ApiError } from '../api/userApi';
 import { useAuth } from '../context/AuthContext';
 import '../style/auth.css';
+import audioEngine from "../audio/AudioEngine.ts";
 
 export default function RegisterPage() {
     const [username, setUsername] = useState('');
@@ -18,11 +19,13 @@ export default function RegisterPage() {
         setError('');
 
         if (password !== confirmPassword) {
+            audioEngine.playSfx('error');
             setError('Passwörter stimmen nicht überein.');
             return;
         }
 
         if (password.length < 8) {
+            audioEngine.playSfx('error');
             setError('Passwort muss mindestens 8 Zeichen lang sein.');
             return;
         }
@@ -38,10 +41,13 @@ export default function RegisterPage() {
         } catch (err) {
             const apiError = err as ApiError;
             if (apiError.errorCode === 'USERNAME_ALREADY_EXISTS') {
+                audioEngine.playSfx('error');
                 setError('Dieser Benutzername ist bereits vergeben.');
             } else if (apiError.errorCode === 'VALIDATION_ERROR') {
+                audioEngine.playSfx('error');
                 setError(apiError.message);
             } else {
+                audioEngine.playSfx('error');
                 setError(apiError.message || 'Ein Fehler ist aufgetreten.');
             }
         } finally {
