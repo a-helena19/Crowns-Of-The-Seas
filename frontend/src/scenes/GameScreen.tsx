@@ -2,11 +2,11 @@ import { useEffect, useCallback, useState, useRef } from "react";
 import TopBar from "../components/TopBar.tsx";
 import Game from "../Game.tsx";
 import BottomBar from "../components/BottomBar.tsx";
-import SideBar from "../components/SideBar";
 import HarborScene from "../scenes/HarborScene.tsx";
 import ShipBrokerScene from "../scenes/ShipBrokerScene.tsx";
 import OfficeScene from "../scenes/OfficeScene.tsx";
 import PortProfileScreen from "../scenes/PortProfileScreen.tsx";
+import MarketplaceScene from "./MarketplaceScene.tsx";
 import { useGameSessionWebSocket } from "../hooks/useGameSessionWebSocket.ts";
 import CargoManagementScreen from "../scenes/CargoManagementScreen";
 import DockingMiniGame from "../scenes/DockingMiniGame";
@@ -55,8 +55,27 @@ interface CustomsToast {
     to: string;
 }
 
+interface OwnedShipSummary {
+    id: string;
+    name: string;
+    shipClass?: string;
+    iconUrl: string;
+    status: string;
+    fuel: number;
+    condition: number;
+    currentPortId?: string;
+}
+
+interface PendingShipEvent {
+    eventId: string;
+    label: string;
+    kind: "rats" | "storm" | "obstacle" | "arrival_docking";
+}
+
 export default function GameScreen() {
-    const [view, setView] = useState<"map" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office">("map");
+    const [view, setView] = useState<"map" | "marketplace" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office">("map");
+    const [marketplaceReturnView, setMarketplaceReturnView] = useState<"map" | "portProfile">("map");
+    const [overlayReturnView, setOverlayReturnView] = useState<"map" | "marketplace">("map");
     const viewRef = useRef(view);
     const [selectedPort, setSelectedPort] = useState<{ id: string; name: string; x: number; y: number } | null>(null);
 
@@ -91,6 +110,7 @@ export default function GameScreen() {
     const [activeStormMinigame, setActiveStormMinigame] = useState<StormMinigameEventPayload | null>(null);
     const [obstacleEventOffer, setObstacleEventOffer] = useState<ObstacleMinigameEventPayload | null>(null);
     const [activeObstacleMinigame, setActiveObstacleMinigame] = useState<ObstacleMinigameEventPayload | null>(null);
+    const [openedEventId, setOpenedEventId] = useState<string | null>(null);
 
     const pendingSmuggleRef = useRef<{
         offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
@@ -98,10 +118,46 @@ export default function GameScreen() {
     const departureActiveRef = useRef(false);
     const arrivedMiniGameShown = useRef<Set<string>>(new Set());
     const [showArrivalDocking, setShowArrivalDocking] = useState<AssignedCargoEntry | null>(null);
+    const [pendingArrivalDocking, setPendingArrivalDocking] = useState<AssignedCargoEntry | null>(null);
     const [activePilotStrikes, setActivePilotStrikes] = useState<Record<string, { portName: string }>>({});
     const [strikeNotice, setStrikeNotice] = useState<string | null>(null);
+    const [ownedShips, setOwnedShips] = useState<OwnedShipSummary[]>([]);
+    const ownedShipsRef = useRef<OwnedShipSummary[]>([]);
+    const [focusShipIdForCargoManagement, setFocusShipIdForCargoManagement] = useState<string | null>(null);
+    const [openCargoForShipId, setOpenCargoForShipId] = useState<string | null>(null);
 
     const authToken = localStorage.getItem("auth_token") ?? "";
+
+    const loadOwnedShips = useCallback(() => {
+        if (!playerId || !sessionId) return;
+        fetch(`/api/ships/player/${playerId}?sessionId=${sessionId}`, {
+            headers: { Authorization: `Bearer ${authToken}` },
+        })
+            .then(res => (res.ok ? res.json() : []))
+            .then((ships: any[]) => {
+                setOwnedShips(
+                    ships.map((ship) => ({
+                        id: ship.id,
+                        name: ship.name,
+                        shipClass: ship.shipClass,
+                        iconUrl: ship.iconUrl,
+                        status: ship.status,
+                        fuel: ship.fuel,
+                        condition: ship.condition,
+                        currentPortId: ship.currentPortId,
+                    }))
+                );
+            })
+            .catch(() => {});
+    }, [playerId, sessionId, authToken]);
+
+    useEffect(() => {
+        loadOwnedShips();
+    }, [loadOwnedShips]);
+
+    useEffect(() => {
+        ownedShipsRef.current = ownedShips;
+    }, [ownedShips]);
 
     function handleCargoAssigned(entry: AssignedCargoEntry) {
         setAssignedCargos(prev => {
@@ -285,15 +341,44 @@ export default function GameScreen() {
                 }
                 return entry;
             }));
+
+            const wsShips = detail.ships ?? [];
+            const previousShips = ownedShipsRef.current;
+            const hasUnknownShip = wsShips.some(ws => !previousShips.some(ship => ship.id === ws.playerShipId));
+            const shouldRefreshShipDetails = wsShips.some(ws => {
+                const prev = previousShips.find(ship => ship.id === ws.playerShipId);
+                if (!prev) return false;
+                return (prev.status === "REFUELING" || prev.status === "REPAIRING") && ws.status === "AT_PORT";
+            });
+
+            setOwnedShips(prev => prev.map(ship => {
+                const wsShip = wsShips.find(s => s.playerShipId === ship.id);
+                if (!wsShip) return ship;
+                return {
+                    ...ship,
+                    status: wsShip.status ?? ship.status,
+                    currentPortId: wsShip.currentPortId ?? ship.currentPortId,
+                };
+            }));
+
+            if (hasUnknownShip || shouldRefreshShipDetails) {
+                loadOwnedShips();
+            }
         };
         window.addEventListener("backend-ship-positions", handler);
         return () => window.removeEventListener("backend-ship-positions", handler);
-    }, [playerId]);
+    }, [loadOwnedShips]);
+
+    useEffect(() => {
+        if (view === "map" || view === "portProfile") {
+            loadOwnedShips();
+        }
+    }, [view, loadOwnedShips]);
 
     // Ankunfts-Minispiel automatisch starten (Vollbild über der Karte)
     // Ankunfts-Minispiel automatisch starten (Vollbild über der Karte)
     useEffect(() => {
-        if (showArrivalDocking) return;
+        if (showArrivalDocking || pendingArrivalDocking) return;
         for (const entry of assignedCargos) {
             if (
                 entry.phase === "awaiting_docking" &&
@@ -301,15 +386,16 @@ export default function GameScreen() {
                 !arrivedMiniGameShown.current.has(entry.travelId)
             ) {
                 arrivedMiniGameShown.current.add(entry.travelId);
-                setShowArrivalDocking(entry);
+                setPendingArrivalDocking(entry);
                 break;
             }
         }
-    }, [assignedCargos, showArrivalDocking]);
+    }, [assignedCargos, showArrivalDocking, pendingArrivalDocking]);
 
     const handleArrivalDockingSuccess = useCallback(async () => {
         const entry = showArrivalDocking;
         setShowArrivalDocking(null);
+        setPendingArrivalDocking(null);
         if (!entry?.travelId || !playerId || !sessionId) return;
         try {
             await fetch(
@@ -322,6 +408,7 @@ export default function GameScreen() {
     const handleArrivalDockingFailure = useCallback(async () => {
         const entry = showArrivalDocking;
         setShowArrivalDocking(null);
+        setPendingArrivalDocking(null);
         if (!entry?.travelId || !playerId || !sessionId) return;
         try {
             await fetch(
@@ -687,6 +774,7 @@ export default function GameScreen() {
         if (!ratEventOffer) return;
         setActiveRatMinigame(ratEventOffer);
         setRatEventOffer(null);
+        setOpenedEventId(null);
     }, [ratEventOffer]);
 
     const handleRatEventDecline = useCallback(async () => {
@@ -705,6 +793,7 @@ export default function GameScreen() {
         minigameSessionManager.finishSession(ratEventOffer.eventId, "DECLINED");
         window.__activeRatEventId = undefined;
         setRatEventOffer(null);
+        setOpenedEventId(null);
         const id = `rat-result-${Date.now()}`;
         setMinigameStatusToasts(prev => [...prev, {
             id,
@@ -778,6 +867,7 @@ export default function GameScreen() {
         if (!stormEventOffer) return;
         setActiveStormMinigame(stormEventOffer);
         setStormEventOffer(null);
+        setOpenedEventId(null);
     }, [stormEventOffer]);
 
     const handleStormEventDecline = useCallback(async () => {
@@ -813,6 +903,7 @@ export default function GameScreen() {
         minigameSessionManager.finishSession(stormEventOffer.eventId, "DECLINED");
         window.__activeStormEventId = undefined;
         setStormEventOffer(null);
+        setOpenedEventId(null);
     }, [stormEventOffer, submitStormResult]);
 
     const handleStormMinigameFinished = useCallback(async (result: StormMinigameResult) => {
@@ -893,6 +984,7 @@ export default function GameScreen() {
         if (!obstacleEventOffer) return;
         setActiveObstacleMinigame(obstacleEventOffer);
         setObstacleEventOffer(null);
+        setOpenedEventId(null);
     }, [obstacleEventOffer]);
 
     const handleObstacleEventDecline = useCallback(async () => {
@@ -929,6 +1021,7 @@ export default function GameScreen() {
         minigameSessionManager.finishSession(obstacleEventOffer.eventId, "DECLINED");
         window.__activeObstacleEventId = undefined;
         setObstacleEventOffer(null);
+        setOpenedEventId(null);
     }, [obstacleEventOffer, submitObstacleResult]);
 
     const handleObstacleMinigameFinished = useCallback(async (result: ObstacleMinigameResult) => {
@@ -1073,30 +1166,91 @@ export default function GameScreen() {
         stompClient.send('/app/game', {}, JSON.stringify(message));
     }, [stompClient]);
 
+    const isMinigameActive = Boolean(
+        showArrivalDocking || activeRatMinigame || activeStormMinigame || activeObstacleMinigame
+    );
+
+    const pendingEventsByShipId: Record<string, PendingShipEvent> = {};
+    if (ratEventOffer) {
+        pendingEventsByShipId[ratEventOffer.playerShipId] = {
+            eventId: ratEventOffer.eventId,
+            label: "Rattenbefall",
+            kind: "rats",
+        };
+    }
+    if (stormEventOffer) {
+        pendingEventsByShipId[stormEventOffer.playerShipId] = {
+            eventId: stormEventOffer.eventId,
+            label: "Sturm",
+            kind: "storm",
+        };
+    }
+    if (obstacleEventOffer) {
+        pendingEventsByShipId[obstacleEventOffer.playerShipId] = {
+            eventId: obstacleEventOffer.eventId,
+            label: "Gefaehrliche Passage",
+            kind: "obstacle",
+        };
+    }
+    if (pendingArrivalDocking && !pendingEventsByShipId[pendingArrivalDocking.shipId]) {
+        pendingEventsByShipId[pendingArrivalDocking.shipId] = {
+            eventId: pendingArrivalDocking.travelId ?? pendingArrivalDocking.cargoId,
+            label: "Manuelles Anlegen",
+            kind: "arrival_docking",
+        };
+    }
+
     return (
         <div className={`app-layout ${view}`}>
             <div className="top"><TopBar /></div>
             <div className="game"><Game view={view} /></div>
             <div className={`fullscreen-overlay ${
-                (view === "harbor" || view === "broker" || view === "cargoManagement" || view === "office") ? "open" : "closed"
+                (view === "marketplace" || view === "harbor" || view === "broker" || view === "cargoManagement" || view === "office") ? "open" : "closed"
             }`}>
-                {view === "harbor" && (
-                    <HarborScene
-                        onClose={() => setView("map")}
-                        onCargoAssigned={handleCargoAssigned}
+                {view === "marketplace" && (
+                    <MarketplaceScene
+                        onClose={() => setView(marketplaceReturnView)}
+                        onOpenOffice={() => {
+                            setOverlayReturnView("marketplace");
+                            setView("office");
+                        }}
+                        onOpenBroker={() => {
+                            setOverlayReturnView("marketplace");
+                            setView("broker");
+                        }}
+                        onOpenCargoManagement={() => {
+                            setFocusShipIdForCargoManagement(null);
+                            setOverlayReturnView("marketplace");
+                            setView("cargoManagement");
+                        }}
+                        onOpenHarbor={() => {
+                            setOverlayReturnView("marketplace");
+                            setView("harbor");
+                        }}
                     />
                 )}
-                {view === "broker" && <ShipBrokerScene onClose={() => setView("map")} />}
-                {view === "office" && <OfficeScene onClose={() => setView("map")} />}
+                {view === "harbor" && (
+                    <HarborScene
+                        onClose={() => {
+                            setOpenCargoForShipId(null);
+                            setView(overlayReturnView);
+                        }}
+                        onCargoAssigned={handleCargoAssigned}
+                        openCargoForShipId={openCargoForShipId}
+                    />
+                )}
+                {view === "broker" && <ShipBrokerScene onClose={() => setView(overlayReturnView)} />}
+                {view === "office" && <OfficeScene onClose={() => setView(overlayReturnView)} />}
                 {view === "cargoManagement" && (
                     <CargoManagementScreen
                         assignedCargos={assignedCargos}
+                        focusShipId={focusShipIdForCargoManagement}
                         activePilotStrikes={activePilotStrikes}
                         onCargoLoadingDone={handleCargoCompleted}
                         onCargoRemoved={handleCargoRemoved}
                         onCargoPhaseChange={handleCargoPhaseChange}
                         onTravelStarted={handleTravelStarted}
-                        onClose={() => setView("map")}
+                        onClose={() => setView(overlayReturnView)}
                         onDepartureStarted={handleDepartureStarted}
                         onDepartureComplete={handleDepartureComplete}
                     />
@@ -1105,21 +1259,42 @@ export default function GameScreen() {
             {view === "portProfile" && selectedPort && (
                 <PortProfileScreen port={selectedPort} onClose={() => setView("map")} />
             )}
-            {(view === "map" || view === "portProfile") && (
-                <div className="sidebar">
-                    <SideBar
-                        currentView={view}
-                        onOpenOffice={() => setView("office")}
-                        onStartAction={() => setView("harbor")}
-                        onOpenBroker={() => setView("broker")}
-                        onOpenCargoManagement={() => setView("cargoManagement")}
-                        assignedCargoCount={assignedCargos.length}
-                    />
-                </div>
-            )}
-            {(view === "map" || view === "portProfile") && (
+            {(view === "map" || view === "portProfile") && !isMinigameActive && (
                 <div className="bottom">
-                    <BottomBar send={send} connected={isConnected} />
+                    <BottomBar
+                        send={send}
+                        connected={isConnected}
+                        ships={ownedShips}
+                        pendingEventsByShipId={pendingEventsByShipId}
+                        onShipCardClick={(ship) => {
+                            const pendingEvent = pendingEventsByShipId[ship.id];
+                            if (pendingEvent) {
+                                if (pendingEvent.kind === "arrival_docking" && pendingArrivalDocking && pendingArrivalDocking.shipId === ship.id) {
+                                    setPendingArrivalDocking(null);
+                                    setShowArrivalDocking(pendingArrivalDocking);
+                                    return;
+                                }
+                                setOpenedEventId(pendingEvent.eventId);
+                                return;
+                            }
+                            if (ship.status === "AT_PORT") {
+                                setOpenCargoForShipId(ship.id);
+                                setOverlayReturnView("map");
+                                setView("harbor");
+                                return;
+                            }
+                            if (ship.status === "READY_TO_DEPART" || ship.status === "LOADING" || ship.status === "UNLOADING") {
+                                setFocusShipIdForCargoManagement(ship.id);
+                                setOverlayReturnView("map");
+                                setView("cargoManagement");
+                            }
+                        }}
+                        onOpenMarketplace={() => {
+                            setOverlayReturnView("map");
+                            setMarketplaceReturnView(view === "portProfile" ? "portProfile" : "map");
+                            setView("marketplace");
+                        }}
+                    />
                 </div>
             )}
 
@@ -1205,7 +1380,7 @@ export default function GameScreen() {
                 />
             )}
 
-            {ratEventOffer && (
+            {ratEventOffer && openedEventId === ratEventOffer.eventId && (
                 <EventNotificationDialog
                     title="Event: Rattenbefall"
                     successText="Wenn du das Event schaffst, werden die Ratten abgewehrt und die Fracht bleibt unbeschädigt."
@@ -1217,7 +1392,7 @@ export default function GameScreen() {
                 />
             )}
 
-            {stormEventOffer && (
+            {stormEventOffer && openedEventId === stormEventOffer.eventId && (
                 <EventNotificationDialog
                     title="Event: Schwerer Sturm"
                     successText="Wenn du genug Sonnen einsammelst, beruhigt sich der Sturm und die Route geht normal weiter."
@@ -1229,7 +1404,7 @@ export default function GameScreen() {
                 />
             )}
 
-            {obstacleEventOffer && (
+            {obstacleEventOffer && openedEventId === obstacleEventOffer.eventId && (
                 <EventNotificationDialog
                     title="Event: Gefährliche Passage"
                     successText="Wenn du die Passage meisterst, fährt dein Schiff ohne Fracht- oder Zustandsschaden weiter."
