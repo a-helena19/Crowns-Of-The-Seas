@@ -5,6 +5,7 @@ import at.fhv.backend.application.services.impl.travel.CargoUnloadingPhaseServic
 import at.fhv.backend.application.services.impl.travel.RewardCalculationServiceImpl;
 import at.fhv.backend.application.services.impl.travel.TravelArrivalServiceImpl;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
+import at.fhv.backend.application.services.minigame.StormMinigameService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.RegressService;
@@ -330,7 +331,7 @@ class TravelCompletionServiceTest {
         @Mock private SmuggleService smuggleService;
         @Mock private TravelRepository travelRepository;
         @Mock private RatMinigameService ratMinigameService;
-        @Mock private RatMinigameService ratMinigameService;
+        @Mock private StormMinigameService stormMinigameService;
         @Mock private CustomsService customsService;
         @Mock private RegressService regressService;
 
@@ -349,16 +350,19 @@ class TravelCompletionServiceTest {
                     smuggleService,
                     travelRepository,
                     ratMinigameService,
+                    stormMinigameService,
                     customsService,
                     regressService
-                    travelRepository,
-                    ratMinigameService
             );
 
             // Default: ratMinigameService passes reward through unchanged, no summary
             when(ratMinigameService.applyRewardModifier(any(UUID.class), any(BigDecimal.class)))
                     .thenAnswer(inv -> inv.getArgument(1));
             when(ratMinigameService.consumeTravelSummary(any(UUID.class)))
+                    .thenReturn(null);
+            when(stormMinigameService.applyRewardModifier(any(UUID.class), any(BigDecimal.class)))
+                    .thenAnswer(inv -> inv.getArgument(1));
+            when(stormMinigameService.consumeTravelSummary(any(UUID.class)))
                     .thenReturn(null);
 
             // Default: no customs inspection result (fine = 0)
@@ -367,8 +371,6 @@ class TravelCompletionServiceTest {
 
             // Default: no smuggle offers
             // when(smuggleService.getAllAcceptedOffers(any(UUID.class))).thenReturn(List.of());
-            when(ratMinigameService.applyRewardModifier(any(UUID.class), any(BigDecimal.class)))
-                    .thenAnswer(inv -> inv.getArgument(1));
         }
 
         private PlayerShip buildPlayerShipInUnloading(UUID destinationPortId) {
@@ -395,7 +397,7 @@ class TravelCompletionServiceTest {
 
             Travel travel = Travel.start(playerShipId, userId, sessionId,
                     UUID.randomUUID(), destinationPortId, 5.0, 1.0, 0.1, BigDecimal.valueOf(500), 0);
-            travel.markAsArrived(0.0, TravelStatus.ARRIVED);
+            travel.markAsArrived(0.0);
 
             PlayerShip playerShip = buildPlayerShipInUnloading(destinationPortId);
             ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
@@ -433,7 +435,7 @@ class TravelCompletionServiceTest {
 
             Travel travel = Travel.start(playerShipId, userId, sessionId,
                     UUID.randomUUID(), destinationPortId, 5.0, 1.0, 0.1, BigDecimal.ZERO, 0);
-            travel.markAsArrived(0.0, TravelStatus.ARRIVED);
+            travel.markAsArrived(0.0);
 
             PlayerShip playerShip = buildPlayerShipInUnloading(destinationPortId);
             ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
@@ -461,7 +463,7 @@ class TravelCompletionServiceTest {
 
             Travel travel = Travel.start(playerShipId, userId, sessionId,
                     UUID.randomUUID(), destinationPortId, 5.0, 1.0, 0.1, BigDecimal.ZERO, 0);
-            travel.markAsArrived(0.0, TravelStatus.ARRIVED);
+            travel.markAsArrived(0.0);
 
             PlayerShip playerShip = buildPlayerShipInUnloading(destinationPortId);
             ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);

@@ -18,10 +18,6 @@ import CustomsInspectionDialog from "../components/CustomsInspectionDialog.tsx";
 import CustomsResultToast, { type CustomsToastKind } from "../components/CustomsResultToast.tsx";
 import RatMinigameOverlay from "../minigame/rats/RatMinigameOverlay.tsx";
 import type { RatMinigameEventPayload, RatMinigameResult } from "../minigame/rats/RatMinigameTypes.ts";
-import EventNotificationDialog from "../components/EventNotificationDialog.tsx";
-import ratImage from "../assets/Rat.png";
-import RatMinigameOverlay from "../minigame/rats/RatMinigameOverlay.tsx";
-import type { RatMinigameEventPayload, RatMinigameResult } from "../minigame/rats/RatMinigameTypes.ts";
 import StormMinigameOverlay from "../minigame/storm/StormMinigameOverlay.tsx";
 import type { StormMinigameEventPayload, StormMinigameResult } from "../minigame/storm/StormMinigameTypes.ts";
 import { minigameSessionManager } from "../minigame/MinigameSessionManager.ts";
@@ -79,19 +75,12 @@ export default function GameScreen() {
         message: string;
         title: string;
     }[]>([]);
-    const [ratResultToasts, setRatResultToasts] = useState<{
-        id: string;
-        success: boolean;
-        message: string;
-    }[]>([]);
     const [customsToasts, setCustomsToasts] = useState<CustomsToast[]>([]);
     const [smuggleOffer, setSmuggleOffer] = useState<{
         offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
     } | null>(null);
     const [customsInspection, setCustomsInspection] = useState<CustomsInspectionPayload | null>(null);
     const customsQueueRef = useRef<CustomsInspectionPayload[]>([]);
-    const [ratEventOffer, setRatEventOffer] = useState<RatMinigameEventPayload | null>(null);
-    const [activeRatMinigame, setActiveRatMinigame] = useState<RatMinigameEventPayload | null>(null);
     const [ratEventOffer, setRatEventOffer] = useState<RatMinigameEventPayload | null>(null);
     const [activeRatMinigame, setActiveRatMinigame] = useState<RatMinigameEventPayload | null>(null);
     const [stormEventOffer, setStormEventOffer] = useState<StormMinigameEventPayload | null>(null);
@@ -296,39 +285,6 @@ export default function GameScreen() {
     }, [playerId]);
 
     // Ankunfts-Minispiel automatisch starten (Vollbild über der Karte)
-    useEffect(() => {
-        if (showArrivalDocking) return;
-        for (const entry of assignedCargos) {
-            if (
-                entry.phase === "unloading" &&
-                entry.travelId &&
-                (!entry.pilotageUsed || entry.pilotageStrikeRevoked) &&
-                !arrivedMiniGameShown.current.has(entry.travelId)
-            ) {
-                arrivedMiniGameShown.current.add(entry.travelId);
-                setShowArrivalDocking(entry);
-                break;
-            }
-        }
-    }, [assignedCargos, showArrivalDocking]);
-
-    const handleArrivalDockingSuccess = useCallback(() => {
-        setShowArrivalDocking(null);
-    }, []);
-
-    const handleArrivalDockingFailure = useCallback(async () => {
-        const entry = showArrivalDocking;
-        setShowArrivalDocking(null);
-        if (!entry?.travelId || !playerId || !sessionId) return;
-        try {
-            await fetch(
-                `/api/travels/${entry.travelId}/docking-failed?playerId=${playerId}&sessionId=${sessionId}`,
-                { method: "POST", headers: { Authorization: `Bearer ${authToken}` } }
-            );
-            window.dispatchEvent(new CustomEvent("player-balance-updated"));
-        } catch { /* nicht-fatal */ }
-    }, [showArrivalDocking, playerId, sessionId, authToken]);
-
     // Ankunfts-Minispiel automatisch starten (Vollbild über der Karte)
     useEffect(() => {
         if (showArrivalDocking) return;
@@ -382,11 +338,6 @@ export default function GameScreen() {
                 departureDockingFine?: number;
                 pilotageRefund?: number;
                 cargoRewards: { cargoId: string; cargoName: string; destinationPort: string; baseReward: number; bonusReward: number; actualReward: number; percentage: number; status: string; cargoType: string }[];
-                ratMinigameSummary?: {
-                    triggered: boolean;
-                    result?: "SUCCESS" | "FAILED";
-                    penaltyAmount?: number;
-                };
                 customsSummary?: {
                     outcome: "CLEARED" | "HIDDEN" | "COOPERATED" | "BRIBE_SUCCESS" | "BRIBE_FAILED";
                     finePaid: number;
@@ -444,7 +395,6 @@ export default function GameScreen() {
                             }
                             : undefined,
                         cargoRewards: data.cargoRewards,
-                        ratMinigameSummary: data.ratMinigameSummary,
                         customsSummary: data.customsSummary ?? undefined,
                         regressSummary: data.regressSummary ?? undefined,
                         ratMinigameSummary: data.ratMinigameSummary,
@@ -916,96 +866,6 @@ export default function GameScreen() {
         });
     }, []);
 
-    const submitRatResult = useCallback(async (payload: {
-        eventId: string;
-        travelId: string;
-        result: "SUCCESS" | "FAILED";
-        hits: number;
-        requiredHits: number;
-        remainingSeconds: number;
-        timeLimitSeconds: number;
-    }) => {
-        const token = localStorage.getItem("auth_token") ?? "";
-        try {
-            await fetch(`/api/minigames/rats/result?playerId=${playerId}&sessionId=${sessionId}`, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    eventId: payload.eventId,
-                    travelId: payload.travelId,
-                    result: payload.result,
-                    hits: payload.hits,
-                    requiredHits: payload.requiredHits,
-                    remainingSeconds: payload.remainingSeconds,
-                    timeLimitSeconds: payload.timeLimitSeconds,
-                }),
-            });
-        } catch {
-        }
-    }, [playerId, sessionId]);
-
-    const handleRatEventAccept = useCallback(() => {
-        if (!ratEventOffer) return;
-        setActiveRatMinigame(ratEventOffer);
-        setRatEventOffer(null);
-    }, [ratEventOffer]);
-
-    const handleRatEventDecline = useCallback(async () => {
-        if (!ratEventOffer) return;
-
-        await submitRatResult({
-            eventId: ratEventOffer.eventId,
-            travelId: ratEventOffer.travelId,
-            result: "FAILED",
-            hits: 0,
-            requiredHits: ratEventOffer.requiredHits,
-            remainingSeconds: 0,
-            timeLimitSeconds: ratEventOffer.timeLimitSeconds,
-        });
-
-        window.__activeRatEventId = undefined;
-        setRatEventOffer(null);
-        const id = `rat-result-${Date.now()}`;
-        setRatResultToasts(prev => [...prev, {
-            id,
-            success: false,
-            message: "Ratten-Event nicht bestanden",
-        }]);
-        setTimeout(() => {
-            setRatResultToasts(prev => prev.filter(toast => toast.id !== id));
-        }, 2600);
-    }, [ratEventOffer, submitRatResult]);
-
-    const handleRatMinigameFinished = useCallback(async (result: RatMinigameResult) => {
-        if (!activeRatMinigame) return;
-
-        await submitRatResult({
-            eventId: activeRatMinigame.eventId,
-            travelId: activeRatMinigame.travelId,
-            result: result.result,
-            hits: result.hits,
-            requiredHits: result.requiredHits,
-            remainingSeconds: result.remainingSeconds,
-            timeLimitSeconds: result.timeLimitSeconds,
-        });
-
-        window.__activeRatEventId = undefined;
-        setActiveRatMinigame(null);
-        const id = `rat-result-${Date.now()}`;
-        const success = result.result === "SUCCESS";
-        setRatResultToasts(prev => [...prev, {
-            id,
-            success,
-            message: success ? "Ratten-Event erfolgreich" : "Ratten-Event nicht bestanden",
-        }]);
-        setTimeout(() => {
-            setRatResultToasts(prev => prev.filter(toast => toast.id !== id));
-        }, 2600);
-    }, [activeRatMinigame, submitRatResult]);
-
     useEffect(() => {
         const hasPendingLoading = assignedCargos.some(
             e => e.phase === "loading" && !e.loadingDone
@@ -1146,30 +1006,6 @@ export default function GameScreen() {
                 />
             ))}
 
-            {ratResultToasts.map((toast, index) => (
-                <div
-                    key={toast.id}
-                    style={{
-                        position: "fixed",
-                        right: 20,
-                        bottom: 110 + index * 74,
-                        zIndex: 1002,
-                        minWidth: 280,
-                        maxWidth: 380,
-                        background: toast.success ? "#e7f6ea" : "#ffe7e7",
-                        border: `3px solid ${toast.success ? "#2f7a45" : "#a23f3f"}`,
-                        borderRadius: 8,
-                        boxShadow: "0 6px 14px rgba(0,0,0,0.25)",
-                        padding: "10px 12px",
-                        color: toast.success ? "#1f5e35" : "#7d2a2a",
-                        fontWeight: 700,
-                    }}
-                >
-                    {toast.success ? "✅ " : "⚠️ "}
-                    {toast.message}
-                </div>
-            ))}
-
             {customsToasts.map((toast, index) => (
                 <CustomsResultToast
                     key={toast.id}
@@ -1228,37 +1064,6 @@ export default function GameScreen() {
                 <GameOverScreen
                     sessionId={sessionId}
                     currentUserId={playerId}
-                />
-            )}
-
-            {strikeNotice && (
-                <div className="pilot-strike-banner">
-                    {strikeNotice}
-                    <button
-                        type="button"
-                        onClick={() => setStrikeNotice(null)}
-                        style={{
-                            marginLeft: 12,
-                            background: "transparent",
-                            border: "none",
-                            color: "#fadbd8",
-                            cursor: "pointer",
-                            fontSize: 16,
-                        }}
-                        aria-label="Schließen"
-                    >
-                        ×
-                    </button>
-                </div>
-            )}
-
-            {showArrivalDocking && (
-                <DockingMiniGame
-                    mode="arrival"
-                    shipIconUrl={showArrivalDocking.shipIconUrl ?? "/fallback-ship.png"}
-                    portName={showArrivalDocking.to}
-                    onSuccess={handleArrivalDockingSuccess}
-                    onFailure={handleArrivalDockingFailure}
                 />
             )}
 
@@ -1330,29 +1135,6 @@ export default function GameScreen() {
                 />
             )}
 
-            {ratEventOffer && (
-                <EventNotificationDialog
-                    title="Event: Rattenbefall"
-                    successText="Wenn du das Event schaffst, werden die Ratten abgewehrt und die Fracht bleibt unbeschädigt."
-                    failText="Wenn du das Event nicht schaffst oder ablehnst, wird das Minispiel als nicht bestanden gewertet und ein Teil der Fracht geht verloren."
-                    imageSrc={ratImage}
-                    imageAlt="Ratte"
-                    onAccept={handleRatEventAccept}
-                    onDecline={handleRatEventDecline}
-                />
-            )}
-
-            {activeRatMinigame && (
-                <RatMinigameOverlay
-                    config={{
-                        eventId: activeRatMinigame.eventId,
-                        travelId: activeRatMinigame.travelId,
-                        timeLimitSeconds: activeRatMinigame.timeLimitSeconds,
-                        requiredHits: activeRatMinigame.requiredHits,
-                    }}
-                    onFinished={handleRatMinigameFinished}
-                />
-            )}
         </div>
     );
 }

@@ -6,6 +6,7 @@ import at.fhv.backend.application.services.impl.travel.PendingTravelStartService
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.PendingTravelStartService;
+import at.fhv.backend.application.services.travel.RegressService;
 import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.rest.CargoWebSocketController;
 import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
@@ -175,6 +176,7 @@ class TravelServiceImplTest {
         @Mock private DockingPenaltyService dockingPenaltyService;
         @Mock private PilotStrikeService pilotStrikeService;
         @Mock private PendingTravelStartServiceImpl pendingTravelStartService;
+        @Mock private RegressService regressService;
 
 
         private StartTravelServiceImpl service;
@@ -188,8 +190,8 @@ class TravelServiceImplTest {
                     gameSessionRepository, gameTickScheduler,
                     sessionCargoRepository, cargoWebSocketController,
                     portDistanceForCargoService, sessionPlayerRepository, smuggleService,
-                    dockingPenaltyService, pilotStrikeService
-                    portDistanceForCargoService, sessionPlayerRepository, smuggleService, pendingTravelStartService
+                    dockingPenaltyService, pilotStrikeService,
+                    pendingTravelStartService, regressService
             );
         }
 

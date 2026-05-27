@@ -3,12 +3,9 @@ package at.fhv.backend.application.services.impl.session;
 import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.application.services.cargo.CustomsService;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
-import at.fhv.backend.application.services.pilotstrike.PilotStrikeService;
-import at.fhv.backend.application.services.port.PortQueryService;
-import at.fhv.backend.application.services.travel.TravelPauseService;
-import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.minigame.StormMinigameService;
 import at.fhv.backend.application.services.pilotstrike.PilotStrikeService;
+import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.CustomsCheckCompletionService;
 import at.fhv.backend.application.services.travel.TravelArrivalService;
@@ -69,8 +66,6 @@ public class GameTickScheduler {
     private final TravelPauseService travelPauseService;
     private final RatMinigameService ratMinigameService;
     private final StormMinigameService stormMinigameService;
-    private final PilotStrikeService pilotStrikeService;
-    private final RatMinigameService ratMinigameService;
     private final CustomsService customsService;
     private final UnloadingStartService unloadingStartService;
     private final CustomsCheckCompletionService customsCheckCompletionService;
@@ -96,15 +91,12 @@ public class GameTickScheduler {
                              CargoUnloadingPhaseService cargoUnloadingPhaseService,
                              CargoSessionInitializer cargoSessionInitializer,
                              TravelPauseService travelPauseService,
-                             PilotStrikeService pilotStrikeService,
                              RatMinigameService ratMinigameService,
+                             StormMinigameService stormMinigameService,
+                             PilotStrikeService pilotStrikeService,
                              CustomsService customsService,
                              UnloadingStartService unloadingStartService,
                              CustomsCheckCompletionService customsCheckCompletionService) {
-                             TravelPauseService travelPauseService,
-                             RatMinigameService ratMinigameService,
-                             StormMinigameService stormMinigameService,
-                             PilotStrikeService pilotStrikeService) {
         this.gameSessionRepository = gameSessionRepository;
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
@@ -117,14 +109,12 @@ public class GameTickScheduler {
         this.cargoUnloadingPhaseService = cargoUnloadingPhaseService;
         this.cargoSessionInitializer = cargoSessionInitializer;
         this.travelPauseService = travelPauseService;
-        this.pilotStrikeService = pilotStrikeService;
-        this.ratMinigameService = ratMinigameService;
-        this.customsService = customsService;
-        this.unloadingStartService = unloadingStartService;
-        this.customsCheckCompletionService = customsCheckCompletionService;
         this.ratMinigameService = ratMinigameService;
         this.stormMinigameService = stormMinigameService;
         this.pilotStrikeService = pilotStrikeService;
+        this.customsService = customsService;
+        this.unloadingStartService = unloadingStartService;
+        this.customsCheckCompletionService = customsCheckCompletionService;
     }
 
     public void startForSession(UUID sessionId, int tickRateSeconds) {
@@ -375,8 +365,6 @@ public class GameTickScheduler {
                 if (travelPauseService.isTravelPaused(travel.getTravelId())) {
                     continue;
                 }
-                ratMinigameService.tryTriggerForTravel(travel, sessionId);
-
                 ratMinigameService.tryTriggerForTravel(travel, sessionId);
 
                 if (travelPauseService.isTravelPaused(travel.getTravelId())) {

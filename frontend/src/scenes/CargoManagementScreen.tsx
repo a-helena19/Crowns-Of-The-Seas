@@ -339,6 +339,7 @@ export default function CargoManagementScreen({
                                 en_route: entry.paused
                                     ? "Reise unterbrochen"
                                     : `Unterwegs — noch ${Math.max(0, (entry.arrivalTick ?? 0) - (entry.currentTick ?? 0))} Tage`,
+                                awaiting_docking: "Wartet auf Anlegemanöver",
                                 customs_check: "Zoll wird überprüft …",
                                 blocked: `Festgehalten — noch ${Math.max(0, (entry.customsBlockedUntilTick ?? 0) - (entry.currentTick ?? 0))} Tage`,
                                 unloading: "Wird entladen …",

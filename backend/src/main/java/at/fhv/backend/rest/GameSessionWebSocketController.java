@@ -68,16 +68,7 @@ public class GameSessionWebSocketController {
         messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/storm-event", event);
     }
 
-    public void broadcastPilotStrike(String sessionId, PilotStrikeEvent event) {
-        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/pilot-strike", event);
-    }
-}
-
     public void broadcastCustomsInspectionResolved(String sessionId, CustomsInspectionPassEvent event) {
         messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/customs-resolved", event);
-    }
-
-    public void broadcastRatMinigameEvent(String sessionId, RatMinigameEvent event) {
-        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/rats-event", event);
     }
 }

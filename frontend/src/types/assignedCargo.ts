@@ -71,11 +71,6 @@ export interface AssignedCargoEntry {
         cargoLossPercent?: number;
         conditionDamagePercent?: number;
     };
-    ratMinigameSummary?: {
-        triggered: boolean;
-        result?: "SUCCESS" | "FAILED";
-        penaltyAmount?: number;
-    };
     customsSummary?: CustomsSummary;
     regressSummary?: RegressSummary;
     unloadingCompletedAtTick?: number;
