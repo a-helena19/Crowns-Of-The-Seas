@@ -42,6 +42,7 @@ export default class Ship {
         totalMs: number,
         alignStart: boolean = false,
         startDelayMs: number = 0,
+        continueFromCurrentPosition: boolean = false,
     ) {
         if (polyline.length < 2) return;
 
@@ -49,23 +50,7 @@ export default class Ship {
         const safeElapsedMs = Math.max(0, Math.min(safeTotalMs, elapsedMs));
         const safeStartDelayMs = Math.max(0, startDelayMs);
 
-        const segments: Segment[] = [];
-        let cumulative = 0;
-        for (let i = 0; i < polyline.length - 1; i++) {
-            const a = polyline[i];
-            const b = polyline[i + 1];
-            const length = Math.hypot(b.x - a.x, b.y - a.y);
-            cumulative += length;
-            segments.push({
-                startX: a.x,
-                startY: a.y,
-                endX: b.x,
-                endY: b.y,
-                length,
-                cumulativeEnd: cumulative,
-            });
-        }
-        const totalLength = cumulative;
+        const { routeSegments: segments, totalLength } = this.buildSegments(polyline);
         if (totalLength <= 0) {
             this.teleport(polyline[polyline.length - 1].x, polyline[polyline.length - 1].y);
             return;
@@ -75,15 +60,24 @@ export default class Ship {
         this.routeSegments = segments;
         this.routeTotalLength = totalLength;
         this.routeTotalMs = safeTotalMs;
-        this.routeStartAtMs = performance.now() + safeStartDelayMs - safeElapsedMs;
+
+        let effectiveElapsedMs = safeElapsedMs;
+        if (continueFromCurrentPosition) {
+            const projectedDistance = this.projectDistanceOnRoute(this.sprite.x, this.sprite.y);
+            const projectedElapsedMs = (projectedDistance / totalLength) * safeTotalMs;
+            // Prevent forward jump after a pause by continuing from the visible ship position.
+            effectiveElapsedMs = Math.min(safeElapsedMs, Math.max(0, Math.min(safeTotalMs, projectedElapsedMs)));
+        }
+
+        this.routeStartAtMs = performance.now() + safeStartDelayMs - effectiveElapsedMs;
 
         this.velX = 0;
         this.velY = 0;
         this.moving = false;
         this.timeLeft = 0;
 
-        if (alignStart) {
-            const progress = safeElapsedMs / safeTotalMs;
+        if (alignStart && !continueFromCurrentPosition) {
+            const progress = effectiveElapsedMs / safeTotalMs;
             const pos = this.positionAtProgress(progress);
             this.sprite.setPosition(pos.x, pos.y);
             this.updateFacing(pos.x);
@@ -118,6 +112,35 @@ export default class Ship {
         } else {
             this.teleport(x, y);
         }
+    }
+
+    finishRouteFromCurrentPosition(polyline: Point[], remainingMs: number) {
+        if (polyline.length < 2) return;
+
+        const { routeSegments, totalLength } = this.buildSegments(polyline);
+        if (totalLength <= 0) {
+            this.teleport(polyline[polyline.length - 1].x, polyline[polyline.length - 1].y);
+            return;
+        }
+
+        this.routeActive = true;
+        this.routeSegments = routeSegments;
+        this.routeTotalLength = totalLength;
+
+        const projectedDistance = this.projectDistanceOnRoute(this.sprite.x, this.sprite.y);
+        const progress = Math.max(0, Math.min(0.995, projectedDistance / totalLength));
+        const safeRemainingMs = Math.max(Ship.MIN_MOVE_DURATION_MS, remainingMs);
+        this.routeTotalMs = safeRemainingMs / Math.max(0.005, 1 - progress);
+        this.routeStartAtMs = performance.now() - (progress * this.routeTotalMs);
+
+        this.velX = 0;
+        this.velY = 0;
+        this.moving = false;
+        this.timeLeft = 0;
+    }
+
+    isMoving() {
+        return this.routeActive || this.moving;
     }
 
     update(delta: number) {
@@ -205,6 +228,59 @@ export default class Ship {
         }
         const last = this.routeSegments[this.routeSegments.length - 1];
         return { x: last.endX, y: last.endY };
+    }
+
+    private buildSegments(polyline: Point[]) {
+        const routeSegments: Segment[] = [];
+        let cumulative = 0;
+        for (let i = 0; i < polyline.length - 1; i++) {
+            const a = polyline[i];
+            const b = polyline[i + 1];
+            const length = Math.hypot(b.x - a.x, b.y - a.y);
+            cumulative += length;
+            routeSegments.push({
+                startX: a.x,
+                startY: a.y,
+                endX: b.x,
+                endY: b.y,
+                length,
+                cumulativeEnd: cumulative,
+            });
+        }
+        return { routeSegments, totalLength: cumulative };
+    }
+
+    private projectDistanceOnRoute(px: number, py: number): number {
+        if (this.routeSegments.length === 0 || this.routeTotalLength <= 0) return 0;
+        let bestDistanceSq = Number.POSITIVE_INFINITY;
+        let bestProjected = 0;
+        let cumulativeBefore = 0;
+
+        for (const seg of this.routeSegments) {
+            const vx = seg.endX - seg.startX;
+            const vy = seg.endY - seg.startY;
+            const lenSq = vx * vx + vy * vy;
+            let t = 0;
+            if (lenSq > 1e-9) {
+                t = ((px - seg.startX) * vx + (py - seg.startY) * vy) / lenSq;
+                t = Math.max(0, Math.min(1, t));
+            }
+
+            const projX = seg.startX + vx * t;
+            const projY = seg.startY + vy * t;
+            const dx = px - projX;
+            const dy = py - projY;
+            const distanceSq = dx * dx + dy * dy;
+
+            if (distanceSq < bestDistanceSq) {
+                bestDistanceSq = distanceSq;
+                bestProjected = cumulativeBefore + seg.length * t;
+            }
+
+            cumulativeBefore = seg.cumulativeEnd;
+        }
+
+        return Math.max(0, Math.min(this.routeTotalLength, bestProjected));
     }
 
     private updateFacing(targetX: number) {

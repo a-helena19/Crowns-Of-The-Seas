@@ -335,6 +335,11 @@ public class Travel {
     public int getArrivalTick() { return arrivalTick; }
     public double getLoadingDurationSeconds() { return loadingDurationSeconds; }
 
+    public void shiftScheduleForPause(int pausedTicks) {
+        this.startTick = this.startTick + pausedTicks;
+        this.arrivalTick = this.arrivalTick + pausedTicks;
+    }
+
     public BigDecimal getDockingFine() {
         return dockingFine != null ? dockingFine : BigDecimal.ZERO;
     }

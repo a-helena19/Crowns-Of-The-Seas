@@ -64,6 +64,13 @@ export interface AssignedCargoEntry {
         result?: "SUCCESS" | "FAILED";
         penaltyAmount?: number;
     };
+    stormMinigameSummary?: {
+        triggered: boolean;
+        result?: "SUCCESS" | "FAILED";
+        penaltyAmount?: number;
+        cargoLossPercent?: number;
+        conditionDamagePercent?: number;
+    };
     customsSummary?: CustomsSummary;
     regressSummary?: RegressSummary;
     unloadingCompletedAtTick?: number;

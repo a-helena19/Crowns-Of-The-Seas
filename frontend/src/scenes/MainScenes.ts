@@ -1,5 +1,10 @@
 import Phaser from 'phaser';
 import Ship from '../game/Ship';
+import {
+    minigameSessionManager,
+    type ActiveMinigameSession,
+    type ShipMinigameBlockChangedEvent,
+} from '../minigame/MinigameSessionManager';
 
 interface PortData {
     id: string;
@@ -38,9 +43,13 @@ interface ShipEntry {
     lastStartTick: number | null;
     lastShipData: ShipPositionData;
     lastPaused: boolean;
+    needsResumeFromPause: boolean;
+    minigameSession?: ActiveMinigameSession;
 }
 
 export default class MainScene extends Phaser.Scene {
+    private static readonly ARRIVAL_CATCHUP_MIN_MS = 180;
+    private static readonly ARRIVAL_CATCHUP_MAX_MS = 900;
     private ship!: Phaser.GameObjects.Sprite;
     private shipController!: Ship;
 
@@ -63,6 +72,8 @@ export default class MainScene extends Phaser.Scene {
     private onBlinkPortPin!: (e: Event) => void;
     private lastSceneWidth: number = 0;
     private lastSceneHeight: number = 0;
+    private blockedShipsByMinigame: Map<string, ActiveMinigameSession> = new Map();
+    private unsubscribeMinigameEvents: (() => void) | null = null;
 
     constructor() {
         super({ key: 'MainScene' });
@@ -139,6 +150,11 @@ export default class MainScene extends Phaser.Scene {
             }
         };
         window.addEventListener('blink-port-pin', this.onBlinkPortPin);
+
+        this.blockedShipsByMinigame = minigameSessionManager.getAllBlockedShips();
+        this.unsubscribeMinigameEvents = minigameSessionManager.subscribe((event) => {
+            this.onMinigameBlockChanged(event);
+        });
 
         const latestPorts = window.__latestPorts;
         if (latestPorts && this.harborSprites.length === 0) {
@@ -335,18 +351,23 @@ export default class MainScene extends Phaser.Scene {
 
             if (this.shipSprites.has(shipData.playerShipId)) {
                 const entry = this.shipSprites.get(shipData.playerShipId)!;
-                if (this.isSameSnapshot(entry.lastShipData, shipData)) {
+                const minigameSession = this.blockedShipsByMinigame.get(shipData.playerShipId);
+                const isPaused = shipData.paused === true || !!minigameSession;
+
+                if (this.isSameSnapshot(entry.lastShipData, shipData) && entry.lastPaused === isPaused) {
                     continue;
                 }
 
                 if (shipData.status === 'EN_ROUTE') {
-                    const isPaused = shipData.paused === true;
                     const wasPaused = entry.lastPaused;
+                    entry.minigameSession = minigameSession;
+                    this.updateShipTooltipText(entry);
 
                     if (isPaused && !wasPaused) {
                         // Ship just became paused — freeze at current position
                         entry.controller.teleport(entry.sprite.x, entry.sprite.y);
                         entry.lastPaused = true;
+                        entry.needsResumeFromPause = true;
                     } else if (!isPaused && wasPaused) {
                         // Ship just resumed — restart route with new timing
                         if (hasRouteData) {
@@ -361,12 +382,15 @@ export default class MainScene extends Phaser.Scene {
                                 routeTiming.totalMs,
                                 true,
                                 routeTiming.startDelayMs,
+                                true,
                             );
                             entry.lastStartTick = shipData.startTick;
                         } else {
                             entry.controller.moveTo(px, py, tickRateMs);
+                            entry.lastStartTick = null;
                         }
                         entry.lastPaused = false;
+                        entry.needsResumeFromPause = false;
                     } else if (isPaused) {
                         // Still paused — do nothing, keep ship frozen
                     } else {
@@ -375,7 +399,7 @@ export default class MainScene extends Phaser.Scene {
                             && shipData.startTick != null
                             && entry.lastStartTick === shipData.startTick;
 
-                        if (hasRouteData && !isSameTravel) {
+                        if (hasRouteData && (!isSameTravel || entry.needsResumeFromPause)) {
                             const routeTiming = this.getRouteTiming(shipData, currentTick, tickRateMs);
                             const polyline = this.buildShipPolyline(
                                 shipData.originX, shipData.originY,
@@ -387,28 +411,63 @@ export default class MainScene extends Phaser.Scene {
                                 routeTiming.totalMs,
                                 true,
                                 routeTiming.startDelayMs,
+                                entry.needsResumeFromPause,
                             );
                             entry.lastStartTick = shipData.startTick;
+                            entry.needsResumeFromPause = false;
                         } else if (!hasRouteData) {
                             entry.controller.moveTo(px, py, tickRateMs);
                             entry.lastStartTick = null;
+                            entry.needsResumeFromPause = false;
                         }
+                        entry.lastPaused = false;
                     }
                     entry.lastStatus = 'EN_ROUTE';
                 } else {
                     if (entry.lastStatus === 'EN_ROUTE') {
-                        const distance = Math.hypot(px - entry.sprite.x, py - entry.sprite.y);
-                        const currentSpeed = entry.controller.getSpeedPxPerMs();
-                        if (currentSpeed > 1e-6 && distance > 0.5) {
-                            entry.controller.moveTo(px, py, distance / currentSpeed);
+                        const lastRoute = entry.lastShipData;
+                        const canFinishOnRoute = this.hasRouteData(lastRoute);
+                        if (canFinishOnRoute) {
+                            const routePolyline = this.buildShipPolyline(
+                                lastRoute.originX, lastRoute.originY,
+                                lastRoute.destX, lastRoute.destY,
+                            );
+                            const distance = Math.hypot(px - entry.sprite.x, py - entry.sprite.y);
+                            const currentSpeed = entry.controller.getSpeedPxPerMs();
+                            const naturalDuration = currentSpeed > 1e-6
+                                ? distance / currentSpeed
+                                : tickRateMs * 0.35;
+                            const catchupDuration = Math.max(
+                                MainScene.ARRIVAL_CATCHUP_MIN_MS,
+                                Math.min(MainScene.ARRIVAL_CATCHUP_MAX_MS, naturalDuration),
+                            );
+                            // Backend may already be at port; visibly catch up along the route, not as a straight pull.
+                            entry.controller.finishRouteFromCurrentPosition(routePolyline, catchupDuration);
                         } else {
-                            entry.controller.teleport(px, py);
+                            const distance = Math.hypot(px - entry.sprite.x, py - entry.sprite.y);
+                            const currentSpeed = entry.controller.getSpeedPxPerMs();
+                            if (distance > 0.5) {
+                                const naturalDuration = currentSpeed > 1e-6
+                                    ? distance / currentSpeed
+                                    : this.resolveTickRateMs() * 0.35;
+                                const catchupDuration = Math.max(
+                                    MainScene.ARRIVAL_CATCHUP_MIN_MS,
+                                    Math.min(MainScene.ARRIVAL_CATCHUP_MAX_MS, naturalDuration)
+                                );
+                                entry.controller.moveTo(px, py, catchupDuration);
+                            } else {
+                                entry.controller.teleport(px, py);
+                            }
                         }
                     } else {
                         entry.controller.teleport(px, py);
                     }
                     entry.lastStatus = 'AT_PORT';
                     entry.lastStartTick = null;
+                    entry.lastPaused = false;
+                    entry.needsResumeFromPause = false;
+                    entry.minigameSession = minigameSession;
+                    this.updateShipTooltipText(entry);
                 }
                 entry.lastShipData = shipData;
             } else {
@@ -459,7 +518,8 @@ export default class MainScene extends Phaser.Scene {
 
         const controller = new Ship(this, sprite);
         let lastStartTick: number | null = null;
-        const isPaused = shipData.paused === true;
+        const minigameSession = this.blockedShipsByMinigame.get(shipData.playerShipId);
+        const isPaused = shipData.paused === true || !!minigameSession;
 
         if (status === 'EN_ROUTE' && !isPaused && this.hasRouteData(shipData)) {
             const routeTiming = this.getRouteTiming(shipData, currentTick, tickRateMs);
@@ -481,7 +541,10 @@ export default class MainScene extends Phaser.Scene {
             sprite, controller, tooltip: shipTooltip,
             lastStatus: status, lastStartTick, lastShipData: shipData,
             lastPaused: isPaused,
+            needsResumeFromPause: isPaused,
+            minigameSession,
         });
+        this.updateShipTooltipText(this.shipSprites.get(id)!);
 
         if (initialTexture === 'ship' && textureKey !== 'ship') {
             this.load.image(textureKey, textureKey);
@@ -618,6 +681,81 @@ export default class MainScene extends Phaser.Scene {
             && (a.paused ?? false) === (b.paused ?? false);
     }
 
+    private onMinigameBlockChanged(event: ShipMinigameBlockChangedEvent) {
+        if (event.blocked && event.session) {
+            this.blockedShipsByMinigame.set(event.shipId, event.session);
+        } else {
+            this.blockedShipsByMinigame.delete(event.shipId);
+        }
+
+        const entry = this.shipSprites.get(event.shipId);
+        if (!entry) return;
+
+        entry.minigameSession = event.blocked ? event.session : undefined;
+        this.updateShipTooltipText(entry);
+
+        if (event.blocked) {
+            entry.controller.teleport(entry.sprite.x, entry.sprite.y);
+            entry.lastPaused = true;
+            entry.needsResumeFromPause = true;
+            return;
+        }
+
+        entry.lastPaused = true;
+        entry.needsResumeFromPause = true;
+
+        const latest = (window.__latestShips ?? []).find(s => s.playerShipId === event.shipId);
+        if (latest?.paused === false) {
+            this.resumeShipFromLatestData(entry, event.shipId);
+        }
+    }
+
+    private resumeShipFromLatestData(entry: ShipEntry, shipId: string) {
+        const latest = (window.__latestShips ?? []).find(s => s.playerShipId === shipId) ?? entry.lastShipData;
+        const currentTick = window.__latestShipPositionsTick ?? window.__latestTick?.currentTick ?? 0;
+        const tickRateMs = this.resolveTickRateMs();
+        const px = (latest.x / 100) * this.scale.width;
+        const py = (latest.y / 100) * this.scale.height;
+
+        if (latest.status === 'EN_ROUTE' && this.hasRouteData(latest)) {
+            const routeTiming = this.getRouteTiming(latest, currentTick, tickRateMs);
+            const polyline = this.buildShipPolyline(
+                latest.originX, latest.originY,
+                latest.destX, latest.destY,
+            );
+            entry.controller.setRoute(
+                polyline,
+                routeTiming.elapsedMs,
+                routeTiming.totalMs,
+                true,
+                routeTiming.startDelayMs,
+                true,
+            );
+            entry.lastStatus = 'EN_ROUTE';
+            entry.lastStartTick = latest.startTick;
+        } else if (latest.status === 'EN_ROUTE') {
+            entry.controller.moveTo(px, py, tickRateMs);
+            entry.lastStatus = 'EN_ROUTE';
+            entry.lastStartTick = null;
+        } else {
+            entry.controller.teleport(px, py);
+            entry.lastStatus = 'AT_PORT';
+            entry.lastStartTick = null;
+        }
+
+        entry.lastPaused = false;
+        entry.needsResumeFromPause = false;
+        entry.lastShipData = latest;
+        this.updateShipTooltipText(entry);
+    }
+
+    private updateShipTooltipText(entry: ShipEntry) {
+        const playerName = entry.lastShipData.playerName;
+        const hasMinigame = !!entry.minigameSession;
+        const suffix = hasMinigame ? " (Minigame aktiv)" : "";
+        entry.tooltip.setText(`${playerName}${suffix}`);
+    }
+
     private renderHarbors(ports: PortData[]) {
         const LABEL_OFFSETS: Record<string, { dx: number; dy: number }> = {};
 
@@ -669,6 +807,8 @@ export default class MainScene extends Phaser.Scene {
         window.removeEventListener('backend-ports', this.onPorts);
         window.removeEventListener('backend-ship-positions', this.onShipPositions);
         window.removeEventListener('blink-port-pin', this.onBlinkPortPin);
+        this.unsubscribeMinigameEvents?.();
+        this.unsubscribeMinigameEvents = null;
         this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this);
     }
 }
