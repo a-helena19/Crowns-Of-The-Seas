@@ -13,6 +13,7 @@ public class TravelCompleteEvent {
     private BigDecimal previousBalance;
     private BigDecimal newBalance;
     private RatMinigameTravelSummary ratMinigameSummary;
+    private StormMinigameTravelSummary stormMinigameSummary;
     private BigDecimal departureDockingFine;
     private BigDecimal dockingFine;
     private BigDecimal pilotageRefund;
@@ -23,7 +24,8 @@ public class TravelCompleteEvent {
                                BigDecimal previousBalance, BigDecimal newBalance,
                                BigDecimal departureDockingFine, BigDecimal dockingFine,
                                BigDecimal pilotageRefund,
-                               RatMinigameTravelSummary ratMinigameSummary) {
+                               RatMinigameTravelSummary ratMinigameSummary,
+                               StormMinigameTravelSummary stormMinigameSummary) {
         this.travelId = travelId;
         this.playerId = playerId;
         this.cargoRewards = cargoRewards;
@@ -33,6 +35,7 @@ public class TravelCompleteEvent {
         this.previousBalance = previousBalance;
         this.newBalance = newBalance;
         this.ratMinigameSummary = ratMinigameSummary;
+        this.stormMinigameSummary = stormMinigameSummary;
         this.departureDockingFine = departureDockingFine != null ? departureDockingFine : BigDecimal.ZERO;
         this.dockingFine = dockingFine != null ? dockingFine : BigDecimal.ZERO;
         this.pilotageRefund = pilotageRefund != null ? pilotageRefund : BigDecimal.ZERO;
@@ -72,6 +75,10 @@ public class TravelCompleteEvent {
 
     public RatMinigameTravelSummary getRatMinigameSummary() {
         return ratMinigameSummary;
+    }
+
+    public StormMinigameTravelSummary getStormMinigameSummary() {
+        return stormMinigameSummary;
     }
 
     public BigDecimal getDepartureDockingFine() {

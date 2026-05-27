@@ -80,6 +80,18 @@ interface TravelCompleteEvent {
     dockingFine?: number;
     departureDockingFine?: number;
     pilotageRefund?: number;
+    ratMinigameSummary?: {
+        triggered: boolean;
+        result?: "SUCCESS" | "FAILED";
+        penaltyAmount?: number;
+    };
+    stormMinigameSummary?: {
+        triggered: boolean;
+        result?: "SUCCESS" | "FAILED";
+        penaltyAmount?: number;
+        cargoLossPercent?: number;
+        conditionDamagePercent?: number;
+    };
 }
 
 interface RatMinigameEvent {
@@ -91,6 +103,18 @@ interface RatMinigameEvent {
     playerShipId: string;
     timeLimitSeconds: number;
     requiredHits: number;
+}
+
+interface StormMinigameEvent {
+    eventId: string;
+    eventType: "STORM";
+    playerId: string;
+    sessionId: string;
+    travelId: string;
+    playerShipId: string;
+    timeLimitSeconds: number;
+    requiredSuns: number;
+    startHealth: number;
 }
 
 interface UseGameSessionWebSocketProps {
@@ -243,6 +267,15 @@ export function useGameSessionWebSocket({
                                 window.dispatchEvent(new CustomEvent('rats-event', { detail: event }));
                             } catch (error) {
                                 console.error('Error parsing rats-event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/storm-event`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body) as StormMinigameEvent;
+                                window.dispatchEvent(new CustomEvent('storm-event', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing storm-event:', error);
                             }
                         });
 

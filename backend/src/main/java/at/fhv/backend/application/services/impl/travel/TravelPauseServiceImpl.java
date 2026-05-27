@@ -66,10 +66,10 @@ public class TravelPauseServiceImpl implements TravelPauseService {
         if (ticksPaused > 0) {
             Travel travel = travelRepository.findById(travelId).orElse(null);
             if (travel != null) {
-                travel.shiftArrivalTick(ticksPaused);
+                travel.shiftScheduleForPause(ticksPaused);
                 travelRepository.save(travel);
                 System.out.println("[TravelPause] Travel " + travelId
-                        + " arrivalTick shifted by +" + ticksPaused + " ticks");
+                        + " schedule shifted by +" + ticksPaused + " ticks");
             }
         }
 
@@ -90,5 +90,10 @@ public class TravelPauseServiceImpl implements TravelPauseService {
     @Override
     public boolean isTravelPaused(UUID travelId) {
         return pausedTravelIds.contains(travelId);
+    }
+
+    @Override
+    public Integer getPausedAtTick(UUID travelId) {
+        return pausedAtTickMap.get(travelId);
     }
 }

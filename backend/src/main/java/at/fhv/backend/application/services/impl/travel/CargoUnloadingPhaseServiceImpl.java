@@ -2,6 +2,7 @@ package at.fhv.backend.application.services.impl.travel;
 
 import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
+import at.fhv.backend.application.services.minigame.StormMinigameService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.RewardCalculationService;
 import at.fhv.backend.domain.model.cargo.Cargo;
@@ -41,6 +42,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
     private final SmuggleService smuggleService;
     private final TravelRepository travelRepository;
     private final RatMinigameService ratMinigameService;
+    private final StormMinigameService stormMinigameService;
 
     public CargoUnloadingPhaseServiceImpl(
             SessionCargoRepository sessionCargoRepository,
@@ -52,7 +54,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             CargoRepository cargoRepository,
             SmuggleService smuggleService,
             TravelRepository travelRepository,
-            RatMinigameService ratMinigameService) {
+            RatMinigameService ratMinigameService,
+            StormMinigameService stormMinigameService) {
         this.sessionCargoRepository = sessionCargoRepository;
         this.playerShipRepository = playerShipRepository;
         this.gameSessionRepository = gameSessionRepository;
@@ -63,6 +66,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         this.smuggleService = smuggleService;
         this.travelRepository = travelRepository;
         this.ratMinigameService = ratMinigameService;
+        this.stormMinigameService = stormMinigameService;
     }
 
     @Override
@@ -90,6 +94,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
 
         BigDecimal grossReward = cargoReward.add(totalBonus).add(smuggleReward);
         BigDecimal modifiedGrossReward = ratMinigameService.applyRewardModifier(travel.getTravelId(), grossReward);
+        modifiedGrossReward = stormMinigameService.applyRewardModifier(travel.getTravelId(), modifiedGrossReward);
         BigDecimal arrivalFine = travel.getDockingFine();
         BigDecimal departureFine = travel.getDepartureDockingFine();
         BigDecimal pilotageRefund = travel.getPilotageRefund();
@@ -264,7 +269,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                     departureDockingFine,
                     dockingFine,
                     pilotageRefund,
-                    ratMinigameService.consumeTravelSummary(travel.getTravelId())
+                    ratMinigameService.consumeTravelSummary(travel.getTravelId()),
+                    stormMinigameService.consumeTravelSummary(travel.getTravelId())
             );
 
             webSocketController.broadcastTravelComplete(

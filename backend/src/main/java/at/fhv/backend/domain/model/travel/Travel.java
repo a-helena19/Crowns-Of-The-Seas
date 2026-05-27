@@ -23,7 +23,7 @@ public class Travel {
     private final Instant startedAt;
     private Instant arrivedAt;
     private double fuelConsumed;
-    private final int startTick;
+    private int startTick;
     private int arrivalTick;
     private double loadingDurationSeconds;
     /** Ankunfts-Strafe (Anlege-Minispiel fehlgeschlagen) */
@@ -256,6 +256,11 @@ public class Travel {
 
     public void shiftArrivalTick(int additionalTicks) {
         this.arrivalTick = this.arrivalTick + additionalTicks;
+    }
+
+    public void shiftScheduleForPause(int pausedTicks) {
+        this.startTick = this.startTick + pausedTicks;
+        this.arrivalTick = this.arrivalTick + pausedTicks;
     }
 
     public BigDecimal getDockingFine() {
