@@ -15,7 +15,7 @@ public class PilotStrikePortConfig {
             int cooldownTicks
     ) {}
 
-    private static final StrikeSettings SETTINGS = new StrikeSettings(0.05, 1, 5, 15, 3);
+    private static final StrikeSettings SETTINGS = new StrikeSettings(0.5, 1, 5, 15, 3);
 
     private static final Set<String> STRIKE_ELIGIBLE_PORT_NAMES = Set.of(
             "Hamburg",

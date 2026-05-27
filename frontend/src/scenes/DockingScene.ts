@@ -146,10 +146,11 @@ export default class DockingScene extends Phaser.Scene {
             : { ...this.cfg.arrivalSpawn };
 
         if (this.terrainMask) {
-            const snapped = this.terrainMask.findNearestWater(raw.x, raw.y);
+            const snapped = this.terrainMask.findNearestNavigable(raw.x, raw.y, this.shipRadiusNorm);
             if (snapped) return snapped;
         }
-        return raw;
+        // Fallback: arrivalSpawn is guaranteed to be in open water
+        return { ...this.cfg.arrivalSpawn };
     }
 
     private buildSuccessZone(W: number, H: number) {

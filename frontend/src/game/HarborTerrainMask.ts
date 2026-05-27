@@ -88,6 +88,33 @@ export class HarborTerrainMask {
         return null;
     }
 
+    /**
+     * Spiral search for the nearest position where the full ship circle fits in water.
+     * Unlike findNearestWater (single pixel), this checks isNavigable (9 points at radiusNorm).
+     * Needed for departure spawn so the ship doesn't immediately collide at the dock edge.
+     */
+    findNearestNavigable(
+        xNorm: number,
+        yNorm: number,
+        radiusNorm: number,
+        maxRadiusNorm = 0.20,
+    ): { x: number; y: number } | null {
+        if (this.isNavigable(xNorm, yNorm, radiusNorm)) return { x: xNorm, y: yNorm };
+
+        const steps = 24;
+        for (let ring = 1; ring <= 16; ring++) {
+            const r = (ring / 16) * maxRadiusNorm;
+            for (let s = 0; s < steps; s++) {
+                const angle = (s / steps) * Math.PI * 2;
+                const x = xNorm + Math.cos(angle) * r;
+                const y = yNorm + Math.sin(angle) * r;
+                if (x < 0.02 || x > 0.98 || y < 0.02 || y > 0.98) continue;
+                if (this.isNavigable(x, y, radiusNorm)) return { x, y };
+            }
+        }
+        return null;
+    }
+
     /** Debug overlay: downsampled green/red grid drawn onto a canvas. */
     buildDebugCanvas(downsample = 8): HTMLCanvasElement {
         const canvas = document.createElement('canvas');
