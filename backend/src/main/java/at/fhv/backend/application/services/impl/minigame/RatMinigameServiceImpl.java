@@ -44,6 +44,7 @@ public class RatMinigameServiceImpl implements RatMinigameService {
     @Override
     public void tryTriggerForTravel(Travel travel, UUID sessionId) {
         UUID travelId = travel.getTravelId();
+        if (travelPauseService.isTravelPaused(travelId)) return;
         if (triggeredTravelIds.contains(travelId)) return;
         if (pendingEvents.containsKey(travelId)) return;
         if (random.nextDouble() >= TRIGGER_CHANCE_PER_TICK) return;

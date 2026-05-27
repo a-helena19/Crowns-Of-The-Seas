@@ -20,10 +20,14 @@ import RatMinigameOverlay from "../minigame/rats/RatMinigameOverlay.tsx";
 import type { RatMinigameEventPayload, RatMinigameResult } from "../minigame/rats/RatMinigameTypes.ts";
 import StormMinigameOverlay from "../minigame/storm/StormMinigameOverlay.tsx";
 import type { StormMinigameEventPayload, StormMinigameResult } from "../minigame/storm/StormMinigameTypes.ts";
+import ObstacleMinigameOverlay from "../minigame/obstacle/ObstacleMinigameOverlay.tsx";
+import type { ObstacleMinigameEventPayload, ObstacleMinigameResult } from "../minigame/obstacle/ObstacleMinigameTypes.ts";
+import { ObstacleRouteViewResolver } from "../minigame/obstacle/ObstacleRouteViewResolver.ts";
 import { minigameSessionManager } from "../minigame/MinigameSessionManager.ts";
 import EventNotificationDialog from "../components/EventNotificationDialog.tsx";
 import ratImage from "../assets/Rat.png";
 import stormDialogImage from "../assets/minigame/storm/DialogPic.png";
+import obstacleDialogImage from "../assets/minigame/obstaclegame/wrack.png";
 import GameOverScreen from "../components/GameOverScreen";
 
 export const TOP_BAR_HEIGHT = '9vh';
@@ -85,6 +89,8 @@ export default function GameScreen() {
     const [activeRatMinigame, setActiveRatMinigame] = useState<RatMinigameEventPayload | null>(null);
     const [stormEventOffer, setStormEventOffer] = useState<StormMinigameEventPayload | null>(null);
     const [activeStormMinigame, setActiveStormMinigame] = useState<StormMinigameEventPayload | null>(null);
+    const [obstacleEventOffer, setObstacleEventOffer] = useState<ObstacleMinigameEventPayload | null>(null);
+    const [activeObstacleMinigame, setActiveObstacleMinigame] = useState<ObstacleMinigameEventPayload | null>(null);
 
     const pendingSmuggleRef = useRef<{
         offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
@@ -371,6 +377,15 @@ export default function GameScreen() {
                     cargoLossPercent?: number;
                     conditionDamagePercent?: number;
                 };
+                obstacleMinigameSummary?: {
+                    triggered: boolean;
+                    result?: "SUCCESS" | "FAILED";
+                    penaltyAmount?: number;
+                    cargoLossPercent?: number;
+                    conditionDamagePercent?: number;
+                    failureReason?: string;
+                    routeViewType?: "VIEW_A" | "VIEW_B";
+                };
             }>).detail;
             if (data.playerId !== playerId) return;
 
@@ -399,6 +414,7 @@ export default function GameScreen() {
                         regressSummary: data.regressSummary ?? undefined,
                         ratMinigameSummary: data.ratMinigameSummary,
                         stormMinigameSummary: data.stormMinigameSummary,
+                        obstacleMinigameSummary: data.obstacleMinigameSummary,
                     };
                 });
                 return updated;
@@ -510,6 +526,28 @@ export default function GameScreen() {
 
         window.addEventListener("storm-event", handler);
         return () => window.removeEventListener("storm-event", handler);
+    }, [playerId]);
+
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const data = (e as CustomEvent<ObstacleMinigameEventPayload>).detail;
+            if (data.playerId !== playerId) return;
+            if (window.__activeObstacleEventId === data.eventId) return;
+            window.__activeObstacleEventId = data.eventId;
+            const shipIconUrl = window.__latestShips?.find(s => s.playerShipId === data.playerShipId)?.iconUrl;
+            const routeViewType = ObstacleRouteViewResolver.resolve(data);
+            minigameSessionManager.startSession({
+                minigameType: data.eventType,
+                eventId: data.eventId,
+                playerId: data.playerId,
+                playerShipId: data.playerShipId,
+                travelId: data.travelId,
+            });
+            setObstacleEventOffer({ ...data, shipIconUrl, routeViewType });
+        };
+
+        window.addEventListener("obstacle-event", handler);
+        return () => window.removeEventListener("obstacle-event", handler);
     }, [playerId]);
 
     useEffect(() => {
@@ -824,6 +862,106 @@ export default function GameScreen() {
         setActiveStormMinigame(null);
     }, [activeStormMinigame, submitStormResult]);
 
+    const submitObstacleResult = useCallback(async (payload: {
+        eventId: string;
+        travelId: string;
+        result: "SUCCESS" | "FAILED";
+        remainingHealth: number;
+        timeLeftSeconds: number;
+        timeLimitSeconds: number;
+        failureReason?: string;
+        routeViewType: "VIEW_A" | "VIEW_B";
+    }) => {
+        const token = localStorage.getItem("auth_token") ?? "";
+        try {
+            const res = await fetch(`/api/minigames/obstacle/result?playerId=${playerId}&sessionId=${sessionId}`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) return null;
+            return await res.json();
+        } catch {
+            return null;
+        }
+    }, [playerId, sessionId]);
+
+    const handleObstacleEventAccept = useCallback(() => {
+        if (!obstacleEventOffer) return;
+        setActiveObstacleMinigame(obstacleEventOffer);
+        setObstacleEventOffer(null);
+    }, [obstacleEventOffer]);
+
+    const handleObstacleEventDecline = useCallback(async () => {
+        if (!obstacleEventOffer) return;
+        const survivedWithoutDamage = Math.random() < 0.5;
+        const result = survivedWithoutDamage ? "SUCCESS" : "FAILED";
+        const routeViewType = ObstacleRouteViewResolver.resolve(obstacleEventOffer);
+
+        await submitObstacleResult({
+            eventId: obstacleEventOffer.eventId,
+            travelId: obstacleEventOffer.travelId,
+            result,
+            remainingHealth: obstacleEventOffer.startHealth,
+            timeLeftSeconds: 0,
+            timeLimitSeconds: obstacleEventOffer.timeLimitSeconds,
+            failureReason: result === "FAILED" ? "DECLINED" : undefined,
+            routeViewType,
+        });
+
+        const statusId = `obstacle-decline-result-${Date.now()}`;
+        const success = result === "SUCCESS";
+        setMinigameStatusToasts(prev => [...prev, {
+            id: statusId,
+            success,
+            title: "Hindernis-Event",
+            message: success
+                ? "Hindernis-Event trotz Ablehnung erfolgreich überstanden"
+                : "Hindernis-Event nach Ablehnung fehlgeschlagen",
+        }]);
+        setTimeout(() => {
+            setMinigameStatusToasts(prev => prev.filter(toast => toast.id !== statusId));
+        }, 2600);
+
+        minigameSessionManager.finishSession(obstacleEventOffer.eventId, "DECLINED");
+        window.__activeObstacleEventId = undefined;
+        setObstacleEventOffer(null);
+    }, [obstacleEventOffer, submitObstacleResult]);
+
+    const handleObstacleMinigameFinished = useCallback(async (result: ObstacleMinigameResult) => {
+        if (!activeObstacleMinigame) return;
+
+        await submitObstacleResult({
+            eventId: activeObstacleMinigame.eventId,
+            travelId: activeObstacleMinigame.travelId,
+            result: result.result,
+            remainingHealth: result.remainingHealth,
+            timeLeftSeconds: result.timeLeftSeconds,
+            timeLimitSeconds: result.timeLimitSeconds,
+            failureReason: result.failureReason,
+            routeViewType: result.routeViewType,
+        });
+
+        const id = `obstacle-result-${Date.now()}`;
+        const success = result.result === "SUCCESS";
+        setMinigameStatusToasts(prev => [...prev, {
+            id,
+            success,
+            title: "Hindernis-Event",
+            message: success ? "Hindernis-Event erfolgreich bestanden" : "Hindernis-Event nicht bestanden",
+        }]);
+        setTimeout(() => {
+            setMinigameStatusToasts(prev => prev.filter(toast => toast.id !== id));
+        }, 2600);
+
+        minigameSessionManager.finishSession(activeObstacleMinigame.eventId, "COMPLETED");
+        window.__activeObstacleEventId = undefined;
+        setActiveObstacleMinigame(null);
+    }, [activeObstacleMinigame, submitObstacleResult]);
+
     // Auto-complete loading phase
     const handleCustomsCooperate = useCallback(async () => {
         if (!customsInspection) return;
@@ -1091,6 +1229,18 @@ export default function GameScreen() {
                 />
             )}
 
+            {obstacleEventOffer && (
+                <EventNotificationDialog
+                    title="Event: Gefährliche Passage"
+                    successText="Wenn du die Passage meisterst, fährt dein Schiff ohne Fracht- oder Zustandsschaden weiter."
+                    failText="Wenn du ablehnst, gilt dieselbe 50/50 Chance wie beim Sturm. Bei Misserfolg halbiert das Backend Schiffszustand und Frachtwert."
+                    imageSrc={obstacleDialogImage}
+                    imageAlt="Kompass"
+                    onAccept={handleObstacleEventAccept}
+                    onDecline={handleObstacleEventDecline}
+                />
+            )}
+
             {activeRatMinigame && (
                 <RatMinigameOverlay
                     config={{
@@ -1117,6 +1267,19 @@ export default function GameScreen() {
                 />
             )}
 
+            {activeObstacleMinigame && (
+                <ObstacleMinigameOverlay
+                    config={{
+                        eventId: activeObstacleMinigame.eventId,
+                        travelId: activeObstacleMinigame.travelId,
+                        timeLimitSeconds: activeObstacleMinigame.timeLimitSeconds,
+                        startHealth: activeObstacleMinigame.startHealth,
+                        routeViewType: ObstacleRouteViewResolver.resolve(activeObstacleMinigame),
+                        shipIconUrl: activeObstacleMinigame.shipIconUrl,
+                    }}
+                    onFinished={handleObstacleMinigameFinished}
+                />
+            )}
 
             {customsInspection && (
                 <CustomsInspectionDialog
