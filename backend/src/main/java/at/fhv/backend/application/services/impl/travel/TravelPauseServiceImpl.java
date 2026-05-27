@@ -1,6 +1,9 @@
 package at.fhv.backend.application.services.impl.travel;
 
 import at.fhv.backend.application.services.travel.TravelPauseService;
+import at.fhv.backend.domain.model.port.Port;
+import at.fhv.backend.domain.model.port.PortId;
+import at.fhv.backend.domain.model.port.PortRepository;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.travel.Travel;
@@ -20,16 +23,19 @@ public class TravelPauseServiceImpl implements TravelPauseService {
     private final TravelRepository travelRepository;
     private final GameSessionRepository gameSessionRepository;
     private final GameSessionWebSocketController webSocketController;
+    private final PortRepository portRepository;
 
     private final Set<UUID> pausedTravelIds = ConcurrentHashMap.newKeySet();
     private final Map<UUID, Integer> pausedAtTickMap = new ConcurrentHashMap<>();
 
     public TravelPauseServiceImpl(TravelRepository travelRepository,
                                   GameSessionRepository gameSessionRepository,
-                                  GameSessionWebSocketController webSocketController) {
+                                  GameSessionWebSocketController webSocketController,
+                                  PortRepository portRepository) {
         this.travelRepository = travelRepository;
         this.gameSessionRepository = gameSessionRepository;
         this.webSocketController = webSocketController;
+        this.portRepository = portRepository;
     }
 
     @Override
@@ -62,9 +68,9 @@ public class TravelPauseServiceImpl implements TravelPauseService {
 
         int currentTick = session.getCurrentTick();
         int ticksPaused = pausedAtTick != null ? Math.max(0, currentTick - pausedAtTick) : 0;
+        Travel travel = travelRepository.findById(travelId).orElse(null);
 
         if (ticksPaused > 0) {
-            Travel travel = travelRepository.findById(travelId).orElse(null);
             if (travel != null) {
                 travel.shiftScheduleForPause(ticksPaused);
                 travelRepository.save(travel);
@@ -73,12 +79,7 @@ public class TravelPauseServiceImpl implements TravelPauseService {
             }
         }
 
-        TravelResumedEvent event = new TravelResumedEvent(
-                travelId.toString(),
-                playerId.toString(),
-                playerShipId.toString(),
-                reason
-        );
+        TravelResumedEvent event = buildResumeEvent(travelId, playerId, playerShipId, reason, currentTick, travel);
         webSocketController.broadcastTravelResumed(sessionId.toString(), event);
 
         System.out.println("[TravelPause] Travel " + travelId
@@ -95,5 +96,33 @@ public class TravelPauseServiceImpl implements TravelPauseService {
     @Override
     public Integer getPausedAtTick(UUID travelId) {
         return pausedAtTickMap.get(travelId);
+    }
+
+    private TravelResumedEvent buildResumeEvent(UUID travelId, UUID playerId, UUID playerShipId, String reason,
+                                                int currentTick, Travel travel) {
+        if (travel == null) {
+            return new TravelResumedEvent(
+                    travelId.toString(),
+                    playerId.toString(),
+                    playerShipId.toString(),
+                    reason
+            );
+        }
+
+        Port origin = portRepository.findById(PortId.of(travel.getOriginPortId())).orElse(null);
+        Port destination = portRepository.findById(PortId.of(travel.getDestinationPortId())).orElse(null);
+        return new TravelResumedEvent(
+                travelId.toString(),
+                playerId.toString(),
+                playerShipId.toString(),
+                reason,
+                currentTick,
+                travel.getStartTick(),
+                travel.getArrivalTick(),
+                origin != null ? origin.getCoordinates().getX() : null,
+                origin != null ? origin.getCoordinates().getY() : null,
+                destination != null ? destination.getCoordinates().getX() : null,
+                destination != null ? destination.getCoordinates().getY() : null
+        );
     }
 }
