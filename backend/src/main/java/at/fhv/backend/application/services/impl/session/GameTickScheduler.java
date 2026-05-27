@@ -79,6 +79,9 @@ public class GameTickScheduler {
     private final Map<UUID, ReentrantLock> tickLocks = new ConcurrentHashMap<>();
     private static final int MAX_ACTIVE_CARGOS_PER_PORT = 7;
 
+    private volatile List<PortResponseDTO> cachedPorts;
+    private volatile List<Ship> cachedShipTemplates;
+
     private final Random rng = new Random();
 
     public GameTickScheduler(GameSessionRepository gameSessionRepository,
@@ -121,6 +124,24 @@ public class GameTickScheduler {
         this.customsCheckCompletionService = customsCheckCompletionService;
     }
 
+    // --- Static data cache helpers ---
+
+    private List<PortResponseDTO> getCachedPorts() {
+        if (cachedPorts == null) {
+            cachedPorts = portQueryService.findAll();
+        }
+        return cachedPorts;
+    }
+
+    private List<Ship> getCachedShipTemplates() {
+        if (cachedShipTemplates == null) {
+            cachedShipTemplates = shipRepository.findAll();
+        }
+        return cachedShipTemplates;
+    }
+
+    // --- Session lifecycle ---
+
     public void startForSession(UUID sessionId, int tickRateSeconds) {
         runningTasks.computeIfAbsent(sessionId, ignored ->
                 executor.scheduleAtFixedRate(
@@ -139,133 +160,17 @@ public class GameTickScheduler {
         tickLocks.remove(sessionId);
     }
 
-    private void checkLoadingCompletion(UUID sessionId, int currentTick) {
+    private TickContext buildTickContext(UUID sessionId, GameSession session, int currentTick) {
         List<PlayerShip> allShips = playerShipRepository.findAllBySessionId(sessionId);
+        List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
+        List<Travel> arrivedTravels = travelRepository.findAllBySessionIdAndStatus(sessionId, TravelStatus.ARRIVED);
+        List<SessionCargo> allCargos = sessionCargoRepository.findAllBySessionId(sessionId);
 
-        for (PlayerShip ship : allShips) {
-            if (ship.getStatus() == ShipStatus.LOADING
-                    && ship.getLoadingCompletedAtTick() > 0
-                    && currentTick >= ship.getLoadingCompletedAtTick()) {
-
-                ship.completeLoading();
-                playerShipRepository.save(ship);
-
-                System.out.println("[GameTick] Ship " + ship.getId()
-                        + " loading completed at tick " + currentTick + " → READY_TO_DEPART");
-            }
-        }
-    }
-
-    private void checkRefuelingCompletion(UUID sessionId, int currentTick) {
-        List<PlayerShip> allShips = playerShipRepository.findAllBySessionId(sessionId);
-
-        for (PlayerShip ship : allShips) {
-            if (ship.getStatus() == ShipStatus.REFUELING
-                    && ship.getRefuelingCompletedAtTick() > 0
-                    && currentTick >= ship.getRefuelingCompletedAtTick()) {
-
-                ship.completeRefueling();
-                playerShipRepository.save(ship);
-
-                System.out.println("[GameTick] Ship " + ship.getId()
-                        + " refueling completed at tick " + currentTick + " → AT_PORT");
-            }
-        }
-    }
-
-    private void checkRepairingCompletion(UUID sessionId, int currentTick) {
-        List<PlayerShip> allShips = playerShipRepository.findAllBySessionId(sessionId);
-
-        for (PlayerShip ship : allShips) {
-            if (ship.getStatus() == ShipStatus.REPAIRING
-                    && ship.getRepairingCompletedAtTick() > 0
-                    && currentTick >= ship.getRepairingCompletedAtTick()) {
-
-                ship.completeRepairing();
-                playerShipRepository.save(ship);
-
-                System.out.println("[GameTick] Ship " + ship.getId()
-                        + " repairing completed at tick " + currentTick + " → AT_PORT");
-            }
-        }
-    }
-
-    @Transactional
-    public void checkCustomsCheckCompletion(UUID sessionId, int currentTick) {
-        List<Travel> arrivedTravels = travelRepository
-                .findAllBySessionIdAndStatus(sessionId, TravelStatus.ARRIVED);
-
-        for (Travel travel : arrivedTravels) {
-            PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
-            if (ship == null) continue;
-            if (ship.getStatus() != ShipStatus.CUSTOMS_CHECK) continue;
-
-            int completedAtTick = ship.getCustomsCheckCompletedAtTick();
-            if (completedAtTick < 0) continue;
-            if (currentTick < completedAtTick) continue;
-
-            customsCheckCompletionService.completeCustomsCheck(travel.getTravelId());
-        }
-    }
-
-    @Transactional
-    public void checkCustomsBlockCompletion(UUID sessionId, int currentTick) {
-        List<Travel> arrivedTravels = travelRepository
-                .findAllBySessionIdAndStatus(sessionId, TravelStatus.ARRIVED);
-
-        for (Travel travel : arrivedTravels) {
-            PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
-            if (ship == null) continue;
-            if (ship.getStatus() != ShipStatus.BLOCKED) continue;
-
-            int expirationTick = customsService.getBlockExpirationTick(travel.getTravelId());
-            if (expirationTick < 0) {
-                continue;
-            }
-            if (currentTick < expirationTick) {
-                continue;
-            }
-
-            unloadingStartService.startUnloadingAfterDetention(travel.getTravelId());
-            customsService.clearBlockTracking(travel.getTravelId());
-            System.out.println("[GameTick] Customs block expired for travel " + travel.getTravelId()
-                    + " — ship now UNLOADING");
-        }
-    }
-
-    @Transactional
-    public void handleUnloadingPhase(UUID sessionId, int currentTick) {
-        List<Travel> arrivedTravels = travelRepository
-                .findAllBySessionIdAndStatus(sessionId, TravelStatus.ARRIVED);
-
-        for (Travel travel : arrivedTravels) {
-            PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
-            if (ship == null) continue;
-
-            if (ship.getStatus() != ShipStatus.UNLOADING) continue;
-
-            if (travel.isArrivalMiniGamePending()) continue;
-
-            if (ship.getUnloadingCompletedAtTick() != null
-                    && currentTick >= ship.getUnloadingCompletedAtTick()) {
-                handleUnloadingComplete(travel, currentTick);
-            }
-        }
-    }
-
-    @Transactional
-    public void handleUnloadingComplete(Travel travel, int currentTick) {
-        PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
-
-        if (ship == null || ship.getStatus() != ShipStatus.UNLOADING) {
-            return;
-        }
-
-        List<SessionCargo> cargos = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
-        BigDecimal reward = cargoUnloadingPhaseService.completeUnloadingPhase(travel, cargos);
-
-        System.out.println("[GameTick] Unloading complete for travel " + travel.getTravelId());
-        System.out.println("[GameTick] Reward: " + reward);
+        return new TickContext(
+                sessionId, session, currentTick,
+                allShips, activeTravels, arrivedTravels, allCargos,
+                getCachedPorts(), getCachedShipTemplates()
+        );
     }
 
     @Transactional
@@ -276,6 +181,7 @@ public class GameTickScheduler {
         }
 
         try {
+            // --- Pre-check: rate limiting ---
             GameSession session = gameSessionRepository.findById(sessionId).orElse(null);
             if (session == null) {
                 stopForSession(sessionId);
@@ -288,18 +194,8 @@ public class GameTickScheduler {
                 return;
             }
             lastTickProcessedAtMs.put(sessionId, now);
-        } catch (Exception e) {
-            System.err.println("Tick pre-check error for session " + sessionId + ": " + e.getMessage());
-            return;
-        }
 
-        try {
-            GameSession session = gameSessionRepository.findById(sessionId).orElse(null);
-            if (session == null) {
-                stopForSession(sessionId);
-                return;
-            }
-
+            // --- Advance tick ---
             session.tick();
             int currentTick = session.getCurrentTick();
 
@@ -332,7 +228,6 @@ public class GameTickScheduler {
                 );
 
                 webSocketController.broadcastSessionUpdate(sessionId.toString(), finishedEvent);
-
                 stopForSession(sessionId);
                 return;
             }
@@ -344,27 +239,19 @@ public class GameTickScheduler {
                     new TickUpdateEvent(currentTick, session.getTotalTicks())
             );
 
-        } catch (Exception e) {
-            System.err.println("Tick error for session " + sessionId + ": " + e.getMessage());
-            e.printStackTrace();
-            return;
-        }
+            // --- Build context: ONE load for all data ---
+            TickContext ctx = buildTickContext(sessionId, session, currentTick);
 
-        try {
-            GameSession session = gameSessionRepository.findById(sessionId).orElse(null);
-            if (session == null) return;
-            int currentTick = session.getCurrentTick();
+            // --- Process game logic using pre-loaded context ---
+            checkLoadingCompletion(ctx);
+            checkRefuelingCompletion(ctx);
+            checkRepairingCompletion(ctx);
+            checkCustomsCheckCompletion(ctx);
+            checkCustomsBlockCompletion(ctx);
+            handleUnloadingPhase(ctx);
+            pilotStrikeService.processTick(sessionId, currentTick, ctx.getAllPorts(), ctx.getActiveTravels());
 
-            checkLoadingCompletion(sessionId, currentTick);
-            checkRefuelingCompletion(sessionId, currentTick);
-            checkRepairingCompletion(sessionId, currentTick);
-            checkCustomsCheckCompletion(sessionId, currentTick);
-            checkCustomsBlockCompletion(sessionId, currentTick);
-            handleUnloadingPhase(sessionId, currentTick);
-            pilotStrikeService.processTick(sessionId, currentTick);
-
-            List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
-            for (Travel travel : activeTravels) {
+            for (Travel travel : ctx.getActiveTravels()) {
                 stormMinigameService.tryTriggerForTravel(travel, sessionId);
                 if (travelPauseService.isTravelPaused(travel.getTravelId())) {
                     continue;
@@ -383,60 +270,224 @@ public class GameTickScheduler {
                 }
             }
 
-            processCargoLifecycle(sessionId, currentTick);
-            broadcastShipPositions(sessionId, currentTick, session);
+            processCargoLifecycle(ctx);
+
+            // --- Batch save all modified ships ---
+            if (!ctx.getModifiedShips().isEmpty()) {
+                playerShipRepository.saveAll(ctx.getModifiedShips());
+            }
+
+            broadcastShipPositions(ctx);
+
         } catch (Exception e) {
-            System.err.println("Ship update error for session " + sessionId + ": " + e.getMessage());
+            System.err.println("Tick error for session " + sessionId + ": " + e.getMessage());
             e.printStackTrace();
         } finally {
             lock.unlock();
         }
     }
 
-    @PreDestroy
-    public void shutdown() {
-        for (ScheduledFuture<?> task : runningTasks.values()) {
-            task.cancel(false);
-        }
-        runningTasks.clear();
-        lastTickProcessedAtMs.clear();
-        tickLocks.clear();
-        executor.shutdownNow();
-    }
+    private void checkLoadingCompletion(TickContext ctx) {
+        for (PlayerShip ship : ctx.getAllShips()) {
+            if (ship.getStatus() == ShipStatus.LOADING
+                    && ship.getLoadingCompletedAtTick() > 0
+                    && ctx.getCurrentTick() >= ship.getLoadingCompletedAtTick()) {
 
-    public void triggerImmediateBroadcast(UUID sessionId) {
-        try {
-            GameSession session = gameSessionRepository.findById(sessionId).orElse(null);
-            if (session == null) return;
-            broadcastShipPositions(sessionId, session.getCurrentTick(), session);
-        } catch (Exception e) {
-            System.err.println("Immediate broadcast error: " + e.getMessage());
+                ship.completeLoading();
+                ctx.markShipModified(ship);
+
+                System.out.println("[GameTick] Ship " + ship.getId()
+                        + " loading completed at tick " + ctx.getCurrentTick() + " → READY_TO_DEPART");
+            }
         }
     }
 
-    private void broadcastShipPositions(UUID sessionId, int currentTick, GameSession session) {
-        List<PortResponseDTO> allPorts = portQueryService.findAll();
-        Map<UUID, PortResponseDTO> portMap = allPorts.stream()
-                .collect(Collectors.toMap(PortResponseDTO::id, p -> p));
+    private void checkRefuelingCompletion(TickContext ctx) {
+        for (PlayerShip ship : ctx.getAllShips()) {
+            if (ship.getStatus() == ShipStatus.REFUELING
+                    && ship.getRefuelingCompletedAtTick() > 0
+                    && ctx.getCurrentTick() >= ship.getRefuelingCompletedAtTick()) {
 
-        List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
-        List<Travel> awaitingDockingTravels = travelRepository
-                .findAllBySessionIdAndStatus(sessionId, TravelStatus.ARRIVED)
-                .stream()
-                .filter(Travel::isArrivalMiniGamePending)
-                .toList();
-        Map<UUID, Travel> travelByShipId = new HashMap<>(activeTravels.stream()
-                .collect(Collectors.toMap(Travel::getPlayerShipId, t -> t)));
-        for (Travel t : awaitingDockingTravels) {
-            travelByShipId.putIfAbsent(t.getPlayerShipId(), t);
+                ship.completeRefueling();
+                ctx.markShipModified(ship);
+
+                System.out.println("[GameTick] Ship " + ship.getId()
+                        + " refueling completed at tick " + ctx.getCurrentTick() + " → AT_PORT");
+            }
+        }
+    }
+
+    private void checkRepairingCompletion(TickContext ctx) {
+        for (PlayerShip ship : ctx.getAllShips()) {
+            if (ship.getStatus() == ShipStatus.REPAIRING
+                    && ship.getRepairingCompletedAtTick() > 0
+                    && ctx.getCurrentTick() >= ship.getRepairingCompletedAtTick()) {
+
+                ship.completeRepairing();
+                ctx.markShipModified(ship);
+
+                System.out.println("[GameTick] Ship " + ship.getId()
+                        + " repairing completed at tick " + ctx.getCurrentTick() + " → AT_PORT");
+            }
+        }
+    }
+
+    private void checkCustomsCheckCompletion(TickContext ctx) {
+        for (Travel travel : ctx.getArrivedTravels()) {
+            PlayerShip ship = ctx.getShipById(travel.getPlayerShipId());
+            if (ship == null) continue;
+            if (ship.getStatus() != ShipStatus.CUSTOMS_CHECK) continue;
+
+            int completedAtTick = ship.getCustomsCheckCompletedAtTick();
+            if (completedAtTick < 0) continue;
+            if (ctx.getCurrentTick() < completedAtTick) continue;
+
+            customsCheckCompletionService.completeCustomsCheck(travel.getTravelId());
+        }
+    }
+
+    private void checkCustomsBlockCompletion(TickContext ctx) {
+        for (Travel travel : ctx.getArrivedTravels()) {
+            PlayerShip ship = ctx.getShipById(travel.getPlayerShipId());
+            if (ship == null) continue;
+            if (ship.getStatus() != ShipStatus.BLOCKED) continue;
+
+            int expirationTick = customsService.getBlockExpirationTick(travel.getTravelId());
+            if (expirationTick < 0) continue;
+            if (ctx.getCurrentTick() < expirationTick) continue;
+
+            unloadingStartService.startUnloadingAfterDetention(travel.getTravelId());
+            customsService.clearBlockTracking(travel.getTravelId());
+            System.out.println("[GameTick] Customs block expired for travel " + travel.getTravelId()
+                    + " — ship now UNLOADING");
+        }
+    }
+
+    private void handleUnloadingPhase(TickContext ctx) {
+        for (Travel travel : ctx.getArrivedTravels()) {
+            PlayerShip ship = ctx.getShipById(travel.getPlayerShipId());
+            if (ship == null) continue;
+            if (ship.getStatus() != ShipStatus.UNLOADING) continue;
+            if (travel.isArrivalMiniGamePending()) continue;
+
+            if (ship.getUnloadingCompletedAtTick() != null
+                    && ctx.getCurrentTick() >= ship.getUnloadingCompletedAtTick()) {
+                handleUnloadingComplete(travel, ctx);
+            }
+        }
+    }
+
+    private void handleUnloadingComplete(Travel travel, TickContext ctx) {
+        PlayerShip ship = ctx.getShipById(travel.getPlayerShipId());
+
+        if (ship == null || ship.getStatus() != ShipStatus.UNLOADING) {
+            return;
         }
 
-        List<PlayerShip> allShips = playerShipRepository.findAllBySessionId(sessionId);
+        // Filter cargos for this player from context instead of querying DB
+        List<SessionCargo> cargos = new ArrayList<>();
+        for (SessionCargo sc : ctx.getAllCargos()) {
+            if (travel.getPlayerId().equals(sc.getAssignedPlayerId())) {
+                cargos.add(sc);
+            }
+        }
+
+        BigDecimal reward = cargoUnloadingPhaseService.completeUnloadingPhase(travel, cargos);
+
+        System.out.println("[GameTick] Unloading complete for travel " + travel.getTravelId());
+        System.out.println("[GameTick] Reward: " + reward);
+    }
+
+    private void processCargoLifecycle(TickContext ctx) {
+        List<SessionCargo> all = ctx.getAllCargos();
+        boolean changed = false;
+
+        for (SessionCargo sc : all) {
+            if (sc.isExpiredAt(ctx.getCurrentTick())) {
+                sc.expire();
+                sessionCargoRepository.save(sc);
+                changed = true;
+                System.out.println("[CargoExpiry] Cargo " + sc.getId() + " expired at tick " + ctx.getCurrentTick());
+            }
+        }
+
+        if (changed) {
+            // Reload after expiry changes
+            all = sessionCargoRepository.findAllBySessionId(ctx.getSessionId());
+        }
+
+        Map<UUID, List<SessionCargo>> byPort = new HashMap<>();
+        for (SessionCargo sc : all) {
+            byPort.computeIfAbsent(sc.getOriginPortId(), k -> new ArrayList<>()).add(sc);
+        }
+
+        for (Map.Entry<UUID, List<SessionCargo>> entry : byPort.entrySet()) {
+            UUID portId = entry.getKey();
+            List<SessionCargo> portCargos = entry.getValue();
+
+            long activeCount = 0;
+            boolean hasPermanent = false;
+            for (SessionCargo sc : portCargos) {
+                if (sc.getCargoStatus() == CargoStatus.AVAILABLE) {
+                    activeCount++;
+                    if (sc.isPermanent()) {
+                        hasPermanent = true;
+                    }
+                }
+            }
+
+            if (!hasPermanent && activeCount < MAX_ACTIVE_CARGOS_PER_PORT) {
+                SessionCargo newPermanent = cargoSessionInitializer.createNewCargo(
+                        ctx.getSessionId(), portId, ctx.getCurrentTick(), rng, true);
+                if (newPermanent != null) {
+                    sessionCargoRepository.save(newPermanent);
+                    activeCount++;
+                    changed = true;
+                    System.out.println("[CargoSpawn] New permanent cargo " + newPermanent.getId()
+                            + " spawned at port " + portId + " at tick " + ctx.getCurrentTick());
+                }
+            }
+
+            while (activeCount < MAX_ACTIVE_CARGOS_PER_PORT) {
+                double spawnChance = 0.25;
+                if (rng.nextDouble() >= spawnChance) {
+                    break;
+                }
+                SessionCargo newCargo = cargoSessionInitializer.createNewCargo(
+                        ctx.getSessionId(), portId, ctx.getCurrentTick(), rng, false);
+                if (newCargo == null) break;
+                sessionCargoRepository.save(newCargo);
+                activeCount++;
+                changed = true;
+                System.out.println("[CargoSpawn] New cargo " + newCargo.getId()
+                        + " spawned at port " + portId + " at tick " + ctx.getCurrentTick());
+            }
+        }
+
+        if (changed) {
+            cargoWebSocketController.broadcastMarketUpdate(ctx.getSessionId());
+        }
+    }
+
+    private void broadcastShipPositions(TickContext ctx) {
+        Map<UUID, PortResponseDTO> portMap = ctx.getPortMap();
+        int currentTick = ctx.getCurrentTick();
+        GameSession session = ctx.getSession();
+
+        // Build travel-by-shipId map from context (active + awaiting docking)
+        Map<UUID, Travel> travelByShipId = new HashMap<>(ctx.getActiveTravelByShipId());
+        for (Travel t : ctx.getArrivedTravels()) {
+            if (t.isArrivalMiniGamePending()) {
+                travelByShipId.putIfAbsent(t.getPlayerShipId(), t);
+            }
+        }
+
+        // Re-fetch ships to get latest state after all modifications in this tick
+        List<PlayerShip> allShips = playerShipRepository.findAllBySessionId(ctx.getSessionId());
 
         System.out.println("[ShipBroadcast] tick=" + currentTick
                 + " ships=" + allShips.size()
-                + " activeTravels=" + activeTravels.size()
-                + " awaitingDocking=" + awaitingDockingTravels.size()
+                + " activeTravels=" + ctx.getActiveTravels().size()
                 + " ports=" + portMap.size());
 
         List<ShipPositionsUpdateEvent.ShipPosition> positions = new ArrayList<>();
@@ -444,7 +495,8 @@ public class GameTickScheduler {
         for (PlayerShip playerShip : allShips) {
             if (playerShip.getStatus() == ShipStatus.IN_REGISTRATION) continue;
 
-            Ship shipTemplate = shipRepository.findById(playerShip.getShipId()).orElse(null);
+            // Use cached ship templates instead of individual DB lookups
+            Ship shipTemplate = ctx.getShipTemplate(playerShip.getShipId());
             String iconUrl = shipTemplate != null ? shipTemplate.getIconUrl() : "/ship.png";
 
             String playerName = session.getPlayers().stream()
@@ -532,77 +584,31 @@ public class GameTickScheduler {
 
         if (!positions.isEmpty()) {
             webSocketController.broadcastShipPositions(
-                    sessionId.toString(),
+                    ctx.getSessionId().toString(),
                     new ShipPositionsUpdateEvent(currentTick, positions)
             );
         }
     }
 
-    private void processCargoLifecycle(UUID sessionId, int currentTick) {
-        List<SessionCargo> all = sessionCargoRepository.findAllBySessionId(sessionId);
-        boolean changed = false;
-
-        for (SessionCargo sc : all) {
-            if (sc.isExpiredAt(currentTick)) {
-                sc.expire();
-                sessionCargoRepository.save(sc);
-                changed = true;
-                System.out.println("[CargoExpiry] Cargo " + sc.getId() + " expired at tick " + currentTick);
-            }
+    public void triggerImmediateBroadcast(UUID sessionId) {
+        try {
+            GameSession session = gameSessionRepository.findById(sessionId).orElse(null);
+            if (session == null) return;
+            TickContext ctx = buildTickContext(sessionId, session, session.getCurrentTick());
+            broadcastShipPositions(ctx);
+        } catch (Exception e) {
+            System.err.println("Immediate broadcast error: " + e.getMessage());
         }
+    }
 
-        if (changed) {
-            all = sessionCargoRepository.findAllBySessionId(sessionId);
+    @PreDestroy
+    public void shutdown() {
+        for (ScheduledFuture<?> task : runningTasks.values()) {
+            task.cancel(false);
         }
-
-        Map<UUID, List<SessionCargo>> byPort = new HashMap<>();
-        for (SessionCargo sc : all) {
-            byPort.computeIfAbsent(sc.getOriginPortId(), k -> new ArrayList<>()).add(sc);
-        }
-
-        for (Map.Entry<UUID, List<SessionCargo>> entry : byPort.entrySet()) {
-            UUID portId = entry.getKey();
-            List<SessionCargo> portCargos = entry.getValue();
-
-            long activeCount = 0;
-            boolean hasPermanent = false;
-            for (SessionCargo sc : portCargos) {
-                if (sc.getCargoStatus() == CargoStatus.AVAILABLE) {
-                    activeCount++;
-                    if (sc.isPermanent()) {
-                        hasPermanent = true;
-                    }
-                }
-            }
-
-            if (!hasPermanent && activeCount < MAX_ACTIVE_CARGOS_PER_PORT) {
-                SessionCargo newPermanent = cargoSessionInitializer.createNewCargo(sessionId, portId, currentTick, rng, true);
-                if (newPermanent != null) {
-                    sessionCargoRepository.save(newPermanent);
-                    activeCount++;
-                    changed = true;
-                    System.out.println("[CargoSpawn] New permanent cargo " + newPermanent.getId()
-                            + " spawned at port " + portId + " at tick " + currentTick);
-                }
-            }
-
-            while (activeCount < MAX_ACTIVE_CARGOS_PER_PORT) {
-                double spawnChance = 0.25;
-                if (rng.nextDouble() >= spawnChance) {
-                    break;
-                }
-                SessionCargo newCargo = cargoSessionInitializer.createNewCargo(sessionId, portId, currentTick, rng, false);
-                if (newCargo == null) break;
-                sessionCargoRepository.save(newCargo);
-                activeCount++;
-                changed = true;
-                System.out.println("[CargoSpawn] New cargo " + newCargo.getId()
-                        + " spawned at port " + portId + " at tick " + currentTick);
-            }
-        }
-
-        if (changed) {
-            cargoWebSocketController.broadcastMarketUpdate(sessionId);
-        }
+        runningTasks.clear();
+        lastTickProcessedAtMs.clear();
+        tickLocks.clear();
+        executor.shutdownNow();
     }
 }
