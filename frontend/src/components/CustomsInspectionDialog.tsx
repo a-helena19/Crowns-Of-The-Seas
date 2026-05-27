@@ -1,6 +1,6 @@
 import { useState } from "react";
 import customsOfficer from "../assets/customs_officer.png";
-import "../style/customsDialog.css";
+import "../style/CustomsDialog.css";
 
 type Phase = "initial" | "bribe_success" | "bribe_failed";
 

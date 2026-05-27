@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import "../style/customsResultToast.css";
+import "../style/CustomsResultToast.css";
 
 export type CustomsToastKind =
     | "CLEARED"
