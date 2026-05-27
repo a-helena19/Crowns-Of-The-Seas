@@ -696,6 +696,31 @@ export default function CargoManagementScreen({
                                         </div>
                                     )}
 
+                                    {selectedEntry.stormMinigameSummary?.triggered && selectedEntry.stormMinigameSummary.result === "SUCCESS" && (
+                                        <div className="cm-reward-cargo-item">
+                                            <div style={{ flex: 1 }}>
+                                                <div className="cm-reward-cargo-name">Sturm erfolgreich überstanden</div>
+                                                <div className="cm-reward-cargo-sub">Sturm-Event</div>
+                                            </div>
+                                            <span className="cm-reward-cargo-amount">+0T</span>
+                                        </div>
+                                    )}
+
+                                    {selectedEntry.stormMinigameSummary?.triggered && selectedEntry.stormMinigameSummary.result === "FAILED" && (
+                                        <div className="cm-reward-cargo-item expired">
+                                            <div style={{ flex: 1 }}>
+                                                <div className="cm-reward-cargo-name">Sturm hat Schiff und Fracht beschaedigt</div>
+                                                <div className="cm-reward-cargo-sub">
+                                                    {Math.round(selectedEntry.stormMinigameSummary.conditionDamagePercent ?? 0)}% Schiffsschaden,
+                                                    {" "}{selectedEntry.stormMinigameSummary.cargoLossPercent ?? 0}% Frachtwert verloren
+                                                </div>
+                                            </div>
+                                            <span className="cm-reward-cargo-amount expired">
+                                                -{Math.round(selectedEntry.stormMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                            </span>
+                                        </div>
+                                    )}
+
                                     <div className="cm-reward-breakdown">
                                         {cargoBaseTotal > 0 && (
                                             <div className="cm-reward-row">
@@ -761,6 +786,22 @@ export default function CargoManagementScreen({
                                                     )}
                                                 </span>
                                                 <span>-{Math.round(regressDamage).toLocaleString("de-DE")} T</span>
+                                            </div>
+                                        )}
+                                        {selectedEntry.ratMinigameSummary?.triggered && selectedEntry.ratMinigameSummary.result === "FAILED" && (
+                                            <div className="cm-reward-row warn">
+                                                <span>⚠ Ratten-Event Schaden</span>
+                                                <span className="cm-reward-row-value">
+                                                    -{Math.round(selectedEntry.ratMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                                </span>
+                                            </div>
+                                        )}
+                                        {selectedEntry.stormMinigameSummary?.triggered && selectedEntry.stormMinigameSummary.result === "FAILED" && (
+                                            <div className="cm-reward-row warn">
+                                                <span>⚠ Sturm-Event Schaden</span>
+                                                <span className="cm-reward-row-value">
+                                                    -{Math.round(selectedEntry.stormMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                                </span>
                                             </div>
                                         )}
                                         {departureDockingFine > 0 && (

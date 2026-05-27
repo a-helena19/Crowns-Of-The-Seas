@@ -3,6 +3,8 @@ package at.fhv.backend.application.services.impl.travel;
 import at.fhv.backend.application.services.cargo.CustomsService;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
+import at.fhv.backend.application.services.minigame.RatMinigameService;
+import at.fhv.backend.application.services.minigame.StormMinigameService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.RegressService;
 import at.fhv.backend.application.services.travel.RewardCalculationService;
@@ -57,6 +59,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
     private final RatMinigameService ratMinigameService;
     private final CustomsService customsService;
     private final RegressService regressService;
+    private final RatMinigameService ratMinigameService;
+    private final StormMinigameService stormMinigameService;
 
     public CargoUnloadingPhaseServiceImpl(
             SessionCargoRepository sessionCargoRepository,
@@ -71,6 +75,9 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             RatMinigameService ratMinigameService,
             CustomsService customsService,
             RegressService regressService) {
+            TravelRepository travelRepository,
+            RatMinigameService ratMinigameService,
+            StormMinigameService stormMinigameService) {
         this.sessionCargoRepository = sessionCargoRepository;
         this.playerShipRepository = playerShipRepository;
         this.gameSessionRepository = gameSessionRepository;
@@ -80,6 +87,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         this.cargoRepository = cargoRepository;
         this.smuggleService = smuggleService;
         this.travelRepository = travelRepository;
+        this.ratMinigameService = ratMinigameService;
+        this.stormMinigameService = stormMinigameService;
         this.ratMinigameService = ratMinigameService;
         this.customsService = customsService;
         this.regressService = regressService;
@@ -120,6 +129,14 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                     + travel.getTravelId());
         }
 
+        BigDecimal grossReward = cargoReward.add(totalBonus).add(smuggleReward);
+        BigDecimal modifiedGrossReward = ratMinigameService.applyRewardModifier(travel.getTravelId(), grossReward);
+        modifiedGrossReward = stormMinigameService.applyRewardModifier(travel.getTravelId(), modifiedGrossReward);
+        BigDecimal arrivalFine = travel.getDockingFine();
+        BigDecimal departureFine = travel.getDepartureDockingFine();
+        BigDecimal pilotageRefund = travel.getPilotageRefund();
+        BigDecimal totalFine = departureFine.add(arrivalFine);
+        BigDecimal netReward = modifiedGrossReward.subtract(totalFine).add(pilotageRefund).max(BigDecimal.ZERO);
         PlayerShip shipForRegress = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
         double currentCondition = shipForRegress != null ? shipForRegress.getCondition() : 100.0;
         GameSession sessionForRegress = gameSessionRepository.findById(travel.getSessionId()).orElse(null);
@@ -172,6 +189,9 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             }
 
             if (player != null) {
+                previousBalance = player.getBalance();
+                if (netReward.compareTo(BigDecimal.ZERO) > 0) {
+                    player.addBalance(netReward);
                 BigDecimal currentBalance = player.getBalance();
                 previousBalance = currentBalance.add(customsAlreadyDeducted);
 
@@ -191,6 +211,21 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                 payout, departureFine, arrivalFine, pilotageRefund,
                 inspection, smuggleConfiscated,
                 regressSummary
+        );
+        sendUnloadingCompleteEvent(
+                travel,
+                playerId,
+                cargosForPlayer,
+                previousBalance,
+                newBalance,
+                smuggleOffers,
+                bonusPerCargo,
+                totalBonus,
+                modifiedGrossReward,
+                departureFine,
+                arrivalFine,
+                pilotageRefund,
+                netReward
         );
 
         if (acceptedOffer != null) {
@@ -215,6 +250,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         regressService.clear(travel.getTravelId());
 
         return payout;
+        return netReward;
     }
 
     @Override
@@ -280,6 +316,13 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                                             CustomsInspection inspection,
                                             boolean smuggleConfiscated,
                                             RegressSummary regressSummary) {
+                                            BigDecimal previousBalance, BigDecimal newBalance,
+                                            List<SmuggleOffer> smuggleOffers,
+                                            Map<UUID, BigDecimal> bonusPerCargo, BigDecimal totalBonus,
+                                            BigDecimal finalTotalReward,
+                                            BigDecimal departureDockingFine, BigDecimal dockingFine,
+                                            BigDecimal pilotageRefund,
+                                            BigDecimal netReward) {
         try {
             PortId destinationPortId = PortId.of(travel.getDestinationPortId());
             Port destinationPort = portRepository.findById(destinationPortId).orElse(null);
@@ -361,9 +404,16 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                     playerId.toString(),
                     cargoRewards,
                     baseReward,
+                    netReward,
                     finalPayout,
                     totalBonus,
                     previousBalance,
+                    newBalance,
+                    departureDockingFine,
+                    dockingFine,
+                    pilotageRefund,
+                    ratMinigameService.consumeTravelSummary(travel.getTravelId()),
+                    stormMinigameService.consumeTravelSummary(travel.getTravelId())
                     newBalance,
                     departureDockingFine,
                     arrivalDockingFine,

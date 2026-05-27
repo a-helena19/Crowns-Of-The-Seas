@@ -23,6 +23,12 @@
     animation: sideInRight 0.4s ease-out;
 }
 
+.reward-toast-left {
+    left: 20px;
+    right: auto;
+    animation: sideInLeft 0.4s ease-out;
+}
+
 .reward-toast.show {
     opacity: 1;
     transform: translateX(0);
@@ -35,6 +41,11 @@
 
 @keyframes slideInRight {
     from { transform: translateX(120%); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes sideInLeft {
+    from { transform: translateX(-120%); opacity: 0; }
     to   { transform: translateX(0);    opacity: 1; }
 }
 
@@ -72,6 +83,20 @@
     font-size: 15px;
     font-weight: bold;
     color: #2e7d32;
+}
+
+.reward-toast-status {
+    font-family: var(--font-game, Georgia, serif), serif;
+    font-size: 15px;
+    font-weight: bold;
+}
+
+.reward-toast-status.ok {
+    color: #2e7d32;
+}
+
+.reward-toast-status.bad {
+    color: #9b2c2c;
 }
 
 .reward-toast-close {

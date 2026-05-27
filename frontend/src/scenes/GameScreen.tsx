@@ -12,6 +12,7 @@ import CargoManagementScreen from "../scenes/CargoManagementScreen";
 import DockingMiniGame from "../scenes/DockingMiniGame";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
 import RewardToast from "../components/RewardToast.tsx";
+import MinigameStatusToast from "../components/MinigameStatusToast.tsx";
 import SmuggleOfferDialog from "../components/SmuggleOfferDialog.tsx";
 import CustomsInspectionDialog from "../components/CustomsInspectionDialog.tsx";
 import CustomsResultToast, { type CustomsToastKind } from "../components/CustomsResultToast.tsx";
@@ -19,6 +20,14 @@ import RatMinigameOverlay from "../minigame/rats/RatMinigameOverlay.tsx";
 import type { RatMinigameEventPayload, RatMinigameResult } from "../minigame/rats/RatMinigameTypes.ts";
 import EventNotificationDialog from "../components/EventNotificationDialog.tsx";
 import ratImage from "../assets/Rat.png";
+import RatMinigameOverlay from "../minigame/rats/RatMinigameOverlay.tsx";
+import type { RatMinigameEventPayload, RatMinigameResult } from "../minigame/rats/RatMinigameTypes.ts";
+import StormMinigameOverlay from "../minigame/storm/StormMinigameOverlay.tsx";
+import type { StormMinigameEventPayload, StormMinigameResult } from "../minigame/storm/StormMinigameTypes.ts";
+import { minigameSessionManager } from "../minigame/MinigameSessionManager.ts";
+import EventNotificationDialog from "../components/EventNotificationDialog.tsx";
+import ratImage from "../assets/Rat.png";
+import stormDialogImage from "../assets/minigame/storm/DialogPic.png";
 import GameOverScreen from "../components/GameOverScreen";
 
 export const TOP_BAR_HEIGHT = '9vh';
@@ -64,6 +73,12 @@ export default function GameScreen() {
     const [rewardToasts, setRewardToasts] = useState<{
         id: string; shipName: string; from: string; to: string; reward: number;
     }[]>([]);
+    const [minigameStatusToasts, setMinigameStatusToasts] = useState<{
+        id: string;
+        success: boolean;
+        message: string;
+        title: string;
+    }[]>([]);
     const [ratResultToasts, setRatResultToasts] = useState<{
         id: string;
         success: boolean;
@@ -77,6 +92,10 @@ export default function GameScreen() {
     const customsQueueRef = useRef<CustomsInspectionPayload[]>([]);
     const [ratEventOffer, setRatEventOffer] = useState<RatMinigameEventPayload | null>(null);
     const [activeRatMinigame, setActiveRatMinigame] = useState<RatMinigameEventPayload | null>(null);
+    const [ratEventOffer, setRatEventOffer] = useState<RatMinigameEventPayload | null>(null);
+    const [activeRatMinigame, setActiveRatMinigame] = useState<RatMinigameEventPayload | null>(null);
+    const [stormEventOffer, setStormEventOffer] = useState<StormMinigameEventPayload | null>(null);
+    const [activeStormMinigame, setActiveStormMinigame] = useState<StormMinigameEventPayload | null>(null);
 
     const pendingSmuggleRef = useRef<{
         offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
@@ -281,6 +300,40 @@ export default function GameScreen() {
         if (showArrivalDocking) return;
         for (const entry of assignedCargos) {
             if (
+                entry.phase === "unloading" &&
+                entry.travelId &&
+                (!entry.pilotageUsed || entry.pilotageStrikeRevoked) &&
+                !arrivedMiniGameShown.current.has(entry.travelId)
+            ) {
+                arrivedMiniGameShown.current.add(entry.travelId);
+                setShowArrivalDocking(entry);
+                break;
+            }
+        }
+    }, [assignedCargos, showArrivalDocking]);
+
+    const handleArrivalDockingSuccess = useCallback(() => {
+        setShowArrivalDocking(null);
+    }, []);
+
+    const handleArrivalDockingFailure = useCallback(async () => {
+        const entry = showArrivalDocking;
+        setShowArrivalDocking(null);
+        if (!entry?.travelId || !playerId || !sessionId) return;
+        try {
+            await fetch(
+                `/api/travels/${entry.travelId}/docking-failed?playerId=${playerId}&sessionId=${sessionId}`,
+                { method: "POST", headers: { Authorization: `Bearer ${authToken}` } }
+            );
+            window.dispatchEvent(new CustomEvent("player-balance-updated"));
+        } catch { /* nicht-fatal */ }
+    }, [showArrivalDocking, playerId, sessionId, authToken]);
+
+    // Ankunfts-Minispiel automatisch starten (Vollbild über der Karte)
+    useEffect(() => {
+        if (showArrivalDocking) return;
+        for (const entry of assignedCargos) {
+            if (
                 entry.phase === "awaiting_docking" &&
                 entry.travelId &&
                 !arrivedMiniGameShown.current.has(entry.travelId)
@@ -355,6 +408,18 @@ export default function GameScreen() {
                     hadFragileCargo: boolean;
                     totalFine: number;
                 } | null;
+                ratMinigameSummary?: {
+                    triggered: boolean;
+                    result?: "SUCCESS" | "FAILED";
+                    penaltyAmount?: number;
+                };
+                stormMinigameSummary?: {
+                    triggered: boolean;
+                    result?: "SUCCESS" | "FAILED";
+                    penaltyAmount?: number;
+                    cargoLossPercent?: number;
+                    conditionDamagePercent?: number;
+                };
             }>).detail;
             if (data.playerId !== playerId) return;
 
@@ -382,6 +447,8 @@ export default function GameScreen() {
                         ratMinigameSummary: data.ratMinigameSummary,
                         customsSummary: data.customsSummary ?? undefined,
                         regressSummary: data.regressSummary ?? undefined,
+                        ratMinigameSummary: data.ratMinigameSummary,
+                        stormMinigameSummary: data.stormMinigameSummary,
                     };
                 });
                 return updated;
@@ -451,6 +518,48 @@ export default function GameScreen() {
         };
         window.addEventListener("smuggle-offer", handler);
         return () => window.removeEventListener("smuggle-offer", handler);
+    }, [playerId]);
+
+    // Rat minigame event
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const data = (e as CustomEvent<RatMinigameEventPayload>).detail;
+            if (data.playerId !== playerId) return;
+            if (window.__activeRatEventId === data.eventId) return;
+            window.__activeRatEventId = data.eventId;
+            minigameSessionManager.startSession({
+                minigameType: data.eventType,
+                eventId: data.eventId,
+                playerId: data.playerId,
+                playerShipId: data.playerShipId,
+                travelId: data.travelId,
+            });
+            setRatEventOffer(data);
+        };
+
+        window.addEventListener("rats-event", handler);
+        return () => window.removeEventListener("rats-event", handler);
+    }, [playerId]);
+
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const data = (e as CustomEvent<StormMinigameEventPayload>).detail;
+            if (data.playerId !== playerId) return;
+            if (window.__activeStormEventId === data.eventId) return;
+            window.__activeStormEventId = data.eventId;
+            const shipIconUrl = window.__latestShips?.find(s => s.playerShipId === data.playerShipId)?.iconUrl;
+            minigameSessionManager.startSession({
+                minigameType: data.eventType,
+                eventId: data.eventId,
+                playerId: data.playerId,
+                playerShipId: data.playerShipId,
+                travelId: data.travelId,
+            });
+            setStormEventOffer({ ...data, shipIconUrl });
+        };
+
+        window.addEventListener("storm-event", handler);
+        return () => window.removeEventListener("storm-event", handler);
     }, [playerId]);
 
     useEffect(() => {
@@ -555,6 +664,217 @@ export default function GameScreen() {
         setSmuggleOffer(null);
     }
 
+    const submitRatResult = useCallback(async (payload: {
+        eventId: string;
+        travelId: string;
+        result: "SUCCESS" | "FAILED";
+        hits: number;
+        requiredHits: number;
+        remainingSeconds: number;
+        timeLimitSeconds: number;
+    }) => {
+        const token = localStorage.getItem("auth_token") ?? "";
+        try {
+            await fetch(`/api/minigames/rats/result?playerId=${playerId}&sessionId=${sessionId}`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    eventId: payload.eventId,
+                    travelId: payload.travelId,
+                    result: payload.result,
+                    hits: payload.hits,
+                    requiredHits: payload.requiredHits,
+                    remainingSeconds: payload.remainingSeconds,
+                    timeLimitSeconds: payload.timeLimitSeconds,
+                }),
+            });
+        } catch {
+        }
+    }, [playerId, sessionId]);
+
+    const handleRatEventAccept = useCallback(() => {
+        if (!ratEventOffer) return;
+        setActiveRatMinigame(ratEventOffer);
+        setRatEventOffer(null);
+    }, [ratEventOffer]);
+
+    const handleRatEventDecline = useCallback(async () => {
+        if (!ratEventOffer) return;
+
+        await submitRatResult({
+            eventId: ratEventOffer.eventId,
+            travelId: ratEventOffer.travelId,
+            result: "FAILED",
+            hits: 0,
+            requiredHits: ratEventOffer.requiredHits,
+            remainingSeconds: 0,
+            timeLimitSeconds: ratEventOffer.timeLimitSeconds,
+        });
+
+        minigameSessionManager.finishSession(ratEventOffer.eventId, "DECLINED");
+        window.__activeRatEventId = undefined;
+        setRatEventOffer(null);
+        const id = `rat-result-${Date.now()}`;
+        setMinigameStatusToasts(prev => [...prev, {
+            id,
+            success: false,
+            title: "Ratten-Event",
+            message: "Ratten-Event nicht bestanden",
+        }]);
+        setTimeout(() => {
+            setMinigameStatusToasts(prev => prev.filter(toast => toast.id !== id));
+        }, 2600);
+    }, [ratEventOffer, submitRatResult]);
+
+    const handleRatMinigameFinished = useCallback(async (result: RatMinigameResult) => {
+        if (!activeRatMinigame) return;
+
+        await submitRatResult({
+            eventId: activeRatMinigame.eventId,
+            travelId: activeRatMinigame.travelId,
+            result: result.result,
+            hits: result.hits,
+            requiredHits: result.requiredHits,
+            remainingSeconds: result.remainingSeconds,
+            timeLimitSeconds: result.timeLimitSeconds,
+        });
+
+        minigameSessionManager.finishSession(activeRatMinigame.eventId, "COMPLETED");
+        window.__activeRatEventId = undefined;
+        setActiveRatMinigame(null);
+        const id = `rat-result-${Date.now()}`;
+        const success = result.result === "SUCCESS";
+        setMinigameStatusToasts(prev => [...prev, {
+            id,
+            success,
+            title: "Ratten-Event",
+            message: success ? "Ratten-Event erfolgreich" : "Ratten-Event nicht bestanden",
+        }]);
+        setTimeout(() => {
+            setMinigameStatusToasts(prev => prev.filter(toast => toast.id !== id));
+        }, 2600);
+    }, [activeRatMinigame, submitRatResult]);
+
+    const submitStormResult = useCallback(async (payload: {
+        eventId: string;
+        travelId: string;
+        result: "SUCCESS" | "FAILED";
+        collectedSuns: number;
+        requiredSuns: number;
+        remainingHealth: number;
+        timeLeftSeconds: number;
+        timeLimitSeconds: number;
+    }) => {
+        const token = localStorage.getItem("auth_token") ?? "";
+        try {
+            const res = await fetch(`/api/minigames/storm/result?playerId=${playerId}&sessionId=${sessionId}`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) return null;
+            return await res.json();
+        } catch {
+            return null;
+        }
+    }, [playerId, sessionId]);
+
+
+    const handleStormEventAccept = useCallback(() => {
+        if (!stormEventOffer) return;
+        setActiveStormMinigame(stormEventOffer);
+        setStormEventOffer(null);
+    }, [stormEventOffer]);
+
+    const handleStormEventDecline = useCallback(async () => {
+        if (!stormEventOffer) return;
+        const survivedWithoutDamage = Math.random() < 0.5;
+        const result = survivedWithoutDamage ? "SUCCESS" : "FAILED";
+
+        await submitStormResult({
+            eventId: stormEventOffer.eventId,
+            travelId: stormEventOffer.travelId,
+            result,
+            collectedSuns: 0,
+            requiredSuns: stormEventOffer.requiredSuns,
+            remainingHealth: stormEventOffer.startHealth,
+            timeLeftSeconds: 0,
+            timeLimitSeconds: stormEventOffer.timeLimitSeconds,
+        });
+
+        const statusId = `storm-decline-result-${Date.now()}`;
+        const success = result === "SUCCESS";
+        setMinigameStatusToasts(prev => [...prev, {
+            id: statusId,
+            success,
+            title: "Sturm-Event",
+            message: success
+                ? "Sturm-Event trotz Ablehnung erfolgreich überstanden"
+                : "Sturm-Event nach Ablehnung fehlgeschlagen",
+        }]);
+        setTimeout(() => {
+            setMinigameStatusToasts(prev => prev.filter(toast => toast.id !== statusId));
+        }, 2600);
+
+        minigameSessionManager.finishSession(stormEventOffer.eventId, "DECLINED");
+        window.__activeStormEventId = undefined;
+        setStormEventOffer(null);
+    }, [stormEventOffer, submitStormResult]);
+
+    const handleStormMinigameFinished = useCallback(async (result: StormMinigameResult) => {
+        if (!activeStormMinigame) return;
+
+        await submitStormResult({
+            eventId: activeStormMinigame.eventId,
+            travelId: activeStormMinigame.travelId,
+            result: result.result,
+            collectedSuns: result.collectedSuns,
+            requiredSuns: result.requiredSuns,
+            remainingHealth: result.remainingHealth,
+            timeLeftSeconds: result.timeLeftSeconds,
+            timeLimitSeconds: result.timeLimitSeconds,
+        });
+
+        if (result.result === "SUCCESS") {
+            const id = `storm-result-${Date.now()}`;
+            setMinigameStatusToasts(prev => [...prev, {
+                id,
+                success: true,
+                title: "Sturm-Event",
+                message: "Sturm-Event erfolgreich bestanden",
+            }]);
+            setTimeout(() => {
+                setMinigameStatusToasts(prev => prev.filter(toast => toast.id !== id));
+            }, 2600);
+            minigameSessionManager.finishSession(activeStormMinigame.eventId, "COMPLETED");
+            window.__activeStormEventId = undefined;
+            setActiveStormMinigame(null);
+            return;
+        }
+
+        const id = `storm-result-${Date.now()}`;
+        setMinigameStatusToasts(prev => [...prev, {
+            id,
+            success: false,
+            title: "Sturm-Event",
+            message: "Sturm-Event nicht bestanden",
+        }]);
+        setTimeout(() => {
+            setMinigameStatusToasts(prev => prev.filter(toast => toast.id !== id));
+        }, 2600);
+
+        minigameSessionManager.finishSession(activeStormMinigame.eventId, "COMPLETED");
+        window.__activeStormEventId = undefined;
+        setActiveStormMinigame(null);
+    }, [activeStormMinigame, submitStormResult]);
+
+    // Auto-complete loading phase
     const handleCustomsCooperate = useCallback(async () => {
         if (!customsInspection) return;
         const token = localStorage.getItem("auth_token") ?? "";
@@ -816,6 +1136,16 @@ export default function GameScreen() {
                 />
             ))}
 
+            {minigameStatusToasts.map((toast) => (
+                <MinigameStatusToast
+                    key={toast.id}
+                    title={toast.title}
+                    message={toast.message}
+                    success={toast.success}
+                    onDismiss={() => setMinigameStatusToasts(prev => prev.filter(t => t.id !== toast.id))}
+                />
+            ))}
+
             {ratResultToasts.map((toast, index) => (
                 <div
                     key={toast.id}
@@ -900,6 +1230,88 @@ export default function GameScreen() {
                     currentUserId={playerId}
                 />
             )}
+
+            {strikeNotice && (
+                <div className="pilot-strike-banner">
+                    {strikeNotice}
+                    <button
+                        type="button"
+                        onClick={() => setStrikeNotice(null)}
+                        style={{
+                            marginLeft: 12,
+                            background: "transparent",
+                            border: "none",
+                            color: "#fadbd8",
+                            cursor: "pointer",
+                            fontSize: 16,
+                        }}
+                        aria-label="Schließen"
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
+
+            {showArrivalDocking && (
+                <DockingMiniGame
+                    mode="arrival"
+                    shipIconUrl={showArrivalDocking.shipIconUrl ?? "/fallback-ship.png"}
+                    portName={showArrivalDocking.to}
+                    onSuccess={handleArrivalDockingSuccess}
+                    onFailure={handleArrivalDockingFailure}
+                />
+            )}
+
+            {ratEventOffer && (
+                <EventNotificationDialog
+                    title="Event: Rattenbefall"
+                    successText="Wenn du das Event schaffst, werden die Ratten abgewehrt und die Fracht bleibt unbeschädigt."
+                    failText="Wenn du das Event nicht schaffst oder ablehnst, wird das Minispiel als nicht bestanden gewertet und ein Teil der Fracht geht verloren."
+                    imageSrc={ratImage}
+                    imageAlt="Ratte"
+                    onAccept={handleRatEventAccept}
+                    onDecline={handleRatEventDecline}
+                />
+            )}
+
+            {stormEventOffer && (
+                <EventNotificationDialog
+                    title="Event: Schwerer Sturm"
+                    successText="Wenn du genug Sonnen einsammelst, beruhigt sich der Sturm und die Route geht normal weiter."
+                    failText="Wenn du ablehnst, gibt es eine 50/50 Chance den Sturm unbeschadet zu überleben. Bei Misserfolg verliert das Schiff 50% Zustand und ungefähr die Hälfte der geladenen Fracht geht verloren."
+                    imageSrc={stormDialogImage}
+                    imageAlt="Sturm"
+                    onAccept={handleStormEventAccept}
+                    onDecline={handleStormEventDecline}
+                />
+            )}
+
+            {activeRatMinigame && (
+                <RatMinigameOverlay
+                    config={{
+                        eventId: activeRatMinigame.eventId,
+                        travelId: activeRatMinigame.travelId,
+                        timeLimitSeconds: activeRatMinigame.timeLimitSeconds,
+                        requiredHits: activeRatMinigame.requiredHits,
+                    }}
+                    onFinished={handleRatMinigameFinished}
+                />
+            )}
+
+            {activeStormMinigame && (
+                <StormMinigameOverlay
+                    config={{
+                        eventId: activeStormMinigame.eventId,
+                        travelId: activeStormMinigame.travelId,
+                        timeLimitSeconds: activeStormMinigame.timeLimitSeconds,
+                        requiredSuns: activeStormMinigame.requiredSuns,
+                        startHealth: activeStormMinigame.startHealth,
+                        shipIconUrl: activeStormMinigame.shipIconUrl,
+                    }}
+                    onFinished={handleStormMinigameFinished}
+                />
+            )}
+
 
             {customsInspection && (
                 <CustomsInspectionDialog

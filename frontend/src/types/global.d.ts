@@ -23,4 +23,5 @@ interface Window {
         paused?: boolean;
     }>;
     __activeRatEventId?: string;
+    __activeStormEventId?: string;
 }

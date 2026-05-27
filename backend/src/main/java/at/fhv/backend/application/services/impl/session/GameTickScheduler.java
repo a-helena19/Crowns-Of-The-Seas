@@ -5,6 +5,10 @@ import at.fhv.backend.application.services.cargo.CustomsService;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.pilotstrike.PilotStrikeService;
 import at.fhv.backend.application.services.port.PortQueryService;
+import at.fhv.backend.application.services.travel.TravelPauseService;
+import at.fhv.backend.application.services.minigame.RatMinigameService;
+import at.fhv.backend.application.services.minigame.StormMinigameService;
+import at.fhv.backend.application.services.pilotstrike.PilotStrikeService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.CustomsCheckCompletionService;
 import at.fhv.backend.application.services.travel.TravelArrivalService;
@@ -64,6 +68,9 @@ public class GameTickScheduler {
     private final CargoSessionInitializer cargoSessionInitializer;
     private final TravelPauseService travelPauseService;
     private final RatMinigameService ratMinigameService;
+    private final StormMinigameService stormMinigameService;
+    private final PilotStrikeService pilotStrikeService;
+    private final RatMinigameService ratMinigameService;
     private final CustomsService customsService;
     private final UnloadingStartService unloadingStartService;
     private final CustomsCheckCompletionService customsCheckCompletionService;
@@ -94,6 +101,10 @@ public class GameTickScheduler {
                              CustomsService customsService,
                              UnloadingStartService unloadingStartService,
                              CustomsCheckCompletionService customsCheckCompletionService) {
+                             TravelPauseService travelPauseService,
+                             RatMinigameService ratMinigameService,
+                             StormMinigameService stormMinigameService,
+                             PilotStrikeService pilotStrikeService) {
         this.gameSessionRepository = gameSessionRepository;
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
@@ -111,6 +122,9 @@ public class GameTickScheduler {
         this.customsService = customsService;
         this.unloadingStartService = unloadingStartService;
         this.customsCheckCompletionService = customsCheckCompletionService;
+        this.ratMinigameService = ratMinigameService;
+        this.stormMinigameService = stormMinigameService;
+        this.pilotStrikeService = pilotStrikeService;
     }
 
     public void startForSession(UUID sessionId, int tickRateSeconds) {
@@ -357,6 +371,12 @@ public class GameTickScheduler {
 
             List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
             for (Travel travel : activeTravels) {
+                stormMinigameService.tryTriggerForTravel(travel, sessionId);
+                if (travelPauseService.isTravelPaused(travel.getTravelId())) {
+                    continue;
+                }
+                ratMinigameService.tryTriggerForTravel(travel, sessionId);
+
                 ratMinigameService.tryTriggerForTravel(travel, sessionId);
 
                 if (travelPauseService.isTravelPaused(travel.getTravelId())) {
@@ -459,7 +479,9 @@ public class GameTickScheduler {
 
                 if (origin != null && dest != null) {
                     boolean isPaused = travelPauseService.isTravelPaused(travel.getTravelId());
-                    double progress = travel.getProgress(currentTick);
+                    Integer pausedAtTick = travelPauseService.getPausedAtTick(travel.getTravelId());
+                    int progressTick = isPaused && pausedAtTick != null ? pausedAtTick : currentTick;
+                    double progress = travel.getProgress(progressTick);
                     double x = origin.x() + (dest.x() - origin.x()) * progress;
                     double y = origin.y() + (dest.y() - origin.y()) * progress;
 

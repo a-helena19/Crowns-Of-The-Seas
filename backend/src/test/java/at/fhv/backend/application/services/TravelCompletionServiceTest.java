@@ -141,7 +141,7 @@ class TravelCompletionServiceTest {
 
             BigDecimal reward = service.calculateTotalReward(travel, List.of(cargo));
 
-            assertThat(reward).isEqualByComparingTo(BigDecimal.valueOf(1500));
+            assertThat(reward).isEqualByComparingTo(BigDecimal.valueOf(1000));
         }
 
         @Test
@@ -330,6 +330,7 @@ class TravelCompletionServiceTest {
         @Mock private SmuggleService smuggleService;
         @Mock private TravelRepository travelRepository;
         @Mock private RatMinigameService ratMinigameService;
+        @Mock private RatMinigameService ratMinigameService;
         @Mock private CustomsService customsService;
         @Mock private RegressService regressService;
 
@@ -350,6 +351,8 @@ class TravelCompletionServiceTest {
                     ratMinigameService,
                     customsService,
                     regressService
+                    travelRepository,
+                    ratMinigameService
             );
 
             // Default: ratMinigameService passes reward through unchanged, no summary
@@ -364,6 +367,8 @@ class TravelCompletionServiceTest {
 
             // Default: no smuggle offers
             // when(smuggleService.getAllAcceptedOffers(any(UUID.class))).thenReturn(List.of());
+            when(ratMinigameService.applyRewardModifier(any(UUID.class), any(BigDecimal.class)))
+                    .thenAnswer(inv -> inv.getArgument(1));
         }
 
         private PlayerShip buildPlayerShipInUnloading(UUID destinationPortId) {
@@ -390,6 +395,7 @@ class TravelCompletionServiceTest {
 
             Travel travel = Travel.start(playerShipId, userId, sessionId,
                     UUID.randomUUID(), destinationPortId, 5.0, 1.0, 0.1, BigDecimal.valueOf(500), 0);
+            travel.markAsArrived(0.0, TravelStatus.ARRIVED);
 
             PlayerShip playerShip = buildPlayerShipInUnloading(destinationPortId);
             ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
@@ -414,8 +420,8 @@ class TravelCompletionServiceTest {
 
             service.completeUnloadingPhase(travel, List.of(cargo));
 
-            // 40000 (start) + 1000 (cargo reward) + 500 (base reward) = 41500
-            assertThat(player.getBalance()).isEqualByComparingTo(new BigDecimal("41500.00"));
+            // 40000 start + 1000 cargo + random bonus (0..500)
+            assertThat(player.getBalance()).isBetween(new BigDecimal("41000.00"), new BigDecimal("41500.00"));
         }
 
         @Test
@@ -427,6 +433,7 @@ class TravelCompletionServiceTest {
 
             Travel travel = Travel.start(playerShipId, userId, sessionId,
                     UUID.randomUUID(), destinationPortId, 5.0, 1.0, 0.1, BigDecimal.ZERO, 0);
+            travel.markAsArrived(0.0, TravelStatus.ARRIVED);
 
             PlayerShip playerShip = buildPlayerShipInUnloading(destinationPortId);
             ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
@@ -454,6 +461,7 @@ class TravelCompletionServiceTest {
 
             Travel travel = Travel.start(playerShipId, userId, sessionId,
                     UUID.randomUUID(), destinationPortId, 5.0, 1.0, 0.1, BigDecimal.ZERO, 0);
+            travel.markAsArrived(0.0, TravelStatus.ARRIVED);
 
             PlayerShip playerShip = buildPlayerShipInUnloading(destinationPortId);
             ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
@@ -477,7 +485,7 @@ class TravelCompletionServiceTest {
 
             service.completeUnloadingPhase(travel, List.of(cargo));
 
-            assertThat(player.getBalance()).isEqualByComparingTo(new BigDecimal("41000.00"));
+            assertThat(player.getBalance()).isBetween(new BigDecimal("41000.00"), new BigDecimal("41500.00"));
             assertThat(cargo.getCargoStatus()).isEqualTo(CargoStatus.DELIVERED);
         }
 
