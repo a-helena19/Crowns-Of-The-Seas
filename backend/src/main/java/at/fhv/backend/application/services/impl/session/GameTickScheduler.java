@@ -2,6 +2,7 @@ package at.fhv.backend.application.services.impl.session;
 
 import at.fhv.backend.application.init.CargoSessionInitializer;
 import at.fhv.backend.application.services.cargo.CustomsService;
+import at.fhv.backend.application.services.minigame.ObstacleMinigameService;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.minigame.StormMinigameService;
 import at.fhv.backend.application.services.pilotstrike.PilotStrikeService;
@@ -66,6 +67,7 @@ public class GameTickScheduler {
     private final TravelPauseService travelPauseService;
     private final RatMinigameService ratMinigameService;
     private final StormMinigameService stormMinigameService;
+    private final ObstacleMinigameService obstacleMinigameService;
     private final CustomsService customsService;
     private final UnloadingStartService unloadingStartService;
     private final CustomsCheckCompletionService customsCheckCompletionService;
@@ -93,6 +95,7 @@ public class GameTickScheduler {
                              TravelPauseService travelPauseService,
                              RatMinigameService ratMinigameService,
                              StormMinigameService stormMinigameService,
+                             ObstacleMinigameService obstacleMinigameService,
                              PilotStrikeService pilotStrikeService,
                              CustomsService customsService,
                              UnloadingStartService unloadingStartService,
@@ -111,6 +114,7 @@ public class GameTickScheduler {
         this.travelPauseService = travelPauseService;
         this.ratMinigameService = ratMinigameService;
         this.stormMinigameService = stormMinigameService;
+        this.obstacleMinigameService = obstacleMinigameService;
         this.pilotStrikeService = pilotStrikeService;
         this.customsService = customsService;
         this.unloadingStartService = unloadingStartService;
@@ -362,6 +366,10 @@ public class GameTickScheduler {
             List<Travel> activeTravels = travelRepository.findAllInProgressBySessionId(sessionId);
             for (Travel travel : activeTravels) {
                 stormMinigameService.tryTriggerForTravel(travel, sessionId);
+                if (travelPauseService.isTravelPaused(travel.getTravelId())) {
+                    continue;
+                }
+                obstacleMinigameService.tryTriggerForTravel(travel, sessionId);
                 if (travelPauseService.isTravelPaused(travel.getTravelId())) {
                     continue;
                 }

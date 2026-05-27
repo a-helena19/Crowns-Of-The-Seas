@@ -4,6 +4,7 @@ import at.fhv.backend.application.services.cargo.CustomsService;
 import at.fhv.backend.application.services.impl.travel.CargoUnloadingPhaseServiceImpl;
 import at.fhv.backend.application.services.impl.travel.RewardCalculationServiceImpl;
 import at.fhv.backend.application.services.impl.travel.TravelArrivalServiceImpl;
+import at.fhv.backend.application.services.minigame.ObstacleMinigameService;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.minigame.StormMinigameService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
@@ -332,6 +333,7 @@ class TravelCompletionServiceTest {
         @Mock private TravelRepository travelRepository;
         @Mock private RatMinigameService ratMinigameService;
         @Mock private StormMinigameService stormMinigameService;
+        @Mock private ObstacleMinigameService obstacleMinigameService;
         @Mock private CustomsService customsService;
         @Mock private RegressService regressService;
 
@@ -351,6 +353,7 @@ class TravelCompletionServiceTest {
                     travelRepository,
                     ratMinigameService,
                     stormMinigameService,
+                    obstacleMinigameService,
                     customsService,
                     regressService
             );
@@ -363,6 +366,10 @@ class TravelCompletionServiceTest {
             when(stormMinigameService.applyRewardModifier(any(UUID.class), any(BigDecimal.class)))
                     .thenAnswer(inv -> inv.getArgument(1));
             when(stormMinigameService.consumeTravelSummary(any(UUID.class)))
+                    .thenReturn(null);
+            when(obstacleMinigameService.applyRewardModifier(any(UUID.class), any(BigDecimal.class)))
+                    .thenAnswer(inv -> inv.getArgument(1));
+            when(obstacleMinigameService.consumeTravelSummary(any(UUID.class)))
                     .thenReturn(null);
 
             // Default: no customs inspection result (fine = 0)

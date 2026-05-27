@@ -724,6 +724,31 @@ export default function CargoManagementScreen({
                                         </div>
                                     )}
 
+                                    {selectedEntry.obstacleMinigameSummary?.triggered && selectedEntry.obstacleMinigameSummary.result === "SUCCESS" && (
+                                        <div className="cm-reward-cargo-item">
+                                            <div style={{ flex: 1 }}>
+                                                <div className="cm-reward-cargo-name">Hindernisse erfolgreich umfahren</div>
+                                                <div className="cm-reward-cargo-sub">Hindernis-Event</div>
+                                            </div>
+                                            <span className="cm-reward-cargo-amount">+0T</span>
+                                        </div>
+                                    )}
+
+                                    {selectedEntry.obstacleMinigameSummary?.triggered && selectedEntry.obstacleMinigameSummary.result === "FAILED" && (
+                                        <div className="cm-reward-cargo-item expired">
+                                            <div style={{ flex: 1 }}>
+                                                <div className="cm-reward-cargo-name">Hindernis hat Schiff und Fracht beschaedigt</div>
+                                                <div className="cm-reward-cargo-sub">
+                                                    {Math.round(selectedEntry.obstacleMinigameSummary.conditionDamagePercent ?? 0)}% Schiffsschaden,
+                                                    {" "}{selectedEntry.obstacleMinigameSummary.cargoLossPercent ?? 0}% Frachtwert verloren
+                                                </div>
+                                            </div>
+                                            <span className="cm-reward-cargo-amount expired">
+                                                -{Math.round(selectedEntry.obstacleMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                            </span>
+                                        </div>
+                                    )}
+
                                     <div className="cm-reward-breakdown">
                                         {cargoBaseTotal > 0 && (
                                             <div className="cm-reward-row">
@@ -804,6 +829,14 @@ export default function CargoManagementScreen({
                                                 <span>⚠ Sturm-Event Schaden</span>
                                                 <span className="cm-reward-row-value">
                                                     -{Math.round(selectedEntry.stormMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                                </span>
+                                            </div>
+                                        )}
+                                        {selectedEntry.obstacleMinigameSummary?.triggered && selectedEntry.obstacleMinigameSummary.result === "FAILED" && (
+                                            <div className="cm-reward-row warn">
+                                                <span>⚠ Hindernis-Event Schaden</span>
+                                                <span className="cm-reward-row-value">
+                                                    -{Math.round(selectedEntry.obstacleMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
                                                 </span>
                                             </div>
                                         )}

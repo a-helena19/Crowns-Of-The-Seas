@@ -102,6 +102,7 @@ export class StormMinigameScene extends Phaser.Scene {
             hazard.view.y += hazard.speed * (delta / 1000);
             if (Phaser.Geom.Intersects.RectangleToRectangle(shipRect, hazard.view.getBounds())) {
                 this.health = Math.max(0, this.health - 20);
+                this.applyHitFeedback();
                 hazard.view.destroy();
                 this.hazards.splice(i, 1);
                 this.updateHud();
@@ -122,6 +123,7 @@ export class StormMinigameScene extends Phaser.Scene {
             sun.view.y += sun.speed * (delta / 1000);
             if (Phaser.Geom.Intersects.RectangleToRectangle(shipRect, sun.view.getBounds())) {
                 this.collectedSuns += 1;
+                this.applyCollectFeedback();
                 sun.view.destroy();
                 this.suns.splice(i, 1);
                 this.updateHud();
@@ -142,6 +144,25 @@ export class StormMinigameScene extends Phaser.Scene {
         this.timeText?.setText(`Zeit: ${this.timeLeft}s`);
         this.healthText?.setText(`Haltbarkeit: ${this.health}`);
         this.sunsText?.setText(`Sonnen: ${this.collectedSuns} / ${this.config.requiredSuns}`);
+    }
+
+    private applyHitFeedback() {
+        this.player.sprite.setTint(0xff6b6b);
+        this.cameras.main.shake(180, 0.008);
+        this.time.delayedCall(180, () => {
+            if (this.player?.sprite?.active) {
+                this.player.sprite.clearTint();
+            }
+        });
+    }
+
+    private applyCollectFeedback() {
+        this.player.sprite.setTint(0x55ef8a);
+        this.time.delayedCall(140, () => {
+            if (this.player?.sprite?.active) {
+                this.player.sprite.clearTint();
+            }
+        });
     }
 
     private finish(outcome: "SUCCESS" | "FAILED") {
