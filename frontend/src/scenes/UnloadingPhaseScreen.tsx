@@ -143,7 +143,6 @@ export const UnloadingPhaseScreen: React.FC<UnloadingPhaseScreenProps> = ({
                     </div>
                 )}
 
-                {/* Progress Bar */}
                 <div className="progress-section">
                     <div className="progress-label">
                         <span>Entlade-Fortschritt</span>

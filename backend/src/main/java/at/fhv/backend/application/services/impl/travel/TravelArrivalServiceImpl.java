@@ -1,12 +1,12 @@
 package at.fhv.backend.application.services.impl.travel;
 
-import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
+import at.fhv.backend.application.services.travel.RegressService;
 import at.fhv.backend.application.services.travel.TravelArrivalService;
+import at.fhv.backend.application.services.travel.UnloadingStartService;
+import at.fhv.backend.domain.model.cargo.CargoStatus;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
 import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
-import at.fhv.backend.domain.model.player.ISessionPlayer;
-import at.fhv.backend.domain.model.session.GameSession;
-import at.fhv.backend.domain.model.session.GameSessionRepository;
+import at.fhv.backend.domain.model.exception.ShipNotFoundException;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.travel.Travel;
@@ -14,109 +14,101 @@ import at.fhv.backend.domain.model.travel.TravelRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 public class TravelArrivalServiceImpl implements TravelArrivalService {
+    private static final int CUSTOMS_CHECK_DURATION_TICKS = 2;
+
     private final TravelRepository travelRepository;
     private final PlayerShipRepository playerShipRepository;
     private final SessionCargoRepository sessionCargoRepository;
-    private final CargoUnloadingPhaseService cargoUnloadingPhaseService;
-    private final GameSessionRepository gameSessionRepository;
+    private final UnloadingStartService unloadingStartService;
+    private final RegressService regressService;
 
-    private static final int BASE_UNLOADING_TICKS = 5;
-
-    public TravelArrivalServiceImpl(
-            TravelRepository travelRepository,
-            PlayerShipRepository playerShipRepository,
-            SessionCargoRepository sessionCargoRepository,
-            CargoUnloadingPhaseService cargoUnloadingPhaseService,
-            GameSessionRepository gameSessionRepository) {
+    public TravelArrivalServiceImpl(TravelRepository travelRepository,
+                                    PlayerShipRepository playerShipRepository,
+                                    SessionCargoRepository sessionCargoRepository,
+                                    UnloadingStartService unloadingStartService,
+                                    RegressService regressService) {
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
         this.sessionCargoRepository = sessionCargoRepository;
-        this.cargoUnloadingPhaseService = cargoUnloadingPhaseService;
-        this.gameSessionRepository = gameSessionRepository;
+        this.unloadingStartService = unloadingStartService;
+        this.regressService = regressService;
     }
 
     @Override
     @Transactional
     public void handleArrival(Travel travel) {
-        travel.markAsArrived(0.0, travel.getTravelStatus());
+        travel.markAsArrived(0.0);
+
+        boolean miniGameRequired = !travel.isPilotageServiceBooked() || travel.isPilotageStrikeRevoked();
+        travel.setArrivalMiniGamePending(miniGameRequired);
         travelRepository.save(travel);
 
-        PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
-        List<SessionCargo> cargosForPlayer = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
+        PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId())
+                .orElseThrow(() -> new ShipNotFoundException("PlayerShip", travel.getPlayerShipId()));
 
-        if (ship != null) {
-            int unloadingDuration = calculateUnloadingTime(travel, cargosForPlayer);
-            int unloadingCompletedAtTick = travel.getArrivalTick() + unloadingDuration;
+        List<SessionCargo> cargosForRegress = collectCargosOnBoardForTravel(travel);
+        regressService.evaluateAndStore(
+                travel,
+                travel.getArrivalTick(),
+                ship.getCondition(),
+                cargosForRegress
+        );
 
-            ship.arriveAndStartUnloading(travel.getDestinationPortId(), unloadingCompletedAtTick);
-            playerShipRepository.save(ship);
-
-            boolean miniGameRequired = !travel.isPilotageServiceBooked() || travel.isPilotageStrikeRevoked();
-            travel.setArrivalMiniGamePending(miniGameRequired);
-            travelRepository.save(travel);
-
-            System.out.println("[TravelArrival] Ship " + ship.getId() + " arrived at port " + travel.getDestinationPortId());
-            System.out.println("[TravelArrival] Ship set to UNLOADING status for " + unloadingDuration + " ticks (until tick " + unloadingCompletedAtTick + ")");
-            System.out.println("[TravelArrival] arrivalMiniGamePending=" + miniGameRequired);
+        if (miniGameRequired) {
+            System.out.println("[TravelArrival] Ship " + ship.getId()
+                    + " arrived at port " + travel.getDestinationPortId()
+                    + " — awaiting manual docking (miniGame pending), customs deferred");
+            return;
         }
 
-        System.out.println("[TravelArrival] Found " + cargosForPlayer.size() + " cargos for player " + travel.getPlayerId());
-        System.out.println("[TravelArrival] Cargo unloading will be triggered by scheduler when UNLOADING-phase complete");
+        if (!hasCargoForArrival(travel)) {
+            unloadingStartService.startUnloadingImmediately(travel);
+            System.out.println("[TravelArrival] Ship " + ship.getId()
+                    + " arrived at port " + travel.getDestinationPortId()
+                    + " with no cargo — unloading started immediately");
+            return;
+        }
+
+        int customsCheckCompletedAtTick = travel.getArrivalTick() + CUSTOMS_CHECK_DURATION_TICKS;
+        ship.arriveAndStartCustomsCheck(travel.getDestinationPortId(), customsCheckCompletedAtTick);
+        playerShipRepository.save(ship);
+
+        System.out.println("[TravelArrival] Ship " + ship.getId()
+                + " arrived at port " + travel.getDestinationPortId()
+                + " — entered CUSTOMS_CHECK (2 ticks, until tick " + customsCheckCompletedAtTick + ")");
     }
 
-    public void triggerUnloadingIfComplete(Travel travel, int currentTick) {
-        PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
-
-        if (ship != null && !ship.isStillUnloading(currentTick)) {
-            List<SessionCargo> cargosForPlayer =
-                    sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
-
-            cargoUnloadingPhaseService.completeUnloadingPhase(travel, cargosForPlayer);
-
-            System.out.println("[TravelArrival] Unloading complete for ship " + ship.getId() + " at tick " + currentTick);
+    private List<SessionCargo> collectCargosOnBoardForTravel(Travel travel) {
+        List<SessionCargo> result = new ArrayList<>();
+        List<SessionCargo> all = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
+        for (SessionCargo cargo : all) {
+            boolean sameShip = cargo.getAssignedPlayerShipId() != null
+                    && cargo.getAssignedPlayerShipId().equals(travel.getPlayerShipId());
+            boolean sameDestination = cargo.getDestinationPortId().equals(travel.getDestinationPortId());
+            if (sameShip && sameDestination) {
+                result.add(cargo);
+            }
         }
+        return result;
     }
 
-    private int calculateUnloadingTime(Travel travel, List<SessionCargo> cargosForPlayer) {
-        try {
-            GameSession session = gameSessionRepository.findById(travel.getSessionId()).orElse(null);
-            if (session == null) {
-                return BASE_UNLOADING_TICKS;
+    private boolean hasCargoForArrival(Travel travel) {
+        List<SessionCargo> all = sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId());
+        for (SessionCargo cargo : all) {
+            boolean sameShip = cargo.getAssignedPlayerShipId() != null
+                    && cargo.getAssignedPlayerShipId().equals(travel.getPlayerShipId());
+            boolean sameDestination = cargo.getDestinationPortId().equals(travel.getDestinationPortId());
+            boolean stillOnBoard = cargo.getCargoStatus() == CargoStatus.ASSIGNED
+                    || cargo.getCargoStatus() == CargoStatus.EXPIRED;
+            if (sameShip && sameDestination && stillOnBoard) {
+                return true;
             }
-
-            ISessionPlayer player = session.getPlayers().stream()
-                    .filter(p -> p.getUserId().equals(travel.getPlayerId()))
-                    .findFirst()
-                    .orElse(null);
-
-            if (player == null) {
-                return BASE_UNLOADING_TICKS;
-            }
-
-            int totalCapacity = cargosForPlayer.stream()
-                    .filter(cargo -> cargo.getDestinationPortId().equals(travel.getDestinationPortId()))
-                    .mapToInt(SessionCargo::getCapacity)
-                    .sum();
-
-            double capacityFactor = 1.0 + (totalCapacity / 100.0);
-            double playerModifier = player.getUnloadingTimeModifier();
-            int unloadingTicks = (int) Math.ceil(BASE_UNLOADING_TICKS * capacityFactor * playerModifier);
-            unloadingTicks = Math.max(1, unloadingTicks);
-
-            System.out.println("[UnloadingTime] totalCapacity=" + totalCapacity
-                    + " capacityFactor=" + capacityFactor
-                    + " playerUnloadingModifier=" + playerModifier
-                    + " unloadingTicks=" + unloadingTicks);
-
-            return unloadingTicks;
-        } catch (Exception e) {
-            System.err.println("[UnloadingTime] Error calculating unloading time: " + e.getMessage());
-            return BASE_UNLOADING_TICKS;
         }
+        return false;
     }
 }

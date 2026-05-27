@@ -22,7 +22,6 @@
     gap: 16px;
 }
 
-/* ── Header ─────────────────────────────────────────── */
 .mgmt-header {
     display: flex;
     align-items: center;
@@ -40,7 +39,6 @@
     margin: 0;
 }
 
-/* ── Ship overview ──────────────────────────────────── */
 .mgmt-ship-overview {
     background: #f5e8d0;
     border: 2px solid #c89b3c;
@@ -160,7 +158,6 @@
     color: #b03020;
 }
 
-/* ── Misc ────────────────────────────────────────────── */
 .mgmt-error {
     color: #b03020;
     font-size: 13px;

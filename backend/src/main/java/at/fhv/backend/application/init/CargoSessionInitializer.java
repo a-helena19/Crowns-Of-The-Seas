@@ -79,10 +79,6 @@ public class CargoSessionInitializer {
         offers.forEach(sessionCargoRepository::save);
     }
 
-    /**
-     * Creates a new SessionCargo from a random Cargo template for the given port.
-     * Used by GameTickScheduler to spawn fresh cargos when AVAILABLE count drops below MAX.
-     */
     public SessionCargo createNewCargo(UUID sessionId, UUID originPortId, int currentTick, Random rng, boolean permanent) {
         List<Cargo> templates = cargoRepository.findAll();
         List<Port> ports = portRepository.findAll();

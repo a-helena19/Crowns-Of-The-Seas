@@ -117,6 +117,14 @@ public class BaseSessionPlayer implements ISessionPlayer {
         this.balance = this.balance.subtract(amount);
     }
 
+    @Override
+    public void forceSubtractBalance(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidAmountException(amount);
+        }
+        this.balance = this.balance.subtract(amount);
+    }
+
     // Kosten — alle neutral
     @Override
     public double getRepairCostModifier()  { return 1.0; }

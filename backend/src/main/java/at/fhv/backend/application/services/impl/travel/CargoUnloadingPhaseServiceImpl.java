@@ -1,17 +1,25 @@
 package at.fhv.backend.application.services.impl.travel;
 
+import at.fhv.backend.application.services.cargo.CustomsService;
+import at.fhv.backend.application.services.minigame.RatMinigameService;
+import at.fhv.backend.application.services.minigame.StormMinigameService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
+import at.fhv.backend.application.services.travel.RegressService;
 import at.fhv.backend.application.services.travel.RewardCalculationService;
 import at.fhv.backend.domain.model.cargo.Cargo;
 import at.fhv.backend.domain.model.cargo.CargoRepository;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
 import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
+import at.fhv.backend.domain.model.customs.CustomsInspection;
+import at.fhv.backend.domain.model.customs.CustomsInspectionOutcome;
+import at.fhv.backend.domain.model.customs.RegressFine;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.port.Port;
 import at.fhv.backend.domain.model.port.PortId;
 import at.fhv.backend.domain.model.port.PortRepository;
+import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
@@ -20,16 +28,24 @@ import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.rest.GameSessionWebSocketController;
 import at.fhv.backend.rest.dtos.websocket.CargoRewardBreakdown;
-import at.fhv.backend.rest.dtos.websocket.PlayerInfo;
+import at.fhv.backend.rest.dtos.websocket.CustomsSummary;
+import at.fhv.backend.rest.dtos.websocket.RegressSummary;
 import at.fhv.backend.rest.dtos.websocket.TravelCompleteEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseService {
+
+    private static final String SMUGGLE_DISPLAY_NAME = "Mysteriöse Kiste";
+
     private final SessionCargoRepository sessionCargoRepository;
     private final PlayerShipRepository playerShipRepository;
     private final GameSessionRepository gameSessionRepository;
@@ -39,6 +55,10 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
     private final CargoRepository cargoRepository;
     private final SmuggleService smuggleService;
     private final TravelRepository travelRepository;
+    private final RatMinigameService ratMinigameService;
+    private final CustomsService customsService;
+    private final RegressService regressService;
+    private final StormMinigameService stormMinigameService;
 
     public CargoUnloadingPhaseServiceImpl(
             SessionCargoRepository sessionCargoRepository,
@@ -49,7 +69,11 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             PortRepository portRepository,
             CargoRepository cargoRepository,
             SmuggleService smuggleService,
-            TravelRepository travelRepository) {
+            TravelRepository travelRepository,
+            RatMinigameService ratMinigameService,
+            StormMinigameService stormMinigameService,
+            CustomsService customsService,
+            RegressService regressService) {
         this.sessionCargoRepository = sessionCargoRepository;
         this.playerShipRepository = playerShipRepository;
         this.gameSessionRepository = gameSessionRepository;
@@ -59,63 +83,123 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         this.cargoRepository = cargoRepository;
         this.smuggleService = smuggleService;
         this.travelRepository = travelRepository;
+        this.ratMinigameService = ratMinigameService;
+        this.stormMinigameService = stormMinigameService;
+        this.customsService = customsService;
+        this.regressService = regressService;
     }
 
     @Override
     @Transactional
     public BigDecimal completeUnloadingPhase(Travel travel, List<SessionCargo> cargosForPlayer) {
-        BigDecimal totalBonus = BigDecimal.ZERO;
-        Map<UUID, BigDecimal> bonusPerCargo = new HashMap<>();
+        List<SessionCargo> cargosForThisTravel = new ArrayList<>();
         for (SessionCargo cargo : cargosForPlayer) {
             if (isCargoForThisTravel(cargo, travel)) {
-                BigDecimal bonus = rewardCalculationService.calculateBonus(cargo.getReward());
-                bonusPerCargo.put(cargo.getId(), bonus);
-                totalBonus = totalBonus.add(bonus);
+                cargosForThisTravel.add(cargo);
             }
         }
 
-        markCargosAsDelivered(travel, cargosForPlayer);
-
-        BigDecimal cargoReward = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
-
-        BigDecimal smuggleReward = BigDecimal.ZERO;
-        List<SmuggleOffer> smuggleOffers = smuggleService.getAllAcceptedOffers(travel.getPlayerId());
-        for (SmuggleOffer smuggleOffer : smuggleOffers) {
-            smuggleReward = smuggleReward.add(smuggleOffer.getReward());
+        BigDecimal totalBonus = BigDecimal.ZERO;
+        Map<UUID, BigDecimal> bonusPerCargo = new HashMap<>();
+        for (SessionCargo cargo : cargosForThisTravel) {
+            BigDecimal bonus = rewardCalculationService.calculateBonus(cargo.getReward());
+            bonusPerCargo.put(cargo.getId(), bonus);
+            totalBonus = totalBonus.add(bonus);
         }
 
-        BigDecimal grossReward = cargoReward.add(totalBonus).add(smuggleReward);
-        BigDecimal arrivalFine = travel.getDockingFine();
-        BigDecimal departureFine = travel.getDepartureDockingFine();
-        BigDecimal pilotageRefund = travel.getPilotageRefund();
+        markCargosAsDelivered(travel, cargosForPlayer);
+        BigDecimal cargoReward = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
+
+        CustomsInspection inspection = customsService.consumeInspection(travel.getTravelId());
+        boolean smuggleConfiscated = inspection != null
+                && (inspection.getOutcome() == CustomsInspectionOutcome.COOPERATED
+                || inspection.getOutcome() == CustomsInspectionOutcome.BRIBE_FAILED);
+
+        BigDecimal smuggleReward = BigDecimal.ZERO;
+        SmuggleOffer acceptedOffer = smuggleService.getAcceptedOfferForTravel(travel.getTravelId());
+        if (acceptedOffer != null && !smuggleConfiscated) {
+            smuggleReward = acceptedOffer.getReward();
+        } else if (acceptedOffer != null) {
+            System.out.println("[CargoUnloading] Smuggle reward forfeited — customs confiscated for travel "
+                    + travel.getTravelId());
+        }
+
+        PlayerShip shipForRegress = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
+        double currentCondition = shipForRegress != null ? shipForRegress.getCondition() : 100.0;
+        GameSession sessionForRegress = gameSessionRepository.findById(travel.getSessionId()).orElse(null);
+        int currentTickForRegress = sessionForRegress != null
+                ? sessionForRegress.getCurrentTick()
+                : travel.getArrivalTick();
+        RegressFine regressFine = regressService.consumeFine(
+                travel, currentTickForRegress, currentCondition, cargosForThisTravel
+        );
+
+        BigDecimal gross = cargoReward.add(totalBonus).add(smuggleReward);
+        gross = ratMinigameService.applyRewardModifier(travel.getTravelId(), gross);
+        gross = stormMinigameService.applyRewardModifier(travel.getTravelId(), gross);
+
+        BigDecimal arrivalFine = travel.getDockingFine() != null
+                ? travel.getDockingFine() : BigDecimal.ZERO;
+        BigDecimal departureFine = travel.getDepartureDockingFine() != null
+                ? travel.getDepartureDockingFine() : BigDecimal.ZERO;
         BigDecimal totalFine = departureFine.add(arrivalFine);
-        BigDecimal netReward = grossReward.subtract(totalFine).add(pilotageRefund).max(BigDecimal.ZERO);
+
+        BigDecimal pilotageRefund = travel.getPilotageRefund() != null
+                ? travel.getPilotageRefund() : BigDecimal.ZERO;
+
+        BigDecimal regressTotal = regressFine != null ? regressFine.getTotalFine() : BigDecimal.ZERO;
+
+        BigDecimal payout = gross
+                .subtract(totalFine)
+                .add(pilotageRefund)
+                .subtract(regressTotal)
+                .max(BigDecimal.ZERO);
+
+        BigDecimal customsAlreadyDeducted = BigDecimal.ZERO;
+        if (inspection != null) {
+            BigDecimal fine = inspection.getFinePaid() != null ? inspection.getFinePaid() : BigDecimal.ZERO;
+            BigDecimal bribe = inspection.getBribePaid() != null ? inspection.getBribePaid() : BigDecimal.ZERO;
+            customsAlreadyDeducted = fine.add(bribe);
+        }
 
         BigDecimal previousBalance = BigDecimal.ZERO;
         BigDecimal newBalance = BigDecimal.ZERO;
 
         UUID playerId = travel.getPlayerId();
-        var session = gameSessionRepository.findById(travel.getSessionId()).orElse(null);
+        GameSession session = gameSessionRepository.findById(travel.getSessionId()).orElse(null);
         if (session != null) {
-            ISessionPlayer player = session.getPlayers().stream()
-                    .filter(p -> p.getUserId().equals(playerId))
-                    .findFirst()
-                    .orElse(null);
+            ISessionPlayer player = null;
+            for (ISessionPlayer p : session.getPlayers()) {
+                if (p.getUserId().equals(playerId)) {
+                    player = p;
+                    break;
+                }
+            }
 
             if (player != null) {
-                previousBalance = player.getBalance();
-                if (netReward.compareTo(BigDecimal.ZERO) > 0) {
-                    player.addBalance(netReward);
+                BigDecimal currentBalance = player.getBalance();
+                previousBalance = currentBalance.add(customsAlreadyDeducted);
+
+                if (payout.compareTo(BigDecimal.ZERO) > 0) {
+                    player.addBalance(payout);
                 }
                 newBalance = player.getBalance();
                 gameSessionRepository.save(session);
             }
         }
 
-        sendUnloadingCompleteEvent(travel, playerId, cargosForPlayer, previousBalance, newBalance, smuggleOffers, bonusPerCargo, totalBonus, departureFine, arrivalFine, pilotageRefund, netReward);
+        RegressSummary regressSummary = toRegressSummary(regressFine);
+        sendUnloadingCompleteEvent(
+                travel, playerId, cargosForPlayer,
+                previousBalance, newBalance,
+                acceptedOffer, bonusPerCargo, totalBonus,
+                payout, departureFine, arrivalFine, pilotageRefund,
+                inspection, smuggleConfiscated,
+                regressSummary
+        );
 
-        if (!smuggleOffers.isEmpty()) {
-            smuggleService.clearAcceptedOffer(playerId);
+        if (acceptedOffer != null) {
+            smuggleService.clearAcceptedOfferForTravel(travel.getTravelId());
         }
 
         for (SessionCargo cargo : cargosForPlayer) {
@@ -133,7 +217,9 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         travel.markAsCompleted();
         travelRepository.save(travel);
 
-        return netReward;
+        regressService.clear(travel.getTravelId());
+
+        return payout;
     }
 
     @Override
@@ -143,6 +229,24 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             return false;
         }
         return !ship.isStillUnloading(currentTick);
+    }
+
+    private RegressSummary toRegressSummary(RegressFine fine) {
+        if (fine == null) {
+            return null;
+        }
+        return new RegressSummary(
+                fine.getDelayTicks(),
+                fine.getToleranceTicks(),
+                fine.getOverdueTicks(),
+                fine.getDelayComponent(),
+                fine.getDamageComponent(),
+                fine.getDamagePercent(),
+                fine.getSpecialCargoMultiplier(),
+                fine.hadPerishableCargo(),
+                fine.hadFragileCargo(),
+                fine.getTotalFine()
+        );
     }
 
     private void markCargosAsDelivered(Travel travel, List<SessionCargo> cargosForPlayer) {
@@ -166,84 +270,113 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         return isForThisShipAndPort && isAssignedOrExpired;
     }
 
-    private static final String SMUGGLE_DISPLAY_NAME = "Mysteriöse Kiste";
-
-    private void sendUnloadingCompleteEvent(Travel travel, UUID playerId,
+    private void sendUnloadingCompleteEvent(Travel travel,
+                                            UUID playerId,
                                             List<SessionCargo> cargosForPlayer,
-                                            BigDecimal previousBalance, BigDecimal newBalance,
-                                            List<SmuggleOffer> smuggleOffers,
-                                            Map<UUID, BigDecimal> bonusPerCargo, BigDecimal totalBonus,
-                                            BigDecimal departureDockingFine, BigDecimal dockingFine,
+                                            BigDecimal previousBalance,
+                                            BigDecimal newBalance,
+                                            SmuggleOffer acceptedOffer,
+                                            Map<UUID, BigDecimal> bonusPerCargo,
+                                            BigDecimal totalBonus,
+                                            BigDecimal finalPayout,
+                                            BigDecimal departureDockingFine,
+                                            BigDecimal arrivalDockingFine,
                                             BigDecimal pilotageRefund,
-                                            BigDecimal netReward) {
+                                            CustomsInspection inspection,
+                                            boolean smuggleConfiscated,
+                                            RegressSummary regressSummary) {
         try {
             PortId destinationPortId = PortId.of(travel.getDestinationPortId());
             Port destinationPort = portRepository.findById(destinationPortId).orElse(null);
             String destinationPortName = destinationPort != null ? destinationPort.getName() : "Unknown Port";
 
-            List<CargoRewardBreakdown> cargoRewards = new ArrayList<>(cargosForPlayer.stream()
-                    .filter(sessionCargo -> {
-                        boolean isForThisPort = sessionCargo.getDestinationPortId()
-                                .equals(travel.getDestinationPortId());
-                        boolean isDeliveredOrExpired =
-                                sessionCargo.getCargoStatus() == CargoStatus.DELIVERED
-                                        || sessionCargo.getCargoStatus() == CargoStatus.EXPIRED;
-                        return isForThisPort && isDeliveredOrExpired;
-                    })
-                    .map(sessionCargo -> {
-                        BigDecimal cargoBase = rewardCalculationService.calculateCargoReward(sessionCargo);
-                        BigDecimal bonus = bonusPerCargo.getOrDefault(sessionCargo.getId(), BigDecimal.ZERO);
-                        BigDecimal actualReward = cargoBase.add(bonus);
-                        int percentage = sessionCargo.getCargoStatus() == CargoStatus.DELIVERED
-                                ? 100
-                                : calculateExpiredPercentage(sessionCargo.getCargoType());
+            List<CargoRewardBreakdown> cargoRewards = new ArrayList<>();
+            for (SessionCargo sessionCargo : cargosForPlayer) {
+                boolean isForThisPort = sessionCargo.getDestinationPortId()
+                        .equals(travel.getDestinationPortId());
+                boolean isDeliveredOrExpired =
+                        sessionCargo.getCargoStatus() == CargoStatus.DELIVERED
+                                || sessionCargo.getCargoStatus() == CargoStatus.EXPIRED;
+                if (!(isForThisPort && isDeliveredOrExpired)) {
+                    continue;
+                }
 
-                        Cargo cargo = cargoRepository.findById(sessionCargo.getCargoId()).orElse(null);
-                        String cargoName = cargo != null ? cargo.getName() : "Unknown Cargo";
+                BigDecimal cargoBase = rewardCalculationService.calculateCargoReward(sessionCargo);
+                BigDecimal bonus = bonusPerCargo.getOrDefault(sessionCargo.getId(), BigDecimal.ZERO);
+                BigDecimal actualReward = cargoBase.add(bonus);
+                int percentage = sessionCargo.getCargoStatus() == CargoStatus.DELIVERED
+                        ? 100
+                        : calculateExpiredPercentage(sessionCargo.getCargoType());
 
-                        return new CargoRewardBreakdown(
-                                sessionCargo.getId().toString(),
-                                cargoName,
-                                destinationPortName,
-                                sessionCargo.getReward(),
-                                actualReward,
-                                bonus,
-                                percentage,
-                                sessionCargo.getCargoStatus().toString(),
-                                sessionCargo.getCargoType().toString()
-                        );
-                    })
-                    .toList());
+                Cargo cargo = cargoRepository.findById(sessionCargo.getCargoId()).orElse(null);
+                String cargoName = cargo != null ? cargo.getName() : "Unknown Cargo";
 
-            for (SmuggleOffer smuggleOffer : smuggleOffers) {
-                String displayName = SMUGGLE_DISPLAY_NAME;
                 cargoRewards.add(new CargoRewardBreakdown(
-                        smuggleOffer.getId().toString(),
+                        sessionCargo.getId().toString(),
+                        cargoName,
+                        destinationPortName,
+                        sessionCargo.getReward(),
+                        actualReward,
+                        bonus,
+                        percentage,
+                        sessionCargo.getCargoStatus().toString(),
+                        sessionCargo.getCargoType().toString()
+                ));
+            }
+
+            if (acceptedOffer != null) {
+                String displayName = smuggleConfiscated
+                        ? SMUGGLE_DISPLAY_NAME + " (Konfisziert)"
+                        : SMUGGLE_DISPLAY_NAME;
+                BigDecimal actualSmuggleReward = smuggleConfiscated
+                        ? BigDecimal.ZERO
+                        : acceptedOffer.getReward();
+                String smuggleStatus = smuggleConfiscated ? "CONFISCATED" : "DELIVERED";
+
+                cargoRewards.add(new CargoRewardBreakdown(
+                        acceptedOffer.getId().toString(),
                         displayName,
                         destinationPortName,
-                        smuggleOffer.getReward(),
-                        smuggleOffer.getReward(),
+                        acceptedOffer.getReward(),
+                        actualSmuggleReward,
                         BigDecimal.ZERO,
-                        100,
-                        "DELIVERED",
+                        smuggleConfiscated ? 0 : 100,
+                        smuggleStatus,
                         "SMUGGLE"
                 ));
             }
 
             BigDecimal baseReward = travel.getBaseReward() != null ? travel.getBaseReward() : BigDecimal.ZERO;
 
+            CustomsSummary customsSummary = null;
+            if (inspection != null) {
+                customsSummary = new CustomsSummary(
+                        inspection.getOutcome() != null ? inspection.getOutcome().name() : "CLEARED",
+                        inspection.getFinePaid(),
+                        inspection.getBribePaid(),
+                        inspection.isBribeAttempted(),
+                        inspection.isDetained(),
+                        inspection.isDetained() ? inspection.getDetentionTicks() : 0,
+                        inspection.isCarryingIllegalCargo()
+                );
+            }
+
             TravelCompleteEvent event = new TravelCompleteEvent(
                     travel.getTravelId().toString(),
                     playerId.toString(),
                     cargoRewards,
                     baseReward,
-                    netReward,
+                    finalPayout,
                     totalBonus,
                     previousBalance,
                     newBalance,
                     departureDockingFine,
-                    dockingFine,
-                    pilotageRefund
+                    arrivalDockingFine,
+                    pilotageRefund,
+                    ratMinigameService.consumeTravelSummary(travel.getTravelId()),
+                    stormMinigameService.consumeTravelSummary(travel.getTravelId()),
+                    customsSummary,
+                    regressSummary
             );
 
             webSocketController.broadcastTravelComplete(

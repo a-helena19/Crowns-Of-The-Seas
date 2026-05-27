@@ -7,10 +7,15 @@ import java.util.List;
 import java.util.UUID;
 
 public interface SmuggleService {
-    void tryGenerateSmuggleOffer(UUID playerId, UUID sessionId, UUID portId, UUID travelId, UUID playerShipId);
+    boolean tryGenerateSmuggleOfferBeforeDeparture(UUID playerId, UUID sessionId, UUID portId,
+                                                   UUID travelId, UUID playerShipId);
+
     void acceptSmuggleOffer(UUID playerId, UUID sessionId, UUID offerId);
+
     void declineSmuggleOffer(UUID playerId, UUID offerId);
-    SmuggleOffer getAcceptedOffer(UUID playerId);
-    List<SmuggleOffer> getAllAcceptedOffers(UUID playerId);
-    void clearAcceptedOffer(UUID playerId);
+    SmuggleOffer getAcceptedOfferForTravel(UUID travelId);
+
+    void clearAcceptedOfferForTravel(UUID travelId);
+
+    List<SmuggleOffer> getPendingOffersForPlayer(UUID playerId);
 }

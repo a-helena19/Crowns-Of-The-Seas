@@ -69,6 +69,14 @@ interface CargoRewardBreakdown {
     cargoType: string;
 }
 
+interface CustomsSummary {
+    outcome: "CLEARED" | "HIDDEN" | "COOPERATED" | "BRIBE_SUCCESS" | "BRIBE_FAILED";
+    finePaid: number;
+    detained: boolean;
+    detentionTicks: number;
+    wasCarryingIllegalCargo: boolean;
+}
+
 interface TravelCompleteEvent {
     travelId: string;
     playerId: string;
@@ -80,6 +88,56 @@ interface TravelCompleteEvent {
     dockingFine?: number;
     departureDockingFine?: number;
     pilotageRefund?: number;
+    customsSummary?: CustomsSummary | null;
+}
+
+interface RatMinigameEvent {
+    eventId: string;
+    eventType: "RATS";
+    playerId: string;
+    sessionId: string;
+    travelId: string;
+    playerShipId: string;
+    timeLimitSeconds: number;
+    requiredHits: number;
+    dockingFine?: number;
+    departureDockingFine?: number;
+    pilotageRefund?: number;
+    ratMinigameSummary?: {
+        triggered: boolean;
+        result?: "SUCCESS" | "FAILED";
+        penaltyAmount?: number;
+    };
+    stormMinigameSummary?: {
+        triggered: boolean;
+        result?: "SUCCESS" | "FAILED";
+        penaltyAmount?: number;
+        cargoLossPercent?: number;
+        conditionDamagePercent?: number;
+    };
+}
+
+interface RatMinigameEvent {
+    eventId: string;
+    eventType: "RATS";
+    playerId: string;
+    sessionId: string;
+    travelId: string;
+    playerShipId: string;
+    timeLimitSeconds: number;
+    requiredHits: number;
+}
+
+interface StormMinigameEvent {
+    eventId: string;
+    eventType: "STORM";
+    playerId: string;
+    sessionId: string;
+    travelId: string;
+    playerShipId: string;
+    timeLimitSeconds: number;
+    requiredSuns: number;
+    startHealth: number;
 }
 
 interface UseGameSessionWebSocketProps {
@@ -226,12 +284,75 @@ export function useGameSessionWebSocket({
                             }
                         });
 
+                        client.subscribe(`/topic/session/${sessionId}/rats-event`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body) as RatMinigameEvent;
+                                window.dispatchEvent(new CustomEvent('rats-event', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing rats-event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/storm-event`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body) as StormMinigameEvent;
+                                window.dispatchEvent(new CustomEvent('storm-event', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing storm-event:', error);
+                            }
+                        });
+
                         client.subscribe(`/topic/session/${sessionId}/pilot-strike`, (message) => {
                             try {
                                 const event = JSON.parse(message.body);
                                 window.dispatchEvent(new CustomEvent('pilot-strike-update', { detail: event }));
                             } catch (error) {
                                 console.error('Error parsing pilot-strike event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/pilot-strike`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body);
+                                window.dispatchEvent(new CustomEvent('pilot-strike-update', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing pilot-strike event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/rats-event`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body) as RatMinigameEvent;
+                                window.dispatchEvent(new CustomEvent('rats-event', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing rats-event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/customs-inspection`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body);
+                                window.dispatchEvent(new CustomEvent('customs-inspection', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing customs-inspection event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/customs-pass`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body);
+                                window.dispatchEvent(new CustomEvent('customs-pass', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing customs-pass event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/customs-resolved`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body);
+                                window.dispatchEvent(new CustomEvent('customs-resolved', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing customs-resolved event:', error);
                             }
                         });
 

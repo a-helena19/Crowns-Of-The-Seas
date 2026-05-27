@@ -2,8 +2,11 @@ package at.fhv.backend.application.services;
 
 import at.fhv.backend.application.dtos.mapper.TravelResponseMapper;
 import at.fhv.backend.application.services.cargo.PortDistanceForCargoService;
+import at.fhv.backend.application.services.impl.travel.PendingTravelStartServiceImpl;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
+import at.fhv.backend.application.services.travel.PendingTravelStartService;
+import at.fhv.backend.application.services.travel.RegressService;
 import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.rest.CargoWebSocketController;
 import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
@@ -172,6 +175,8 @@ class TravelServiceImplTest {
         @Mock private SmuggleService smuggleService;
         @Mock private DockingPenaltyService dockingPenaltyService;
         @Mock private PilotStrikeService pilotStrikeService;
+        @Mock private PendingTravelStartServiceImpl pendingTravelStartService;
+        @Mock private RegressService regressService;
 
 
         private StartTravelServiceImpl service;
@@ -185,7 +190,8 @@ class TravelServiceImplTest {
                     gameSessionRepository, gameTickScheduler,
                     sessionCargoRepository, cargoWebSocketController,
                     portDistanceForCargoService, sessionPlayerRepository, smuggleService,
-                    dockingPenaltyService, pilotStrikeService
+                    dockingPenaltyService, pilotStrikeService,
+                    pendingTravelStartService, regressService
             );
         }
 
@@ -568,6 +574,7 @@ class TravelServiceImplTest {
             when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
             when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(10.0);
             doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
+            when(pilotStrikeService.isStrikeActive(eq(sessionId), any(UUID.class))).thenReturn(false);
             when(pilotStrikeService.isStrikeActive(sessionId, destinationPortId)).thenReturn(true);
 
             StartTravelDTO dto = buildStartTravelDTO(playerShip.getId(), destinationPortId, sessionCargoId);

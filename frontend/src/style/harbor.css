@@ -250,7 +250,6 @@
     font-family: Georgia, serif;
 }
 
-/* ── Lotsendienst Toggle ───────────────────────────────────── */
 .pilotage-row { width: 100%; }
 
 .pilotage-toggle {
@@ -323,7 +322,6 @@
 }
 
 
-/* Port-Selektor in HarborScene */
 .harbor-port-selector {
     position: absolute;
     top: 70px;

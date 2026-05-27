@@ -22,4 +22,6 @@ interface Window {
         startTick: number | null;
         paused?: boolean;
     }>;
+    __activeRatEventId?: string;
+    __activeStormEventId?: string;
 }

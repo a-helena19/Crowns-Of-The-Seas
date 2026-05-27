@@ -9,14 +9,11 @@ interface Props {
 
 type Foam = { x: number; y: number; vx: number; vy: number; life: number; r: number };
 
-/** Keep in sync with `DEPARTURE_ANIMATION_MS` in `StartTravelServiceImpl` (pilotage travel start delay). */
 export const DEPARTURE_ANIMATION_DURATION_MS = 3000;
 
-// Starting position in open water (south-east of the pier; normalized 0–1 on harbor_dock.png)
 const START_X = 0.74;
 const START_Y = 0.68;
 
-// Movement direction toward open sea (bottom-right)
 const DIR_X = 0.14;
 const DIR_Y = 0.38;
 

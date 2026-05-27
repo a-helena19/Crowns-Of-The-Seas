@@ -118,33 +118,33 @@ class TravelTest {
 
     @Test
     void givenInProgress_whenMarkAsArrived_thenStatusIsArrived() {
-        travel.markAsArrived(80.0, TravelStatus.ARRIVED);
+        travel.markAsArrived(80.0);
         assertThat(travel.getTravelStatus()).isEqualTo(TravelStatus.ARRIVED);
     }
 
     @Test
     void givenInProgress_whenMarkAsArrived_thenArrivedAtIsSet() {
-        travel.markAsArrived(80.0, TravelStatus.ARRIVED);
+        travel.markAsArrived(80.0);
         assertThat(travel.getArrivedAt()).isNotNull();
     }
 
     @Test
     void givenInProgress_whenMarkAsArrived_thenFuelConsumedIsRecorded() {
-        travel.markAsArrived(80.0, TravelStatus.ARRIVED);
+        travel.markAsArrived(80.0);
         assertThat(travel.getFuelConsumed()).isEqualTo(80.0);
     }
 
     @Test
     void givenAlreadyArrived_whenMarkAsArrived_thenThrowsInvalidTravelStateException() {
-        travel.markAsArrived(80.0, TravelStatus.ARRIVED);
-        assertThatThrownBy(() -> travel.markAsArrived(10.0, TravelStatus.ARRIVED))
+        travel.markAsArrived(80.0);
+        assertThatThrownBy(() -> travel.markAsArrived(10.0))
                 .isInstanceOf(InvalidTravelStateException.class);
     }
 
     @Test
     void givenCancelled_whenMarkAsArrived_thenThrowsInvalidTravelStateException() {
         travel.cancel();
-        assertThatThrownBy(() -> travel.markAsArrived(10.0, TravelStatus.ARRIVED))
+        assertThatThrownBy(() -> travel.markAsArrived(10.0))
                 .isInstanceOf(InvalidTravelStateException.class);
     }
 
@@ -162,7 +162,7 @@ class TravelTest {
 
     @Test
     void givenArrived_whenCancel_thenThrowsInvalidTravelStateException() {
-        travel.markAsArrived(80.0, TravelStatus.ARRIVED);
+        travel.markAsArrived(80.0);
         assertThatThrownBy(() -> travel.cancel()).isInstanceOf(InvalidTravelStateException.class);
     }
 
