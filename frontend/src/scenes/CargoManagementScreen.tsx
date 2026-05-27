@@ -90,6 +90,7 @@ function UnloadingStallNotice({ currentTick, completionTick }: {
 
 interface CargoManagementScreenProps {
     assignedCargos: AssignedCargoEntry[];
+    focusShipId?: string | null;
     activePilotStrikes?: Record<string, { portName: string }>;
     onCargoLoadingDone: (cargoId: string) => void;
     onCargoRemoved: (cargoId: string) => void;
@@ -102,6 +103,7 @@ interface CargoManagementScreenProps {
 
 export default function CargoManagementScreen({
                                                   assignedCargos,
+                                                  focusShipId = null,
                                                   activePilotStrikes = {},
                                                   onCargoLoadingDone,
                                                   onCargoRemoved,
@@ -145,6 +147,14 @@ export default function CargoManagementScreen({
             setSelectedCargoId(assignedCargos[0].cargoId);
         }
     }, [assignedCargos, selectedCargoId]);
+
+    useEffect(() => {
+        if (!focusShipId) return;
+        const firstMatchingCargo = assignedCargos.find(e => e.shipId === focusShipId);
+        if (firstMatchingCargo) {
+            setSelectedCargoId(firstMatchingCargo.cargoId);
+        }
+    }, [focusShipId, assignedCargos]);
 
     const selectedEntry = assignedCargos.find(e => e.cargoId === selectedCargoId) ?? null;
 
