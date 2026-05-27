@@ -20,6 +20,7 @@ public interface ISessionPlayer {
     boolean hasSufficientBalance(BigDecimal amount);
     void addBalance(BigDecimal amount);
     void subtractBalance(BigDecimal amount);
+    void forceSubtractBalance(BigDecimal amount);
 
     // Kosten-Modifier (1.0 = normal, 0.75 = -25%, 1.25 = +25%)
     double getRepairCostModifier();

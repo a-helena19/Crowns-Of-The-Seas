@@ -20,6 +20,9 @@ public class UserEntity {
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
+    @Column(nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'USER'")
+    private String role = "USER";
+
     public UserEntity() {
     }
 
@@ -45,5 +48,13 @@ public class UserEntity {
 
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 }

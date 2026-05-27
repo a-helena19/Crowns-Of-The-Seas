@@ -4,6 +4,7 @@ export interface UserResponse {
     id: string;
     username: string;
     token?: string;
+    role: string;
 }
 
 export interface ApiError {

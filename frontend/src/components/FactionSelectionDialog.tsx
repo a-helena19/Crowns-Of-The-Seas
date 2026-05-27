@@ -22,7 +22,7 @@ interface FactionSelectionDialogProps {
     };
 }
 
-const SELECTION_TIME_SECONDS = 30;
+const SELECTION_TIME_SECONDS = 60;
 
 export default function FactionSelectionDialog({
                                                    sessionId,
@@ -195,8 +195,8 @@ export default function FactionSelectionDialog({
         <div className="fs-overlay">
             <div className="fs-screen">
                 <header className="fs-header">
-                    <h1 className="fs-title">FRAKTIONSWAHL</h1>
-                    <p className="fs-subtitle">Wähle deine Fraktion · Spieler: {playerName}</p>
+                    <h1 className="fs-title">KONFIGURATION</h1>
+                    <p className="fs-subtitle">Wähle deine Fraktion und deinen Heimathafen · Spieler: {playerName}</p>
                     <div className="fs-divider">
                         <span className="fs-divider-diamond">◆</span>
                     </div>

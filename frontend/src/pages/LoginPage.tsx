@@ -21,7 +21,7 @@ export default function LoginPage() {
 
         try {
             const user = await loginUser(username, password);
-            login(user);
+            login({ id: user.id, username: user.username, role: user.role });
 
             // Check if there's a redirect parameter (e.g., /join/ABC123)
             const redirect = searchParams.get('redirect');

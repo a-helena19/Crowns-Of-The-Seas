@@ -71,10 +71,7 @@ export default function ShipScreen({ onSelect, filterByPortId }: ShipScreenProps
             .then(data => {
                 const allShips: PlayerShip[] = data;
                 const sorted = filterByPortId
-                    ? [
-                        ...allShips.filter(s => s.currentPortId === filterByPortId && s.status === "AT_PORT"),
-                        ...allShips.filter(s => !(s.currentPortId === filterByPortId && s.status === "AT_PORT")),
-                    ]
+                    ? allShips.filter(s => s.currentPortId === filterByPortId)
                     : [
                         ...allShips.filter(s => s.status === "AT_PORT"),
                         ...allShips.filter(s => s.status !== "AT_PORT"),
@@ -173,13 +170,13 @@ export default function ShipScreen({ onSelect, filterByPortId }: ShipScreenProps
                                         <div className="ship-extra-stats">
                                             {ship.maxSpeed && (
                                                 <div className="ship-extra-stat">
-                                                    <span>Speed </span>
+                                                    <span>Geschw. </span>
                                                     <span>{ship.maxSpeed} kn</span>
                                                 </div>
                                             )}
                                             {ship.maxCargoCapacity && (
                                                 <div className="ship-extra-stat">
-                                                    <span>Cargo Capacity</span>
+                                                    <span>Ladekapazität</span>
                                                     <span>{ship.maxCargoCapacity} t</span>
                                                 </div>
                                             )}

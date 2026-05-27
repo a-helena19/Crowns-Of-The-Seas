@@ -1,8 +1,8 @@
 package at.fhv.backend.application.services.impl.user;
 
 import at.fhv.backend.application.dtos.mapper.UserDTOMapper;
-import at.fhv.backend.rest.dtos.ship.request.LoginUserDTO;
-import at.fhv.backend.rest.dtos.ship.response.UserResponseDTO;
+import at.fhv.backend.rest.dtos.user.LoginUserDTO;
+import at.fhv.backend.rest.dtos.user.UserResponseDTO;
 import at.fhv.backend.application.services.user.LoginUserService;
 import at.fhv.backend.config.JwtService;
 import at.fhv.backend.domain.model.user.exception.InvalidCredentialsException;
@@ -35,7 +35,7 @@ public class LoginUserServiceImpl implements LoginUserService {
             throw new InvalidCredentialsException();
         }
 
-        String token = jwtService.generateToken(user.getId(), user.getUsername());
+        String token = jwtService.generateToken(user.getId(), user.getUsername(), user.getRole());
         return userDTOMapper.toResponseDTO(user, token);
     }
 }

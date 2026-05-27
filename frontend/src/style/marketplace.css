@@ -1,0 +1,58 @@
+.marketplace-scene {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #03142a;
+}
+
+.marketplace-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.marketplace-hotspots {
+    position: absolute;
+    inset: 0;
+    z-index: 15;
+}
+
+.marketplace-hotspot {
+    position: absolute;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+}
+
+.marketplace-hotspot:focus-visible {
+    outline: 2px solid rgba(255, 214, 92, 0.9);
+    outline-offset: 1px;
+}
+
+.marketplace-back-btn {
+    z-index: 20;
+    width: 74px;
+    height: 64px;
+    top: 94px;
+    left: 20px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    border-radius: 0;
+}
+
+.marketplace-back-btn:focus,
+.marketplace-back-btn:active {
+    outline: none;
+    border: none;
+    box-shadow: none;
+}

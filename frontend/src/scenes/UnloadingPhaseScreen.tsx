@@ -28,7 +28,7 @@ interface UnloadingPhaseScreenProps {
     unloadingCompletedAtTick: number;
     currentTick: number;
     totalReward: number;
-    cargoList?: CargoDetail[]; // NEU - detaillierte Cargo-Liste
+    cargoList?: CargoDetail[]; // NEU - detaillierte Frachtliste
     baseReward?: number;
     onComplete?: (rewards?: { totalReward: number; cargoBreakdown?: CargoRewardBreakdown[] }) => void;
 }
@@ -49,7 +49,7 @@ export const UnloadingPhaseScreen: React.FC<UnloadingPhaseScreenProps> = ({
     const [showRewardAnimation, setShowRewardAnimation] = useState(false);
     const [unloadedCargos, setUnloadedCargos] = useState<Set<string>>(new Set());
 
-    // Simuliere schrittweise Entladung - ein Cargo pro Tick
+    // Simuliere schrittweise Entladung - eine Fracht pro Tick
     useEffect(() => {
         if (cargoList.length > 0 && ticksRemaining > 0) {
             const cargoIndex = Math.floor((totalTicks - ticksRemaining) / Math.max(1, totalTicks / cargoList.length));
@@ -80,7 +80,7 @@ export const UnloadingPhaseScreen: React.FC<UnloadingPhaseScreenProps> = ({
         }
     }, [ticksRemaining, totalReward, onComplete, cargoList, portName]);
 
-    // Hilfsfunktion um Cargo-Typ Icon zu bekommen
+    // Hilfsfunktion um Frachttyp-Icon zu bekommen
     const getCargoIcon = (cargoType: string): string => {
         switch (cargoType) {
             case 'FOOD': return '🍎';
@@ -105,7 +105,7 @@ export const UnloadingPhaseScreen: React.FC<UnloadingPhaseScreenProps> = ({
         <div className="unloading-phase-screen">
             {/* Header */}
             <div className="unloading-header">
-                <h2>⚓ Schiff entlädt Cargo</h2>
+                <h2>⚓ Schiff entlädt Fracht</h2>
                 <p className="port-info">Hafen: <strong>{portName}</strong></p>
             </div>
 
@@ -117,7 +117,7 @@ export const UnloadingPhaseScreen: React.FC<UnloadingPhaseScreenProps> = ({
                     <div className="ship-name">{shipName}</div>
                 </div>
 
-                {/* Cargo List - NEU */}
+                {/* Frachtliste */}
                 {cargoList.length > 0 && (
                     <div className="cargo-unloading-list">
                         <h3>📦 Frachtbestand ({cargoList.length})</h3>
@@ -143,7 +143,6 @@ export const UnloadingPhaseScreen: React.FC<UnloadingPhaseScreenProps> = ({
                     </div>
                 )}
 
-                {/* Progress Bar */}
                 <div className="progress-section">
                     <div className="progress-label">
                         <span>Entlade-Fortschritt</span>
@@ -166,7 +165,7 @@ export const UnloadingPhaseScreen: React.FC<UnloadingPhaseScreenProps> = ({
                     {ticksRemaining > 0 ? (
                         <div className="loading-text">
                             <div className="spinner"></div>
-                            <p>Entlädt {cargoList.length} Cargo...</p>
+                            <p>Entlädt {cargoList.length} Frachtstücke...</p>
                         </div>
                     ) : (
                         <div className="complete-text">
@@ -186,7 +185,7 @@ export const UnloadingPhaseScreen: React.FC<UnloadingPhaseScreenProps> = ({
                             <div className="reward-breakdown">
                                 {cargoList.length > 0 && cargoList.some(c => c.actualReward) && (
                                     <p className="reward-breakdown-item">
-                                        Cargo: +{cargoList.reduce((sum, c) => sum + (c.actualReward ?? 0), 0).toLocaleString()}G
+                                        Fracht: +{cargoList.reduce((sum, c) => sum + (c.actualReward ?? 0), 0).toLocaleString()}G
                                     </p>
                                 )}
                                 {baseReward > 0 && (

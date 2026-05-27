@@ -80,6 +80,11 @@ public abstract class SessionPlayerDecorator implements ISessionPlayer {
     }
 
     @Override
+    public void forceSubtractBalance(BigDecimal amount) {
+        wrappedPlayer.forceSubtractBalance(amount);
+    }
+
+    @Override
     public double getRepairCostModifier() {
         return wrappedPlayer.getRepairCostModifier();
     }

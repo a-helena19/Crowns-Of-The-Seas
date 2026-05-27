@@ -22,7 +22,7 @@ export default function Sidebar({
     return (
         <div className="sidebar">
             <SidebarButton
-                label="Office"
+                label="Büro"
                 active={currentView === "office"}
                 onClick={onOpenOffice}
             />
@@ -38,7 +38,6 @@ export default function Sidebar({
                 onClick={onStartAction}
             />
 
-            {/* NEU: Frachtübersicht Button */}
             <SidebarButton
                 label={assignedCargoCount > 0 ? `Frachten (${assignedCargoCount})` : "Frachten"}
                 active={currentView === "cargoManagement"}

@@ -19,6 +19,9 @@ export default function TopBar() {
     const [faction, setFaction] = useState<PlayerFaction | null>(null);
     const [factionPanelOpen, setFactionPanelOpen] = useState(false);
     const [homePortName, setHomePortName] = useState<string | null>(null);
+    const [endingToastShown, setEndingToastShown] = useState(false);
+    const [showEndingToast, setShowEndingToast] = useState(false);
+    const [endingToastHiding, setEndingToastHiding] = useState(false);
 
     const factionWrapperRef = useRef<HTMLDivElement | null>(null);
 
@@ -154,6 +157,37 @@ export default function TopBar() {
 
     const factionData = faction ? FACTION_DATA[faction] : null;
 
+    // ── Spielende-Warnung berechnen ──
+    const ticksRemaining = (currentTick !== null && totalTicks !== null)
+        ? totalTicks - currentTick
+        : null;
+
+    const endingLevel: 'none' | 'warning' | 'critical' =
+        (ticksRemaining !== null && totalTicks !== null && totalTicks > 0)
+            ? ticksRemaining <= Math.ceil(totalTicks * 0.05) ? 'critical'
+                : ticksRemaining <= Math.ceil(totalTicks * 0.10) ? 'warning'
+                    : 'none'
+            : 'none';
+
+    // ── Toast einmalig anzeigen wenn Warnstufe erreicht ──
+    useEffect(() => {
+        if (endingLevel !== 'none' && !endingToastShown) {
+            setEndingToastShown(true);
+            setShowEndingToast(true);
+
+            // Auto-hide nach 5 Sekunden
+            const timer = setTimeout(() => {
+                setEndingToastHiding(true);
+                setTimeout(() => {
+                    setShowEndingToast(false);
+                    setEndingToastHiding(false);
+                }, 400);
+            }, 5000);
+
+            return () => clearTimeout(timer);
+        }
+    }, [endingLevel, endingToastShown]);
+
     return (
         <div className="topbar-container" style={{ height: TOP_BAR_HEIGHT }}>
             <div className="topbar-left">
@@ -172,12 +206,23 @@ export default function TopBar() {
             </div>
 
             <div className="topbar-center">
-                <div className="topbar-panel">
+                <div className={`topbar-panel ${
+                    endingLevel === 'critical' ? 'ending-critical' :
+                        endingLevel === 'warning' ? 'ending-warning' : ''
+                }`}>
                     <img src={timeIcon} alt="" className="topbar-icon" />
                     <span className="topbar-value">
-                        Tag {currentTick !== null ? currentTick : '1'}
-                        {totalTicks !== null && (
-                            <span className="topbar-total"> / {totalTicks}</span>
+                        {endingLevel !== 'none' && ticksRemaining !== null ? (
+                            <>
+                                ⚠ Noch {ticksRemaining} {ticksRemaining === 1 ? 'Tag' : 'Tage'}!
+                            </>
+                        ) : (
+                            <>
+                                Tag {currentTick !== null ? currentTick : '1'}
+                                {totalTicks !== null && (
+                                    <span className="topbar-total"> / {totalTicks}</span>
+                                )}
+                            </>
                         )}
                     </span>
                 </div>
@@ -252,13 +297,13 @@ export default function TopBar() {
                         onClick={() => setLbOpen(o => !o)}
                         aria-expanded={lbOpen}
                         aria-haspopup="dialog"
-                        title="Leaderboard"
+                        title="Rangliste"
                     >
-                        <span className="topbar-value">Leaderboard ▾</span>
+                        <span className="topbar-value">Rangliste ▾</span>
                     </button>
 
                     {lbOpen && (
-                        <div className="lb-popover" role="dialog" aria-label="Leaderboard">
+                        <div className="lb-popover" role="dialog" aria-label="Rangliste">
                             {sortedLb.length === 0 ? (
                                 <div className="lb-popover-empty">Lade…</div>
                             ) : (
@@ -281,6 +326,29 @@ export default function TopBar() {
                     )}
                 </div>
             </div>
+
+            {showEndingToast && ticksRemaining !== null && (
+                <div className={`ending-toast ${endingToastHiding ? 'hiding' : ''}`}>
+                    <div className="ending-toast-icon">⏳</div>
+                    <div>
+                        <div className="ending-toast-text">Das Spiel endet bald!</div>
+                        <div className="ending-toast-sub">
+                            Noch {ticksRemaining} {ticksRemaining === 1 ? 'Tag' : 'Tage'} übrig
+                        </div>
+                    </div>
+                    <button
+                        className="ending-toast-close"
+                        onClick={() => {
+                            setEndingToastHiding(true);
+                            setTimeout(() => {
+                                setShowEndingToast(false);
+                                setEndingToastHiding(false);
+                            }, 400);
+                        }}
+                    >✕</button>
+                </div>
+            )}
+
         </div>
     );
 }

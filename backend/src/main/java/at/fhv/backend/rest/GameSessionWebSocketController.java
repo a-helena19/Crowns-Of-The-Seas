@@ -47,5 +47,32 @@ public class GameSessionWebSocketController {
     public void broadcastTravelResumed(String sessionId, TravelResumedEvent event) {
         messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/travel-resumed", event);
     }
-}
 
+    public void broadcastCustomsInspectionDialog(String sessionId, CustomsInspectionDialogEvent event) {
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/customs-inspection", event);
+    }
+
+    public void broadcastCustomsInspectionPass(String sessionId, CustomsInspectionPassEvent event) {
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/customs-pass", event);
+    }
+
+    public void broadcastPilotStrike(String sessionId, PilotStrikeEvent event) {
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/pilot-strike", event);
+    }
+
+    public void broadcastRatMinigameEvent(String sessionId, RatMinigameEvent event) {
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/rats-event", event);
+    }
+
+    public void broadcastStormMinigameEvent(String sessionId, StormMinigameEvent event) {
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/storm-event", event);
+    }
+
+    public void broadcastObstacleMinigameEvent(String sessionId, ObstacleMinigameEvent event) {
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/obstacle-event", event);
+    }
+
+    public void broadcastCustomsInspectionResolved(String sessionId, CustomsInspectionPassEvent event) {
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/customs-resolved", event);
+    }
+}

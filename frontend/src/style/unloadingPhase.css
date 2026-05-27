@@ -12,7 +12,6 @@
     overflow: hidden;
 }
 
-/* Animated Background - OPTIONAL */
 .unloading-phase-screen::before {
     content: '';
     position: absolute;
@@ -35,7 +34,6 @@
     }
 }
 
-/* Header */
 .unloading-header {
     text-align: center;
     margin-bottom: 40px;
@@ -70,7 +68,6 @@
     font-weight: 500;
 }
 
-/* Main Content */
 .unloading-content {
     background: white;
     border-radius: 16px;
@@ -93,7 +90,6 @@
     }
 }
 
-/* Ship Container */
 .ship-container {
     text-align: center;
     margin-bottom: 30px;
@@ -131,7 +127,6 @@
     }
 }
 
-/* Cargo Unloading List */
 .cargo-unloading-list {
     background: #f9f9f9;
     border-radius: 12px;
@@ -181,7 +176,6 @@
     border-radius: 3px;
 }
 
-/* Cargo Item */
 .cargo-item {
     background: white;
     border-radius: 8px;
@@ -308,7 +302,6 @@
     white-space: nowrap;
 }
 
-/* Progress Section */
 .progress-section {
     margin-bottom: 30px;
     animation: slide-in-up 0.6s ease-out 0.3s both;
@@ -416,7 +409,6 @@
     }
 }
 
-/* Status Text */
 .status-text {
     text-align: center;
     margin-bottom: 20px;
@@ -490,7 +482,6 @@
     }
 }
 
-/* Reward Animation */
 .reward-animation {
     position: fixed;
     top: 0;
@@ -597,7 +588,6 @@
     }
 }
 
-/* Floating Gold */
 .floating-gold {
     position: absolute;
     font-size: 40px;
@@ -623,7 +613,6 @@
     }
 }
 
-/* Footer */
 .unloading-footer {
     margin-top: 30px;
     text-align: center;
@@ -648,7 +637,6 @@
     font-weight: 500;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
     .unloading-header h2 {
         font-size: 28px;

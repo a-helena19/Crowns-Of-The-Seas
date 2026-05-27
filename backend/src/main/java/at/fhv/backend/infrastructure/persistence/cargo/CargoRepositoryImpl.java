@@ -38,6 +38,11 @@ public class CargoRepositoryImpl implements CargoRepository {
         return cargoJpaRepository.findAll().stream().map(this::toD).collect(Collectors.toList());
     }
 
+    @Override
+    public void deleteById(UUID id) {
+        cargoJpaRepository.deleteById(id);
+    }
+
     private Cargo toD(CargoEntity e) {
         return Cargo.reconstruct(e.getId(), e.getName(), e.getDescription(), e.getBaseReward(), e.getCapacity(), e.getCargoType(), e.getRisk());
     }

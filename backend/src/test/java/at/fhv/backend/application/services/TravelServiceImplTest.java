@@ -2,8 +2,11 @@ package at.fhv.backend.application.services;
 
 import at.fhv.backend.application.dtos.mapper.TravelResponseMapper;
 import at.fhv.backend.application.services.cargo.PortDistanceForCargoService;
+import at.fhv.backend.application.services.impl.travel.PendingTravelStartServiceImpl;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
+import at.fhv.backend.application.services.travel.PendingTravelStartService;
+import at.fhv.backend.application.services.travel.RegressService;
 import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.rest.CargoWebSocketController;
 import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
@@ -12,6 +15,9 @@ import at.fhv.backend.application.services.impl.session.GameTickScheduler;
 import at.fhv.backend.application.services.impl.travel.StartTravelServiceImpl;
 import at.fhv.backend.application.services.impl.travel.ValidateTravelServiceImpl;
 import at.fhv.backend.application.services.travel.CalculateFuelConsumptionService;
+import at.fhv.backend.application.services.travel.DockingPenaltyService;
+import at.fhv.backend.application.services.pilotstrike.PilotStrikeService;
+import at.fhv.backend.domain.model.exception.PilotStrikeActiveException;
 import at.fhv.backend.application.services.travel.ValidateTravelService;
 import at.fhv.backend.domain.model.exception.InvalidShipStatusTransition;
 import at.fhv.backend.domain.model.exception.SamePortException;
@@ -167,6 +173,10 @@ class TravelServiceImplTest {
         @Mock private PortDistanceForCargoService portDistanceForCargoService;
         @Mock private SessionPlayerRepository sessionPlayerRepository;
         @Mock private SmuggleService smuggleService;
+        @Mock private DockingPenaltyService dockingPenaltyService;
+        @Mock private PilotStrikeService pilotStrikeService;
+        @Mock private PendingTravelStartServiceImpl pendingTravelStartService;
+        @Mock private RegressService regressService;
 
 
         private StartTravelServiceImpl service;
@@ -179,7 +189,9 @@ class TravelServiceImplTest {
                     travelRepository, travelResponseMapper,
                     gameSessionRepository, gameTickScheduler,
                     sessionCargoRepository, cargoWebSocketController,
-                    portDistanceForCargoService, sessionPlayerRepository, smuggleService
+                    portDistanceForCargoService, sessionPlayerRepository, smuggleService,
+                    dockingPenaltyService, pilotStrikeService,
+                    pendingTravelStartService, regressService
             );
         }
 
@@ -542,6 +554,34 @@ class TravelServiceImplTest {
                     buildStartTravelDTO(playerShip.getId(), destinationPortId, sessionCargoId));
 
             assertThat(result).isNotNull();
+        }
+
+        @Test
+        void givenPilotStrikeAtDestination_whenStartTravelWithPilotage_thenThrowsPilotStrikeActiveException() {
+            UUID playerId = UUID.randomUUID();
+            UUID sessionId = UUID.randomUUID();
+            Ship ship = buildShip();
+            PlayerShip playerShip = buildAtPortShip(playerId, sessionId, ship.getId());
+            UUID destinationPortId = UUID.randomUUID();
+            UUID sessionCargoId = UUID.randomUUID();
+            SessionCargo cargo = buildAvailableCargo(sessionCargoId, destinationPortId, sessionId, 50);
+
+            when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(buildGameSession(playerId)));
+            when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId)).thenReturn(Optional.of(playerShip));
+            when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
+            when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
+            when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(new at.fhv.backend.domain.model.player.BaseSessionPlayer(playerId, sessionId, "TestPlayer", false)));
+            when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
+            when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(10.0);
+            doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
+            when(pilotStrikeService.isStrikeActive(eq(sessionId), any(UUID.class))).thenReturn(false);
+            when(pilotStrikeService.isStrikeActive(sessionId, destinationPortId)).thenReturn(true);
+
+            StartTravelDTO dto = buildStartTravelDTO(playerShip.getId(), destinationPortId, sessionCargoId);
+            dto.setPilotageService(true);
+
+            assertThatThrownBy(() -> service.startTravel(playerId, sessionId, dto))
+                    .isInstanceOf(PilotStrikeActiveException.class);
         }
 
         @Test
