@@ -140,6 +140,22 @@ interface StormMinigameEvent {
     startHealth: number;
 }
 
+interface ObstacleMinigameEvent {
+    eventId: string;
+    eventType: "OBSTACLE";
+    playerId: string;
+    sessionId: string;
+    travelId: string;
+    playerShipId: string;
+    timeLimitSeconds: number;
+    startHealth: number;
+    originPortId?: string;
+    originPortName?: string;
+    destinationPortId?: string;
+    destinationPortName?: string;
+    routeViewType?: "VIEW_A" | "VIEW_B";
+}
+
 interface UseGameSessionWebSocketProps {
     sessionId: string | null;
     onSessionUpdate: (event: SessionUpdateEvent) => void;
@@ -299,6 +315,15 @@ export function useGameSessionWebSocket({
                                 window.dispatchEvent(new CustomEvent('storm-event', { detail: event }));
                             } catch (error) {
                                 console.error('Error parsing storm-event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/obstacle-event`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body) as ObstacleMinigameEvent;
+                                window.dispatchEvent(new CustomEvent('obstacle-event', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing obstacle-event:', error);
                             }
                         });
 
