@@ -1,6 +1,6 @@
 import { useState } from "react";
 import customsOfficer from "../assets/customs_officer.png";
-import "../style/customsDialog.css";
+import "../style/CustomsDialog.css";
 import audioEngine from "../audio/AudioEngine.ts";
 
 type Phase = "initial" | "bribe_success" | "bribe_failed";

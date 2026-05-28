@@ -17,9 +17,10 @@ interface Port {
 interface HarborSceneProps {
     onClose: () => void;
     onCargoAssigned: (entry: AssignedCargoEntry) => void;
+    openCargoForShipId?: string | null;
 }
 
-export default function HarborScene({ onClose, onCargoAssigned }: HarborSceneProps) {
+export default function HarborScene({ onClose, onCargoAssigned, openCargoForShipId = null }: HarborSceneProps) {
     const [view, setView] = useState<"main" | "cargo" | "ship">("main");
     const [selectedPortId, setSelectedPortId] = useState<string | null>(null);
     const [myPorts, setMyPorts] = useState<Port[]>([]);
@@ -42,6 +43,15 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
         })
             .then(r => r.json())
             .then((ships: any[]) => {
+                if (openCargoForShipId) {
+                    const targetShip = ships.find((s) => s.id === openCargoForShipId);
+                    if (targetShip) {
+                        setSelectedShip(targetShip);
+                        if (targetShip.currentPortId) setSelectedPortId(targetShip.currentPortId);
+                        setView("cargo");
+                    }
+                }
+
                 const portsMap = new Map<string, string>();
                 ships
                     .filter(s => ["AT_PORT", "REFUELING", "REPAIRING", "LOADING", "UNLOADING", "READY_TO_DEPART"].includes(s.status) && s.currentPortId)
@@ -81,7 +91,7 @@ export default function HarborScene({ onClose, onCargoAssigned }: HarborScenePro
                 }
             })
             .catch(console.error);
-    }, [playerId, sessionId, token]);
+    }, [playerId, sessionId, token, openCargoForShipId]);
 
     function handleShipSelect(ship: any) {
         setSelectedShip(ship);

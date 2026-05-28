@@ -6,4 +6,5 @@ public interface TravelPauseService {
     void pauseTravel(UUID travelId, UUID sessionId, UUID playerId, UUID playerShipId, String reason);
     void resumeTravel(UUID travelId, UUID sessionId, UUID playerId, UUID playerShipId, String reason);
     boolean isTravelPaused(UUID travelId);
+    Integer getPausedAtTick(UUID travelId);
 }

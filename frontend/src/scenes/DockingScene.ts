@@ -8,6 +8,7 @@ import {
     type HarborDockConfig,
 } from '../config/harborDockingConfig';
 import { HarborTerrainMask } from '../game/HarborTerrainMask';
+import { ShipArcadeController } from '../game/ShipArcadeController';
 
 export interface DockingSceneData {
     mode: 'departure' | 'arrival';
@@ -23,20 +24,12 @@ export default class DockingScene extends Phaser.Scene {
     private wallsGroup!: Phaser.Physics.Arcade.StaticGroup;
     private shipBody!: Phaser.Physics.Arcade.Image;
     private successZone!: Phaser.GameObjects.Zone;
-    private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-    private wasd!: {
-        up: Phaser.Input.Keyboard.Key;
-        down: Phaser.Input.Keyboard.Key;
-        left: Phaser.Input.Keyboard.Key;
-        right: Phaser.Input.Keyboard.Key;
-    };
+    private shipController?: ShipArcadeController;
 
     private terrainMask: HarborTerrainMask | null = null;
     private useTerrainMask = false;
     private shipRadiusNorm = 0;
 
-    private vx = 0;
-    private vy = 0;
     private gameEnded = false;
     private countdownValue = 90;
     private timerText!: Phaser.GameObjects.Text;
@@ -56,8 +49,7 @@ export default class DockingScene extends Phaser.Scene {
             ? HARBOR_DOCK_CONFIG[data.portName]
             : DEFAULT_HARBOR_CONFIG;
         this.gameEnded = false;
-        this.vx = 0;
-        this.vy = 0;
+        this.shipController = undefined;
         this.countdownValue = 90;
         this.terrainMask = null;
         this.useTerrainMask = false;
@@ -116,7 +108,6 @@ export default class DockingScene extends Phaser.Scene {
         this.shipRadiusNorm = this.SHIP_COLLISION_RADIUS / H;
         this.buildWalls(W, H);
         this.buildSuccessZone(W, H);
-        this.buildControls();
         this.buildShipSprite(W, H);
         this.buildHUD(W, H);
         this.startCountdown();
@@ -149,10 +140,11 @@ export default class DockingScene extends Phaser.Scene {
             : { ...this.cfg.arrivalSpawn };
 
         if (this.terrainMask) {
-            const snapped = this.terrainMask.findNearestWater(raw.x, raw.y);
+            const snapped = this.terrainMask.findNearestNavigable(raw.x, raw.y, this.shipRadiusNorm);
             if (snapped) return snapped;
         }
-        return raw;
+        // Fallback: arrivalSpawn is guaranteed to be in open water
+        return { ...this.cfg.arrivalSpawn };
     }
 
     private buildSuccessZone(W: number, H: number) {
@@ -194,16 +186,6 @@ export default class DockingScene extends Phaser.Scene {
         (this.successZone.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
     }
 
-    private buildControls() {
-        this.cursors = this.input.keyboard!.createCursorKeys();
-        this.wasd = {
-            up:    this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-            down:  this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-            left:  this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-            right: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-        };
-    }
-
     private buildShipSprite(W: number, H: number) {
         const spawn = this.resolveSpawnNorm();
         const startX = spawn.x * W;
@@ -221,6 +203,11 @@ export default class DockingScene extends Phaser.Scene {
             );
             this.shipBody.setDepth(5);
             (this.shipBody.body as Phaser.Physics.Arcade.Body).setCollideWorldBounds(false);
+            this.shipController = new ShipArcadeController(this, this.shipBody, {
+                maxSpeed: this.MAX_SPEED,
+                acceleration: this.ACCEL,
+                deceleration: this.DECEL,
+            });
 
             this.physics.add.collider(this.shipBody, this.wallsGroup, () => {
                 this.triggerFailure('Kollision mit dem Land!');
@@ -291,23 +278,7 @@ export default class DockingScene extends Phaser.Scene {
     update(_time: number, delta: number) {
         if (this.gameEnded || !this.shipBody?.active) return;
 
-        const dt = delta / 1000;
-        const up    = this.cursors.up.isDown    || this.wasd.up.isDown;
-        const down  = this.cursors.down.isDown  || this.wasd.down.isDown;
-        const left  = this.cursors.left.isDown  || this.wasd.left.isDown;
-        const right = this.cursors.right.isDown || this.wasd.right.isDown;
-
-        if (left)            this.vx = Math.max(this.vx - this.ACCEL * dt, -this.MAX_SPEED);
-        else if (right)      this.vx = Math.min(this.vx + this.ACCEL * dt,  this.MAX_SPEED);
-        else if (this.vx > 0) this.vx = Math.max(0, this.vx - this.DECEL * dt);
-        else                  this.vx = Math.min(0, this.vx + this.DECEL * dt);
-
-        if (up)              this.vy = Math.max(this.vy - this.ACCEL * dt, -this.MAX_SPEED);
-        else if (down)       this.vy = Math.min(this.vy + this.ACCEL * dt,  this.MAX_SPEED);
-        else if (this.vy > 0) this.vy = Math.max(0, this.vy - this.DECEL * dt);
-        else                  this.vy = Math.min(0, this.vy + this.DECEL * dt);
-
-        this.shipBody.setVelocity(this.vx, this.vy);
+        this.shipController?.update(delta);
 
         if (this.useTerrainMask && this.terrainMask) {
             const W = this.scale.width;
@@ -328,7 +299,7 @@ export default class DockingScene extends Phaser.Scene {
     private triggerSuccess() {
         if (this.gameEnded) return;
         this.gameEnded = true;
-        this.shipBody?.setVelocity(0, 0);
+        this.shipController?.stop();
         audioEngine.stopMusic();
         audioEngine.playSfx('success');
         this.showEndMessage(
@@ -344,7 +315,7 @@ export default class DockingScene extends Phaser.Scene {
     private triggerFailure(msg: string) {
         if (this.gameEnded) return;
         this.gameEnded = true;
-        this.shipBody?.setVelocity(0, 0);
+        this.shipController?.stop();
         audioEngine.stopMusic();
         audioEngine.playSfx('dockingCrash');
         this.cameras.main.shake(300, 0.012);

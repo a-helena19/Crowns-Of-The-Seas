@@ -5,7 +5,7 @@ interface Window {
     __latestShipPositionsTick?: number;
     __tickRateMs?: number;
     __homePortId?: string;
-    __activeGameView?: "map" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office";
+    __activeGameView?: "map" | "marketplace" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office";
     __latestShips?: Array<{
         playerShipId: string;
         playerId: string;
@@ -23,4 +23,6 @@ interface Window {
         paused?: boolean;
     }>;
     __activeRatEventId?: string;
+    __activeStormEventId?: string;
+    __activeObstacleEventId?: string;
 }

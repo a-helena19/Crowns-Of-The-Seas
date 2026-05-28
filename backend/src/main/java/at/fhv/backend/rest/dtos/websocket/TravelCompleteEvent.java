@@ -13,6 +13,8 @@ public class TravelCompleteEvent {
     private BigDecimal previousBalance;
     private BigDecimal newBalance;
     private RatMinigameTravelSummary ratMinigameSummary;
+    private StormMinigameTravelSummary stormMinigameSummary;
+    private ObstacleMinigameTravelSummary obstacleMinigameSummary;
     private CustomsSummary customsSummary;
     private RegressSummary regressSummary;
     private BigDecimal departureDockingFine;
@@ -26,6 +28,8 @@ public class TravelCompleteEvent {
                                BigDecimal departureDockingFine, BigDecimal dockingFine,
                                BigDecimal pilotageRefund,
                                RatMinigameTravelSummary ratMinigameSummary,
+                               StormMinigameTravelSummary stormMinigameSummary,
+                               ObstacleMinigameTravelSummary obstacleMinigameSummary,
                                CustomsSummary customsSummary,
                                RegressSummary regressSummary) {
         this.travelId = travelId;
@@ -37,11 +41,13 @@ public class TravelCompleteEvent {
         this.previousBalance = previousBalance;
         this.newBalance = newBalance;
         this.ratMinigameSummary = ratMinigameSummary;
+        this.obstacleMinigameSummary = obstacleMinigameSummary;
         this.customsSummary = customsSummary;
         this.regressSummary = regressSummary;
         this.departureDockingFine = departureDockingFine != null ? departureDockingFine : BigDecimal.ZERO;
         this.dockingFine = dockingFine != null ? dockingFine : BigDecimal.ZERO;
         this.pilotageRefund = pilotageRefund != null ? pilotageRefund : BigDecimal.ZERO;
+        this.stormMinigameSummary = stormMinigameSummary;
     }
 
     public String getTravelId() {
@@ -98,5 +104,13 @@ public class TravelCompleteEvent {
 
     public RegressSummary getRegressSummary() {
         return regressSummary;
+    }
+
+    public StormMinigameTravelSummary getStormMinigameSummary() {
+        return stormMinigameSummary;
+    }
+
+    public ObstacleMinigameTravelSummary getObstacleMinigameSummary() {
+        return obstacleMinigameSummary;
     }
 }

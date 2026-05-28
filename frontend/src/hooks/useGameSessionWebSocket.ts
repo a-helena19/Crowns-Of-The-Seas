@@ -100,6 +100,60 @@ interface RatMinigameEvent {
     playerShipId: string;
     timeLimitSeconds: number;
     requiredHits: number;
+    dockingFine?: number;
+    departureDockingFine?: number;
+    pilotageRefund?: number;
+    ratMinigameSummary?: {
+        triggered: boolean;
+        result?: "SUCCESS" | "FAILED";
+        penaltyAmount?: number;
+    };
+    stormMinigameSummary?: {
+        triggered: boolean;
+        result?: "SUCCESS" | "FAILED";
+        penaltyAmount?: number;
+        cargoLossPercent?: number;
+        conditionDamagePercent?: number;
+    };
+}
+
+interface RatMinigameEvent {
+    eventId: string;
+    eventType: "RATS";
+    playerId: string;
+    sessionId: string;
+    travelId: string;
+    playerShipId: string;
+    timeLimitSeconds: number;
+    requiredHits: number;
+}
+
+interface StormMinigameEvent {
+    eventId: string;
+    eventType: "STORM";
+    playerId: string;
+    sessionId: string;
+    travelId: string;
+    playerShipId: string;
+    timeLimitSeconds: number;
+    requiredSuns: number;
+    startHealth: number;
+}
+
+interface ObstacleMinigameEvent {
+    eventId: string;
+    eventType: "OBSTACLE";
+    playerId: string;
+    sessionId: string;
+    travelId: string;
+    playerShipId: string;
+    timeLimitSeconds: number;
+    startHealth: number;
+    originPortId?: string;
+    originPortName?: string;
+    destinationPortId?: string;
+    destinationPortName?: string;
+    routeViewType?: "VIEW_A" | "VIEW_B";
 }
 
 interface UseGameSessionWebSocketProps {
@@ -243,6 +297,42 @@ export function useGameSessionWebSocket({
                                 window.dispatchEvent(new CustomEvent('travel-resumed', { detail: event }));
                             } catch (error) {
                                 console.error('Error parsing travel-resumed event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/rats-event`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body) as RatMinigameEvent;
+                                window.dispatchEvent(new CustomEvent('rats-event', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing rats-event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/storm-event`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body) as StormMinigameEvent;
+                                window.dispatchEvent(new CustomEvent('storm-event', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing storm-event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/obstacle-event`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body) as ObstacleMinigameEvent;
+                                window.dispatchEvent(new CustomEvent('obstacle-event', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing obstacle-event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/pilot-strike`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body);
+                                window.dispatchEvent(new CustomEvent('pilot-strike-update', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing pilot-strike event:', error);
                             }
                         });
 

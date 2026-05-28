@@ -90,6 +90,7 @@ function UnloadingStallNotice({ currentTick, completionTick }: {
 
 interface CargoManagementScreenProps {
     assignedCargos: AssignedCargoEntry[];
+    focusShipId?: string | null;
     activePilotStrikes?: Record<string, { portName: string }>;
     onCargoLoadingDone: (cargoId: string) => void;
     onCargoRemoved: (cargoId: string) => void;
@@ -102,6 +103,7 @@ interface CargoManagementScreenProps {
 
 export default function CargoManagementScreen({
                                                   assignedCargos,
+                                                  focusShipId = null,
                                                   activePilotStrikes = {},
                                                   onCargoLoadingDone,
                                                   onCargoRemoved,
@@ -145,6 +147,14 @@ export default function CargoManagementScreen({
             setSelectedCargoId(assignedCargos[0].cargoId);
         }
     }, [assignedCargos, selectedCargoId]);
+
+    useEffect(() => {
+        if (!focusShipId) return;
+        const firstMatchingCargo = assignedCargos.find(e => e.shipId === focusShipId);
+        if (firstMatchingCargo) {
+            setSelectedCargoId(firstMatchingCargo.cargoId);
+        }
+    }, [focusShipId, assignedCargos]);
 
     const selectedEntry = assignedCargos.find(e => e.cargoId === selectedCargoId) ?? null;
 
@@ -317,9 +327,11 @@ export default function CargoManagementScreen({
     return (
         <div className="scene">
             <img src={background} className="background" alt="" />
-            <div className="back-icon-btn" onClick={onClose}>
-                <img src={backIcon} alt="Zurück" />
-            </div>
+            {!showDeparture && (
+                <div className="back-icon-btn" onClick={onClose}>
+                    <img src={backIcon} alt="Zurück" />
+                </div>
+            )}
 
             <div className="cm-layout">
                 <div className="cm-list-panel">
@@ -339,6 +351,7 @@ export default function CargoManagementScreen({
                                 en_route: entry.paused
                                     ? "Reise unterbrochen"
                                     : `Unterwegs — noch ${Math.max(0, (entry.arrivalTick ?? 0) - (entry.currentTick ?? 0))} Tage`,
+                                awaiting_docking: "Wartet auf Anlegemanöver",
                                 customs_check: "Zoll wird überprüft …",
                                 blocked: `Festgehalten — noch ${Math.max(0, (entry.customsBlockedUntilTick ?? 0) - (entry.currentTick ?? 0))} Tage`,
                                 unloading: "Wird entladen …",
@@ -696,6 +709,56 @@ export default function CargoManagementScreen({
                                         </div>
                                     )}
 
+                                    {selectedEntry.stormMinigameSummary?.triggered && selectedEntry.stormMinigameSummary.result === "SUCCESS" && (
+                                        <div className="cm-reward-cargo-item">
+                                            <div style={{ flex: 1 }}>
+                                                <div className="cm-reward-cargo-name">Sturm erfolgreich überstanden</div>
+                                                <div className="cm-reward-cargo-sub">Sturm-Event</div>
+                                            </div>
+                                            <span className="cm-reward-cargo-amount">+0T</span>
+                                        </div>
+                                    )}
+
+                                    {selectedEntry.stormMinigameSummary?.triggered && selectedEntry.stormMinigameSummary.result === "FAILED" && (
+                                        <div className="cm-reward-cargo-item expired">
+                                            <div style={{ flex: 1 }}>
+                                                <div className="cm-reward-cargo-name">Sturm hat Schiff und Fracht beschaedigt</div>
+                                                <div className="cm-reward-cargo-sub">
+                                                    {Math.round(selectedEntry.stormMinigameSummary.conditionDamagePercent ?? 0)}% Schiffsschaden,
+                                                    {" "}{selectedEntry.stormMinigameSummary.cargoLossPercent ?? 0}% Frachtwert verloren
+                                                </div>
+                                            </div>
+                                            <span className="cm-reward-cargo-amount expired">
+                                                -{Math.round(selectedEntry.stormMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {selectedEntry.obstacleMinigameSummary?.triggered && selectedEntry.obstacleMinigameSummary.result === "SUCCESS" && (
+                                        <div className="cm-reward-cargo-item">
+                                            <div style={{ flex: 1 }}>
+                                                <div className="cm-reward-cargo-name">Hindernisse erfolgreich umfahren</div>
+                                                <div className="cm-reward-cargo-sub">Hindernis-Event</div>
+                                            </div>
+                                            <span className="cm-reward-cargo-amount">+0T</span>
+                                        </div>
+                                    )}
+
+                                    {selectedEntry.obstacleMinigameSummary?.triggered && selectedEntry.obstacleMinigameSummary.result === "FAILED" && (
+                                        <div className="cm-reward-cargo-item expired">
+                                            <div style={{ flex: 1 }}>
+                                                <div className="cm-reward-cargo-name">Hindernis hat Schiff und Fracht beschaedigt</div>
+                                                <div className="cm-reward-cargo-sub">
+                                                    {Math.round(selectedEntry.obstacleMinigameSummary.conditionDamagePercent ?? 0)}% Schiffsschaden,
+                                                    {" "}{selectedEntry.obstacleMinigameSummary.cargoLossPercent ?? 0}% Frachtwert verloren
+                                                </div>
+                                            </div>
+                                            <span className="cm-reward-cargo-amount expired">
+                                                -{Math.round(selectedEntry.obstacleMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                            </span>
+                                        </div>
+                                    )}
+
                                     <div className="cm-reward-breakdown">
                                         {cargoBaseTotal > 0 && (
                                             <div className="cm-reward-row">
@@ -761,6 +824,30 @@ export default function CargoManagementScreen({
                                                     )}
                                                 </span>
                                                 <span>-{Math.round(regressDamage).toLocaleString("de-DE")} T</span>
+                                            </div>
+                                        )}
+                                        {selectedEntry.ratMinigameSummary?.triggered && selectedEntry.ratMinigameSummary.result === "FAILED" && (
+                                            <div className="cm-reward-row warn">
+                                                <span>⚠ Ratten-Event Schaden</span>
+                                                <span className="cm-reward-row-value">
+                                                    -{Math.round(selectedEntry.ratMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                                </span>
+                                            </div>
+                                        )}
+                                        {selectedEntry.stormMinigameSummary?.triggered && selectedEntry.stormMinigameSummary.result === "FAILED" && (
+                                            <div className="cm-reward-row warn">
+                                                <span>⚠ Sturm-Event Schaden</span>
+                                                <span className="cm-reward-row-value">
+                                                    -{Math.round(selectedEntry.stormMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                                </span>
+                                            </div>
+                                        )}
+                                        {selectedEntry.obstacleMinigameSummary?.triggered && selectedEntry.obstacleMinigameSummary.result === "FAILED" && (
+                                            <div className="cm-reward-row warn">
+                                                <span>⚠ Hindernis-Event Schaden</span>
+                                                <span className="cm-reward-row-value">
+                                                    -{Math.round(selectedEntry.obstacleMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                                </span>
                                             </div>
                                         )}
                                         {departureDockingFine > 0 && (

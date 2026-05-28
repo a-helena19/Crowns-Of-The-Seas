@@ -49,15 +49,15 @@ export default function ShipBrokerScene({ onClose }: Props) {
 
                     <div className="broker-options">
                         <GameButton onClick={() => setSelectedClass("BUDGET")}>
-                            Budget Ships
+                            Budget Schiffe
                         </GameButton>
 
                         <GameButton onClick={() => setSelectedClass("STANDARD")}>
-                            Standard Ships
+                            Standard Schiffe
                         </GameButton>
 
                         <GameButton onClick={() => setSelectedClass("PREMIUM")}>
-                            Premium Ships
+                            Premium Schiffe
                         </GameButton>
 
                         <GameButton onClick={() => setShowUsedShips(true)}>

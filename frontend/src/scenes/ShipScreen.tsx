@@ -170,13 +170,13 @@ export default function ShipScreen({ onSelect, filterByPortId }: ShipScreenProps
                                         <div className="ship-extra-stats">
                                             {ship.maxSpeed && (
                                                 <div className="ship-extra-stat">
-                                                    <span>Speed </span>
+                                                    <span>Geschw. </span>
                                                     <span>{ship.maxSpeed} kn</span>
                                                 </div>
                                             )}
                                             {ship.maxCargoCapacity && (
                                                 <div className="ship-extra-stat">
-                                                    <span>Cargo Capacity</span>
+                                                    <span>Ladekapazität</span>
                                                     <span>{ship.maxCargoCapacity} t</span>
                                                 </div>
                                             )}
