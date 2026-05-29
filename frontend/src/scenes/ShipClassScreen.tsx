@@ -5,8 +5,8 @@ import GameButton from "../components/GameButton";
 import "../style/harbor.css";
 import "../style/shipbroker.css";
 import "../style/shipclass.css"
-import backIcon from "../assets/goback.png";
 import audioEngine from '../audio/AudioEngine';
+import BackButton from "../components/BackButton.tsx";
 
 interface PurchasedShipResponse {
     id: string;
@@ -201,9 +201,7 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
     return (
         <div className="shipclass-scene">
 
-            <div className="back-icon-btn" onClick={onBack}>
-                <img src={backIcon} alt="Zurück" />
-            </div>
+            <BackButton onClick={onBack} />
 
             <div className="shipclass-title-area">
                 <div className="shipclass-title-main">Schiffsmarkt</div>

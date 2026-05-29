@@ -1,7 +1,7 @@
 .admin-page {
     min-height: 100vh;
     background: linear-gradient(160deg, #f4ecd2 0%, #f9f3df 50%, #ebe2c2 100%);
-    padding: 24px 32px;
+    padding: 24px 32px 24px 100px;
     font-family: Georgia, "Palatino Linotype", serif;
     color: #2b2418;
 }

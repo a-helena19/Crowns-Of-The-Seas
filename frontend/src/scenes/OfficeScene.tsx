@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import GameButton from "../components/GameButton";
-import backIcon from "../assets/goback.png";
 import officeBackground from "../assets/office-background.png";
 import "../style/shipclass.css";
 import "../style/office.css";
 import audioEngine from '../audio/AudioEngine';
+import BackButton from "../components/BackButton";
 
 interface PlayerShip {
     id: string;
@@ -247,9 +247,7 @@ export default function OfficeScene({ onClose }: Props) {
     return (
         <div className="shipclass-scene office-scene">
             <img src={officeBackground} className="office-background" alt="" />
-            <div className="back-icon-btn" onClick={onClose}>
-                <img src={backIcon} alt="Zurück" />
-            </div>
+            <BackButton onClick={onClose} />
 
             {loading && <p className="shipclass-status">Lade Büro...</p>}
             {error && <p className="shipclass-status">{error}</p>}

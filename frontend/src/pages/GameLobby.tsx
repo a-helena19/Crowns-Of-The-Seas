@@ -66,8 +66,10 @@ export default function GameLobby() {
 
         if (!newSession) {
             showError('Fehler beim Erstellen der Session. Ist das Backend aktiv?');
+            audioEngine.playSfx('error');
             return;
         }
+        audioEngine.playSfx('buttonClick');
 
         sessionStorage.setItem('currentSession', JSON.stringify(newSession));
         sessionStorage.setItem('userRole', 'host');
@@ -92,6 +94,7 @@ export default function GameLobby() {
             const session = await joinSession(joinForm.gameCode, joinForm.playerName);
 
             if (session) {
+                audioEngine.playSfx('buttonClick');
                 sessionStorage.setItem('currentSession', JSON.stringify(session));
                 sessionStorage.setItem('userRole', 'guest');
                 sessionStorage.setItem('playerName', joinForm.playerName);
@@ -121,6 +124,7 @@ export default function GameLobby() {
     };
 
     const handleLogout = () => {
+        audioEngine.playSfx('buttonClick');
         logout();
         navigate('/login');
     };
@@ -156,7 +160,7 @@ export default function GameLobby() {
 
                     <div className="lobby-header-actions">
                         {user?.role === "ADMIN" && (
-                            <button className="admin-link-btn" onClick={() => navigate("/admin")}>
+                            <button className="admin-link-btn" onClick={() => {navigate("/admin"); audioEngine.playSfx('buttonClick');}}>
                                 ⚙ Verwaltung
                             </button>
                         )}
@@ -166,7 +170,7 @@ export default function GameLobby() {
                             <button
                                 type="button"
                                 className={`lobby-menu-btn ${audioMenuOpen ? 'is-open' : ''}`}
-                                onClick={() => setAudioMenuOpen(o => !o)}
+                                onClick={() => {setAudioMenuOpen(o => !o); audioEngine.playSfx('buttonClick');}}
                                 title="Einstellungen"
                             >
                                 ☰
@@ -181,7 +185,7 @@ export default function GameLobby() {
                                         <div className="lobby-audio-controls">
                                             <button
                                                 className={`lobby-audio-toggle ${settings.musicEnabled ? 'on' : 'off'}`}
-                                                onClick={() => setMusicEnabled(!settings.musicEnabled)}
+                                                onClick={() => {setMusicEnabled(!settings.musicEnabled); audioEngine.playSfx('buttonClick');}}
                                             >
                                                 {settings.musicEnabled ? 'AN' : 'AUS'}
                                             </button>
@@ -205,7 +209,7 @@ export default function GameLobby() {
                                         <div className="lobby-audio-controls">
                                             <button
                                                 className={`lobby-audio-toggle ${settings.sfxEnabled ? 'on' : 'off'}`}
-                                                onClick={() => setSfxEnabled(!settings.sfxEnabled)}
+                                                onClick={() => {setSfxEnabled(!settings.sfxEnabled); audioEngine.playSfx('buttonClick');}}
                                             >
                                                 {settings.sfxEnabled ? 'AN' : 'AUS'}
                                             </button>

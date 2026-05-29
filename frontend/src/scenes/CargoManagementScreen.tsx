@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import LoadingScreen from "./LoadingScreen";
-import backIcon from "../assets/goback.png";
 import background from "../assets/background-cargomanagement.png";
 import shipIcon from "../assets/icon-ship.png";
 import "../style/harbor.css";
@@ -8,6 +7,7 @@ import "../style/cargoManagement.css";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
 import DepartureAnimation from "./DepartureAnimation";
 import DockingMiniGame from "./DockingMiniGame";
+import BackButton from "../components/BackButton.tsx";
 
 function StaticProgressBar({ pct, color }: { pct: number; color: string }) {
     const clamped = Math.min(100, Math.max(0, pct));
@@ -328,9 +328,7 @@ export default function CargoManagementScreen({
         <div className="scene">
             <img src={background} className="background" alt="" />
             {!showDeparture && (
-                <div className="back-icon-btn" onClick={onClose}>
-                    <img src={backIcon} alt="Zurück" />
-                </div>
+                <BackButton onClick={onClose} />
             )}
 
             <div className="cm-layout">

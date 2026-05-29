@@ -26,6 +26,7 @@ export default function LoginPage() {
 
             // Check if there's a redirect parameter (e.g., /join/ABC123)
             const redirect = searchParams.get('redirect');
+            audioEngine.playSfx('buttonClick');
             if (redirect) {
                 navigate(redirect);
             } else {

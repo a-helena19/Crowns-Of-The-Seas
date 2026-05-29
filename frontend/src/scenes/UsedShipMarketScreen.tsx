@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import GameButton from "../components/GameButton";
-import backIcon from "../assets/goback.png";
 import "../style/shipclass.css";
 import audioEngine from '../audio/AudioEngine';
+import BackButton from "../components/BackButton.tsx";
 
 interface UsedShipListing {
     id: string;
@@ -137,9 +137,7 @@ export default function UsedShipMarketScreen({ onBack }: Props) {
 
     return (
         <div className="shipclass-scene">
-            <div className="back-icon-btn" onClick={onBack}>
-                <img src={backIcon} alt="Zurück" />
-            </div>
+            <BackButton onClick={onBack} />
 
             <div className="shipclass-title-area">
                 <div className="shipclass-title-main">Gebrauchte Schiffe</div>

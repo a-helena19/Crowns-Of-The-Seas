@@ -262,7 +262,7 @@ export default function TopBar() {
                         <button
                             type="button"
                             className={`topbar-panel topbar-faction-btn ${factionPanelOpen ? 'is-open' : ''}`}
-                            onClick={() => setFactionPanelOpen(o => !o)}
+                            onClick={() => {audioEngine.playSfx('buttonClick'); setFactionPanelOpen(o => !o); }}
                             aria-expanded={factionPanelOpen}
                             aria-haspopup="dialog"
                             title={`Fraktion: ${factionData.name}`}
@@ -315,7 +315,7 @@ export default function TopBar() {
                     <button
                         type="button"
                         className={`topbar-panel topbar-lb-btn ${lbOpen ? 'is-open' : ''}`}
-                        onClick={() => setLbOpen(o => !o)}
+                        onClick={() => {audioEngine.playSfx('buttonClick'); setLbOpen(o => !o);}}
                         aria-expanded={lbOpen}
                         aria-haspopup="dialog"
                         title="Rangliste"
@@ -346,12 +346,11 @@ export default function TopBar() {
                         </div>
                     )}
                 </div>
-                {/* Audio-Menü */}
                 <div className="topbar-audio-wrapper" ref={audioMenuRef}>
                     <button
                         type="button"
                         className={`topbar-panel topbar-audio-btn ${audioMenuOpen ? 'is-open' : ''}`}
-                        onClick={() => setAudioMenuOpen(o => !o)}
+                        onClick={() => {audioEngine.playSfx('buttonClick'); setAudioMenuOpen(o => !o);}}
                         aria-expanded={audioMenuOpen}
                         aria-haspopup="dialog"
                         title="Einstellungen"
@@ -368,7 +367,7 @@ export default function TopBar() {
                                 <div className="audio-popover-controls">
                                     <button
                                         className={`audio-popover-toggle ${settings.musicEnabled ? 'on' : 'off'}`}
-                                        onClick={() => setMusicEnabled(!settings.musicEnabled)}
+                                        onClick={() => {setMusicEnabled(!settings.musicEnabled); audioEngine.playSfx('buttonClick');}}
                                     >
                                         {settings.musicEnabled ? 'AN' : 'AUS'}
                                     </button>
@@ -392,7 +391,7 @@ export default function TopBar() {
                                 <div className="audio-popover-controls">
                                     <button
                                         className={`audio-popover-toggle ${settings.sfxEnabled ? 'on' : 'off'}`}
-                                        onClick={() => setSfxEnabled(!settings.sfxEnabled)}
+                                        onClick={() => {setSfxEnabled(!settings.sfxEnabled); audioEngine.playSfx('buttonClick');}}
                                     >
                                         {settings.sfxEnabled ? 'AN' : 'AUS'}
                                     </button>
@@ -415,6 +414,7 @@ export default function TopBar() {
 
                             <button className="audio-popover-leave" onClick={() => {
                                 audioEngine.stopMusic();
+                                audioEngine.playSfx('buttonClick');
                                 navigate('/lobby');
                             }}>
                                 Zurück zur Lobby

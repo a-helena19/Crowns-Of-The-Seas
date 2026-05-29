@@ -36,6 +36,7 @@ export default function RegisterPage() {
             const response = await registerUser(username, password);
             // Auto-login after registration
             login({ id: response.id, username: response.username, role: response.role });
+            audioEngine.playSfx('buttonClick');
             // Redirect to lobby
             navigate('/lobby');
         } catch (err) {
@@ -110,7 +111,7 @@ export default function RegisterPage() {
                 </form>
 
                 <p className="auth-link">
-                    Bereits ein Konto? <Link to="/login">Anmelden</Link>
+                    Bereits ein Konto? <Link to="/login"  >Anmelden</Link>
                 </p>
             </div>
         </div>

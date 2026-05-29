@@ -274,7 +274,7 @@
     border-color: #8a8068;
 }
 
-.start-btn {
+.session-start-btn {
     background: #4a7c3a;
     border-color: #2c4a22;
     border-bottom: 3px solid #2c4a22;
@@ -282,7 +282,7 @@
     margin-bottom: 4px;
 }
 
-.start-btn:hover:not(:disabled) {
+.session-start-btn:hover:not(:disabled) {
     background: #5a8c4a;
 }
 

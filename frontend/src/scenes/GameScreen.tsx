@@ -1275,7 +1275,7 @@ export default function GameScreen() {
                 )}
             </div>
             {view === "portProfile" && selectedPort && (
-                <PortProfileScreen port={selectedPort} onClose={() => setView("map")} />
+                <PortProfileScreen port={selectedPort} onClose={() => {setView("map"); audioEngine.playSfx('buttonClick');}} />
             )}
             {(view === "map" || view === "portProfile") && !isMinigameActive && (
                 <div className="bottom">

@@ -1,6 +1,6 @@
 import marketplaceImage from "../assets/marketplace/MarketPlace.png";
-import backIcon from "../assets/goback.png";
 import "../style/marketplace.css";
+import BackButton from "../components/BackButton.tsx";
 
 interface MarketplaceSceneProps {
     onClose: () => void;
@@ -38,9 +38,7 @@ export default function MarketplaceScene({
         <div className="marketplace-scene">
             <img src={marketplaceImage} className="marketplace-image" alt="Hafen Marketplace" />
 
-            <button type="button" className="back-icon-btn marketplace-back-btn" onClick={onClose} aria-label="Zurueck">
-                <img src={backIcon} alt="Zurueck" />
-            </button>
+            <BackButton onClick={onClose} />
 
             <div className="marketplace-hotspots">
                 {hotspots.map((hotspot) => (

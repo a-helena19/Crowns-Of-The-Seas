@@ -68,7 +68,7 @@ export default function IntroAnimation() {
         };
     }, [goBackToWaiting]);
 
-    const handleSkip = () => goBackToWaiting();
+    const handleSkip = () => {goBackToWaiting(); audioEngine.playSfx('buttonClick');};
 
     const audioSettings = audioEngine.getSettings();
     const isMuted = !audioSettings.musicEnabled;
