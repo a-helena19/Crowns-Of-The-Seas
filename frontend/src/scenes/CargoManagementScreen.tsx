@@ -121,6 +121,11 @@ export default function CargoManagementScreen({
     const [errorMap, setErrorMap] = useState<Record<string, string>>({});
     const [showDeparture, setShowDeparture] = useState<AssignedCargoEntry | null>(null);
     const [showDockingGame, setShowDockingGame] = useState<AssignedCargoEntry | null>(null);
+    if (!(window as any).__cargoCompletedAt) {
+        (window as any).__cargoCompletedAt = {} as Record<string, number>;
+    }
+    const completedAtMap = (window as any).__cargoCompletedAt as Record<string, number>;
+    const [autoCloseSeconds, setAutoCloseSeconds] = useState(10);
 
     const [, setRenderTick] = useState(0);
     useEffect(() => {
@@ -133,6 +138,7 @@ export default function CargoManagementScreen({
         }, 100);
         return () => clearInterval(interval);
     }, [assignedCargos]);
+
 
     const userData = localStorage.getItem("crowns_user");
     const playerId = userData ? JSON.parse(userData).id : null;
@@ -157,6 +163,46 @@ export default function CargoManagementScreen({
     }, [focusShipId, assignedCargos]);
 
     const selectedEntry = assignedCargos.find(e => e.cargoId === selectedCargoId) ?? null;
+
+    // Merke den Zeitpunkt wenn eine Fracht "completed" wird
+    useEffect(() => {
+        for (const entry of assignedCargos) {
+            if (entry.phase === "completed" && !completedAtMap[entry.cargoId]) {
+                completedAtMap[entry.cargoId] = Date.now();
+            }
+        }
+    }, [assignedCargos]);
+
+    // Countdown + Auto-Close basierend auf dem gemerkten Zeitpunkt
+    useEffect(() => {
+        if (!selectedEntry || selectedEntry.phase !== "completed") return;
+        const completedAt = completedAtMap[selectedEntry.cargoId];
+        if (!completedAt) return;
+
+        const calcRemaining = () => Math.max(0, 10 - Math.floor((Date.now() - completedAt) / 1000));
+
+        // Sofort prüfen ob schon abgelaufen
+        const initial = calcRemaining();
+        if (initial <= 0) {
+            delete completedAtMap[selectedEntry.cargoId];
+            onCargoRemoved(selectedEntry.cargoId);
+            return;
+        }
+        setAutoCloseSeconds(initial);
+
+        const interval = setInterval(() => {
+            const remaining = calcRemaining();
+            setAutoCloseSeconds(remaining);
+            if (remaining <= 0) {
+                clearInterval(interval);
+                delete completedAtMap[selectedEntry.cargoId];
+                onCargoRemoved(selectedEntry.cargoId);
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [selectedEntry?.cargoId, selectedEntry?.phase, onCargoRemoved]);
+
 
     function resolveOriginPortId(entry: AssignedCargoEntry): string | undefined {
         if (entry.originPortId) return entry.originPortId;
@@ -876,9 +922,12 @@ export default function CargoManagementScreen({
 
                                     <button
                                         className="cm-reward-btn"
-                                        onClick={() => onCargoRemoved(selectedEntry.cargoId)}
+                                        onClick={() => {
+                                            delete completedAtMap[selectedEntry.cargoId];
+                                            onCargoRemoved(selectedEntry.cargoId);
+                                        }}
                                     >
-                                        Fracht schließen
+                                        Fracht schließen ({autoCloseSeconds}s)
                                     </button>
                                 </div>
                             );

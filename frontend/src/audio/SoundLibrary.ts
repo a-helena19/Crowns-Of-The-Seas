@@ -16,6 +16,8 @@ import gameMusicUrl from '../assets/audio/game-music.mp3';
 import lobbyMusicUrl from '../assets/audio/lobby-music.mp3';
 import dockingMusicUrl from '../assets/audio/docking-music.mp3';
 import ratMusicUrl from '../assets/audio/rat-music.mp3';
+import stormMusicUrl from '../assets/audio/storm-music.mp3';
+import obstacleMusicUrl from '../assets/audio/obstacle-music.mp3';
 
 // ─── SFX-Imports ───
 import clickSfxUrl from '../assets/audio/sfx/click.mp3';
@@ -33,6 +35,9 @@ import failedSfxUrl from '../assets/audio/sfx/failed.mp3';
 import successSfxUrl from '../assets/audio/sfx/success.mp3';
 import evilLaughSfxUrl from '../assets/audio/sfx/evil-laugh.mp3';
 import smuggleNotificationSfxUrl from '../assets/audio/sfx/smuggle-notification.mp3';
+import stormLifhtningSfxUrl from '../assets/audio/sfx/storm-lightning.mp3';
+import stormSunSfxUrl from '../assets/audio/sfx/storm-sun.mp3';
+import obstacleCrashSfxUrl from '../assets/audio/sfx/obstacle-crash.mp3';
 
 // ─── Musik-Tracks ───
 export const MUSIC_TRACKS: Record<string, SoundDefinition> = {
@@ -71,6 +76,22 @@ export const MUSIC_TRACKS: Record<string, SoundDefinition> = {
         loop: true,
         volume: 0.8,
     },
+
+    storm: {
+        key: 'music_storm',
+        url: stormMusicUrl,
+        category: 'music',
+        loop: true,
+        volume: 0.8,
+    },
+
+    obstacle: {
+        key: 'music_obstacle',
+        url: obstacleMusicUrl,
+        category: 'music',
+        loop: true,
+        volume: 0.8,
+    }
 };
 
 // ─── Soundeffekte ───
@@ -182,6 +203,27 @@ export const SFX: Record<string, SoundDefinition> = {
         url: ratTickingSfxUrl,
         category: 'sfx',
         volume: 0.9,
+    },
+
+    stormLightning: {
+        key: 'sfx_storm_lightning',
+        url: stormLifhtningSfxUrl,
+        category: 'sfx',
+        volume: 0.6,
+    },
+
+    stormSun: {
+        key: 'sfx_storm_sun',
+        url: stormSunSfxUrl,
+        category: 'sfx',
+        volume: 0.6,
+    },
+
+    obstacleCrash: {
+        key: 'sfx_obstacle_crash',
+        url: obstacleCrashSfxUrl,
+        category: 'sfx',
+        volume: 0.6,
     },
 
     evilLaugh: {

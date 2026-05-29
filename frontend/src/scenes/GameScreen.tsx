@@ -1229,19 +1229,23 @@ export default function GameScreen() {
                     <MarketplaceScene
                         onClose={() => setView(marketplaceReturnView)}
                         onOpenOffice={() => {
+                            audioEngine.playSfx('door');
                             setOverlayReturnView("marketplace");
                             setView("office");
                         }}
                         onOpenBroker={() => {
+                            audioEngine.playSfx('door');
                             setOverlayReturnView("marketplace");
                             setView("broker");
                         }}
                         onOpenCargoManagement={() => {
+                            audioEngine.playSfx('door');
                             setFocusShipIdForCargoManagement(null);
                             setOverlayReturnView("marketplace");
                             setView("cargoManagement");
                         }}
                         onOpenHarbor={() => {
+                            audioEngine.playSfx('door');
                             setOverlayReturnView("marketplace");
                             setView("harbor");
                         }}
@@ -1285,6 +1289,7 @@ export default function GameScreen() {
                         ships={ownedShips}
                         pendingEventsByShipId={pendingEventsByShipId}
                         onShipCardClick={(ship) => {
+                            audioEngine.playSfx('buttonClick');
                             const pendingEvent = pendingEventsByShipId[ship.id];
                             if (pendingEvent) {
                                 if (pendingEvent.kind === "arrival_docking" && pendingArrivalDocking && pendingArrivalDocking.shipId === ship.id) {
