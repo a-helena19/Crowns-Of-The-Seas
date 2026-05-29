@@ -1,4 +1,5 @@
 import "../style/Sidebar.css";
+import audioEngine from '../audio/AudioEngine';
 
 type View = "map" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office";
 
@@ -61,9 +62,14 @@ function SidebarButton({
     active?: boolean;
     highlight?: boolean;
 }) {
+    function handleClick() {
+        audioEngine.playSfx('buttonClick');
+        onClick?.();
+    }
+
     return (
         <button
-            onClick={onClick}
+            onClick={handleClick}
             className={`sidebar-btn ${active ? "active" : ""} ${highlight ? "highlight" : ""}`}
         >
             {label}

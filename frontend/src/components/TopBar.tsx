@@ -9,9 +9,13 @@ import type { PlayerFaction } from '../types/faction';
 import { sessionApi } from '../api/sessionApi';
 import { getLeaderboard } from '../api/leaderboardApi';
 import type { LeaderboardEntry } from '../types/leaderboard';
+import { useAudioSettings } from '../audio/AudioSettingsContext';
+import audioEngine from '../audio/AudioEngine';
+import { useNavigate } from 'react-router-dom';
 
 
 export default function TopBar() {
+    const navigate = useNavigate();
     const [balance, setBalance] = useState<number | null>(null);
     const [shipCount, setShipCount] = useState<number | null>(null);
     const [currentTick, setCurrentTick] = useState<number | null>(null);
@@ -22,6 +26,9 @@ export default function TopBar() {
     const [endingToastShown, setEndingToastShown] = useState(false);
     const [showEndingToast, setShowEndingToast] = useState(false);
     const [endingToastHiding, setEndingToastHiding] = useState(false);
+    const { settings, setMusicEnabled, setSfxEnabled, setMusicVolume, setSfxVolume } = useAudioSettings();
+    const [audioMenuOpen, setAudioMenuOpen] = useState(false);
+    const audioMenuRef = useRef<HTMLDivElement | null>(null);
 
     const factionWrapperRef = useRef<HTMLDivElement | null>(null);
 
@@ -89,6 +96,20 @@ export default function TopBar() {
         window.addEventListener('player-balance-updated', fetchPlayerData);
         return () => window.removeEventListener('player-balance-updated', fetchPlayerData);
     }, [playerId, sessionId, token]);
+
+    useEffect(() => {
+        if (!audioMenuOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (audioMenuRef.current && !audioMenuRef.current.contains(e.target as Node)) {
+                setAudioMenuOpen(false);
+            }
+        };
+        const t = setTimeout(() => document.addEventListener('mousedown', handler), 0);
+        return () => {
+            clearTimeout(t);
+            document.removeEventListener('mousedown', handler);
+        };
+    }, [audioMenuOpen]);
 
     useEffect(() => {
         if (window.__latestTick) {
@@ -241,7 +262,7 @@ export default function TopBar() {
                         <button
                             type="button"
                             className={`topbar-panel topbar-faction-btn ${factionPanelOpen ? 'is-open' : ''}`}
-                            onClick={() => setFactionPanelOpen(o => !o)}
+                            onClick={() => {audioEngine.playSfx('buttonClick'); setFactionPanelOpen(o => !o); }}
                             aria-expanded={factionPanelOpen}
                             aria-haspopup="dialog"
                             title={`Fraktion: ${factionData.name}`}
@@ -294,7 +315,7 @@ export default function TopBar() {
                     <button
                         type="button"
                         className={`topbar-panel topbar-lb-btn ${lbOpen ? 'is-open' : ''}`}
-                        onClick={() => setLbOpen(o => !o)}
+                        onClick={() => {audioEngine.playSfx('buttonClick'); setLbOpen(o => !o);}}
                         aria-expanded={lbOpen}
                         aria-haspopup="dialog"
                         title="Rangliste"
@@ -322,6 +343,83 @@ export default function TopBar() {
                                     })}
                                 </ul>
                             )}
+                        </div>
+                    )}
+                </div>
+                <div className="topbar-audio-wrapper" ref={audioMenuRef}>
+                    <button
+                        type="button"
+                        className={`topbar-panel topbar-audio-btn ${audioMenuOpen ? 'is-open' : ''}`}
+                        onClick={() => {audioEngine.playSfx('buttonClick'); setAudioMenuOpen(o => !o);}}
+                        aria-expanded={audioMenuOpen}
+                        aria-haspopup="dialog"
+                        title="Einstellungen"
+                    >
+                        <span className="topbar-value topbar-hamburger">☰</span>
+                    </button>
+
+                    {audioMenuOpen && (
+                        <div className="audio-popover" role="dialog" aria-label="Audio Einstellungen">
+                            <h3 className="audio-popover-title">Audio</h3>
+
+                            <div className="audio-popover-row">
+                                <span className="audio-popover-label">🎵 Musik</span>
+                                <div className="audio-popover-controls">
+                                    <button
+                                        className={`audio-popover-toggle ${settings.musicEnabled ? 'on' : 'off'}`}
+                                        onClick={() => {setMusicEnabled(!settings.musicEnabled); audioEngine.playSfx('buttonClick');}}
+                                    >
+                                        {settings.musicEnabled ? 'AN' : 'AUS'}
+                                    </button>
+                                    <input
+                                        type="range"
+                                        min={0}
+                                        max={100}
+                                        value={Math.round(settings.musicVolume * 100)}
+                                        onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
+                                        disabled={!settings.musicEnabled}
+                                        className="audio-popover-slider"
+                                    />
+                                    <span className="audio-popover-pct">
+                                        {Math.round(settings.musicVolume * 100)}%
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="audio-popover-row">
+                                <span className="audio-popover-label">🔔 Effekte</span>
+                                <div className="audio-popover-controls">
+                                    <button
+                                        className={`audio-popover-toggle ${settings.sfxEnabled ? 'on' : 'off'}`}
+                                        onClick={() => {setSfxEnabled(!settings.sfxEnabled); audioEngine.playSfx('buttonClick');}}
+                                    >
+                                        {settings.sfxEnabled ? 'AN' : 'AUS'}
+                                    </button>
+                                    <input
+                                        type="range"
+                                        min={0}
+                                        max={100}
+                                        value={Math.round(settings.sfxVolume * 100)}
+                                        onChange={(e) => setSfxVolume(Number(e.target.value) / 100)}
+                                        disabled={!settings.sfxEnabled}
+                                        className="audio-popover-slider"
+                                    />
+                                    <span className="audio-popover-pct">
+                                        {Math.round(settings.sfxVolume * 100)}%
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="audio-popover-divider" />
+
+                            <button className="audio-popover-leave" onClick={() => {
+                                audioEngine.stopMusic();
+                                audioEngine.playSfx('buttonClick');
+                                navigate('/lobby');
+                            }}>
+                                Zurück zur Lobby
+                            </button>
+
                         </div>
                     )}
                 </div>

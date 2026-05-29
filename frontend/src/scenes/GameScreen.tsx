@@ -29,6 +29,7 @@ import ratImage from "../assets/Rat.png";
 import stormDialogImage from "../assets/minigame/storm/DialogPic.png";
 import obstacleDialogImage from "../assets/minigame/obstaclegame/wrack.png";
 import GameOverScreen from "../components/GameOverScreen";
+import audioEngine from '../audio/AudioEngine';
 
 export const TOP_BAR_HEIGHT = '9vh';
 export const BOTTOM_BAR_HEIGHT = '20vh';
@@ -223,6 +224,7 @@ export default function GameScreen() {
                 }));
                 const myRevoked = detail.revokedTravels?.filter(r => r.playerId === playerId) ?? [];
                 if (myRevoked.length > 0) {
+                    audioEngine.playSfx('notification');
                     setStrikeNotice(
                         `Lotsenstreik in ${detail.portName}! Du musst selbst anlegen. Die Lotsengebühr wird beim Reiseabschluss erstattet.`
                     );
@@ -476,6 +478,8 @@ export default function GameScreen() {
             }>).detail;
             if (data.playerId !== playerId) return;
 
+            audioEngine.playSfx('coinReward');
+
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
 
             setAssignedCargos(prev => {
@@ -555,6 +559,7 @@ export default function GameScreen() {
                 reward: number; cargoDescription: string;
             }>).detail;
             if (data.playerId !== playerId) return;
+            audioEngine.playSfx('smuggleNotification');
             const offer = {
                 offerId: data.offerId,
                 portId: data.portId,
@@ -641,6 +646,7 @@ export default function GameScreen() {
         const handler = (e: Event) => {
             const data = (e as CustomEvent<CustomsInspectionPayload>).detail;
             if (data.playerId !== playerId) return;
+            audioEngine.playSfx('notification');
             setCustomsInspection(current => {
                 if (current !== null) {
                     customsQueueRef.current.push(data);
@@ -690,6 +696,7 @@ export default function GameScreen() {
             if (data.playerId !== playerId) return;
             if (window.__activeRatEventId === data.eventId) return;
             window.__activeRatEventId = data.eventId;
+            audioEngine.playSfx('notification');
             setRatEventOffer(data);
         };
 
@@ -1124,6 +1131,8 @@ export default function GameScreen() {
 
     const handleSessionUpdate = useCallback((event: { type?: string; status?: string }) => {
         if (event.status === "FINISHED" || event.type === "GAME_FINISHED") {
+            audioEngine.playSfx('gameOver');
+            audioEngine.fadeOutMusic(2000);
             setTimeout(() => setGameOver(true), 500);
         }
     }, []);
@@ -1160,6 +1169,13 @@ export default function GameScreen() {
             })
             .catch(err => console.warn('Failed to load home port:', err));
     }, [playerId, sessionId]);
+
+    useEffect(() => {
+        audioEngine.playMusic('game');
+        return () => {
+            audioEngine.stopMusic();
+        };
+    }, []);
 
     const send = useCallback((message: object) => {
         if (!stompClient?.connected) return;
@@ -1202,7 +1218,9 @@ export default function GameScreen() {
 
     return (
         <div className={`app-layout ${view}`}>
-            <div className="top"><TopBar /></div>
+            <div className="top">
+                <TopBar />
+            </div>
             <div className="game"><Game view={view} /></div>
             <div className={`fullscreen-overlay ${
                 (view === "marketplace" || view === "harbor" || view === "broker" || view === "cargoManagement" || view === "office") ? "open" : "closed"
@@ -1211,19 +1229,23 @@ export default function GameScreen() {
                     <MarketplaceScene
                         onClose={() => setView(marketplaceReturnView)}
                         onOpenOffice={() => {
+                            audioEngine.playSfx('door');
                             setOverlayReturnView("marketplace");
                             setView("office");
                         }}
                         onOpenBroker={() => {
+                            audioEngine.playSfx('door');
                             setOverlayReturnView("marketplace");
                             setView("broker");
                         }}
                         onOpenCargoManagement={() => {
+                            audioEngine.playSfx('door');
                             setFocusShipIdForCargoManagement(null);
                             setOverlayReturnView("marketplace");
                             setView("cargoManagement");
                         }}
                         onOpenHarbor={() => {
+                            audioEngine.playSfx('door');
                             setOverlayReturnView("marketplace");
                             setView("harbor");
                         }}
@@ -1257,7 +1279,7 @@ export default function GameScreen() {
                 )}
             </div>
             {view === "portProfile" && selectedPort && (
-                <PortProfileScreen port={selectedPort} onClose={() => setView("map")} />
+                <PortProfileScreen port={selectedPort} onClose={() => {setView("map"); audioEngine.playSfx('buttonClick');}} />
             )}
             {(view === "map" || view === "portProfile") && !isMinigameActive && (
                 <div className="bottom">
@@ -1267,6 +1289,7 @@ export default function GameScreen() {
                         ships={ownedShips}
                         pendingEventsByShipId={pendingEventsByShipId}
                         onShipCardClick={(ship) => {
+                            audioEngine.playSfx('buttonClick');
                             const pendingEvent = pendingEventsByShipId[ship.id];
                             if (pendingEvent) {
                                 if (pendingEvent.kind === "arrival_docking" && pendingArrivalDocking && pendingArrivalDocking.shipId === ship.id) {

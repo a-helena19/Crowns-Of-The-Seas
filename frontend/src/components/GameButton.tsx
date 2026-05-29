@@ -1,3 +1,5 @@
+import audioEngine from '../audio/AudioEngine';
+
 export default function GameButton({
                                        onClick,
                                        children,
@@ -9,10 +11,15 @@ export default function GameButton({
     variant?: "danger";
     disabled?: boolean;
 }) {
+    function handleClick() {
+        audioEngine.playSfx('buttonClick');
+        onClick();
+    }
+
     return (
         <button
             className={`game-btn${variant ? ` ${variant}` : ""}`}
-            onClick={onClick}
+            onClick={handleClick}
             disabled={disabled}
         >
             {children}

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import GameButton from "../components/GameButton";
-import backIcon from "../assets/goback.png";
 import "../style/shipclass.css";
+import audioEngine from '../audio/AudioEngine';
+import BackButton from "../components/BackButton.tsx";
 
 interface UsedShipListing {
     id: string;
@@ -49,6 +50,11 @@ export default function UsedShipMarketScreen({ onBack }: Props) {
     const sessionId = sessionData ? JSON.parse(sessionData).id : null;
     const token = localStorage.getItem("auth_token") ?? "";
 
+    function showError(msg: string) {
+        audioEngine.playSfx('error');
+        setError(msg);
+    }
+
     useEffect(() => {
         if (!sessionId || !playerId) return;
         setLoading(true);
@@ -67,7 +73,7 @@ export default function UsedShipMarketScreen({ onBack }: Props) {
                 setShips(usedShips);
                 setBalance(Number(balanceData));
             })
-            .catch(() => setError("Gebrauchte Schiffe konnten nicht geladen werden."))
+            .catch(() => showError("Gebrauchte Schiffe konnten nicht geladen werden."))
             .finally(() => setLoading(false));
     }, [sessionId, playerId, token]);
 
@@ -89,6 +95,7 @@ export default function UsedShipMarketScreen({ onBack }: Props) {
             setShips(prev => prev.filter(ship => ship.id !== listing.id));
             setBalance(prev => prev !== null ? prev - listing.price : prev);
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
+            audioEngine.playSfx('coinReward');
             showToast(`${listing.name} gekauft!`);
 
             const port = (window.__latestPorts ?? []).find(p => p.id === data.currentPortId);
@@ -130,9 +137,7 @@ export default function UsedShipMarketScreen({ onBack }: Props) {
 
     return (
         <div className="shipclass-scene">
-            <div className="back-icon-btn" onClick={onBack}>
-                <img src={backIcon} alt="Zurück" />
-            </div>
+            <BackButton onClick={onBack} />
 
             <div className="shipclass-title-area">
                 <div className="shipclass-title-main">Gebrauchte Schiffe</div>

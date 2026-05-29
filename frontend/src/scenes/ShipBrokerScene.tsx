@@ -6,7 +6,7 @@ import UsedShipMarketScreen from "./UsedShipMarketScreen";
 import background from "../assets/shipmarket.png";
 import "../style/harbor.css";
 import "../style/shipbroker.css";
-import backIcon from "../assets/goback.png";
+import BackButton from "../components/BackButton.tsx";
 
 type ShipClass = "BUDGET" | "STANDARD" | "PREMIUM";
 
@@ -40,9 +40,7 @@ export default function ShipBrokerScene({ onClose }: Props) {
             <img src={background} className="background" />
 
             <div className="broker-center">
-                <div className="back-icon-btn" onClick={onClose}>
-                    <img src={backIcon} alt="Zurück" />
-                </div>
+                <BackButton onClick={onClose} />
 
                 <PixelPanel className="broker-panel">
                     <p className="broker-panel-title">Was darf es sein?</p>

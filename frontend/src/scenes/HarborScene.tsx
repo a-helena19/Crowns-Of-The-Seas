@@ -3,10 +3,11 @@ import CargoScreen from "./CargoScreen";
 import ShipScreen from "./ShipScreen";
 import Sailor from "../components/Sailor";
 import DialogBubble from "../components/DialogBubble";
-import backIcon from "../assets/goback.png";
 import background from "../assets/background.jpg";
 import "../style/harbor.css";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
+import audioEngine from '../audio/AudioEngine';
+import BackButton from "../components/BackButton.tsx";
 
 interface Port {
     id: string;
@@ -127,15 +128,14 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
             phase: "loading",
         };
         onCargoAssigned(entry);
+        audioEngine.playSfx('cargoLoad');
         onClose();
     }
 
     return (
         <div className="scene">
             <img src={background} className="background" alt="" />
-            <div className="back-icon-btn" onClick={handleBack}>
-                <img src={backIcon} alt="Zurück" />
-            </div>
+            <BackButton onClick={handleBack} />
 
             {view === "main" && (
                 <>

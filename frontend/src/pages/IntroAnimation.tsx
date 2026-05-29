@@ -1,17 +1,15 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameSessionWebSocket } from '../hooks/useGameSessionWebSocket';
+import audioEngine from '../audio/AudioEngine';
 import '../style/intro.css';
 import skipIcon from '../assets/intro/skip.png';
-import introMusic from '../assets/audio/intro-music.mp3';
 
 const INTRO_DURATION_MS = 6000;
 
 export default function IntroAnimation() {
     const navigate = useNavigate();
     const [showSkip, setShowSkip] = useState(false);
-    const [audioStarted, setAudioStarted] = useState(false);
-    const audioRef = useRef<HTMLAudioElement | null>(null);
     const hasNavigatedRef = useRef(false);
 
     const [starPositions] = useState(() =>
@@ -31,6 +29,7 @@ export default function IntroAnimation() {
         (event: { type: string; status: string }) => {
             if (event.status === 'RUNNING' && !hasNavigatedRef.current) {
                 hasNavigatedRef.current = true;
+                audioEngine.stopMusic();          // ← SOFORT stoppen
                 navigate('/game');
             }
         },
@@ -45,34 +44,19 @@ export default function IntroAnimation() {
     const goBackToWaiting = useCallback(() => {
         if (hasNavigatedRef.current) return;
         hasNavigatedRef.current = true;
+        audioEngine.stopMusic();
         navigate('/session-waiting');
     }, [navigate]);
 
-    const handleUnmute = () => {
-        try {
-            if (!audioRef.current) {
-                audioRef.current = new Audio(introMusic);
-                audioRef.current.volume = 0.5;
-                audioRef.current.loop = false;
-            }
-            audioRef.current.currentTime = 0;
-            const playPromise = audioRef.current.play();
-            if (playPromise !== undefined) {
-                playPromise
-                    .then(() => setAudioStarted(true))
-                    .catch(error => console.log('Audio-Fehler:', error));
-            }
-        } catch (error) {
-            console.log('Audio nicht verfügbar:', error);
-        }
-    };
+    // Intro-Musik starten
+    useEffect(() => {
+        audioEngine.crossfadeTo('intro', 500);
 
-    const handleMute = () => {
-        if (audioRef.current) {
-            audioRef.current.pause();
-            setAudioStarted(false);
-        }
-    };
+        // Sicherheits-Cleanup falls React langsam unmountet
+        return () => {
+            audioEngine.stopMusic();
+        };
+    }, []);
 
     useEffect(() => {
         const skipTimer = setTimeout(() => setShowSkip(true), 1000);
@@ -81,28 +65,31 @@ export default function IntroAnimation() {
         return () => {
             clearTimeout(skipTimer);
             clearTimeout(redirectTimer);
-            if (audioRef.current) {
-                audioRef.current.pause();
-                audioRef.current.currentTime = 0;
-            }
         };
     }, [goBackToWaiting]);
 
-    const handleSkip = () => goBackToWaiting();
+    const handleSkip = () => {goBackToWaiting(); audioEngine.playSfx('buttonClick');};
+
+    const audioSettings = audioEngine.getSettings();
+    const isMuted = !audioSettings.musicEnabled;
 
     return (
         <div className="intro-container">
-            {!audioStarted && (
-                <div className="unmute-button" onClick={handleUnmute} title="Sound einschalten">
-                    🔇
-                </div>
-            )}
-
-            {audioStarted && (
-                <div className="mute-button" onClick={handleMute} title="Sound stumm schalten">
-                    🔊
-                </div>
-            )}
+            <div
+                className={isMuted ? 'unmute-button' : 'mute-button'}
+                onClick={() => {
+                    audioEngine.updateSettings({ musicEnabled: !audioSettings.musicEnabled });
+                    if (audioSettings.musicEnabled) {
+                        // War an → wird aus
+                    } else {
+                        // War aus → wird an, Intro-Track starten
+                        audioEngine.playMusic('intro');
+                    }
+                }}
+                title={isMuted ? 'Sound einschalten' : 'Sound stumm schalten'}
+            >
+                {isMuted ? '🔇' : '🔊'}
+            </div>
 
             <div className="moon" />
 

@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import audioEngine from "../../audio/AudioEngine.ts";
 
 export class ObstacleCollisionHandler {
     private lastHitAt = 0;
@@ -12,6 +13,7 @@ export class ObstacleCollisionHandler {
 
     handleCollision(scene: Phaser.Scene, ship: Phaser.Physics.Arcade.Image, obstacle: Phaser.Physics.Arcade.Image,
                     health: number): number {
+        audioEngine.playSfx('obstacleCrash');
         const now = scene.time.now;
         obstacle.destroy();
         if (now - this.lastHitAt < this.hitCooldownMs) return health;

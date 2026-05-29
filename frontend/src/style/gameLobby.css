@@ -149,26 +149,6 @@
     font-size: 14px;
 }
 
-.logout-btn {
-    font-family: var(--font-game);
-    font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    padding: 8px 18px;
-
-    background: transparent;
-    color: #7a6a4a;
-    border: 1px solid rgba(120, 90, 40, 0.35);
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-
-.logout-btn:hover {
-    color: #3a2f1a;
-    border-color: #a37c45;
-    background: rgba(163, 124, 69, 0.08);
-}
-
 
 .lobby-content {
     display: grid;
@@ -523,4 +503,202 @@
 
 .admin-link-btn:active {
     transform: translateY(1px);
+}
+
+
+/* ── Header Actions (Buttons nebeneinander) ── */
+.lobby-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* ── Audio-Menü Button ── */
+.lobby-audio-wrapper {
+    position: relative;
+}
+
+.lobby-menu-btn {
+    font-family: var(--font-game);
+    font-size: 16px;
+    padding: 6px 14px;
+    background: transparent;
+    color: #7a6a4a;
+    border: 1px solid rgba(120, 90, 40, 0.35);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    line-height: 1;
+}
+
+.lobby-menu-btn:hover {
+    color: #3a2f1a;
+    border-color: #a37c45;
+    background: rgba(163, 124, 69, 0.08);
+}
+
+.lobby-menu-btn.is-open {
+    color: #3a2f1a;
+    border-color: #a37c45;
+    background: rgba(163, 124, 69, 0.1);
+}
+
+/* ── Audio Popover ── */
+.lobby-audio-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 280px;
+    z-index: 200;
+
+    background: #fbf5e3;
+    border: 1px solid rgba(120, 90, 40, 0.4);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    color: #2b2418;
+    font-family: 'Crimson Pro', Georgia, serif;
+
+    padding: 14px 16px 16px;
+
+    animation: lobbyAudioFade 0.15s ease-out;
+}
+
+@keyframes lobbyAudioFade {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.lobby-audio-title {
+    font-family: var(--font-game);
+    font-size: 12px;
+    font-weight: 600;
+    color: #3a2f1a;
+    margin: 0 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(120, 90, 40, 0.25);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.lobby-audio-row {
+    margin-bottom: 10px;
+}
+
+.lobby-audio-row:last-child {
+    margin-bottom: 0;
+}
+
+.lobby-audio-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #3a2f1a;
+    margin-bottom: 6px;
+}
+
+.lobby-audio-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.lobby-audio-toggle {
+    min-width: 40px;
+    padding: 3px 8px;
+    border: 1px solid rgba(120, 90, 40, 0.35);
+    font-family: var(--font-game);
+    font-size: 9px;
+    font-weight: 600;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+}
+
+.lobby-audio-toggle.on {
+    background: rgba(74, 124, 58, 0.15);
+    color: #3a6628;
+    border-color: rgba(74, 124, 58, 0.4);
+}
+
+.lobby-audio-toggle.off {
+    background: rgba(139, 46, 31, 0.1);
+    color: #8b2e1f;
+    border-color: rgba(139, 46, 31, 0.3);
+}
+
+.lobby-audio-toggle:hover {
+    filter: brightness(1.1);
+}
+
+.lobby-audio-slider {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(120, 90, 40, 0.2);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.lobby-audio-slider:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.lobby-audio-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #7a6a4a;
+    border: 2px solid #fbf5e3;
+    cursor: pointer;
+    transition: transform 0.15s;
+}
+
+.lobby-audio-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+.lobby-audio-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #7a6a4a;
+    border: 2px solid #fbf5e3;
+    cursor: pointer;
+}
+
+.lobby-audio-pct {
+    font-size: 11px;
+    color: #7a6a4a;
+    min-width: 32px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.lobby-menu-divider {
+    height: 1px;
+    background: rgba(120, 90, 40, 0.25);
+    margin: 12px 0;
+}
+
+.lobby-menu-logout {
+    width: 100%;
+    padding: 8px 0;
+    background: transparent;
+    border: 1px solid rgba(139, 46, 31, 0.3);
+    color: #8b2e1f;
+    font-family: var(--font-game);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.lobby-menu-logout:hover {
+    background: rgba(139, 46, 31, 0.08);
+    border-color: rgba(139, 46, 31, 0.5);
 }

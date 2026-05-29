@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import audioEngine from '../audio/AudioEngine';
+
 import {
     HARBOR_DOCK_CONFIG,
     DEFAULT_HARBOR_CONFIG,
@@ -54,6 +56,7 @@ export default class DockingScene extends Phaser.Scene {
     }
 
     create() {
+        audioEngine.crossfadeTo('docking', 300);
         const W = this.scale.width;
         const H = this.scale.height;
 
@@ -297,20 +300,30 @@ export default class DockingScene extends Phaser.Scene {
         if (this.gameEnded) return;
         this.gameEnded = true;
         this.shipController?.stop();
+        audioEngine.stopMusic();
+        audioEngine.playSfx('success');
         this.showEndMessage(
             this.sceneData.mode === 'departure' ? 'Leinen los! ⛵' : 'Perfekt angelegt! ⚓',
             0x27ae60,
         );
-        this.time.delayedCall(1200, () => this.sceneData.onSuccess());
+        this.time.delayedCall(1200, () => {
+            audioEngine.playMusic('game');
+            this.sceneData.onSuccess()
+        });
     }
 
     private triggerFailure(msg: string) {
         if (this.gameEnded) return;
         this.gameEnded = true;
         this.shipController?.stop();
+        audioEngine.stopMusic();
+        audioEngine.playSfx('dockingCrash');
         this.cameras.main.shake(300, 0.012);
         this.showEndMessage(msg, 0xe74c3c);
-        this.time.delayedCall(1800, () => this.sceneData.onFailure());
+        this.time.delayedCall(1800, () => {
+            audioEngine.playMusic('game');
+            this.sceneData.onFailure();
+        });
     }
 
     private showEndMessage(text: string, color: number) {

@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminApi, type AdminShip, type AdminCargo } from "../api/adminApi";
 import "../style/admin.css";
+import audioEngine from "../audio/AudioEngine.ts";
+import BackButton from "../components/BackButton.tsx";
 
 const SHIP_CLASSES = ["BUDGET", "STANDARD", "PREMIUM"] as const;
 const CARGO_TYPES = [
@@ -48,6 +50,11 @@ export default function AdminPage() {
         }
         loadData();
     }, [user, navigate]);
+
+    useEffect(() => {
+        audioEngine.playMusic('lobby');
+        return () => {};
+    }, []);
 
     async function loadData() {
         try {
@@ -181,9 +188,7 @@ export default function AdminPage() {
         <div className="admin-page">
             <div className="admin-header">
                 <h1 className="admin-title">⚙ Verwaltung</h1>
-                <button className="admin-back-btn" onClick={() => navigate("/lobby")}>
-                    ← Zurück
-                </button>
+                <BackButton onClick={() => navigate("/lobby")} />
             </div>
 
             <div className="admin-tabs">

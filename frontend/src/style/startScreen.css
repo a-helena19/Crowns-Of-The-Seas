@@ -1,0 +1,310 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
+
+/* ── Container ── */
+.start-screen {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+
+    background-image: url('../assets/intro/sky_bg_pixel.png');
+    background-color: #000814;
+    background-size: cover;
+    background-position: center;
+    image-rendering: pixelated;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── Exit-Animation (alles fadet aus) ── */
+.start-screen.leaving {
+    animation: screenFadeOut 0.6s ease-in forwards;
+}
+
+@keyframes screenFadeOut {
+    to { opacity: 0; }
+}
+
+/* ── Mond ── */
+.start-moon {
+    position: absolute;
+    top: 6%;
+    right: 10%;
+    width: 160px;
+    height: 160px;
+    background-image: url('../assets/intro/moon_pixel.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    z-index: 1;
+
+    opacity: 0;
+    animation: moonFadeIn 2s ease-out 0.5s forwards;
+}
+
+@keyframes moonFadeIn {
+    from { opacity: 0; filter: drop-shadow(0 0 5px rgba(253, 240, 213, 0.1)); }
+    to   { opacity: 1; filter: drop-shadow(0 0 20px rgba(253, 240, 213, 0.4)); }
+}
+
+/* ── Sterne ── */
+.start-stars {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.start-star {
+    position: absolute;
+    background: white;
+    width: 2px;
+    height: 2px;
+    animation: startTwinkle 2.5s infinite ease-in-out;
+}
+
+@keyframes startTwinkle {
+    0%, 100% { opacity: 0.15; }
+    50%      { opacity: 0.7; }
+}
+
+/* ══════════════════════════════════════
+   Logo-Bereich — kommt von OBEN
+   ══════════════════════════════════════ */
+.start-logo-area {
+    position: relative;
+    z-index: 20;
+    text-align: center;
+    margin-bottom: 20px;
+
+    /* Startet oberhalb des Bildschirms, gleitet runter */
+    animation: logoDropIn 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes logoDropIn {
+    from {
+        opacity: 0;
+        transform: translateY(-120px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.start-title {
+    font-family: 'Cinzel', serif;
+    font-size: 48px;
+    font-weight: 700;
+    color: #fdf0d5;
+    letter-spacing: 6px;
+    margin: 0;
+    text-shadow:
+            3px 3px 0px rgba(0, 0, 0, 0.8),
+            0 0 30px rgba(200, 155, 60, 0.3);
+}
+
+.start-divider {
+    font-size: 24px;
+    color: #c89b3c;
+    margin: 12px 0;
+    text-shadow: 0 0 10px rgba(200, 155, 60, 0.4);
+    animation: anchorSpin 1.8s ease-out 1.2s both;
+}
+
+@keyframes anchorSpin {
+    from { opacity: 0; transform: rotate(-180deg) scale(0.5); }
+    to   { opacity: 1; transform: rotate(0deg) scale(1); }
+}
+
+.start-subtitle {
+    font-family: 'Crimson Pro', Georgia, serif;
+    font-size: 16px;
+    color: rgba(253, 240, 213, 0.5);
+    letter-spacing: 3px;
+    font-style: italic;
+    margin: 0;
+
+    opacity: 0;
+    animation: subtitleFade 1s ease-out 1.6s forwards;
+}
+
+@keyframes subtitleFade {
+    to { opacity: 1; }
+}
+
+/* ══════════════════════════════════════
+   Start-Button — fadet ein nach Logo
+   ══════════════════════════════════════ */
+.start-btn {
+    position: relative;
+    z-index: 20;
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    padding: 16px 52px;
+
+    background: transparent;
+    color: #c89b3c;
+    border: 2px solid #c89b3c;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    /* Fadet ein nachdem Logo + Subtitle da sind */
+    opacity: 0;
+    animation: btnFadeIn 0.8s ease-out 2.2s forwards;
+}
+
+@keyframes btnFadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.start-btn:hover {
+    background: #c89b3c;
+    color: #000814;
+    box-shadow: 0 0 30px rgba(200, 155, 60, 0.4);
+    transform: translateY(-2px);
+}
+
+.start-btn:active {
+    transform: translateY(0);
+}
+
+/* Pulsierender Rahmen-Effekt nach dem Einblenden */
+.start-btn::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border: 1px solid rgba(200, 155, 60, 0.3);
+    opacity: 0;
+    animation: btnPulse 2s ease-in-out 3s infinite;
+}
+
+@keyframes btnPulse {
+    0%, 100% { opacity: 0; inset: -4px; }
+    50%      { opacity: 1; inset: -8px; }
+}
+
+/* ══════════════════════════════════════
+   Ozean + Schiff — kommt von UNTEN
+   ══════════════════════════════════════ */
+.start-ocean-area {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 200px;
+    z-index: 5;
+
+    /* Startet unterhalb des Bildschirms, gleitet hoch */
+    animation: oceanRiseUp 2s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+}
+
+@keyframes oceanRiseUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Wellen */
+.start-waves {
+    position: absolute;
+    bottom: 0;
+    width: 200%;
+    height: 120px;
+    background-image: url('../assets/intro/waves_pixel.png');
+    background-repeat: repeat-x;
+    background-size: 40% 100%;
+    image-rendering: pixelated;
+}
+
+.start-wave-1 {
+    z-index: 12;
+    bottom: -10px;
+    animation: startWaveMove 10s linear infinite;
+}
+
+.start-wave-2 {
+    z-index: 6;
+    opacity: 0.7;
+    bottom: 20px;
+    filter: brightness(0.6);
+    animation: startWaveMove 16s linear infinite reverse;
+}
+
+@keyframes startWaveMove {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+}
+
+/* Schiff */
+.start-ship-container {
+    position: absolute;
+    bottom: 95px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 140px;
+    height: 140px;
+    z-index: 10;
+}
+
+.start-ship {
+    width: 100%;
+    height: 100%;
+    background-image: url('../assets/intro/ship_side_pixel.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    animation: startRocking 4s ease-in-out infinite;
+}
+
+@keyframes startRocking {
+    0%, 100% { transform: rotate(-3deg) translateY(0); }
+    50%      { transform: rotate(3deg) translateY(-8px); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .start-title {
+        font-size: 28px;
+        letter-spacing: 4px;
+    }
+
+    .start-subtitle {
+        font-size: 13px;
+    }
+
+    .start-btn {
+        padding: 14px 36px;
+        font-size: 12px;
+        letter-spacing: 3px;
+    }
+
+    .start-moon {
+        width: 100px;
+        height: 100px;
+        top: 4%;
+        right: 6%;
+    }
+
+    .start-ocean-area {
+        height: 150px;
+    }
+
+    .start-ship-container {
+        width: 100px;
+        height: 100px;
+        bottom: 70px;
+    }
+}

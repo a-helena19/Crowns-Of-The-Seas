@@ -184,3 +184,20 @@
 .risk-medium { color: #c09040; }
 .risk-high   { color: #c05020; }
 .risk-extreme{ color: #c03030; }
+
+.port-profile-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.port-profile-panel::-webkit-scrollbar-track {
+    background: rgba(120, 90, 40, 0.06);
+}
+
+.port-profile-panel::-webkit-scrollbar-thumb {
+    background: rgba(120, 90, 40, 0.25);
+    border-radius: 3px;
+}
+
+.port-profile-panel::-webkit-scrollbar-thumb:hover {
+    background: rgba(120, 90, 40, 0.4);
+}

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import GameButton from "../components/GameButton";
-import backIcon from "../assets/goback.png";
 import officeBackground from "../assets/office-background.png";
 import "../style/shipclass.css";
 import "../style/office.css";
+import audioEngine from '../audio/AudioEngine';
+import BackButton from "../components/BackButton";
 
 interface PlayerShip {
     id: string;
@@ -80,6 +81,11 @@ export default function OfficeScene({ onClose }: Props) {
     const alreadyFull = fuelNeededPercent < 0.01;
     const alreadyRepaired = repairNeededPercent < 0.01;
 
+    function showError(msg: string) {
+        audioEngine.playSfx('error');
+        setError(msg);
+    }
+
     useEffect(() => {
         loadOfficeData();
     }, [playerId, sessionId, token]);
@@ -145,7 +151,7 @@ export default function OfficeScene({ onClose }: Props) {
                     return shipData[0]?.id ?? null;
                 });
             })
-            .catch(() => setError("Büro konnte die Flotte nicht laden."))
+            .catch(() => showError("Büro konnte die Flotte nicht laden."))
             .finally(() => setLoading(false));
     }
 
@@ -177,7 +183,7 @@ export default function OfficeScene({ onClose }: Props) {
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
             showToast(`${selectedShip.name} wird betankt… (${data.refuelingDurationTicks} Ticks)`);
         } catch {
-            setError("Betanken fehlgeschlagen.");
+            showError("Betanken fehlgeschlagen.");
         } finally {
             setActionBusy(null);
         }
@@ -202,7 +208,7 @@ export default function OfficeScene({ onClose }: Props) {
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
             showToast(`${selectedShip.name} wird repariert… (${data.repairingDurationTicks} Ticks)`);
         } catch {
-            setError("Reparatur fehlgeschlagen.");
+            showError("Reparatur fehlgeschlagen.");
         } finally {
             setActionBusy(null);
         }
@@ -229,9 +235,10 @@ export default function OfficeScene({ onClose }: Props) {
                 detail: { currentTick, ships: window.__latestShips ?? [] },
             }));
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
+            audioEngine.playSfx('coinReward');
             showToast(`${selectedShip.name} verkauft.`);
         } catch {
-            setError("Verkauf fehlgeschlagen.");
+            showError("Verkauf fehlgeschlagen.");
         } finally {
             setActionBusy(null);
         }
@@ -240,9 +247,7 @@ export default function OfficeScene({ onClose }: Props) {
     return (
         <div className="shipclass-scene office-scene">
             <img src={officeBackground} className="office-background" alt="" />
-            <div className="back-icon-btn" onClick={onClose}>
-                <img src={backIcon} alt="Zurück" />
-            </div>
+            <BackButton onClick={onClose} />
 
             {loading && <p className="shipclass-status">Lade Büro...</p>}
             {error && <p className="shipclass-status">{error}</p>}

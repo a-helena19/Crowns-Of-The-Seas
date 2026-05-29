@@ -1,17 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSessionContext } from '../context/useSessionContext';
+import { useAudioSettings } from '../audio/AudioSettingsContext';
+import audioEngine from '../audio/AudioEngine';
 import '../style/gameLobby.css';
 
 export default function GameLobby() {
     const { user, logout } = useAuth();
     const { createSession, joinSession } = useSessionContext();
+    const { settings, setMusicEnabled, setSfxEnabled, setMusicVolume, setSfxVolume } = useAudioSettings();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'create' | 'join'>('create');
     const [error, setError] = useState('');
 
-    // Create Session Form State
+    // Audio-Menü
+    const [audioMenuOpen, setAudioMenuOpen] = useState(false);
+    const audioMenuRef = useRef<HTMLDivElement | null>(null);
+
     const [createForm, setCreateForm] = useState({
         hostName: user?.username || '',
         maxPlayers: 2,
@@ -24,16 +30,20 @@ export default function GameLobby() {
         playerName: user?.username || ''
     });
 
+    function showError(msg: string) {
+        audioEngine.playSfx('error');
+        setError(msg);
+    }
+
     const handleCreateSession = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
         if (!createForm.hostName.trim()) {
-            setError('Bitte gib einen Namen ein.');
+            showError('Bitte gib einen Namen ein.');
             return;
         }
 
-        // Convert duration from "1h" to "PT1H" format
         const durationMap: { [key: string]: string } = {
             '20s': 'PT20S',
             '1m': 'PT1M',
@@ -46,7 +56,6 @@ export default function GameLobby() {
         const durationSeconds = { '20s': 20, '1m': 60,'1h': 3600, '2h': 7200, '3h': 10800, '4h': 14400 }[createForm.duration] ?? 3600;
         const totalTicks = Math.round(durationSeconds / createForm.tickRateSeconds);
 
-        // Create session using context (now async)
         const newSession = await createSession(
             createForm.hostName,
             createForm.maxPlayers,
@@ -56,11 +65,12 @@ export default function GameLobby() {
         );
 
         if (!newSession) {
-            setError('Fehler beim Erstellen der Session. Ist das Backend aktiv?');
+            showError('Fehler beim Erstellen der Session. Ist das Backend aktiv?');
+            audioEngine.playSfx('error');
             return;
         }
+        audioEngine.playSfx('buttonClick');
 
-        // Redirect to session waiting screen
         sessionStorage.setItem('currentSession', JSON.stringify(newSession));
         sessionStorage.setItem('userRole', 'host');
         navigate('/session-waiting');
@@ -71,21 +81,20 @@ export default function GameLobby() {
         setError('');
 
         if (!joinForm.gameCode.trim()) {
-            setError('Bitte gib einen Spielcode ein.');
+            showError('Bitte gib einen Spielcode ein.');
             return;
         }
 
         if (!joinForm.playerName.trim()) {
-            setError('Bitte gib einen Namen ein.');
+            showError('Bitte gib einen Namen ein.');
             return;
         }
 
-        // Try to join session using context
         try {
             const session = await joinSession(joinForm.gameCode, joinForm.playerName);
 
             if (session) {
-                // Redirect to session waiting screen
+                audioEngine.playSfx('buttonClick');
                 sessionStorage.setItem('currentSession', JSON.stringify(session));
                 sessionStorage.setItem('userRole', 'guest');
                 sessionStorage.setItem('playerName', joinForm.playerName);
@@ -97,27 +106,50 @@ export default function GameLobby() {
             const axiosError = error as { response?: { data?: { code?: string; message?: string }; status?: number } };
 
             if (axiosError.response?.data?.code === 'PLAYER_ALREADY_IN_SESSION') {
-                setError('Du bist bereits dieser Session beigetreten!');
+                showError('Du bist bereits dieser Session beigetreten!');
             } else if (axiosError.response?.data?.code === 'SESSION_FULL') {
-                setError('Diese Session ist voll.');
+                showError('Diese Session ist voll.');
             } else if (axiosError.response?.data?.code === 'SESSION_NOT_FOUND') {
-                setError('Session mit diesem Code nicht gefunden. Ist das Backend aktiv?');
+                showError('Session mit diesem Code nicht gefunden. Ist das Backend aktiv?');
             } else if (axiosError.response?.status === 404) {
-                setError('Session mit diesem Code nicht gefunden. Ist das Backend aktiv?');
+                showError('Session mit diesem Code nicht gefunden. Ist das Backend aktiv?');
             } else if (axiosError.response?.status === 409) {
-                setError('Konflikt beim Beitritt - versuche es später erneut.');
+                showError('Konflikt beim Beitritt - versuche es später erneut.');
             } else if (axiosError.response?.data?.message) {
-                setError(axiosError.response.data.message);
+                showError(axiosError.response.data.message);
             } else {
-                setError('Fehler beim Beitritt zur Session. Bitte versuche es später erneut.');
+                showError('Fehler beim Beitritt zur Session. Bitte versuche es später erneut.');
             }
         }
     };
 
     const handleLogout = () => {
+        audioEngine.playSfx('buttonClick');
         logout();
         navigate('/login');
     };
+
+    useEffect(() => {
+        if (audioEngine.userHasInteracted) {
+            audioEngine.playMusic('lobby');
+        }
+        return () => {};
+    }, []);
+
+    // Audio-Menü: Klick außerhalb schließt es
+    useEffect(() => {
+        if (!audioMenuOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (audioMenuRef.current && !audioMenuRef.current.contains(e.target as Node)) {
+                setAudioMenuOpen(false);
+            }
+        };
+        const t = setTimeout(() => document.addEventListener('mousedown', handler), 0);
+        return () => {
+            clearTimeout(t);
+            document.removeEventListener('mousedown', handler);
+        };
+    }, [audioMenuOpen]);
 
     return (
         <div className="game-lobby-page">
@@ -125,14 +157,87 @@ export default function GameLobby() {
                 <div className="lobby-header">
                     <h1>Crown of the Seas</h1>
                     <p className="welcome-text">Willkommen, {user?.username}!</p>
-                    {user?.role === "ADMIN" && (
-                        <button className="admin-link-btn" onClick={() => navigate("/admin")}>
-                            ⚙ Verwaltung
-                        </button>
-                    )}
-                    <button className="logout-btn" onClick={handleLogout}>
-                        Ausloggen
-                    </button>
+
+                    <div className="lobby-header-actions">
+                        {user?.role === "ADMIN" && (
+                            <button className="admin-link-btn" onClick={() => {navigate("/admin"); audioEngine.playSfx('buttonClick');}}>
+                                ⚙ Verwaltung
+                            </button>
+                        )}
+
+                        {/* Audio-Menü */}
+                        <div className="lobby-audio-wrapper" ref={audioMenuRef}>
+                            <button
+                                type="button"
+                                className={`lobby-menu-btn ${audioMenuOpen ? 'is-open' : ''}`}
+                                onClick={() => {setAudioMenuOpen(o => !o); audioEngine.playSfx('buttonClick');}}
+                                title="Einstellungen"
+                            >
+                                ☰
+                            </button>
+
+                            {audioMenuOpen && (
+                                <div className="lobby-audio-popover">
+                                    <h3 className="lobby-audio-title">Audio</h3>
+
+                                    <div className="lobby-audio-row">
+                                        <span className="lobby-audio-label">🎵 Musik</span>
+                                        <div className="lobby-audio-controls">
+                                            <button
+                                                className={`lobby-audio-toggle ${settings.musicEnabled ? 'on' : 'off'}`}
+                                                onClick={() => {setMusicEnabled(!settings.musicEnabled); audioEngine.playSfx('buttonClick');}}
+                                            >
+                                                {settings.musicEnabled ? 'AN' : 'AUS'}
+                                            </button>
+                                            <input
+                                                type="range"
+                                                min={0}
+                                                max={100}
+                                                value={Math.round(settings.musicVolume * 100)}
+                                                onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
+                                                disabled={!settings.musicEnabled}
+                                                className="lobby-audio-slider"
+                                            />
+                                            <span className="lobby-audio-pct">
+                                                {Math.round(settings.musicVolume * 100)}%
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="lobby-audio-row">
+                                        <span className="lobby-audio-label">🔔 Effekte</span>
+                                        <div className="lobby-audio-controls">
+                                            <button
+                                                className={`lobby-audio-toggle ${settings.sfxEnabled ? 'on' : 'off'}`}
+                                                onClick={() => {setSfxEnabled(!settings.sfxEnabled); audioEngine.playSfx('buttonClick');}}
+                                            >
+                                                {settings.sfxEnabled ? 'AN' : 'AUS'}
+                                            </button>
+                                            <input
+                                                type="range"
+                                                min={0}
+                                                max={100}
+                                                value={Math.round(settings.sfxVolume * 100)}
+                                                onChange={(e) => setSfxVolume(Number(e.target.value) / 100)}
+                                                disabled={!settings.sfxEnabled}
+                                                className="lobby-audio-slider"
+                                            />
+                                            <span className="lobby-audio-pct">
+                                                {Math.round(settings.sfxVolume * 100)}%
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="lobby-menu-divider" />
+
+                                    <button className="lobby-menu-logout" onClick={handleLogout}>
+                                        Ausloggen
+                                    </button>
+
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 <div className="lobby-content">
@@ -141,6 +246,7 @@ export default function GameLobby() {
                             <button
                                 className={`tab-btn ${activeTab === 'create' ? 'active' : ''}`}
                                 onClick={() => {
+                                    audioEngine.playSfx('buttonClick');
                                     setActiveTab('create');
                                     setError('');
                                 }}
@@ -150,6 +256,7 @@ export default function GameLobby() {
                             <button
                                 className={`tab-btn ${activeTab === 'join' ? 'active' : ''}`}
                                 onClick={() => {
+                                    audioEngine.playSfx('buttonClick');
                                     setActiveTab('join');
                                     setError('');
                                 }}
@@ -259,4 +366,3 @@ export default function GameLobby() {
         </div>
     );
 }
-

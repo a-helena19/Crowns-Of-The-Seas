@@ -2,6 +2,7 @@ import { useState } from "react";
 import smuggleBg from "../assets/smuggle_bg.png";
 import smuggler from "../assets/smuggler.png"
 import "../style/smuggleDialog.css";
+import audioEngine from "../audio/AudioEngine.ts";
 
 interface SmuggleOfferProps {
     offerId: string;
@@ -19,6 +20,7 @@ export default function SmuggleOfferDialog({reward, onAccept, onDecline} : Smugg
             return;
         }
         setResponding(true);
+        audioEngine.playSfx('evilLaugh');
         onAccept();
     }
 

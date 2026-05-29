@@ -195,7 +195,8 @@
     box-shadow: inset -4px -4px 0 #2a1408, inset 4px 4px 0 #6a3f1a;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto;
+    max-height: 100%;
     animation: cm-panel-in 0.25s ease-out;
 }
 
@@ -415,6 +416,9 @@
     cursor: pointer;
     letter-spacing: 0.2px;
     transition: filter 0.1s, transform 0.1s;
+    position: sticky;
+    bottom: 0;
+    flex-shrink: 0;
 }
 
 .cm-reward-btn:hover  { filter: brightness(1.15); transform: translateY(-1px); }
@@ -437,4 +441,58 @@
     15%  { opacity: 1;   transform: translateY(8px)  scale(1);   }
     70%  { opacity: 0.9; transform: translateY(44px) scale(1);   }
     100% { opacity: 0;   transform: translateY(64px) scale(0.7); }
+}
+
+/* ── Scrollbar für Reward-Panel ── */
+.cm-reward-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+.cm-reward-panel::-webkit-scrollbar-track {
+    background: rgba(90, 58, 10, 0.08);
+}
+
+.cm-reward-panel::-webkit-scrollbar-thumb {
+    background: rgba(90, 58, 10, 0.25);
+    border-radius: 4px;
+}
+
+.cm-reward-panel::-webkit-scrollbar-thumb:hover {
+    background: rgba(90, 58, 10, 0.4);
+}
+
+/* ── Scrollbar für Fracht-Liste ── */
+.cm-list-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.cm-list-scroll::-webkit-scrollbar-track {
+    background: rgba(90, 58, 10, 0.06);
+}
+
+.cm-list-scroll::-webkit-scrollbar-thumb {
+    background: rgba(90, 58, 10, 0.2);
+    border-radius: 3px;
+}
+
+.cm-list-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(90, 58, 10, 0.35);
+}
+
+/* ── Detail-Panel Scrollbar ── */
+.cm-detail-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+.cm-detail-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.cm-detail-panel::-webkit-scrollbar-thumb {
+    background: rgba(90, 58, 10, 0.2);
+    border-radius: 4px;
+}
+
+.cm-detail-panel::-webkit-scrollbar-thumb:hover {
+    background: rgba(90, 58, 10, 0.35);
 }
