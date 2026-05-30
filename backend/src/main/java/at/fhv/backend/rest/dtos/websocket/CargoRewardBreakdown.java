@@ -12,11 +12,12 @@ public class CargoRewardBreakdown {
     private int percentage;
     private String status;
     private String cargoType;
+    private String playerShipId;
 
     public CargoRewardBreakdown(String cargoId, String cargoName,
                                 String destinationPort, BigDecimal baseReward,
                                 BigDecimal actualReward, BigDecimal bonusReward, int percentage,
-                                String status, String cargoType) {
+                                String status, String cargoType, String playerShipId) {
         this.cargoId = cargoId;
         this.cargoName = cargoName;
         this.destinationPort = destinationPort;
@@ -26,6 +27,11 @@ public class CargoRewardBreakdown {
         this.percentage = percentage;
         this.status = status;
         this.cargoType = cargoType;
+        this.playerShipId = playerShipId;
+    }
+
+    public String getPlayerShipId() {
+        return playerShipId;
     }
 
     public String getCargoId() {
