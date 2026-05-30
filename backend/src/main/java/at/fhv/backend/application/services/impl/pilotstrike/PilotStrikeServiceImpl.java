@@ -54,8 +54,8 @@ public class PilotStrikeServiceImpl implements PilotStrikeService {
     @Transactional
     public void processTick(UUID sessionId, int currentTick) {
         processTick(sessionId, currentTick,
-                portQueryService.findAll(),
-                travelRepository.findAllInProgressBySessionId(sessionId));
+                () -> portQueryService.findAll(),
+                () -> travelRepository.findAllInProgressBySessionId(sessionId));
     }
 
     /**
@@ -66,9 +66,17 @@ public class PilotStrikeServiceImpl implements PilotStrikeService {
     @Transactional
     public void processTick(UUID sessionId, int currentTick,
                             List<PortResponseDTO> allPorts, List<Travel> activeTravels) {
-        Map<UUID, PilotStrike> strikes = activeStrikesBySession.computeIfAbsent(sessionId, k -> new ConcurrentHashMap<>());
+        processTick(sessionId, currentTick, () -> allPorts, () -> activeTravels);
+    }
+
+    private void processTick(UUID sessionId, int currentTick,
+                             java.util.function.Supplier<List<PortResponseDTO>> portsSupplier,
+                             java.util.function.Supplier<List<Travel>> travelsSupplier) {
+        Map<UUID, PilotStrike> strikes =
+                activeStrikesBySession.computeIfAbsent(sessionId, k -> new ConcurrentHashMap<>());
         PilotStrikePortConfig.StrikeSettings settings = portConfig.getSettings();
 
+        // --- Expiry (unverändert) ---
         List<UUID> expired = new ArrayList<>();
         for (Map.Entry<UUID, PilotStrike> entry : strikes.entrySet()) {
             if (currentTick >= entry.getValue().endTick()) {
@@ -86,6 +94,7 @@ public class PilotStrikeServiceImpl implements PilotStrikeService {
             cooldownUntilTickBySession.put(sessionId, currentTick + settings.cooldownTicks());
         }
 
+        // --- Frühe Abbrüche VOR dem DB-Zugriff (unverändert) ---
         if (strikes.size() >= settings.maxActiveStrikes()) {
             return;
         }
@@ -96,7 +105,8 @@ public class PilotStrikeServiceImpl implements PilotStrikeService {
             return;
         }
 
-        // Use pre-loaded ports instead of querying DB
+        // --- ERST JETZT laden ---
+        List<PortResponseDTO> allPorts = portsSupplier.get();
         List<PortResponseDTO> candidates = allPorts.stream()
                 .filter(port -> portConfig.isStrikeEligible(port.name()))
                 .filter(port -> !strikes.containsKey(port.id()))
@@ -113,8 +123,8 @@ public class PilotStrikeServiceImpl implements PilotStrikeService {
         PilotStrike strike = new PilotStrike(port.id(), port.name(), currentTick, endTick);
         strikes.put(port.id(), strike);
 
-        // Use pre-loaded travels instead of querying DB
-        List<PilotStrikeEvent.RevokedTravel> revoked = revokePilotageForDestinationTravels(activeTravels, portId(port));
+        List<PilotStrikeEvent.RevokedTravel> revoked =
+                revokePilotageForDestinationTravels(travelsSupplier.get(), port.id());
 
         webSocketController.broadcastPilotStrike(
                 sessionId.toString(),
