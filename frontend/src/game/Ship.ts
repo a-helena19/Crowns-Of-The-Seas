@@ -10,6 +10,7 @@ interface Segment {
     endY: number;
     length: number;
     cumulativeEnd: number;
+    wrap?: boolean;
 }
 
 export default class Ship {
@@ -31,9 +32,14 @@ export default class Ship {
     private timeLeft: number = 0;
 
     private lastFacingX: number = 0;
+    private mapWidth: number = 0;
 
     constructor(_scene: Phaser.Scene, sprite: Phaser.GameObjects.Sprite) {
         this.sprite = sprite;
+    }
+
+    setMapWidth(width: number) {
+        this.mapWidth = width;
     }
 
     setRoute(
@@ -193,13 +199,19 @@ export default class Ship {
         this.targetY *= scaleY;
         this.velX *= scaleX;
         this.velY *= scaleY;
+        this.mapWidth *= scaleX;
         let cumulative = 0;
         for (const seg of this.routeSegments) {
             seg.startX *= scaleX;
             seg.startY *= scaleY;
             seg.endX *= scaleX;
             seg.endY *= scaleY;
-            seg.length = Math.hypot(seg.endX - seg.startX, seg.endY - seg.startY);
+            if (seg.wrap && this.mapWidth > 0) {
+                const dx = Math.abs(seg.endX - seg.startX);
+                seg.length = Math.hypot(this.mapWidth - dx, seg.endY - seg.startY);
+            } else {
+                seg.length = Math.hypot(seg.endX - seg.startX, seg.endY - seg.startY);
+            }
             cumulative += seg.length;
             seg.cumulativeEnd = cumulative;
         }
@@ -219,6 +231,29 @@ export default class Ship {
                     ? (targetDistance - prevCumulative) / seg.length
                     : 0;
                 const t = Math.max(0, Math.min(1, within));
+
+                if (seg.wrap && this.mapWidth > 0) {
+                    // Ship leaves the nearer edge and re-enters from the opposite edge.
+                    const exitLeft = seg.startX <= (this.mapWidth - seg.startX);
+                    const startEdgeX = exitLeft ? 0 : this.mapWidth;
+                    const enterEdgeX = exitLeft ? this.mapWidth : 0;
+
+                    const firstLen = Math.abs(seg.startX - startEdgeX);
+                    const secondLen = Math.abs(enterEdgeX - seg.endX);
+                    const distIntoSeg = t * (firstLen + secondLen);
+                    const y = seg.startY + (seg.endY - seg.startY) * t;
+
+                    if (firstLen + secondLen <= 0) {
+                        return { x: seg.endX, y: seg.endY };
+                    }
+                    if (distIntoSeg <= firstLen) {
+                        const tt = firstLen > 0 ? distIntoSeg / firstLen : 1;
+                        return { x: seg.startX + (startEdgeX - seg.startX) * tt, y };
+                    }
+                    const tt = secondLen > 0 ? (distIntoSeg - firstLen) / secondLen : 1;
+                    return { x: enterEdgeX + (seg.endX - enterEdgeX) * tt, y };
+                }
+
                 return {
                     x: seg.startX + (seg.endX - seg.startX) * t,
                     y: seg.startY + (seg.endY - seg.startY) * t,
@@ -233,10 +268,16 @@ export default class Ship {
     private buildSegments(polyline: Point[]) {
         const routeSegments: Segment[] = [];
         let cumulative = 0;
+        const wrapThreshold = this.mapWidth > 0 ? this.mapWidth * 0.6 : Number.POSITIVE_INFINITY;
         for (let i = 0; i < polyline.length - 1; i++) {
             const a = polyline[i];
             const b = polyline[i + 1];
-            const length = Math.hypot(b.x - a.x, b.y - a.y);
+            const dx = Math.abs(b.x - a.x);
+            const isWrap = dx > wrapThreshold;
+            const dy = b.y - a.y;
+            const length = isWrap
+                ? Math.hypot(this.mapWidth - dx, dy)
+                : Math.hypot(b.x - a.x, dy);
             cumulative += length;
             routeSegments.push({
                 startX: a.x,
@@ -245,6 +286,7 @@ export default class Ship {
                 endY: b.y,
                 length,
                 cumulativeEnd: cumulative,
+                wrap: isWrap,
             });
         }
         return { routeSegments, totalLength: cumulative };
@@ -285,6 +327,10 @@ export default class Ship {
 
     private updateFacing(targetX: number) {
         const dx = targetX - this.sprite.x;
+        if (this.mapWidth > 0 && Math.abs(dx) > this.mapWidth * 0.5) {
+            // Wrap jump across the map edge — keep current facing.
+            return;
+        }
         if (Math.abs(dx) > 0.5) {
             const facing = dx < 0 ? -1 : 1;
             if (facing !== this.lastFacingX) {

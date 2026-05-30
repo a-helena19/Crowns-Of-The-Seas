@@ -111,6 +111,7 @@ export default class MainScene extends Phaser.Scene {
         this.ship = this.add.sprite(shipStartX, shipStartY, 'ship')
             .setScale(0.065).setDepth(5).setVisible(false);
         this.shipController = new Ship(this, this.ship);
+        this.shipController.setMapWidth(this.scale.width);
 
         this.onShipPosition = (e: Event) => {
             const { x, y, status, tickRateMs } = (e as CustomEvent).detail;
@@ -292,16 +293,22 @@ export default class MainScene extends Phaser.Scene {
             dest,
         ];
 
+        const WRAP_X_THRESHOLD = 60;
         this.routeGraphics.beginPath();
         this.routeGraphics.moveTo(
             (points[0].x / 100) * this.scale.width,
             (points[0].y / 100) * this.scale.height,
         );
         for (let i = 1; i < points.length; i++) {
-            this.routeGraphics.lineTo(
-                (points[i].x / 100) * this.scale.width,
-                (points[i].y / 100) * this.scale.height,
-            );
+            const prev = points[i - 1];
+            const cur = points[i];
+            const cx = (cur.x / 100) * this.scale.width;
+            const cy = (cur.y / 100) * this.scale.height;
+            if (Math.abs(cur.x - prev.x) > WRAP_X_THRESHOLD) {
+                this.routeGraphics.moveTo(cx, cy);
+            } else {
+                this.routeGraphics.lineTo(cx, cy);
+            }
         }
         this.routeGraphics.strokePath();
     }
@@ -540,6 +547,7 @@ export default class MainScene extends Phaser.Scene {
         sprite.on('pointerout', () => shipTooltip.setVisible(false));
 
         const controller = new Ship(this, sprite);
+        controller.setMapWidth(this.scale.width);
         let lastStartTick: number | null = null;
         const minigameSession = this.blockedShipsByMinigame.get(shipData.playerShipId);
         const isPaused = shipData.paused === true || !!minigameSession;
