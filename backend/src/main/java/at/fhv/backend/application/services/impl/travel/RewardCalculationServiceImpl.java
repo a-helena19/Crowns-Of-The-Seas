@@ -21,9 +21,7 @@ public class RewardCalculationServiceImpl implements RewardCalculationService {
     @Override
     public BigDecimal calculateTotalReward(Travel travel, List<SessionCargo> cargos) {
 
-        BigDecimal totalReward = travel.getBaseReward() != null
-                ? travel.getBaseReward()
-                : BigDecimal.ZERO;
+        BigDecimal totalReward = BigDecimal.ZERO;
 
         for (SessionCargo cargo : cargos) {
             if (isCargoRelevantForThisTravel(cargo, travel)) {

@@ -221,7 +221,8 @@ class TravelServiceImplTest {
         private Travel buildTravel(UUID playerShipId, UUID playerId, UUID sessionId) {
             UUID origin = UUID.randomUUID();
             UUID destination = UUID.randomUUID();
-            return Travel.start(playerShipId, playerId, sessionId, origin, destination, 5.0, 1.0, 0.1, BigDecimal.valueOf(500), 0);
+            return Travel.plan(playerShipId, playerId, sessionId, origin, destination,
+                    5.0, 1.0, 0.1, BigDecimal.valueOf(500), 0, 0);
         }
 
         private GameSession buildGameSession(UUID hostId) {
@@ -264,7 +265,7 @@ class TravelServiceImplTest {
 
             service.startTravel(playerId, sessionId, buildStartTravelDTO(playerShip.getId(), destinationPortId, sessionCargoId));
 
-            verify(travelRepository, times(1)).save(any(Travel.class));
+            verify(travelRepository, times(2)).save(any(Travel.class));
         }
 
         @Test
@@ -571,9 +572,6 @@ class TravelServiceImplTest {
             when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
             when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
             when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)).thenReturn(Optional.of(new at.fhv.backend.domain.model.player.BaseSessionPlayer(playerId, sessionId, "TestPlayer", false)));
-            when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
-            when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(10.0);
-            doNothing().when(validateTravelService).validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
             when(pilotStrikeService.isStrikeActive(eq(sessionId), any(UUID.class))).thenReturn(false);
             when(pilotStrikeService.isStrikeActive(sessionId, destinationPortId)).thenReturn(true);
 

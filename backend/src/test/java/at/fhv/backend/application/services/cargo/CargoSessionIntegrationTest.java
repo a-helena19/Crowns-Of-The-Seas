@@ -106,6 +106,7 @@ class CargoSessionIntegrationTest {
         entity.setBaseReliability(0.95);
         entity.setIconUrl("icon.png");
         entity.setStock(10);
+        entity.setId(UUID.randomUUID());
         entity = shipJpaRepository.save(entity);
 
         return Ship.reconstruct(entity.getId(), entity.getName(), entity.getDescription(),
