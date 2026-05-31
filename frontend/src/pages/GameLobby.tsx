@@ -130,9 +130,9 @@ export default function GameLobby() {
     };
 
     useEffect(() => {
-        if (audioEngine.userHasInteracted) {
-            audioEngine.playMusic('lobby');
-        }
+        // playMusic immer aufrufen. Dadurch wird die Musik korrekt gestartet, sobald sie wieder
+        // aktiviert wird – z.B. nach einem Reload im stummgeschalteten Zustand.
+        audioEngine.playMusic('lobby');
         return () => {};
     }, []);
 

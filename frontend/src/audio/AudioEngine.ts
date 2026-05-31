@@ -39,9 +39,6 @@ class AudioEngine {
         return AudioEngine.instance;
     }
 
-    // ════════════════════════════════════════
-    //  Settings
-    // ════════════════════════════════════════
 
     private loadSettings(): AudioSettings {
         try {
@@ -73,23 +70,31 @@ class AudioEngine {
         this.settings = { ...this.settings, ...partial };
         this.saveSettings();
 
-        if (this.currentMusic) {
-            if (!this.settings.musicEnabled) {
+        if (!this.settings.musicEnabled) {
+            // Musik deaktiviert → laufendes Audio-Element pausieren (falls vorhanden)
+            if (this.currentMusic) {
                 this.currentMusic.pause();
-            } else {
-                const def = this.currentMusicKey ? MUSIC_TRACKS[this.currentMusicKey] : null;
-                this.currentMusic.volume = this.computeMusicVolume(def ?? undefined);
-
-                if (this.currentMusic.paused && this.currentMusicKey) {
-                    this.currentMusic.play().catch(() => {});
-                }
             }
+            return;
+        }
+
+        // Musik aktiviert:
+        if (this.currentMusic) {
+            // Es existiert bereits ein (pausiertes) Audio-Element → Lautstärke
+            // aktualisieren und ggf. fortsetzen.
+            const def = this.currentMusicKey ? MUSIC_TRACKS[this.currentMusicKey] : null;
+            this.currentMusic.volume = this.computeMusicVolume(def ?? undefined);
+
+            if (this.currentMusic.paused && this.currentMusicKey) {
+                this.currentMusic.play().catch(() => {});
+            }
+        } else if (this.currentMusicKey) {
+            // Kein Audio-Element vorhanden, weil playMusic bei deaktivierter Musik
+            // nur den Track-Key vorgemerkt hat. Jetzt, da Musik aktiviert wurde,
+            // den vorgemerkten Track tatsächlich starten.
+            this.playMusic(this.currentMusicKey);
         }
     }
-
-    // ════════════════════════════════════════
-    //  Listener (für React Context)
-    // ════════════════════════════════════════
 
     subscribe(listener: (settings: AudioSettings) => void): () => void {
         this.listeners.add(listener);
@@ -100,10 +105,6 @@ class AudioEngine {
         const snapshot = this.getSettings();
         this.listeners.forEach(fn => fn(snapshot));
     }
-
-    // ════════════════════════════════════════
-    //  Musik
-    // ════════════════════════════════════════
 
     private computeMusicVolume(def?: SoundDefinition): number {
         const base = def?.volume ?? 0.5;
@@ -257,10 +258,6 @@ class AudioEngine {
         this.playMusic(trackKey);
     }
 
-    // ════════════════════════════════════════
-    //  Soundeffekte
-    // ════════════════════════════════════════
-
     playSfx(sfxKey: string): void {
         if (!this.settings.sfxEnabled) return;
 
@@ -291,10 +288,6 @@ class AudioEngine {
             // Still ignorieren
         }
     }
-
-    // ════════════════════════════════════════
-    //  Hilfsfunktionen
-    // ════════════════════════════════════════
 
     resumeAfterInteraction(): void {
         if (this.settings.musicEnabled && this.currentMusicKey && this.currentMusic?.paused) {
