@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
@@ -122,6 +123,24 @@ public class RatMinigameServiceImpl implements RatMinigameService {
                 request.getTimeLimitSeconds(),
                 rewardModifier
         );
+    }
+
+    @Override
+    public Optional<RatMinigameEvent> getPendingEvent(UUID travelId, UUID playerId, UUID sessionId) {
+        PendingRatEvent event = pendingEvents.get(travelId);
+        if (event == null || !event.playerId().equals(playerId) || !event.sessionId().equals(sessionId)) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new RatMinigameEvent(
+                event.eventId().toString(),
+                event.playerId().toString(),
+                event.sessionId().toString(),
+                event.travelId().toString(),
+                event.playerShipId().toString(),
+                event.timeLimitSeconds(),
+                event.requiredHits()
+        ));
     }
 
     @Override

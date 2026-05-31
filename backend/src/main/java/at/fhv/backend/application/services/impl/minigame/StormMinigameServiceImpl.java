@@ -128,6 +128,25 @@ public class StormMinigameServiceImpl implements StormMinigameService {
     }
 
     @Override
+    public Optional<StormMinigameEvent> getPendingEvent(UUID travelId, UUID playerId, UUID sessionId) {
+        PendingStormEvent event = pendingEvents.get(travelId);
+        if (event == null || !event.playerId().equals(playerId) || !event.sessionId().equals(sessionId)) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new StormMinigameEvent(
+                event.eventId().toString(),
+                event.playerId().toString(),
+                event.sessionId().toString(),
+                event.travelId().toString(),
+                event.playerShipId().toString(),
+                event.timeLimitSeconds(),
+                event.requiredSuns(),
+                event.startHealth()
+        ));
+    }
+
+    @Override
     public BigDecimal applyRewardModifier(UUID travelId, BigDecimal totalReward) {
         BigDecimal modifier = rewardModifiersByTravelId.remove(travelId);
         if (modifier == null) return totalReward;

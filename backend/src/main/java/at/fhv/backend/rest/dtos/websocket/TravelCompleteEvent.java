@@ -15,6 +15,7 @@ public class TravelCompleteEvent {
     private RatMinigameTravelSummary ratMinigameSummary;
     private StormMinigameTravelSummary stormMinigameSummary;
     private ObstacleMinigameTravelSummary obstacleMinigameSummary;
+    private TreasureHuntMinigameTravelSummary treasureHuntMinigameSummary;
     private CustomsSummary customsSummary;
     private RegressSummary regressSummary;
     private BigDecimal departureDockingFine;
@@ -30,6 +31,7 @@ public class TravelCompleteEvent {
                                RatMinigameTravelSummary ratMinigameSummary,
                                StormMinigameTravelSummary stormMinigameSummary,
                                ObstacleMinigameTravelSummary obstacleMinigameSummary,
+                               TreasureHuntMinigameTravelSummary treasureHuntMinigameSummary,
                                CustomsSummary customsSummary,
                                RegressSummary regressSummary) {
         this.travelId = travelId;
@@ -42,6 +44,7 @@ public class TravelCompleteEvent {
         this.newBalance = newBalance;
         this.ratMinigameSummary = ratMinigameSummary;
         this.obstacleMinigameSummary = obstacleMinigameSummary;
+        this.treasureHuntMinigameSummary = treasureHuntMinigameSummary;
         this.customsSummary = customsSummary;
         this.regressSummary = regressSummary;
         this.departureDockingFine = departureDockingFine != null ? departureDockingFine : BigDecimal.ZERO;
@@ -112,5 +115,9 @@ public class TravelCompleteEvent {
 
     public ObstacleMinigameTravelSummary getObstacleMinigameSummary() {
         return obstacleMinigameSummary;
+    }
+
+    public TreasureHuntMinigameTravelSummary getTreasureHuntMinigameSummary() {
+        return treasureHuntMinigameSummary;
     }
 }

@@ -7,6 +7,7 @@ import at.fhv.backend.application.services.impl.travel.TravelArrivalServiceImpl;
 import at.fhv.backend.application.services.minigame.ObstacleMinigameService;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.minigame.StormMinigameService;
+import at.fhv.backend.application.services.minigame.TreasureHuntMinigameService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.RegressService;
@@ -263,6 +264,7 @@ class TravelCompletionServiceTest {
             UUID sessionId = UUID.randomUUID();
             UUID destinationPortId = UUID.randomUUID();
             Travel travel = buildTravel(playerShipId, destinationPortId, sessionId);
+            travel.setPilotageServiceBooked(true);
             PlayerShip playerShip = buildPlayerShip(playerShipId);
 
             when(sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId())).thenReturn(List.of());
@@ -274,8 +276,7 @@ class TravelCompletionServiceTest {
 
             service.handleArrival(travel);
 
-            assertThat(playerShip.getCurrentPortId()).isEqualTo(destinationPortId);
-            verify(playerShipRepository, times(1)).save(any(PlayerShip.class));
+            verify(unloadingStartService, times(1)).startUnloadingImmediately(travel);
         }
 
         @Test
@@ -284,6 +285,7 @@ class TravelCompletionServiceTest {
             UUID sessionId = UUID.randomUUID();
             UUID destinationPortId = UUID.randomUUID();
             Travel travel = buildTravel(playerShipId, destinationPortId, sessionId);
+            travel.setPilotageServiceBooked(true);
             PlayerShip playerShip = buildPlayerShip(playerShipId);
             List<SessionCargo> cargos = List.of();
 
@@ -296,18 +298,26 @@ class TravelCompletionServiceTest {
 
             service.handleArrival(travel);
 
-            assertThat(playerShip.getStatus()).isEqualTo(ShipStatus.UNLOADING);
+            verify(unloadingStartService, times(1)).startUnloadingImmediately(travel);
         }
 
         @Test
-        void givenValidTravel_whenHandleArrival_thenCustomsInspectionTriggered() {
+        void givenCargoForArrival_whenHandleArrival_thenCustomsCheckStarted() {
             UUID playerShipId = UUID.randomUUID();
             UUID sessionId = UUID.randomUUID();
             UUID destinationPortId = UUID.randomUUID();
             Travel travel = buildTravel(playerShipId, destinationPortId, sessionId);
+            travel.setPilotageServiceBooked(true);
             PlayerShip playerShip = buildPlayerShip(playerShipId);
+            SessionCargo cargo = SessionCargo.reconstruct(
+                    UUID.randomUUID(), UUID.randomUUID(), sessionId,
+                    UUID.randomUUID(), destinationPortId,
+                    BigDecimal.valueOf(1000), false, 50,
+                    CargoType.GENERAL_GOODS, 0.1,
+                    CargoStatus.ASSIGNED, travel.getPlayerId(), playerShipId, 0, 5, -1, -1
+            );
 
-            when(sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId())).thenReturn(List.of());
+            when(sessionCargoRepository.findByAssignedPlayerId(travel.getPlayerId())).thenReturn(List.of(cargo));
             when(travelRepository.save(any(Travel.class))).thenAnswer(inv -> inv.getArgument(0));
             when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
             when(playerShipRepository.save(any(PlayerShip.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -316,7 +326,8 @@ class TravelCompletionServiceTest {
 
             service.handleArrival(travel);
 
-            verify(customsService, times(1)).inspectOnArrival(travel);
+            assertThat(playerShip.getStatus()).isEqualTo(ShipStatus.CUSTOMS_CHECK);
+            verify(customsService, never()).inspectOnArrival(travel);
         }
     }
 
@@ -334,6 +345,7 @@ class TravelCompletionServiceTest {
         @Mock private RatMinigameService ratMinigameService;
         @Mock private StormMinigameService stormMinigameService;
         @Mock private ObstacleMinigameService obstacleMinigameService;
+        @Mock private TreasureHuntMinigameService treasureHuntMinigameService;
         @Mock private CustomsService customsService;
         @Mock private RegressService regressService;
         @Mock private at.fhv.backend.domain.model.player.SessionPlayerRepository sessionPlayerRepository;
@@ -355,6 +367,7 @@ class TravelCompletionServiceTest {
                     ratMinigameService,
                     stormMinigameService,
                     obstacleMinigameService,
+                    treasureHuntMinigameService,
                     customsService,
                     regressService,
                     sessionPlayerRepository
@@ -372,6 +385,10 @@ class TravelCompletionServiceTest {
             when(obstacleMinigameService.applyRewardModifier(any(UUID.class), any(BigDecimal.class)))
                     .thenAnswer(inv -> inv.getArgument(1));
             when(obstacleMinigameService.consumeTravelSummary(any(UUID.class)))
+                    .thenReturn(null);
+            when(treasureHuntMinigameService.applyRewardModifier(any(UUID.class), any(BigDecimal.class)))
+                    .thenAnswer(inv -> inv.getArgument(1));
+            when(treasureHuntMinigameService.consumeTravelSummary(any(UUID.class)))
                     .thenReturn(null);
 
             // Default: no customs inspection result (fine = 0)
@@ -515,6 +532,7 @@ class TravelCompletionServiceTest {
 
             Travel travel = Travel.start(playerShipId, userId, sessionId,
                     UUID.randomUUID(), destinationPortId, 5.0, 1.0, 0.1, BigDecimal.ZERO, 0);
+            travel.markAsArrived(0.0);
 
             PlayerShip playerShip = buildPlayerShipInUnloading(destinationPortId);
             ISessionPlayer player = new BaseSessionPlayer(userId, sessionId, "TestPlayer", false);
@@ -535,6 +553,7 @@ class TravelCompletionServiceTest {
                     true, BigDecimal.valueOf(5000), BigDecimal.valueOf(1000), 5
             );
             inspection.cooperate();
+            player.subtractBalance(inspection.getFinePaid());
 
             when(customsService.consumeInspection(travel.getTravelId())).thenReturn(inspection);
             when(playerShipRepository.findById(playerShipId)).thenReturn(Optional.of(playerShip));
@@ -549,8 +568,9 @@ class TravelCompletionServiceTest {
 
             service.completeUnloadingPhase(travel, List.of(cargo));
 
-            // 40000 (start) + 10000 (cargo) - 5000 (customs fine) = 45000
-            assertThat(player.getBalance()).isEqualByComparingTo(new BigDecimal("45000.00"));
+            // The customs service deducts the fine when the player cooperates.
+            // Unloading adds cargo reward plus the existing random bonus without deducting it a second time.
+            assertThat(player.getBalance()).isBetween(new BigDecimal("45000.00"), new BigDecimal("50000.00"));
         }
     }
 }

@@ -156,6 +156,18 @@ interface ObstacleMinigameEvent {
     routeViewType?: "VIEW_A" | "VIEW_B";
 }
 
+interface TreasureHuntMinigameEvent {
+    eventId: string;
+    eventType: "TREASURE_HUNT";
+    playerId: string;
+    sessionId: string;
+    travelId: string;
+    playerShipId: string;
+    timeLimitSeconds: number;
+    requiredTreasures: number;
+    pirateCount: number;
+}
+
 interface UseGameSessionWebSocketProps {
     sessionId: string | null;
     onSessionUpdate: (event: SessionUpdateEvent) => void;
@@ -324,6 +336,15 @@ export function useGameSessionWebSocket({
                                 window.dispatchEvent(new CustomEvent('obstacle-event', { detail: event }));
                             } catch (error) {
                                 console.error('Error parsing obstacle-event:', error);
+                            }
+                        });
+
+                        client.subscribe(`/topic/session/${sessionId}/treasure-hunt-event`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body) as TreasureHuntMinigameEvent;
+                                window.dispatchEvent(new CustomEvent('treasure-hunt-event', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing treasure-hunt-event:', error);
                             }
                         });
 

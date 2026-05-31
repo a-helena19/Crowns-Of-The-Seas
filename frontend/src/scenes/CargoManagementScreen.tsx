@@ -56,6 +56,11 @@ function IconCheck() {
     );
 }
 
+function formatSignedTalers(value: number): string {
+    const sign = value >= 0 ? "+" : "";
+    return `${sign}${value.toLocaleString("de-DE")} T`;
+}
+
 
 function UnloadingStallNotice({ currentTick, completionTick }: {
     currentTick: number | undefined;
@@ -101,6 +106,17 @@ interface CargoManagementScreenProps {
     onDepartureComplete?: () => void;
 }
 
+interface CompletedCargoHistoryEntry {
+    entry: AssignedCargoEntry;
+    completedAt: number;
+}
+
+const COMPLETED_HISTORY_STORAGE_KEY_PREFIX = "cargo_completed_history_v1";
+
+function getCompletedHistoryStorageKey(sessionId: string | null): string {
+    return `${COMPLETED_HISTORY_STORAGE_KEY_PREFIX}:${sessionId ?? "no-session"}`;
+}
+
 export default function CargoManagementScreen({
                                                   assignedCargos,
                                                   focusShipId = null,
@@ -121,6 +137,7 @@ export default function CargoManagementScreen({
     const [errorMap, setErrorMap] = useState<Record<string, string>>({});
     const [showDeparture, setShowDeparture] = useState<AssignedCargoEntry | null>(null);
     const [showDockingGame, setShowDockingGame] = useState<AssignedCargoEntry | null>(null);
+    const [showCompletedHistory, setShowCompletedHistory] = useState(false);
     if (!(window as any).__cargoCompletedAt) {
         (window as any).__cargoCompletedAt = {} as Record<string, number>;
     }
@@ -145,14 +162,33 @@ export default function CargoManagementScreen({
     const sessionData = sessionStorage.getItem("currentSession");
     const sessionId = sessionData ? JSON.parse(sessionData).id : null;
     const token = localStorage.getItem("auth_token") ?? "";
+    const completedHistoryStorageKey = getCompletedHistoryStorageKey(sessionId);
+    const [completedHistory, setCompletedHistory] = useState<Record<string, CompletedCargoHistoryEntry>>(() => {
+        try {
+            const currentSessionRaw = sessionStorage.getItem("currentSession");
+            const currentSessionId = currentSessionRaw ? JSON.parse(currentSessionRaw).id : null;
+            const raw = sessionStorage.getItem(getCompletedHistoryStorageKey(currentSessionId));
+            if (!raw) return {};
+            return JSON.parse(raw) as Record<string, CompletedCargoHistoryEntry>;
+        } catch {
+            return {};
+        }
+    });
 
     useEffect(() => {
-        if (selectedCargoId && !assignedCargos.find(e => e.cargoId === selectedCargoId)) {
+        const selectedIsActive = selectedCargoId
+            ? assignedCargos.some(e => e.cargoId === selectedCargoId)
+            : false;
+        const selectedIsInCompletedHistory = selectedCargoId
+            ? !!completedHistory[selectedCargoId]
+            : false;
+
+        if (selectedCargoId && !selectedIsActive && !selectedIsInCompletedHistory) {
             setSelectedCargoId(assignedCargos[0]?.cargoId ?? null);
         } else if (!selectedCargoId && assignedCargos.length > 0) {
             setSelectedCargoId(assignedCargos[0].cargoId);
         }
-    }, [assignedCargos, selectedCargoId]);
+    }, [assignedCargos, completedHistory, selectedCargoId]);
 
     useEffect(() => {
         if (!focusShipId) return;
@@ -162,7 +198,7 @@ export default function CargoManagementScreen({
         }
     }, [focusShipId, assignedCargos]);
 
-    const selectedEntry = assignedCargos.find(e => e.cargoId === selectedCargoId) ?? null;
+    const selectedActiveEntry = assignedCargos.find(e => e.cargoId === selectedCargoId) ?? null;
 
     // Merke den Zeitpunkt wenn eine Fracht "completed" wird
     useEffect(() => {
@@ -173,10 +209,58 @@ export default function CargoManagementScreen({
         }
     }, [assignedCargos]);
 
+    useEffect(() => {
+        const completedEntries = assignedCargos.filter(entry => entry.phase === "completed");
+        if (completedEntries.length === 0) return;
+
+        setCompletedHistory(prev => {
+            let changed = false;
+            const next = { ...prev };
+
+            for (const entry of completedEntries) {
+                const completedAt = completedAtMap[entry.cargoId] ?? Date.now();
+                const existing = next[entry.cargoId];
+                if (
+                    !existing
+                    || existing.entry !== entry
+                ) {
+                    next[entry.cargoId] = {
+                        entry,
+                        completedAt,
+                    };
+                    changed = true;
+                }
+            }
+
+            return changed ? next : prev;
+        });
+    }, [assignedCargos]);
+
+    useEffect(() => {
+        try {
+            sessionStorage.setItem(completedHistoryStorageKey, JSON.stringify(completedHistory));
+        } catch {
+            // ignore storage errors to avoid impacting gameplay flow
+        }
+    }, [completedHistory, completedHistoryStorageKey]);
+
+    useEffect(() => {
+        try {
+            const raw = sessionStorage.getItem(completedHistoryStorageKey);
+            if (!raw) {
+                setCompletedHistory({});
+                return;
+            }
+            setCompletedHistory(JSON.parse(raw) as Record<string, CompletedCargoHistoryEntry>);
+        } catch {
+            setCompletedHistory({});
+        }
+    }, [completedHistoryStorageKey]);
+
     // Countdown + Auto-Close basierend auf dem gemerkten Zeitpunkt
     useEffect(() => {
-        if (!selectedEntry || selectedEntry.phase !== "completed") return;
-        const completedAt = completedAtMap[selectedEntry.cargoId];
+        if (!selectedActiveEntry || selectedActiveEntry.phase !== "completed") return;
+        const completedAt = completedAtMap[selectedActiveEntry.cargoId];
         if (!completedAt) return;
 
         const calcRemaining = () => Math.max(0, 10 - Math.floor((Date.now() - completedAt) / 1000));
@@ -184,8 +268,9 @@ export default function CargoManagementScreen({
         // Sofort prüfen ob schon abgelaufen
         const initial = calcRemaining();
         if (initial <= 0) {
-            delete completedAtMap[selectedEntry.cargoId];
-            onCargoRemoved(selectedEntry.cargoId);
+            delete completedAtMap[selectedActiveEntry.cargoId];
+            onCargoRemoved(selectedActiveEntry.cargoId);
+            setSelectedCargoId(prev => (prev === selectedActiveEntry.cargoId ? null : prev));
             return;
         }
         setAutoCloseSeconds(initial);
@@ -195,13 +280,18 @@ export default function CargoManagementScreen({
             setAutoCloseSeconds(remaining);
             if (remaining <= 0) {
                 clearInterval(interval);
-                delete completedAtMap[selectedEntry.cargoId];
-                onCargoRemoved(selectedEntry.cargoId);
+                delete completedAtMap[selectedActiveEntry.cargoId];
+                onCargoRemoved(selectedActiveEntry.cargoId);
+                setSelectedCargoId(prev => (prev === selectedActiveEntry.cargoId ? null : prev));
             }
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [selectedEntry?.cargoId, selectedEntry?.phase, onCargoRemoved]);
+    }, [selectedActiveEntry?.cargoId, selectedActiveEntry?.phase, onCargoRemoved]);
+
+    const selectedHistoryEntry = selectedCargoId ? completedHistory[selectedCargoId]?.entry ?? null : null;
+    const selectedEntry = selectedActiveEntry ?? selectedHistoryEntry;
+    const selectedCompletedFromHistoryOnly = !!selectedHistoryEntry && !selectedActiveEntry;
 
 
     function resolveOriginPortId(entry: AssignedCargoEntry): string | undefined {
@@ -399,7 +489,7 @@ export default function CargoManagementScreen({
                                 customs_check: "Zoll wird überprüft …",
                                 blocked: `Festgehalten — noch ${Math.max(0, (entry.customsBlockedUntilTick ?? 0) - (entry.currentTick ?? 0))} Tage`,
                                 unloading: "Wird entladen …",
-                                completed: `+${entry.reward?.toLocaleString("de-DE")} T`,
+                                completed: formatSignedTalers(entry.reward ?? 0),
                             }[entry.phase] ?? "…";
 
                             return (
@@ -417,6 +507,41 @@ export default function CargoManagementScreen({
                                 </div>
                             );
                         })}
+                        <div className="cm-completed-dropdown">
+                            <button
+                                type="button"
+                                className="cm-completed-toggle"
+                                onClick={() => setShowCompletedHistory(v => !v)}
+                            >
+                                <span>Abgeschlossene Aufträge ({Object.keys(completedHistory).length})</span>
+                                <span>{showCompletedHistory ? "▲" : "▼"}</span>
+                            </button>
+                            {showCompletedHistory && (
+                                <div className="cm-completed-list">
+                                    {Object.values(completedHistory)
+                                        .sort((a, b) => b.completedAt - a.completedAt)
+                                        .map(entry => (
+                                            <div
+                                                key={entry.entry.cargoId}
+                                                className={`cm-cargo-item phase-completed cm-cargo-item-completed ${selectedCargoId === entry.entry.cargoId ? "active" : ""}`}
+                                                onClick={() => setSelectedCargoId(entry.entry.cargoId)}
+                                            >
+                                                <div className="cm-cargo-ship">
+                                                    <img src={shipIcon} alt="" style={{ width: 12, height: 12, imageRendering: "pixelated", verticalAlign: "middle", marginRight: 5, opacity: 0.7 }} />
+                                                    {entry.entry.shipName}
+                                                </div>
+                                                <div className="cm-cargo-route">{entry.entry.from} → {entry.entry.to}</div>
+                                                <div className="cm-cargo-status">
+                                                    {formatSignedTalers(entry.entry.reward ?? 0)}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    {Object.keys(completedHistory).length === 0 && (
+                                        <div className="cm-completed-empty">Noch keine abgeschlossenen Aufträge.</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -673,9 +798,14 @@ export default function CargoManagementScreen({
                             const smuggleTotal = smuggleItem?.actualReward ?? 0;
                             const ratPenalty = selectedEntry.ratMinigameSummary?.result === "FAILED"
                                 ? (selectedEntry.ratMinigameSummary.penaltyAmount ?? 0) : 0;
-                            const netTotal = cargoBaseTotal + bonusTotal + smuggleTotal
-                                - ratPenalty - customsTotalOut - regressTotal
+                            const treasureBonus = selectedEntry.treasureHuntMinigameSummary?.result === "SUCCESS"
+                                ? (selectedEntry.treasureHuntMinigameSummary.bonusAmount ?? 0) : 0;
+                            const treasurePenalty = selectedEntry.treasureHuntMinigameSummary?.result === "FAILED"
+                                ? (selectedEntry.treasureHuntMinigameSummary.penaltyAmount ?? 0) : 0;
+                            const computedNetTotal = cargoBaseTotal + bonusTotal + smuggleTotal
+                                - ratPenalty - treasurePenalty + treasureBonus - customsTotalOut - regressTotal
                                 - dockingFine - departureDockingFine + pilotageRefund;
+                            const netTotal = selectedEntry.reward ?? computedNetTotal;
 
                             const isPerfect = cargoItems.every(r => r.percentage >= 100) && !hasDockingPenalty;
 
@@ -805,6 +935,32 @@ export default function CargoManagementScreen({
                                         </div>
                                     )}
 
+                                    {selectedEntry.treasureHuntMinigameSummary?.triggered && selectedEntry.treasureHuntMinigameSummary.result === "SUCCESS" && (
+                                        <div className="cm-reward-cargo-item">
+                                            <div style={{ flex: 1 }}>
+                                                <div className="cm-reward-cargo-name">Schatzjagd erfolgreich</div>
+                                                <div className="cm-reward-cargo-sub">Bonus durch geborgenen Schatz</div>
+                                            </div>
+                                            <span className="cm-reward-cargo-amount">
+                                                +{Math.round(selectedEntry.treasureHuntMinigameSummary.bonusAmount ?? 0).toLocaleString("de-DE")}T
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {selectedEntry.treasureHuntMinigameSummary?.triggered && selectedEntry.treasureHuntMinigameSummary.result === "FAILED" && (
+                                        <div className="cm-reward-cargo-item expired">
+                                            <div style={{ flex: 1 }}>
+                                                <div className="cm-reward-cargo-name">Schatzjagd fehlgeschlagen</div>
+                                                <div className="cm-reward-cargo-sub">
+                                                    Piraten erbeuteten {selectedEntry.treasureHuntMinigameSummary.cargoLossPercent ?? 0}% der Fracht
+                                                </div>
+                                            </div>
+                                            <span className="cm-reward-cargo-amount expired">
+                                                -{Math.round(selectedEntry.treasureHuntMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                            </span>
+                                        </div>
+                                    )}
+
                                     <div className="cm-reward-breakdown">
                                         {cargoBaseTotal > 0 && (
                                             <div className="cm-reward-row">
@@ -828,6 +984,18 @@ export default function CargoManagementScreen({
                                             <div className="cm-reward-row warn">
                                                 <span>Ratten-Strafe</span>
                                                 <span>-{Math.round(ratPenalty).toLocaleString("de-DE")} T</span>
+                                            </div>
+                                        )}
+                                        {treasureBonus > 0 && (
+                                            <div className="cm-reward-row bonus">
+                                                <span>Schatzjagd-Bonus</span>
+                                                <span>+{Math.round(treasureBonus).toLocaleString("de-DE")} T</span>
+                                            </div>
+                                        )}
+                                        {treasurePenalty > 0 && (
+                                            <div className="cm-reward-row warn">
+                                                <span>Schatzjagd-Verlust</span>
+                                                <span>-{Math.round(treasurePenalty).toLocaleString("de-DE")} T</span>
                                             </div>
                                         )}
                                         {bribePaid > 0 && (
@@ -896,6 +1064,14 @@ export default function CargoManagementScreen({
                                                 </span>
                                             </div>
                                         )}
+                                        {selectedEntry.treasureHuntMinigameSummary?.triggered && selectedEntry.treasureHuntMinigameSummary.result === "FAILED" && (
+                                            <div className="cm-reward-row warn">
+                                                <span>⚠ Schatzjagd-Verlust</span>
+                                                <span className="cm-reward-row-value">
+                                                    -{Math.round(selectedEntry.treasureHuntMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                                </span>
+                                            </div>
+                                        )}
                                         {departureDockingFine > 0 && (
                                             <div className="cm-reward-row warn">
                                                 <span>⚠ Ablege-Schaden (Kollision)</span>
@@ -917,7 +1093,7 @@ export default function CargoManagementScreen({
                                         <div className="cm-reward-row total">
                                             <span>Gesamt</span>
                                             <span className="cm-reward-row-value" style={{ color: netTotal < 0 ? "#a0521a" : undefined }}>
-                                                {netTotal >= 0 ? "+" : ""}{netTotal.toLocaleString("de-DE")} T
+                                                {formatSignedTalers(netTotal)}
                                             </span>
                                         </div>
                                     </div>
@@ -925,11 +1101,18 @@ export default function CargoManagementScreen({
                                     <button
                                         className="cm-reward-btn"
                                         onClick={() => {
+                                            if (selectedCompletedFromHistoryOnly) {
+                                                setSelectedCargoId(null);
+                                                return;
+                                            }
                                             delete completedAtMap[selectedEntry.cargoId];
                                             onCargoRemoved(selectedEntry.cargoId);
+                                            setSelectedCargoId(null);
                                         }}
                                     >
-                                        Fracht schließen ({autoCloseSeconds}s)
+                                        {selectedCompletedFromHistoryOnly
+                                            ? "Ansicht schließen"
+                                            : `Fracht schließen (${autoCloseSeconds}s)`}
                                     </button>
                                 </div>
                             );

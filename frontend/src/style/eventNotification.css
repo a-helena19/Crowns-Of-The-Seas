@@ -41,6 +41,18 @@
     padding: 4px;
 }
 
+.treasure-hunt-prompt-header {
+    align-items: center;
+}
+
+.treasure-hunt-prompt-preview {
+    width: 132px;
+    height: 132px;
+    padding: 2px;
+    background: transparent;
+    border: none;
+}
+
 .event-notification-section {
     background: #f8f1e7;
     border: 1px solid #d5bea2;
@@ -80,6 +92,20 @@
     border: 2px solid transparent;
     font-weight: 700;
     cursor: pointer;
+}
+
+.event-btn span {
+    display: block;
+    font-size: 16px;
+    line-height: 1.1;
+}
+
+.event-btn small {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.25;
+    font-weight: 500;
 }
 
 .event-btn:disabled {

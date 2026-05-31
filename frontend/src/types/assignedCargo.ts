@@ -81,6 +81,13 @@ export interface AssignedCargoEntry {
         failureReason?: string;
         routeViewType?: "VIEW_A" | "VIEW_B";
     };
+    treasureHuntMinigameSummary?: {
+        triggered: boolean;
+        result?: "SUCCESS" | "FAILED" | "DECLINED";
+        bonusAmount?: number;
+        penaltyAmount?: number;
+        cargoLossPercent?: number;
+    };
     customsSummary?: CustomsSummary;
     regressSummary?: RegressSummary;
     unloadingCompletedAtTick?: number;
