@@ -17,7 +17,7 @@ public class SmugglerDecorator extends SessionPlayerDecorator {
     // Niedrigeres Eigen-Risiko beim Schmuggeln (Smuggler sind im Schmuggeln gut)
     @Override
     public double getSmuggleRiskModifier() {
-        return 0.70;
+        return 1.2;
     }
 
     // Höheres Zoll-Risiko — passt zur "höheres Risiko"-Beschreibung

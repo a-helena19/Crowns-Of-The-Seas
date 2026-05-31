@@ -41,16 +41,28 @@ public class Route {
         return new Route(id, originPortId, destinationPortId, waypoints, distance, description);
     }
 
+    private static final double MAP_WIDTH = 100.0;
+    private static final double WRAP_X_THRESHOLD = 60.0;
+
+    private static double segmentDistance(Coordinates a, Coordinates b) {
+        double dx = Math.abs(a.getX() - b.getX());
+        if (dx > WRAP_X_THRESHOLD) {
+            dx = MAP_WIDTH - dx;
+        }
+        double dy = a.getY() - b.getY();
+        return Math.hypot(dx, dy);
+    }
+
     private static double computeDistance(Coordinates origin, Coordinates destination,
                                           List<Coordinates> waypoints) {
         if (waypoints.isEmpty()) {
-            return origin.distanceTo(destination);
+            return segmentDistance(origin, destination);
         }
-        double total = origin.distanceTo(waypoints.get(0));
+        double total = segmentDistance(origin, waypoints.get(0));
         for (int i = 0; i < waypoints.size() - 1; i++) {
-            total += waypoints.get(i).distanceTo(waypoints.get(i + 1));
+            total += segmentDistance(waypoints.get(i), waypoints.get(i + 1));
         }
-        total += waypoints.get(waypoints.size() - 1).distanceTo(destination);
+        total += segmentDistance(waypoints.get(waypoints.size() - 1), destination);
         return total;
     }
 

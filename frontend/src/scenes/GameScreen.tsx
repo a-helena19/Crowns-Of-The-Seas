@@ -70,7 +70,7 @@ interface OwnedShipSummary {
 interface PendingShipEvent {
     eventId: string;
     label: string;
-    kind: "rats" | "storm" | "obstacle" | "arrival_docking";
+    kind: "rats" | "storm" | "obstacle" | "arrival_docking" | "smuggle" | "customs";
 }
 
 export default function GameScreen() {
@@ -112,6 +112,8 @@ export default function GameScreen() {
     const [obstacleEventOffer, setObstacleEventOffer] = useState<ObstacleMinigameEventPayload | null>(null);
     const [activeObstacleMinigame, setActiveObstacleMinigame] = useState<ObstacleMinigameEventPayload | null>(null);
     const [openedEventId, setOpenedEventId] = useState<string | null>(null);
+    const [smuggleOpened, setSmuggleOpened] = useState(false);
+    const [customsOpened, setCustomsOpened] = useState(false);
 
     const pendingSmuggleRef = useRef<{
         offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
@@ -429,10 +431,12 @@ export default function GameScreen() {
                 playerId: string;
                 totalReward: number;
                 baseReward: number;
+                newBalance?: number;
+                previousBalance?: number;
                 dockingFine?: number;
                 departureDockingFine?: number;
                 pilotageRefund?: number;
-                cargoRewards: { cargoId: string; cargoName: string; destinationPort: string; baseReward: number; bonusReward: number; actualReward: number; percentage: number; status: string; cargoType: string }[];
+                cargoRewards: { cargoId: string; cargoName: string; destinationPort: string; baseReward: number; bonusReward: number; actualReward: number; percentage: number; status: string; cargoType: string; playerShipId?: string }[];
                 customsSummary?: {
                     outcome: "CLEARED" | "HIDDEN" | "COOPERATED" | "BRIBE_SUCCESS" | "BRIBE_FAILED";
                     finePaid: number;
@@ -480,6 +484,9 @@ export default function GameScreen() {
 
             audioEngine.playSfx('coinReward');
 
+            if (typeof data.newBalance === "number") {
+                window.dispatchEvent(new CustomEvent("player-balance-set", { detail: { balance: data.newBalance } }));
+            }
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
 
             setAssignedCargos(prev => {
@@ -571,6 +578,7 @@ export default function GameScreen() {
             if (departureActiveRef.current) {
                 pendingSmuggleRef.current = offer;
             } else {
+                setSmuggleOpened(false);
                 setSmuggleOffer(offer);
             }
         };
@@ -652,6 +660,7 @@ export default function GameScreen() {
                     customsQueueRef.current.push(data);
                     return current;
                 }
+                setCustomsOpened(false);
                 return data;
             });
         };
@@ -709,7 +718,10 @@ export default function GameScreen() {
         const pending = pendingSmuggleRef.current;
         if (pending) {
             pendingSmuggleRef.current = null;
-            setTimeout(() => setSmuggleOffer(pending), 1000);
+            setTimeout(() => {
+                setSmuggleOpened(false);
+                setSmuggleOffer(pending);
+            }, 1000);
         }
     }, []);
 
@@ -1100,6 +1112,7 @@ export default function GameScreen() {
     const handleCustomsDismiss = useCallback(() => {
         setCustomsInspection(() => {
             const next = customsQueueRef.current.shift();
+            if (next) setCustomsOpened(false);
             return next ?? null;
         });
     }, []);
@@ -1215,6 +1228,28 @@ export default function GameScreen() {
             kind: "arrival_docking",
         };
     }
+    if (smuggleOffer && !smuggleOpened && !pendingEventsByShipId[smuggleOffer.playerShipId]) {
+        pendingEventsByShipId[smuggleOffer.playerShipId] = {
+            eventId: smuggleOffer.offerId,
+            label: "Schmuggelangebot",
+            kind: "smuggle",
+        };
+    }
+    if (customsInspection && !customsOpened && !pendingEventsByShipId[customsInspection.playerShipId]) {
+        pendingEventsByShipId[customsInspection.playerShipId] = {
+            eventId: customsInspection.inspectionId,
+            label: "Zollkontrolle",
+            kind: "customs",
+        };
+    }
+
+    const urgentShipIds: Record<string, boolean> = {};
+    if (smuggleOffer && !smuggleOpened) {
+        urgentShipIds[smuggleOffer.playerShipId] = true;
+    }
+    if (customsInspection && !customsOpened) {
+        urgentShipIds[customsInspection.playerShipId] = true;
+    }
 
     return (
         <div className={`app-layout ${view}`}>
@@ -1288,6 +1323,7 @@ export default function GameScreen() {
                         connected={isConnected}
                         ships={ownedShips}
                         pendingEventsByShipId={pendingEventsByShipId}
+                        urgentShipIds={urgentShipIds}
                         onShipCardClick={(ship) => {
                             audioEngine.playSfx('buttonClick');
                             const pendingEvent = pendingEventsByShipId[ship.id];
@@ -1295,6 +1331,14 @@ export default function GameScreen() {
                                 if (pendingEvent.kind === "arrival_docking" && pendingArrivalDocking && pendingArrivalDocking.shipId === ship.id) {
                                     setPendingArrivalDocking(null);
                                     setShowArrivalDocking(pendingArrivalDocking);
+                                    return;
+                                }
+                                if (pendingEvent.kind === "smuggle") {
+                                    setSmuggleOpened(true);
+                                    return;
+                                }
+                                if (pendingEvent.kind === "customs") {
+                                    setCustomsOpened(true);
                                     return;
                                 }
                                 setOpenedEventId(pendingEvent.eventId);
@@ -1354,7 +1398,7 @@ export default function GameScreen() {
                 />
             ))}
 
-            {smuggleOffer && (
+            {smuggleOffer && smuggleOpened && (
                 <SmuggleOfferDialog
                     offerId={smuggleOffer.offerId}
                     portId={smuggleOffer.portId}
@@ -1479,7 +1523,7 @@ export default function GameScreen() {
                 />
             )}
 
-            {customsInspection && (
+            {customsInspection && customsOpened && (
                 <CustomsInspectionDialog
                     inspectionId={customsInspection.inspectionId}
                     travelId={customsInspection.travelId}

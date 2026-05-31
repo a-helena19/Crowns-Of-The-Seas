@@ -42,7 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class CustomsServiceImpl implements CustomsService {
 
-    private static final double DETECTION_CHANCE_WHEN_SMUGGLING = 0.55;
+    private static final double DETECTION_CHANCE_WHEN_SMUGGLING = 0.5;
     private static final double BRIBE_SUCCESS_CHANCE = 0.50;
     private static final int MIN_DETENTION_TICKS = 3;
     private static final int MAX_DETENTION_TICKS = 8;
