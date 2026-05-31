@@ -101,6 +101,17 @@ interface CargoManagementScreenProps {
     onDepartureComplete?: () => void;
 }
 
+interface CompletedCargoHistoryEntry {
+    entry: AssignedCargoEntry;
+    completedAt: number;
+}
+
+const COMPLETED_HISTORY_STORAGE_KEY_PREFIX = "cargo_completed_history_v1";
+
+function getCompletedHistoryStorageKey(sessionId: string | null): string {
+    return `${COMPLETED_HISTORY_STORAGE_KEY_PREFIX}:${sessionId ?? "no-session"}`;
+}
+
 export default function CargoManagementScreen({
                                                   assignedCargos,
                                                   focusShipId = null,
@@ -121,6 +132,7 @@ export default function CargoManagementScreen({
     const [errorMap, setErrorMap] = useState<Record<string, string>>({});
     const [showDeparture, setShowDeparture] = useState<AssignedCargoEntry | null>(null);
     const [showDockingGame, setShowDockingGame] = useState<AssignedCargoEntry | null>(null);
+    const [showCompletedHistory, setShowCompletedHistory] = useState(false);
     if (!(window as any).__cargoCompletedAt) {
         (window as any).__cargoCompletedAt = {} as Record<string, number>;
     }
@@ -145,14 +157,33 @@ export default function CargoManagementScreen({
     const sessionData = sessionStorage.getItem("currentSession");
     const sessionId = sessionData ? JSON.parse(sessionData).id : null;
     const token = localStorage.getItem("auth_token") ?? "";
+    const completedHistoryStorageKey = getCompletedHistoryStorageKey(sessionId);
+    const [completedHistory, setCompletedHistory] = useState<Record<string, CompletedCargoHistoryEntry>>(() => {
+        try {
+            const currentSessionRaw = sessionStorage.getItem("currentSession");
+            const currentSessionId = currentSessionRaw ? JSON.parse(currentSessionRaw).id : null;
+            const raw = sessionStorage.getItem(getCompletedHistoryStorageKey(currentSessionId));
+            if (!raw) return {};
+            return JSON.parse(raw) as Record<string, CompletedCargoHistoryEntry>;
+        } catch {
+            return {};
+        }
+    });
 
     useEffect(() => {
-        if (selectedCargoId && !assignedCargos.find(e => e.cargoId === selectedCargoId)) {
+        const selectedIsActive = selectedCargoId
+            ? assignedCargos.some(e => e.cargoId === selectedCargoId)
+            : false;
+        const selectedIsInCompletedHistory = selectedCargoId
+            ? !!completedHistory[selectedCargoId]
+            : false;
+
+        if (selectedCargoId && !selectedIsActive && !selectedIsInCompletedHistory) {
             setSelectedCargoId(assignedCargos[0]?.cargoId ?? null);
         } else if (!selectedCargoId && assignedCargos.length > 0) {
             setSelectedCargoId(assignedCargos[0].cargoId);
         }
-    }, [assignedCargos, selectedCargoId]);
+    }, [assignedCargos, completedHistory, selectedCargoId]);
 
     useEffect(() => {
         if (!focusShipId) return;
@@ -162,7 +193,7 @@ export default function CargoManagementScreen({
         }
     }, [focusShipId, assignedCargos]);
 
-    const selectedEntry = assignedCargos.find(e => e.cargoId === selectedCargoId) ?? null;
+    const selectedActiveEntry = assignedCargos.find(e => e.cargoId === selectedCargoId) ?? null;
 
     // Merke den Zeitpunkt wenn eine Fracht "completed" wird
     useEffect(() => {
@@ -173,10 +204,58 @@ export default function CargoManagementScreen({
         }
     }, [assignedCargos]);
 
+    useEffect(() => {
+        const completedEntries = assignedCargos.filter(entry => entry.phase === "completed");
+        if (completedEntries.length === 0) return;
+
+        setCompletedHistory(prev => {
+            let changed = false;
+            const next = { ...prev };
+
+            for (const entry of completedEntries) {
+                const completedAt = completedAtMap[entry.cargoId] ?? Date.now();
+                const existing = next[entry.cargoId];
+                if (
+                    !existing
+                    || existing.entry !== entry
+                ) {
+                    next[entry.cargoId] = {
+                        entry,
+                        completedAt,
+                    };
+                    changed = true;
+                }
+            }
+
+            return changed ? next : prev;
+        });
+    }, [assignedCargos]);
+
+    useEffect(() => {
+        try {
+            sessionStorage.setItem(completedHistoryStorageKey, JSON.stringify(completedHistory));
+        } catch {
+            // ignore storage errors to avoid impacting gameplay flow
+        }
+    }, [completedHistory, completedHistoryStorageKey]);
+
+    useEffect(() => {
+        try {
+            const raw = sessionStorage.getItem(completedHistoryStorageKey);
+            if (!raw) {
+                setCompletedHistory({});
+                return;
+            }
+            setCompletedHistory(JSON.parse(raw) as Record<string, CompletedCargoHistoryEntry>);
+        } catch {
+            setCompletedHistory({});
+        }
+    }, [completedHistoryStorageKey]);
+
     // Countdown + Auto-Close basierend auf dem gemerkten Zeitpunkt
     useEffect(() => {
-        if (!selectedEntry || selectedEntry.phase !== "completed") return;
-        const completedAt = completedAtMap[selectedEntry.cargoId];
+        if (!selectedActiveEntry || selectedActiveEntry.phase !== "completed") return;
+        const completedAt = completedAtMap[selectedActiveEntry.cargoId];
         if (!completedAt) return;
 
         const calcRemaining = () => Math.max(0, 10 - Math.floor((Date.now() - completedAt) / 1000));
@@ -184,8 +263,9 @@ export default function CargoManagementScreen({
         // Sofort prüfen ob schon abgelaufen
         const initial = calcRemaining();
         if (initial <= 0) {
-            delete completedAtMap[selectedEntry.cargoId];
-            onCargoRemoved(selectedEntry.cargoId);
+            delete completedAtMap[selectedActiveEntry.cargoId];
+            onCargoRemoved(selectedActiveEntry.cargoId);
+            setSelectedCargoId(prev => (prev === selectedActiveEntry.cargoId ? null : prev));
             return;
         }
         setAutoCloseSeconds(initial);
@@ -195,13 +275,18 @@ export default function CargoManagementScreen({
             setAutoCloseSeconds(remaining);
             if (remaining <= 0) {
                 clearInterval(interval);
-                delete completedAtMap[selectedEntry.cargoId];
-                onCargoRemoved(selectedEntry.cargoId);
+                delete completedAtMap[selectedActiveEntry.cargoId];
+                onCargoRemoved(selectedActiveEntry.cargoId);
+                setSelectedCargoId(prev => (prev === selectedActiveEntry.cargoId ? null : prev));
             }
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [selectedEntry?.cargoId, selectedEntry?.phase, onCargoRemoved]);
+    }, [selectedActiveEntry?.cargoId, selectedActiveEntry?.phase, onCargoRemoved]);
+
+    const selectedHistoryEntry = selectedCargoId ? completedHistory[selectedCargoId]?.entry ?? null : null;
+    const selectedEntry = selectedActiveEntry ?? selectedHistoryEntry;
+    const selectedCompletedFromHistoryOnly = !!selectedHistoryEntry && !selectedActiveEntry;
 
 
     function resolveOriginPortId(entry: AssignedCargoEntry): string | undefined {
@@ -417,6 +502,41 @@ export default function CargoManagementScreen({
                                 </div>
                             );
                         })}
+                        <div className="cm-completed-dropdown">
+                            <button
+                                type="button"
+                                className="cm-completed-toggle"
+                                onClick={() => setShowCompletedHistory(v => !v)}
+                            >
+                                <span>Abgeschlossene Aufträge ({Object.keys(completedHistory).length})</span>
+                                <span>{showCompletedHistory ? "▲" : "▼"}</span>
+                            </button>
+                            {showCompletedHistory && (
+                                <div className="cm-completed-list">
+                                    {Object.values(completedHistory)
+                                        .sort((a, b) => b.completedAt - a.completedAt)
+                                        .map(entry => (
+                                            <div
+                                                key={entry.entry.cargoId}
+                                                className={`cm-cargo-item phase-completed cm-cargo-item-completed ${selectedCargoId === entry.entry.cargoId ? "active" : ""}`}
+                                                onClick={() => setSelectedCargoId(entry.entry.cargoId)}
+                                            >
+                                                <div className="cm-cargo-ship">
+                                                    <img src={shipIcon} alt="" style={{ width: 12, height: 12, imageRendering: "pixelated", verticalAlign: "middle", marginRight: 5, opacity: 0.7 }} />
+                                                    {entry.entry.shipName}
+                                                </div>
+                                                <div className="cm-cargo-route">{entry.entry.from} → {entry.entry.to}</div>
+                                                <div className="cm-cargo-status">
+                                                    +{(entry.entry.reward ?? 0).toLocaleString("de-DE")} T
+                                                </div>
+                                            </div>
+                                        ))}
+                                    {Object.keys(completedHistory).length === 0 && (
+                                        <div className="cm-completed-empty">Noch keine abgeschlossenen Aufträge.</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -923,11 +1043,18 @@ export default function CargoManagementScreen({
                                     <button
                                         className="cm-reward-btn"
                                         onClick={() => {
+                                            if (selectedCompletedFromHistoryOnly) {
+                                                setSelectedCargoId(null);
+                                                return;
+                                            }
                                             delete completedAtMap[selectedEntry.cargoId];
                                             onCargoRemoved(selectedEntry.cargoId);
+                                            setSelectedCargoId(null);
                                         }}
                                     >
-                                        Fracht schließen ({autoCloseSeconds}s)
+                                        {selectedCompletedFromHistoryOnly
+                                            ? "Ansicht schließen"
+                                            : `Fracht schließen (${autoCloseSeconds}s)`}
                                     </button>
                                 </div>
                             );

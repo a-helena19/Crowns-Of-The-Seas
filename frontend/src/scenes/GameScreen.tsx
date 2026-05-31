@@ -80,7 +80,7 @@ type ActiveMinigameEventPayload =
 
 export default function GameScreen() {
     const [view, setView] = useState<"map" | "marketplace" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office">("map");
-    const [marketplaceReturnView, setMarketplaceReturnView] = useState<"map" | "portProfile">("map");
+    const [marketplaceReturnView] = useState<"map" | "portProfile">("map");
     const [overlayReturnView, setOverlayReturnView] = useState<"map" | "marketplace">("map");
     const viewRef = useRef(view);
     const [selectedPort, setSelectedPort] = useState<{ id: string; name: string; x: number; y: number } | null>(null);
@@ -1388,6 +1388,28 @@ export default function GameScreen() {
                         connected={isConnected}
                         ships={ownedShips}
                         pendingEventsByShipId={pendingEventsByShipId}
+                        onOpenOffice={() => {
+                            audioEngine.playSfx('door');
+                            setOverlayReturnView("map");
+                            setView("office");
+                        }}
+                        onOpenOrders={() => {
+                            audioEngine.playSfx('door');
+                            setFocusShipIdForCargoManagement(null);
+                            setOverlayReturnView("map");
+                            setView("cargoManagement");
+                        }}
+                        onOpenShipMarket={() => {
+                            audioEngine.playSfx('door');
+                            setOverlayReturnView("map");
+                            setView("broker");
+                        }}
+                        onOpenFreightMarket={() => {
+                            audioEngine.playSfx('door');
+                            setOpenCargoForShipId(null);
+                            setOverlayReturnView("map");
+                            setView("harbor");
+                        }}
                         onShipCardClick={(ship) => {
                             audioEngine.playSfx('buttonClick');
                             const pendingEvent = pendingEventsByShipId[ship.id];
@@ -1411,11 +1433,6 @@ export default function GameScreen() {
                                 setOverlayReturnView("map");
                                 setView("cargoManagement");
                             }
-                        }}
-                        onOpenMarketplace={() => {
-                            setOverlayReturnView("map");
-                            setMarketplaceReturnView(view === "portProfile" ? "portProfile" : "map");
-                            setView("marketplace");
                         }}
                     />
                 </div>
