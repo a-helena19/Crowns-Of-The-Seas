@@ -73,8 +73,7 @@ interface OwnedShipSummary {
 interface PendingShipEvent {
     eventId: string;
     label: string;
-    kind: "rats" | "storm" | "obstacle" | "treasure_hunt" | "arrival_docking";
-    kind: "rats" | "storm" | "obstacle" | "arrival_docking" | "smuggle" | "customs";
+    kind: "rats" | "storm" | "obstacle" | "treasure_hunt" | "arrival_docking" | "smuggle" | "customs";
 }
 
 type ActiveMinigameEventPayload =
@@ -1826,7 +1825,6 @@ export default function GameScreen() {
                 />
             )}
 
-            {customsInspection && (
             {customsInspection && customsOpened && (
                 <CustomsInspectionDialog
                     inspectionId={customsInspection.inspectionId}

@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class TreasureHuntMinigameServiceImpl implements TreasureHuntMinigameService {
-    private static final double TRIGGER_CHANCE_PER_TICK = 1.0;
+    private static final double TRIGGER_CHANCE_PER_TICK = 0.03;
     private static final int DEFAULT_TIME_LIMIT_SECONDS = 20;
     private static final int DEFAULT_REQUIRED_TREASURES = 8;
     private static final int DEFAULT_PIRATE_COUNT = 3;

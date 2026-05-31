@@ -17,6 +17,7 @@ interface OwnedShipSummary {
 interface PendingShipEvent {
     eventId: string;
     label: string;
+    kind: "rats" | "storm" | "obstacle" | "treasure_hunt" | "arrival_docking" | "smuggle" | "customs";
 }
 
 interface BottomBarProps {
@@ -35,22 +36,15 @@ interface BottomBarProps {
 export default function BottomBar({
                                       send: _send,
                                       connected: _connected,
-                                      onOpenMarketplace,
+                                      onOpenOffice,
+                                      onOpenOrders,
+                                      onOpenShipMarket,
+                                      onOpenFreightMarket,
                                       ships = [],
                                       pendingEventsByShipId = {},
                                       urgentShipIds = {},
                                       onShipCardClick,
                                   }: BottomBarProps) {
-    send: _send,
-    connected: _connected,
-    onOpenOffice,
-    onOpenOrders,
-    onOpenShipMarket,
-    onOpenFreightMarket,
-    ships = [],
-    pendingEventsByShipId = {},
-    onShipCardClick,
-}: BottomBarProps) {
     const portsById = new Map((window.__latestPorts ?? []).map(p => [p.id, p.name]));
     const quickNavItems = [
         { key: "office", label: "Büro", spriteClass: "sprite-office", onClick: onOpenOffice, ariaLabel: "Büro öffnen" },
