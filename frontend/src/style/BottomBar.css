@@ -132,8 +132,8 @@
 .ship-status-card.actionable {
     border-color: #c89b3c;
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.45),
-        0 0 8px rgba(255, 214, 92, 0.45);
+            inset 0 1px 0 rgba(255, 255, 255, 0.45),
+            0 0 8px rgba(255, 214, 92, 0.45);
     animation: ship-card-pulse 1.8s ease-in-out infinite;
 }
 
@@ -141,8 +141,8 @@
     border-color: #ffd65c;
     background: linear-gradient(160deg, rgba(255, 246, 190, 0.98), rgba(238, 211, 128, 0.98));
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.55),
-        0 0 16px rgba(255, 214, 92, 0.72);
+            inset 0 1px 0 rgba(255, 255, 255, 0.55),
+            0 0 16px rgba(255, 214, 92, 0.72);
     animation: ship-event-pulse 1.05s ease-in-out infinite;
 }
 
@@ -150,18 +150,55 @@
     color: #6f4300;
 }
 
-@keyframes ship-event-pulse {
+.ship-status-card.urgent {
+    border-color: #ffd65c;
+    background: linear-gradient(160deg, rgba(255, 246, 190, 0.98), rgba(238, 211, 128, 0.98));
+    box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.55),
+            0 0 16px rgba(255, 214, 92, 0.72);
+    animation: ship-urgent-pulse  1.05s ease-in-out infinite;
+}
+
+.ship-status-card.urgent .ship-status-line strong {
+    color: #a32d2d;
+}
+
+.ship-status-action-hint {
+    margin-top: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #a32d2d;
+    text-align: center;
+    letter-spacing: 0.2px;
+}
+
+@keyframes ship-urgent-pulse {
     0%, 100% {
         transform: scale(1);
         box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.55),
-            0 0 10px rgba(255, 214, 92, 0.55);
+                inset 0 1px 0 rgba(255, 255, 255, 0.55),
+                0 0 10px rgba(255, 214, 92, 0.55);
     }
     50% {
         transform: scale(1.018);
         box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.55),
-            0 0 22px rgba(255, 214, 92, 0.95);
+                inset 0 1px 0 rgba(255, 255, 255, 0.55),
+                0 0 22px rgba(255, 214, 92, 0.95);
+    }
+}
+
+@keyframes ship-event-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.55),
+                0 0 10px rgba(255, 214, 92, 0.55);
+    }
+    50% {
+        transform: scale(1.018);
+        box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.55),
+                0 0 22px rgba(255, 214, 92, 0.95);
     }
 }
 
@@ -169,14 +206,14 @@
     0%, 100% {
         transform: scale(1);
         box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.45),
-            0 0 8px rgba(255, 214, 92, 0.35);
+                inset 0 1px 0 rgba(255, 255, 255, 0.45),
+                0 0 8px rgba(255, 214, 92, 0.35);
     }
     50% {
         transform: scale(1.012);
         box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.45),
-            0 0 13px rgba(255, 214, 92, 0.62);
+                inset 0 1px 0 rgba(255, 255, 255, 0.45),
+                0 0 13px rgba(255, 214, 92, 0.62);
     }
 }
 

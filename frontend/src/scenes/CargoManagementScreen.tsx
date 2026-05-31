@@ -772,7 +772,9 @@ export default function CargoManagementScreen({
                         )}
 
                         {selectedEntry.phase === "completed" && (() => {
-                            const allRewards = selectedEntry.cargoRewards ?? [];
+                            const allRewards = (selectedEntry.cargoRewards ?? []).filter(
+                                r => !r.playerShipId || r.playerShipId === selectedEntry.shipId
+                            );
                             const cargoItems = allRewards.filter(r => r.cargoType !== "SMUGGLE");
                             const smuggleItem = allRewards.find(r => r.cargoType === "SMUGGLE");
 

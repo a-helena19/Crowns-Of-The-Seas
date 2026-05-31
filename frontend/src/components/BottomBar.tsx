@@ -28,10 +28,19 @@ interface BottomBarProps {
     onOpenFreightMarket?: () => void;
     ships?: OwnedShipSummary[];
     pendingEventsByShipId?: Record<string, PendingShipEvent>;
+    urgentShipIds?: Record<string, boolean>;
     onShipCardClick?: (ship: OwnedShipSummary) => void;
 }
 
 export default function BottomBar({
+                                      send: _send,
+                                      connected: _connected,
+                                      onOpenMarketplace,
+                                      ships = [],
+                                      pendingEventsByShipId = {},
+                                      urgentShipIds = {},
+                                      onShipCardClick,
+                                  }: BottomBarProps) {
     send: _send,
     connected: _connected,
     onOpenOffice,
@@ -84,6 +93,7 @@ export default function BottomBar({
                         condition={ship.condition}
                         currentPortName={ship.currentPortId ? portsById.get(ship.currentPortId) ?? null : null}
                         pendingEventLabel={pendingEventsByShipId[ship.id]?.label}
+                        urgent={urgentShipIds[ship.id]}
                         onClick={onShipCardClick ? () => onShipCardClick(ship) : undefined}
                     />
                 ))}

@@ -59,7 +59,9 @@ export default function CargoRouteMapView({
 
             if (fullPath.length < 2) return;
 
-            // Gerade Linien (kein Bezier)
+            // Gerade Linien (kein Bezier). Bei Wrap-Spruengen (grosser x-Abstand)
+            // wird die Linie unterbrochen, statt quer ueber die Karte gezogen zu werden.
+            const WRAP_X_THRESHOLD = 60;
             ctx.save();
             ctx.shadowColor = "rgba(180, 30, 30, 0.55)";
             ctx.shadowBlur = 6;
@@ -71,7 +73,13 @@ export default function CargoRouteMapView({
             ctx.beginPath();
             ctx.moveTo(px(fullPath[0].x), py(fullPath[0].y));
             for (let i = 1; i < fullPath.length; i++) {
-                ctx.lineTo(px(fullPath[i].x), py(fullPath[i].y));
+                const prev = fullPath[i - 1];
+                const cur = fullPath[i];
+                if (Math.abs(cur.x - prev.x) > WRAP_X_THRESHOLD) {
+                    ctx.moveTo(px(cur.x), py(cur.y));
+                } else {
+                    ctx.lineTo(px(cur.x), py(cur.y));
+                }
             }
             ctx.stroke();
             ctx.restore();

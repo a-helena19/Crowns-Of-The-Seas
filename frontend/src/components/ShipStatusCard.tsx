@@ -7,6 +7,7 @@ interface ShipStatusCardProps {
     condition: number;
     currentPortName?: string | null;
     pendingEventLabel?: string;
+    urgent?: boolean;
     onClick?: () => void;
 }
 
@@ -32,22 +33,23 @@ function formatStatus(status: string): string {
 }
 
 export default function ShipStatusCard({
-    name,
-    shipClass,
-    iconUrl,
-    status,
-    fuel,
-    condition,
-    currentPortName,
-    pendingEventLabel,
-    onClick,
-}: ShipStatusCardProps) {
+                                           name,
+                                           shipClass,
+                                           iconUrl,
+                                           status,
+                                           fuel,
+                                           condition,
+                                           currentPortName,
+                                           pendingEventLabel,
+                                           urgent,
+                                           onClick,
+                                       }: ShipStatusCardProps) {
     const isActionable = Boolean(pendingEventLabel) || status === "READY_TO_DEPART" || status === "LOADING" || status === "UNLOADING";
     const displayedStatus = pendingEventLabel ? `Event: ${pendingEventLabel}` : formatStatus(status);
 
     return (
         <article
-            className={`ship-status-card ${isActionable ? "actionable" : ""} ${pendingEventLabel ? "event-pending" : ""} ${onClick ? "clickable" : ""}`}
+            className={`ship-status-card ${isActionable ? "actionable" : ""} ${pendingEventLabel ? "event-pending" : ""} ${urgent ? "urgent" : ""} ${onClick ? "clickable" : ""}`}
             onClick={onClick}
             role={onClick ? "button" : undefined}
             tabIndex={onClick ? 0 : undefined}
@@ -70,6 +72,9 @@ export default function ShipStatusCard({
                         <span>Status</span>
                         <strong>{displayedStatus}</strong>
                     </div>
+                    {urgent && (
+                        <div className="ship-status-action-hint">⚠ Tippen zum Entscheiden</div>
+                    )}
                     {currentPortName && (
                         <div className="ship-status-line">
                             <span>Ort</span>

@@ -8,6 +8,7 @@ export interface CargoRewardEntry {
     percentage: number;
     status: string;
     cargoType: string;
+    playerShipId?: string;
 }
 
 export interface CustomsSummary {
