@@ -73,6 +73,11 @@ interface PendingShipEvent {
     kind: "rats" | "storm" | "obstacle" | "arrival_docking";
 }
 
+type ActiveMinigameEventPayload =
+    | RatMinigameEventPayload
+    | StormMinigameEventPayload
+    | ObstacleMinigameEventPayload;
+
 export default function GameScreen() {
     const [view, setView] = useState<"map" | "marketplace" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office">("map");
     const [marketplaceReturnView, setMarketplaceReturnView] = useState<"map" | "portProfile">("map");
@@ -126,6 +131,7 @@ export default function GameScreen() {
     const ownedShipsRef = useRef<OwnedShipSummary[]>([]);
     const [focusShipIdForCargoManagement, setFocusShipIdForCargoManagement] = useState<string | null>(null);
     const [openCargoForShipId, setOpenCargoForShipId] = useState<string | null>(null);
+    const minigameFallbackRequests = useRef<Set<string>>(new Set());
 
     const authToken = localStorage.getItem("auth_token") ?? "";
 
@@ -370,6 +376,100 @@ export default function GameScreen() {
         window.addEventListener("backend-ship-positions", handler);
         return () => window.removeEventListener("backend-ship-positions", handler);
     }, [loadOwnedShips]);
+
+    useEffect(() => {
+        if (!playerId || !sessionId) return;
+
+        assignedCargos
+            .filter(entry => entry.travelId && !entry.paused)
+            .forEach(entry => {
+                if (entry.travelId) minigameFallbackRequests.current.delete(entry.travelId);
+            });
+
+        const hasKnownEvent = (entry: AssignedCargoEntry) =>
+            ratEventOffer?.travelId === entry.travelId
+            || stormEventOffer?.travelId === entry.travelId
+            || obstacleEventOffer?.travelId === entry.travelId
+            || activeRatMinigame?.travelId === entry.travelId
+            || activeStormMinigame?.travelId === entry.travelId
+            || activeObstacleMinigame?.travelId === entry.travelId;
+
+        const restoreEvent = (event: ActiveMinigameEventPayload) => {
+            if (event.eventType === "RATS") {
+                if (window.__activeRatEventId === event.eventId) return;
+                window.__activeRatEventId = event.eventId;
+                minigameSessionManager.startSession({
+                    minigameType: event.eventType,
+                    eventId: event.eventId,
+                    playerId: event.playerId,
+                    playerShipId: event.playerShipId,
+                    travelId: event.travelId,
+                });
+                setRatEventOffer(event);
+                return;
+            }
+
+            if (event.eventType === "STORM") {
+                if (window.__activeStormEventId === event.eventId) return;
+                window.__activeStormEventId = event.eventId;
+                const shipIconUrl = window.__latestShips?.find(s => s.playerShipId === event.playerShipId)?.iconUrl;
+                minigameSessionManager.startSession({
+                    minigameType: event.eventType,
+                    eventId: event.eventId,
+                    playerId: event.playerId,
+                    playerShipId: event.playerShipId,
+                    travelId: event.travelId,
+                });
+                setStormEventOffer({ ...event, shipIconUrl });
+                return;
+            }
+
+            if (window.__activeObstacleEventId === event.eventId) return;
+            window.__activeObstacleEventId = event.eventId;
+            const shipIconUrl = window.__latestShips?.find(s => s.playerShipId === event.playerShipId)?.iconUrl;
+            const routeViewType = ObstacleRouteViewResolver.resolve(event);
+            minigameSessionManager.startSession({
+                minigameType: event.eventType,
+                eventId: event.eventId,
+                playerId: event.playerId,
+                playerShipId: event.playerShipId,
+                travelId: event.travelId,
+            });
+            setObstacleEventOffer({ ...event, shipIconUrl, routeViewType });
+        };
+
+        assignedCargos
+            .filter(entry => entry.phase === "en_route" && entry.paused && entry.travelId && !hasKnownEvent(entry))
+            .forEach(entry => {
+                const travelId = entry.travelId;
+                if (!travelId || minigameFallbackRequests.current.has(travelId)) return;
+                minigameFallbackRequests.current.add(travelId);
+
+                void fetch(`/api/travels/${travelId}/active-event?playerId=${playerId}&sessionId=${sessionId}`, {
+                    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+                })
+                    .then(async res => {
+                        if (res.status === 204) return;
+                        if (!res.ok) throw new Error(`Active event fallback failed: ${res.status}`);
+                        restoreEvent(await res.json() as ActiveMinigameEventPayload);
+                    })
+                    .catch(error => {
+                        minigameFallbackRequests.current.delete(travelId);
+                        console.error("Failed to restore active minigame event:", error);
+                    });
+            });
+    }, [
+        activeObstacleMinigame,
+        activeRatMinigame,
+        activeStormMinigame,
+        assignedCargos,
+        authToken,
+        obstacleEventOffer,
+        playerId,
+        ratEventOffer,
+        sessionId,
+        stormEventOffer,
+    ]);
 
     useEffect(() => {
         if (view === "map" || view === "portProfile") {

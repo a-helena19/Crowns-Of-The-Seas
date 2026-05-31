@@ -72,7 +72,10 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
         UUID eventId = UUID.randomUUID();
         PendingObstacleEvent event = new PendingObstacleEvent(
                 eventId, travel.getPlayerId(), sessionId, travelId, travel.getPlayerShipId(),
-                DEFAULT_TIME_LIMIT_SECONDS, DEFAULT_START_HEALTH, routeViewType
+                DEFAULT_TIME_LIMIT_SECONDS, DEFAULT_START_HEALTH,
+                travel.getOriginPortId(), originName,
+                travel.getDestinationPortId(), destinationName,
+                routeViewType
         );
         pendingEvents.put(travelId, event);
 
@@ -150,6 +153,29 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
     }
 
     @Override
+    public Optional<ObstacleMinigameEvent> getPendingEvent(UUID travelId, UUID playerId, UUID sessionId) {
+        PendingObstacleEvent event = pendingEvents.get(travelId);
+        if (event == null || !event.playerId().equals(playerId) || !event.sessionId().equals(sessionId)) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new ObstacleMinigameEvent(
+                event.eventId().toString(),
+                event.playerId().toString(),
+                event.sessionId().toString(),
+                event.travelId().toString(),
+                event.playerShipId().toString(),
+                event.timeLimitSeconds(),
+                event.startHealth(),
+                event.originPortId().toString(),
+                event.originPortName(),
+                event.destinationPortId().toString(),
+                event.destinationPortName(),
+                event.routeViewType()
+        ));
+    }
+
+    @Override
     public BigDecimal applyRewardModifier(UUID travelId, BigDecimal totalReward) {
         BigDecimal modifier = rewardModifiersByTravelId.remove(travelId);
         if (modifier == null) return totalReward;
@@ -214,6 +240,10 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
             UUID playerShipId,
             int timeLimitSeconds,
             int startHealth,
+            UUID originPortId,
+            String originPortName,
+            UUID destinationPortId,
+            String destinationPortName,
             String routeViewType
     ) {}
 

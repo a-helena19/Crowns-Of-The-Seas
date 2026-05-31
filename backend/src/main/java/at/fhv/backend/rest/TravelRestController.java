@@ -3,6 +3,9 @@ package at.fhv.backend.rest;
 import at.fhv.backend.application.services.travel.FuelEstimateService;
 import at.fhv.backend.application.services.travel.TravelDurationEstimateService;
 import at.fhv.backend.application.services.travel.DockingPenaltyService;
+import at.fhv.backend.application.services.minigame.ObstacleMinigameService;
+import at.fhv.backend.application.services.minigame.RatMinigameService;
+import at.fhv.backend.application.services.minigame.StormMinigameService;
 import at.fhv.backend.domain.model.cargo.exception.CargoCapacityExceededException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotAvailableException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
@@ -34,15 +37,24 @@ public class TravelRestController {
     private final FuelEstimateService fuelEstimateService;
     private final TravelDurationEstimateService travelDurationEstimateService;
     private final DockingPenaltyService dockingPenaltyService;
+    private final RatMinigameService ratMinigameService;
+    private final StormMinigameService stormMinigameService;
+    private final ObstacleMinigameService obstacleMinigameService;
 
     public TravelRestController(StartTravelService startTravelService,
                                 FuelEstimateService fuelEstimateService,
                                 TravelDurationEstimateService travelDurationEstimateService,
-                                DockingPenaltyService dockingPenaltyService) {
+                                DockingPenaltyService dockingPenaltyService,
+                                RatMinigameService ratMinigameService,
+                                StormMinigameService stormMinigameService,
+                                ObstacleMinigameService obstacleMinigameService) {
         this.startTravelService = startTravelService;
         this.fuelEstimateService = fuelEstimateService;
         this.travelDurationEstimateService = travelDurationEstimateService;
         this.dockingPenaltyService = dockingPenaltyService;
+        this.ratMinigameService = ratMinigameService;
+        this.stormMinigameService = stormMinigameService;
+        this.obstacleMinigameService = obstacleMinigameService;
     }
 
     @PostMapping("/fuel-estimate")
@@ -135,6 +147,19 @@ public class TravelRestController {
     @GetMapping("/{travelId}/player/{playerId}")
     public ResponseEntity<TravelDTO> getTravelStatus(@PathVariable UUID travelId, @PathVariable UUID playerId) {
         return ResponseEntity.ok(startTravelService.getTravelStatus(travelId, playerId));
+    }
+
+    @GetMapping("/{travelId}/active-event")
+    public ResponseEntity<?> getActiveEvent(@PathVariable UUID travelId,
+                                            @RequestParam UUID playerId,
+                                            @RequestParam UUID sessionId) {
+        return ratMinigameService.getPendingEvent(travelId, playerId, sessionId)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .or(() -> stormMinigameService.getPendingEvent(travelId, playerId, sessionId)
+                        .map(ResponseEntity::ok))
+                .or(() -> obstacleMinigameService.getPendingEvent(travelId, playerId, sessionId)
+                        .map(ResponseEntity::ok))
+                .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     @PostMapping("/{travelId}/docking-failed")
