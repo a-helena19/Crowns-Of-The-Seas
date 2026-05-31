@@ -55,7 +55,11 @@ export default function TopBar() {
         };
         load();
         const id = window.setInterval(load, 5000);
-        return () => window.clearInterval(id);
+        window.addEventListener('player-balance-updated', load);
+        return () => {
+            window.clearInterval(id);
+            window.removeEventListener('player-balance-updated', load);
+        };
     }, [sessionId]);
 
     useEffect(() => {

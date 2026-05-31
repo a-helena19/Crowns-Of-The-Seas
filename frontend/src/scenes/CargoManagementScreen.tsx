@@ -56,6 +56,11 @@ function IconCheck() {
     );
 }
 
+function formatSignedTalers(value: number): string {
+    const sign = value >= 0 ? "+" : "";
+    return `${sign}${value.toLocaleString("de-DE")} T`;
+}
+
 
 function UnloadingStallNotice({ currentTick, completionTick }: {
     currentTick: number | undefined;
@@ -484,7 +489,7 @@ export default function CargoManagementScreen({
                                 customs_check: "Zoll wird überprüft …",
                                 blocked: `Festgehalten — noch ${Math.max(0, (entry.customsBlockedUntilTick ?? 0) - (entry.currentTick ?? 0))} Tage`,
                                 unloading: "Wird entladen …",
-                                completed: `+${entry.reward?.toLocaleString("de-DE")} T`,
+                                completed: formatSignedTalers(entry.reward ?? 0),
                             }[entry.phase] ?? "…";
 
                             return (
@@ -527,7 +532,7 @@ export default function CargoManagementScreen({
                                                 </div>
                                                 <div className="cm-cargo-route">{entry.entry.from} → {entry.entry.to}</div>
                                                 <div className="cm-cargo-status">
-                                                    +{(entry.entry.reward ?? 0).toLocaleString("de-DE")} T
+                                                    {formatSignedTalers(entry.entry.reward ?? 0)}
                                                 </div>
                                             </div>
                                         ))}
@@ -791,9 +796,14 @@ export default function CargoManagementScreen({
                             const smuggleTotal = smuggleItem?.actualReward ?? 0;
                             const ratPenalty = selectedEntry.ratMinigameSummary?.result === "FAILED"
                                 ? (selectedEntry.ratMinigameSummary.penaltyAmount ?? 0) : 0;
-                            const netTotal = cargoBaseTotal + bonusTotal + smuggleTotal
-                                - ratPenalty - customsTotalOut - regressTotal
+                            const treasureBonus = selectedEntry.treasureHuntMinigameSummary?.result === "SUCCESS"
+                                ? (selectedEntry.treasureHuntMinigameSummary.bonusAmount ?? 0) : 0;
+                            const treasurePenalty = selectedEntry.treasureHuntMinigameSummary?.result === "FAILED"
+                                ? (selectedEntry.treasureHuntMinigameSummary.penaltyAmount ?? 0) : 0;
+                            const computedNetTotal = cargoBaseTotal + bonusTotal + smuggleTotal
+                                - ratPenalty - treasurePenalty + treasureBonus - customsTotalOut - regressTotal
                                 - dockingFine - departureDockingFine + pilotageRefund;
+                            const netTotal = selectedEntry.reward ?? computedNetTotal;
 
                             const isPerfect = cargoItems.every(r => r.percentage >= 100) && !hasDockingPenalty;
 
@@ -923,6 +933,32 @@ export default function CargoManagementScreen({
                                         </div>
                                     )}
 
+                                    {selectedEntry.treasureHuntMinigameSummary?.triggered && selectedEntry.treasureHuntMinigameSummary.result === "SUCCESS" && (
+                                        <div className="cm-reward-cargo-item">
+                                            <div style={{ flex: 1 }}>
+                                                <div className="cm-reward-cargo-name">Schatzjagd erfolgreich</div>
+                                                <div className="cm-reward-cargo-sub">Bonus durch geborgenen Schatz</div>
+                                            </div>
+                                            <span className="cm-reward-cargo-amount">
+                                                +{Math.round(selectedEntry.treasureHuntMinigameSummary.bonusAmount ?? 0).toLocaleString("de-DE")}T
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {selectedEntry.treasureHuntMinigameSummary?.triggered && selectedEntry.treasureHuntMinigameSummary.result === "FAILED" && (
+                                        <div className="cm-reward-cargo-item expired">
+                                            <div style={{ flex: 1 }}>
+                                                <div className="cm-reward-cargo-name">Schatzjagd fehlgeschlagen</div>
+                                                <div className="cm-reward-cargo-sub">
+                                                    Piraten erbeuteten {selectedEntry.treasureHuntMinigameSummary.cargoLossPercent ?? 0}% der Fracht
+                                                </div>
+                                            </div>
+                                            <span className="cm-reward-cargo-amount expired">
+                                                -{Math.round(selectedEntry.treasureHuntMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                            </span>
+                                        </div>
+                                    )}
+
                                     <div className="cm-reward-breakdown">
                                         {cargoBaseTotal > 0 && (
                                             <div className="cm-reward-row">
@@ -946,6 +982,18 @@ export default function CargoManagementScreen({
                                             <div className="cm-reward-row warn">
                                                 <span>Ratten-Strafe</span>
                                                 <span>-{Math.round(ratPenalty).toLocaleString("de-DE")} T</span>
+                                            </div>
+                                        )}
+                                        {treasureBonus > 0 && (
+                                            <div className="cm-reward-row bonus">
+                                                <span>Schatzjagd-Bonus</span>
+                                                <span>+{Math.round(treasureBonus).toLocaleString("de-DE")} T</span>
+                                            </div>
+                                        )}
+                                        {treasurePenalty > 0 && (
+                                            <div className="cm-reward-row warn">
+                                                <span>Schatzjagd-Verlust</span>
+                                                <span>-{Math.round(treasurePenalty).toLocaleString("de-DE")} T</span>
                                             </div>
                                         )}
                                         {bribePaid > 0 && (
@@ -1014,6 +1062,14 @@ export default function CargoManagementScreen({
                                                 </span>
                                             </div>
                                         )}
+                                        {selectedEntry.treasureHuntMinigameSummary?.triggered && selectedEntry.treasureHuntMinigameSummary.result === "FAILED" && (
+                                            <div className="cm-reward-row warn">
+                                                <span>⚠ Schatzjagd-Verlust</span>
+                                                <span className="cm-reward-row-value">
+                                                    -{Math.round(selectedEntry.treasureHuntMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                                </span>
+                                            </div>
+                                        )}
                                         {departureDockingFine > 0 && (
                                             <div className="cm-reward-row warn">
                                                 <span>⚠ Ablege-Schaden (Kollision)</span>
@@ -1035,7 +1091,7 @@ export default function CargoManagementScreen({
                                         <div className="cm-reward-row total">
                                             <span>Gesamt</span>
                                             <span className="cm-reward-row-value" style={{ color: netTotal < 0 ? "#a0521a" : undefined }}>
-                                                {netTotal >= 0 ? "+" : ""}{netTotal.toLocaleString("de-DE")} T
+                                                {formatSignedTalers(netTotal)}
                                             </span>
                                         </div>
                                     </div>

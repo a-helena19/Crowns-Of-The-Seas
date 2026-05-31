@@ -4,6 +4,7 @@ import at.fhv.backend.application.services.cargo.CustomsService;
 import at.fhv.backend.application.services.minigame.ObstacleMinigameService;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.minigame.StormMinigameService;
+import at.fhv.backend.application.services.minigame.TreasureHuntMinigameService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.RegressService;
@@ -61,6 +62,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
     private final RegressService regressService;
     private final StormMinigameService stormMinigameService;
     private final ObstacleMinigameService obstacleMinigameService;
+    private final TreasureHuntMinigameService treasureHuntMinigameService;
 
     public CargoUnloadingPhaseServiceImpl(
             SessionCargoRepository sessionCargoRepository,
@@ -75,6 +77,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             RatMinigameService ratMinigameService,
             StormMinigameService stormMinigameService,
             ObstacleMinigameService obstacleMinigameService,
+            TreasureHuntMinigameService treasureHuntMinigameService,
             CustomsService customsService,
             RegressService regressService) {
         this.sessionCargoRepository = sessionCargoRepository;
@@ -89,6 +92,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         this.ratMinigameService = ratMinigameService;
         this.stormMinigameService = stormMinigameService;
         this.obstacleMinigameService = obstacleMinigameService;
+        this.treasureHuntMinigameService = treasureHuntMinigameService;
         this.customsService = customsService;
         this.regressService = regressService;
     }
@@ -142,6 +146,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         gross = ratMinigameService.applyRewardModifier(travel.getTravelId(), gross);
         gross = stormMinigameService.applyRewardModifier(travel.getTravelId(), gross);
         gross = obstacleMinigameService.applyRewardModifier(travel.getTravelId(), gross);
+        gross = treasureHuntMinigameService.applyRewardModifier(travel.getTravelId(), gross);
 
         BigDecimal arrivalFine = travel.getDockingFine() != null
                 ? travel.getDockingFine() : BigDecimal.ZERO;
@@ -381,6 +386,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                     ratMinigameService.consumeTravelSummary(travel.getTravelId()),
                     stormMinigameService.consumeTravelSummary(travel.getTravelId()),
                     obstacleMinigameService.consumeTravelSummary(travel.getTravelId()),
+                    treasureHuntMinigameService.consumeTravelSummary(travel.getTravelId()),
                     customsSummary,
                     regressSummary
             );

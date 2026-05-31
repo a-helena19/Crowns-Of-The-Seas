@@ -72,6 +72,10 @@ public class GameSessionWebSocketController {
         messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/obstacle-event", event);
     }
 
+    public void broadcastTreasureHuntMinigameEvent(String sessionId, TreasureHuntMinigameEvent event) {
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/treasure-hunt-event", event);
+    }
+
     public void broadcastCustomsInspectionResolved(String sessionId, CustomsInspectionPassEvent event) {
         messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/customs-resolved", event);
     }

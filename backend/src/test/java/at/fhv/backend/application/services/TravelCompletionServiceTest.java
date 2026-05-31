@@ -7,6 +7,7 @@ import at.fhv.backend.application.services.impl.travel.TravelArrivalServiceImpl;
 import at.fhv.backend.application.services.minigame.ObstacleMinigameService;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.minigame.StormMinigameService;
+import at.fhv.backend.application.services.minigame.TreasureHuntMinigameService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.RegressService;
@@ -291,6 +292,7 @@ class TravelCompletionServiceTest {
         @Mock private RatMinigameService ratMinigameService;
         @Mock private StormMinigameService stormMinigameService;
         @Mock private ObstacleMinigameService obstacleMinigameService;
+        @Mock private TreasureHuntMinigameService treasureHuntMinigameService;
         @Mock private CustomsService customsService;
         @Mock private RegressService regressService;
 
@@ -311,6 +313,7 @@ class TravelCompletionServiceTest {
                     ratMinigameService,
                     stormMinigameService,
                     obstacleMinigameService,
+                    treasureHuntMinigameService,
                     customsService,
                     regressService
             );
@@ -327,6 +330,10 @@ class TravelCompletionServiceTest {
             when(obstacleMinigameService.applyRewardModifier(any(UUID.class), any(BigDecimal.class)))
                     .thenAnswer(inv -> inv.getArgument(1));
             when(obstacleMinigameService.consumeTravelSummary(any(UUID.class)))
+                    .thenReturn(null);
+            when(treasureHuntMinigameService.applyRewardModifier(any(UUID.class), any(BigDecimal.class)))
+                    .thenAnswer(inv -> inv.getArgument(1));
+            when(treasureHuntMinigameService.consumeTravelSummary(any(UUID.class)))
                     .thenReturn(null);
 
             // Default: no customs inspection result (fine = 0)

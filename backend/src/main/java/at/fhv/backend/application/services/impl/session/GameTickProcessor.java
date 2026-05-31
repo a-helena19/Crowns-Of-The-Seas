@@ -5,6 +5,7 @@ import at.fhv.backend.application.services.cargo.CustomsService;
 import at.fhv.backend.application.services.minigame.ObstacleMinigameService;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.minigame.StormMinigameService;
+import at.fhv.backend.application.services.minigame.TreasureHuntMinigameService;
 import at.fhv.backend.application.services.pilotstrike.PilotStrikeService;
 import at.fhv.backend.application.services.port.PortQueryService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
@@ -66,6 +67,7 @@ public class GameTickProcessor {
     private final RatMinigameService ratMinigameService;
     private final StormMinigameService stormMinigameService;
     private final ObstacleMinigameService obstacleMinigameService;
+    private final TreasureHuntMinigameService treasureHuntMinigameService;
     private final CustomsService customsService;
     private final UnloadingStartService unloadingStartService;
     private final CustomsCheckCompletionService customsCheckCompletionService;
@@ -94,6 +96,7 @@ public class GameTickProcessor {
                              RatMinigameService ratMinigameService,
                              StormMinigameService stormMinigameService,
                              ObstacleMinigameService obstacleMinigameService,
+                             TreasureHuntMinigameService treasureHuntMinigameService,
                              PilotStrikeService pilotStrikeService,
                              CustomsService customsService,
                              UnloadingStartService unloadingStartService,
@@ -113,6 +116,7 @@ public class GameTickProcessor {
         this.ratMinigameService = ratMinigameService;
         this.stormMinigameService = stormMinigameService;
         this.obstacleMinigameService = obstacleMinigameService;
+        this.treasureHuntMinigameService = treasureHuntMinigameService;
         this.pilotStrikeService = pilotStrikeService;
         this.customsService = customsService;
         this.unloadingStartService = unloadingStartService;
@@ -227,6 +231,10 @@ public class GameTickProcessor {
                 continue;
             }
             obstacleMinigameService.tryTriggerForTravel(travel, sessionId);
+            if (travelPauseService.isTravelPaused(travel.getTravelId())) {
+                continue;
+            }
+            treasureHuntMinigameService.tryTriggerForTravel(travel, sessionId);
             if (travelPauseService.isTravelPaused(travel.getTravelId())) {
                 continue;
             }

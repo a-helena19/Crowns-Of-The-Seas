@@ -6,6 +6,7 @@ import at.fhv.backend.application.services.travel.DockingPenaltyService;
 import at.fhv.backend.application.services.minigame.ObstacleMinigameService;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.minigame.StormMinigameService;
+import at.fhv.backend.application.services.minigame.TreasureHuntMinigameService;
 import at.fhv.backend.domain.model.cargo.exception.CargoCapacityExceededException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotAvailableException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
@@ -40,6 +41,7 @@ public class TravelRestController {
     private final RatMinigameService ratMinigameService;
     private final StormMinigameService stormMinigameService;
     private final ObstacleMinigameService obstacleMinigameService;
+    private final TreasureHuntMinigameService treasureHuntMinigameService;
 
     public TravelRestController(StartTravelService startTravelService,
                                 FuelEstimateService fuelEstimateService,
@@ -47,7 +49,8 @@ public class TravelRestController {
                                 DockingPenaltyService dockingPenaltyService,
                                 RatMinigameService ratMinigameService,
                                 StormMinigameService stormMinigameService,
-                                ObstacleMinigameService obstacleMinigameService) {
+                                ObstacleMinigameService obstacleMinigameService,
+                                TreasureHuntMinigameService treasureHuntMinigameService) {
         this.startTravelService = startTravelService;
         this.fuelEstimateService = fuelEstimateService;
         this.travelDurationEstimateService = travelDurationEstimateService;
@@ -55,6 +58,7 @@ public class TravelRestController {
         this.ratMinigameService = ratMinigameService;
         this.stormMinigameService = stormMinigameService;
         this.obstacleMinigameService = obstacleMinigameService;
+        this.treasureHuntMinigameService = treasureHuntMinigameService;
     }
 
     @PostMapping("/fuel-estimate")
@@ -158,6 +162,8 @@ public class TravelRestController {
                 .or(() -> stormMinigameService.getPendingEvent(travelId, playerId, sessionId)
                         .map(ResponseEntity::ok))
                 .or(() -> obstacleMinigameService.getPendingEvent(travelId, playerId, sessionId)
+                        .map(ResponseEntity::ok))
+                .or(() -> treasureHuntMinigameService.getPendingEvent(travelId, playerId, sessionId)
                         .map(ResponseEntity::ok))
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
