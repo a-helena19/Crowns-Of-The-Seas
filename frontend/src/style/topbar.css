@@ -1,6 +1,7 @@
 .topbar-container {
     display: flex;
     align-items: center;
+    max-width: 100vw;
     padding: 0 16px;
     background: linear-gradient(180deg, #3b2618 0%, #2b1a10 100%);
     border-bottom: 3px solid #6a462a;

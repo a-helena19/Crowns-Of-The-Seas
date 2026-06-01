@@ -1,6 +1,6 @@
 .bottom-bar {
     box-sizing: border-box;
-    width: 100%;
+    width: 100vw;
     min-height: 168px;
 
     background: linear-gradient(180deg, #2d1d12 0%, #20140d 100%);
@@ -24,10 +24,12 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    width: 100%;
+    max-width: 100%;
+    flex-wrap: nowrap;
 }
 
 .ship-status-list {
+    display: flex;
     flex: 1;
     min-width: 0;
     flex-wrap: nowrap;
