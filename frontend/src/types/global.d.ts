@@ -25,4 +25,5 @@ interface Window {
     __activeRatEventId?: string;
     __activeStormEventId?: string;
     __activeObstacleEventId?: string;
+    __activeTreasureHuntEventId?: string;
 }

@@ -31,7 +31,11 @@ export default function LeaderboardOverlay({ sessionId, currentUserId }: Props) 
         if (!sessionId) return;
         load();
         const id = window.setInterval(load, 5000);
-        return () => window.clearInterval(id);
+        window.addEventListener("player-balance-updated", load);
+        return () => {
+            window.clearInterval(id);
+            window.removeEventListener("player-balance-updated", load);
+        };
     }, [sessionId]);
 
     const sorted = useMemo(() => entries, [entries]);

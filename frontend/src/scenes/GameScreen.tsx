@@ -24,8 +24,11 @@ import type { StormMinigameEventPayload, StormMinigameResult } from "../minigame
 import ObstacleMinigameOverlay from "../minigame/obstacle/ObstacleMinigameOverlay.tsx";
 import type { ObstacleMinigameEventPayload, ObstacleMinigameResult } from "../minigame/obstacle/ObstacleMinigameTypes.ts";
 import { ObstacleRouteViewResolver } from "../minigame/obstacle/ObstacleRouteViewResolver.ts";
+import TreasureHuntMinigameOverlay from "../minigame/treasureHunt/TreasureHuntMinigameOverlay.tsx";
+import type { TreasureHuntMinigameEventPayload, TreasureHuntMinigameResult } from "../minigame/treasureHunt/TreasureHuntMinigameTypes.ts";
 import { minigameSessionManager } from "../minigame/MinigameSessionManager.ts";
 import EventNotificationDialog from "../components/EventNotificationDialog.tsx";
+import TreasureHuntPromptDialog from "../components/TreasureHuntPromptDialog.tsx";
 import ratImage from "../assets/Rat.png";
 import stormDialogImage from "../assets/minigame/storm/DialogPic.png";
 import obstacleDialogImage from "../assets/minigame/obstaclegame/wrack.png";
@@ -71,12 +74,18 @@ interface OwnedShipSummary {
 interface PendingShipEvent {
     eventId: string;
     label: string;
-    kind: "rats" | "storm" | "obstacle" | "arrival_docking";
+    kind: "rats" | "storm" | "obstacle" | "treasure_hunt" | "arrival_docking" | "smuggle" | "customs";
 }
+
+type ActiveMinigameEventPayload =
+    | RatMinigameEventPayload
+    | StormMinigameEventPayload
+    | ObstacleMinigameEventPayload
+    | TreasureHuntMinigameEventPayload;
 
 export default function GameScreen() {
     const [view, setView] = useState<"map" | "marketplace" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office">("map");
-    const [marketplaceReturnView, setMarketplaceReturnView] = useState<"map" | "portProfile">("map");
+    const [marketplaceReturnView] = useState<"map" | "portProfile">("map");
     const [overlayReturnView, setOverlayReturnView] = useState<"map" | "marketplace">("map");
     const viewRef = useRef(view);
     const [selectedPort, setSelectedPort] = useState<{ id: string; name: string; x: number; y: number } | null>(null);
@@ -124,7 +133,11 @@ export default function GameScreen() {
     const [activeStormMinigame, setActiveStormMinigame] = useState<StormMinigameEventPayload | null>(null);
     const [obstacleEventOffer, setObstacleEventOffer] = useState<ObstacleMinigameEventPayload | null>(null);
     const [activeObstacleMinigame, setActiveObstacleMinigame] = useState<ObstacleMinigameEventPayload | null>(null);
+    const [treasureHuntEventOffer, setTreasureHuntEventOffer] = useState<TreasureHuntMinigameEventPayload | null>(null);
+    const [activeTreasureHuntMinigame, setActiveTreasureHuntMinigame] = useState<TreasureHuntMinigameEventPayload | null>(null);
     const [openedEventId, setOpenedEventId] = useState<string | null>(null);
+    const [smuggleOpened, setSmuggleOpened] = useState(false);
+    const [customsOpened, setCustomsOpened] = useState(false);
 
     const pendingSmuggleRef = useRef<{
         offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
@@ -140,6 +153,7 @@ export default function GameScreen() {
     const ownedShipsRef = useRef<OwnedShipSummary[]>([]);
     const [focusShipIdForCargoManagement, setFocusShipIdForCargoManagement] = useState<string | null>(null);
     const [openCargoForShipId, setOpenCargoForShipId] = useState<string | null>(null);
+    const minigameFallbackRequests = useRef<Set<string>>(new Set());
 
     const authToken = localStorage.getItem("auth_token") ?? "";
 
@@ -386,6 +400,119 @@ export default function GameScreen() {
     }, [loadOwnedShips]);
 
     useEffect(() => {
+        if (!playerId || !sessionId) return;
+
+        assignedCargos
+            .filter(entry => entry.travelId && !entry.paused)
+            .forEach(entry => {
+                if (entry.travelId) minigameFallbackRequests.current.delete(entry.travelId);
+            });
+
+        const hasKnownEvent = (entry: AssignedCargoEntry) =>
+            ratEventOffer?.travelId === entry.travelId
+            || stormEventOffer?.travelId === entry.travelId
+            || obstacleEventOffer?.travelId === entry.travelId
+            || treasureHuntEventOffer?.travelId === entry.travelId
+            || activeRatMinigame?.travelId === entry.travelId
+            || activeStormMinigame?.travelId === entry.travelId
+            || activeObstacleMinigame?.travelId === entry.travelId
+            || activeTreasureHuntMinigame?.travelId === entry.travelId;
+
+        const restoreEvent = (event: ActiveMinigameEventPayload) => {
+            if (event.eventType === "RATS") {
+                if (window.__activeRatEventId === event.eventId) return;
+                window.__activeRatEventId = event.eventId;
+                minigameSessionManager.startSession({
+                    minigameType: event.eventType,
+                    eventId: event.eventId,
+                    playerId: event.playerId,
+                    playerShipId: event.playerShipId,
+                    travelId: event.travelId,
+                });
+                setRatEventOffer(event);
+                return;
+            }
+
+            if (event.eventType === "STORM") {
+                if (window.__activeStormEventId === event.eventId) return;
+                window.__activeStormEventId = event.eventId;
+                const shipIconUrl = window.__latestShips?.find(s => s.playerShipId === event.playerShipId)?.iconUrl;
+                minigameSessionManager.startSession({
+                    minigameType: event.eventType,
+                    eventId: event.eventId,
+                    playerId: event.playerId,
+                    playerShipId: event.playerShipId,
+                    travelId: event.travelId,
+                });
+                setStormEventOffer({ ...event, shipIconUrl });
+                return;
+            }
+
+            if (event.eventType === "TREASURE_HUNT") {
+                if (window.__activeTreasureHuntEventId === event.eventId) return;
+                window.__activeTreasureHuntEventId = event.eventId;
+                const shipIconUrl = window.__latestShips?.find(s => s.playerShipId === event.playerShipId)?.iconUrl;
+                minigameSessionManager.startSession({
+                    minigameType: event.eventType,
+                    eventId: event.eventId,
+                    playerId: event.playerId,
+                    playerShipId: event.playerShipId,
+                    travelId: event.travelId,
+                });
+                setTreasureHuntEventOffer({ ...event, shipIconUrl });
+                return;
+            }
+
+            if (window.__activeObstacleEventId === event.eventId) return;
+            window.__activeObstacleEventId = event.eventId;
+            const shipIconUrl = window.__latestShips?.find(s => s.playerShipId === event.playerShipId)?.iconUrl;
+            const routeViewType = ObstacleRouteViewResolver.resolve(event);
+            minigameSessionManager.startSession({
+                minigameType: event.eventType,
+                eventId: event.eventId,
+                playerId: event.playerId,
+                playerShipId: event.playerShipId,
+                travelId: event.travelId,
+            });
+            setObstacleEventOffer({ ...event, shipIconUrl, routeViewType });
+        };
+
+        assignedCargos
+            .filter(entry => entry.phase === "en_route" && entry.paused && entry.travelId && !hasKnownEvent(entry))
+            .forEach(entry => {
+                const travelId = entry.travelId;
+                if (!travelId || minigameFallbackRequests.current.has(travelId)) return;
+                minigameFallbackRequests.current.add(travelId);
+
+                void fetch(`/api/travels/${travelId}/active-event?playerId=${playerId}&sessionId=${sessionId}`, {
+                    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+                })
+                    .then(async res => {
+                        if (res.status === 204) return;
+                        if (!res.ok) throw new Error(`Active event fallback failed: ${res.status}`);
+                        restoreEvent(await res.json() as ActiveMinigameEventPayload);
+                    })
+                    .catch(error => {
+                        minigameFallbackRequests.current.delete(travelId);
+                        console.error("Failed to restore active minigame event:", error);
+                    });
+            });
+    }, [
+        activeObstacleMinigame,
+        activeRatMinigame,
+        activeStormMinigame,
+        activeTreasureHuntMinigame,
+        assignedCargos,
+        authToken,
+        obstacleEventOffer,
+        playerId,
+        ratEventOffer,
+        sessionId,
+        stormEventOffer,
+        treasureHuntEventOffer,
+    ]);
+
+    useEffect(() => {
         if (view === "map" || view === "portProfile") {
             loadOwnedShips();
         }
@@ -443,10 +570,12 @@ export default function GameScreen() {
                 playerId: string;
                 totalReward: number;
                 baseReward: number;
+                newBalance?: number;
+                previousBalance?: number;
                 dockingFine?: number;
                 departureDockingFine?: number;
                 pilotageRefund?: number;
-                cargoRewards: { cargoId: string; cargoName: string; destinationPort: string; baseReward: number; bonusReward: number; actualReward: number; percentage: number; status: string; cargoType: string }[];
+                cargoRewards: { cargoId: string; cargoName: string; destinationPort: string; baseReward: number; bonusReward: number; actualReward: number; percentage: number; status: string; cargoType: string; playerShipId?: string }[];
                 customsSummary?: {
                     outcome: "CLEARED" | "HIDDEN" | "COOPERATED" | "BRIBE_SUCCESS" | "BRIBE_FAILED";
                     finePaid: number;
@@ -489,11 +618,21 @@ export default function GameScreen() {
                     failureReason?: string;
                     routeViewType?: "VIEW_A" | "VIEW_B";
                 };
+                treasureHuntMinigameSummary?: {
+                    triggered: boolean;
+                    result?: "SUCCESS" | "FAILED" | "DECLINED";
+                    bonusAmount?: number;
+                    penaltyAmount?: number;
+                    cargoLossPercent?: number;
+                };
             }>).detail;
             if (data.playerId !== playerId) return;
 
             audioEngine.playSfx('coinReward');
 
+            if (typeof data.newBalance === "number") {
+                window.dispatchEvent(new CustomEvent("player-balance-set", { detail: { balance: data.newBalance } }));
+            }
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
 
             setAssignedCargos(prev => {
@@ -520,6 +659,7 @@ export default function GameScreen() {
                         ratMinigameSummary: data.ratMinigameSummary,
                         stormMinigameSummary: data.stormMinigameSummary,
                         obstacleMinigameSummary: data.obstacleMinigameSummary,
+                        treasureHuntMinigameSummary: data.treasureHuntMinigameSummary,
                     };
                 });
                 return updated;
@@ -585,6 +725,7 @@ export default function GameScreen() {
             if (departureActiveRef.current) {
                 pendingSmuggleRef.current = offer;
             } else {
+                setSmuggleOpened(false);
                 setSmuggleOffer(offer);
             }
         };
@@ -658,6 +799,27 @@ export default function GameScreen() {
 
     useEffect(() => {
         const handler = (e: Event) => {
+            const data = (e as CustomEvent<TreasureHuntMinigameEventPayload>).detail;
+            if (data.playerId !== playerId) return;
+            if (window.__activeTreasureHuntEventId === data.eventId) return;
+            window.__activeTreasureHuntEventId = data.eventId;
+            const shipIconUrl = window.__latestShips?.find(s => s.playerShipId === data.playerShipId)?.iconUrl;
+            minigameSessionManager.startSession({
+                minigameType: data.eventType,
+                eventId: data.eventId,
+                playerId: data.playerId,
+                playerShipId: data.playerShipId,
+                travelId: data.travelId,
+            });
+            setTreasureHuntEventOffer({ ...data, shipIconUrl });
+        };
+
+        window.addEventListener("treasure-hunt-event", handler);
+        return () => window.removeEventListener("treasure-hunt-event", handler);
+    }, [playerId]);
+
+    useEffect(() => {
+        const handler = (e: Event) => {
             const data = (e as CustomEvent<CustomsInspectionPayload>).detail;
             if (data.playerId !== playerId) return;
             audioEngine.playSfx('notification');
@@ -666,6 +828,7 @@ export default function GameScreen() {
                     customsQueueRef.current.push(data);
                     return current;
                 }
+                setCustomsOpened(false);
                 return data;
             });
         };
@@ -723,7 +886,10 @@ export default function GameScreen() {
         const pending = pendingSmuggleRef.current;
         if (pending) {
             pendingSmuggleRef.current = null;
-            setTimeout(() => setSmuggleOffer(pending), 1000);
+            setTimeout(() => {
+                setSmuggleOpened(false);
+                setSmuggleOffer(pending);
+            }, 1000);
         }
     }, []);
 
@@ -1076,6 +1242,109 @@ export default function GameScreen() {
         setActiveObstacleMinigame(null);
     }, [activeObstacleMinigame, submitObstacleResult]);
 
+    const submitTreasureHuntResult = useCallback(async (payload: {
+        eventId: string;
+        travelId: string;
+        result: "SUCCESS" | "FAILED" | "DECLINED";
+        collectedTreasures: number;
+        requiredTreasures: number;
+        timeLeftSeconds: number;
+        timeLimitSeconds: number;
+    }) => {
+        const token = localStorage.getItem("auth_token") ?? "";
+        try {
+            const res = await fetch(`/api/minigames/treasure-hunt/result?playerId=${playerId}&sessionId=${sessionId}`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) return null;
+            return await res.json();
+        } catch {
+            return null;
+        }
+    }, [playerId, sessionId]);
+
+    const handleTreasureHuntEventAccept = useCallback(() => {
+        if (!treasureHuntEventOffer) return;
+        setActiveTreasureHuntMinigame(treasureHuntEventOffer);
+        setTreasureHuntEventOffer(null);
+        setOpenedEventId(null);
+    }, [treasureHuntEventOffer]);
+
+    const handleTreasureHuntEventDecline = useCallback(async () => {
+        if (!treasureHuntEventOffer) return;
+        const event = treasureHuntEventOffer;
+
+        minigameSessionManager.finishSession(event.eventId, "DECLINED");
+        window.__activeTreasureHuntEventId = undefined;
+        setTreasureHuntEventOffer(null);
+        setOpenedEventId(null);
+
+        await submitTreasureHuntResult({
+            eventId: event.eventId,
+            travelId: event.travelId,
+            result: "DECLINED",
+            collectedTreasures: 0,
+            requiredTreasures: event.requiredTreasures,
+            timeLeftSeconds: 0,
+            timeLimitSeconds: event.timeLimitSeconds,
+        });
+
+        const id = `treasure-hunt-decline-${Date.now()}`;
+        setMinigameStatusToasts(prev => [...prev, {
+            id,
+            success: true,
+            title: "Schatzjagd",
+            message: "Schatzjagd abgelehnt — Reise wird fortgesetzt",
+        }]);
+        setTimeout(() => {
+            setMinigameStatusToasts(prev => prev.filter(toast => toast.id !== id));
+        }, 2600);
+
+    }, [treasureHuntEventOffer, submitTreasureHuntResult]);
+
+    const handleTreasureHuntMinigameFinished = useCallback(async (result: TreasureHuntMinigameResult) => {
+        const eventId = result.eventId ?? activeTreasureHuntMinigame?.eventId;
+        const travelId = result.travelId ?? activeTreasureHuntMinigame?.travelId;
+
+        if (eventId) {
+            minigameSessionManager.finishSession(eventId, "COMPLETED");
+        }
+        window.__activeTreasureHuntEventId = undefined;
+        setActiveTreasureHuntMinigame(null);
+        setOpenedEventId(null);
+        setTreasureHuntEventOffer(null);
+
+        if (!eventId || !travelId) return;
+
+        await submitTreasureHuntResult({
+            eventId,
+            travelId,
+            result: result.result,
+            collectedTreasures: result.collectedTreasures,
+            requiredTreasures: result.requiredTreasures,
+            timeLeftSeconds: result.timeLeftSeconds,
+            timeLimitSeconds: result.timeLimitSeconds,
+        });
+
+        const success = result.result === "SUCCESS";
+        const id = `treasure-hunt-result-${Date.now()}`;
+        setMinigameStatusToasts(prev => [...prev, {
+            id,
+            success,
+            title: "Schatzjagd",
+            message: success ? "Schatzjagd erfolgreich" : "Schatzjagd fehlgeschlagen",
+        }]);
+        setTimeout(() => {
+            setMinigameStatusToasts(prev => prev.filter(toast => toast.id !== id));
+        }, 2600);
+
+    }, [activeTreasureHuntMinigame, submitTreasureHuntResult]);
+
     // Auto-complete loading phase
     const handleCustomsCooperate = useCallback(async () => {
         if (!customsInspection) return;
@@ -1114,6 +1383,7 @@ export default function GameScreen() {
     const handleCustomsDismiss = useCallback(() => {
         setCustomsInspection(() => {
             const next = customsQueueRef.current.shift();
+            if (next) setCustomsOpened(false);
             return next ?? null;
         });
     }, []);
@@ -1222,7 +1492,7 @@ export default function GameScreen() {
     }, [stompClient]);
 
     const isMinigameActive = Boolean(
-        showArrivalDocking || activeRatMinigame || activeStormMinigame || activeObstacleMinigame
+        showArrivalDocking || activeRatMinigame || activeStormMinigame || activeObstacleMinigame || activeTreasureHuntMinigame
     );
 
     const pendingEventsByShipId: Record<string, PendingShipEvent> = {};
@@ -1247,12 +1517,41 @@ export default function GameScreen() {
             kind: "obstacle",
         };
     }
+    if (treasureHuntEventOffer) {
+        pendingEventsByShipId[treasureHuntEventOffer.playerShipId] = {
+            eventId: treasureHuntEventOffer.eventId,
+            label: "Schatzjagd",
+            kind: "treasure_hunt",
+        };
+    }
     if (pendingArrivalDocking && !pendingEventsByShipId[pendingArrivalDocking.shipId]) {
         pendingEventsByShipId[pendingArrivalDocking.shipId] = {
             eventId: pendingArrivalDocking.travelId ?? pendingArrivalDocking.cargoId,
             label: "Manuelles Anlegen",
             kind: "arrival_docking",
         };
+    }
+    if (smuggleOffer && !smuggleOpened && !pendingEventsByShipId[smuggleOffer.playerShipId]) {
+        pendingEventsByShipId[smuggleOffer.playerShipId] = {
+            eventId: smuggleOffer.offerId,
+            label: "Schmuggelangebot",
+            kind: "smuggle",
+        };
+    }
+    if (customsInspection && !customsOpened && !pendingEventsByShipId[customsInspection.playerShipId]) {
+        pendingEventsByShipId[customsInspection.playerShipId] = {
+            eventId: customsInspection.inspectionId,
+            label: "Zollkontrolle",
+            kind: "customs",
+        };
+    }
+
+    const urgentShipIds: Record<string, boolean> = {};
+    if (smuggleOffer && !smuggleOpened) {
+        urgentShipIds[smuggleOffer.playerShipId] = true;
+    }
+    if (customsInspection && !customsOpened) {
+        urgentShipIds[customsInspection.playerShipId] = true;
     }
 
     return (
@@ -1327,6 +1626,29 @@ export default function GameScreen() {
                         connected={isConnected}
                         ships={ownedShips}
                         pendingEventsByShipId={pendingEventsByShipId}
+                        onOpenOffice={() => {
+                            audioEngine.playSfx('door');
+                            setOverlayReturnView("map");
+                            setView("office");
+                        }}
+                        onOpenOrders={() => {
+                            audioEngine.playSfx('door');
+                            setFocusShipIdForCargoManagement(null);
+                            setOverlayReturnView("map");
+                            setView("cargoManagement");
+                        }}
+                        onOpenShipMarket={() => {
+                            audioEngine.playSfx('door');
+                            setOverlayReturnView("map");
+                            setView("broker");
+                        }}
+                        onOpenFreightMarket={() => {
+                            audioEngine.playSfx('door');
+                            setOpenCargoForShipId(null);
+                            setOverlayReturnView("map");
+                            setView("harbor");
+                        }}
+                        urgentShipIds={urgentShipIds}
                         onShipCardClick={(ship) => {
                             audioEngine.playSfx('buttonClick');
                             const pendingEvent = pendingEventsByShipId[ship.id];
@@ -1334,6 +1656,14 @@ export default function GameScreen() {
                                 if (pendingEvent.kind === "arrival_docking" && pendingArrivalDocking && pendingArrivalDocking.shipId === ship.id) {
                                     setPendingArrivalDocking(null);
                                     setShowArrivalDocking(pendingArrivalDocking);
+                                    return;
+                                }
+                                if (pendingEvent.kind === "smuggle") {
+                                    setSmuggleOpened(true);
+                                    return;
+                                }
+                                if (pendingEvent.kind === "customs") {
+                                    setCustomsOpened(true);
                                     return;
                                 }
                                 setOpenedEventId(pendingEvent.eventId);
@@ -1350,11 +1680,6 @@ export default function GameScreen() {
                                 setOverlayReturnView("map");
                                 setView("cargoManagement");
                             }
-                        }}
-                        onOpenMarketplace={() => {
-                            setOverlayReturnView("map");
-                            setMarketplaceReturnView(view === "portProfile" ? "portProfile" : "map");
-                            setView("marketplace");
                         }}
                     />
                 </div>
@@ -1393,7 +1718,7 @@ export default function GameScreen() {
                 />
             ))}
 
-            {smuggleOffer && (
+            {smuggleOffer && smuggleOpened && (
                 <SmuggleOfferDialog
                     offerId={smuggleOffer.offerId}
                     portId={smuggleOffer.portId}
@@ -1495,6 +1820,13 @@ export default function GameScreen() {
                 />
             )}
 
+            {treasureHuntEventOffer && openedEventId === treasureHuntEventOffer.eventId && (
+                <TreasureHuntPromptDialog
+                    onAccept={handleTreasureHuntEventAccept}
+                    onDecline={handleTreasureHuntEventDecline}
+                />
+            )}
+
             {activeRatMinigame && (
                 <RatMinigameOverlay
                     config={{
@@ -1535,7 +1867,21 @@ export default function GameScreen() {
                 />
             )}
 
-            {customsInspection && (
+            {activeTreasureHuntMinigame && (
+                <TreasureHuntMinigameOverlay
+                    config={{
+                        eventId: activeTreasureHuntMinigame.eventId,
+                        travelId: activeTreasureHuntMinigame.travelId,
+                        timeLimitSeconds: activeTreasureHuntMinigame.timeLimitSeconds,
+                        requiredTreasures: activeTreasureHuntMinigame.requiredTreasures,
+                        pirateCount: activeTreasureHuntMinigame.pirateCount,
+                        shipIconUrl: activeTreasureHuntMinigame.shipIconUrl,
+                    }}
+                    onFinished={handleTreasureHuntMinigameFinished}
+                />
+            )}
+
+            {customsInspection && customsOpened && (
                 <CustomsInspectionDialog
                     inspectionId={customsInspection.inspectionId}
                     travelId={customsInspection.travelId}

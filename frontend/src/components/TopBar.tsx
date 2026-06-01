@@ -78,7 +78,11 @@ export default function TopBar() {
         };
         load();
         const id = window.setInterval(load, 5000);
-        return () => window.clearInterval(id);
+        window.addEventListener('player-balance-updated', load);
+        return () => {
+            window.clearInterval(id);
+            window.removeEventListener('player-balance-updated', load);
+        };
     }, [sessionId]);
 
     useEffect(() => {
@@ -116,8 +120,19 @@ export default function TopBar() {
 
         fetchPlayerData();
 
+        const applyDirectBalance = (e: Event) => {
+            const detail = (e as CustomEvent<{ balance?: number }>).detail;
+            if (detail && typeof detail.balance === 'number') {
+                setBalance(detail.balance);
+            }
+        };
+
         window.addEventListener('player-balance-updated', fetchPlayerData);
-        return () => window.removeEventListener('player-balance-updated', fetchPlayerData);
+        window.addEventListener('player-balance-set', applyDirectBalance);
+        return () => {
+            window.removeEventListener('player-balance-updated', fetchPlayerData);
+            window.removeEventListener('player-balance-set', applyDirectBalance);
+        };
     }, [playerId, sessionId, token]);
 
     useEffect(() => {

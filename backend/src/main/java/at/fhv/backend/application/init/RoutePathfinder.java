@@ -29,24 +29,24 @@ public final class RoutePathfinder {
         hub("Biskaya Hub", 40.1, 31.5);
         hub("Santos Hub", 34.3, 73.2);
 
-        edge("Santos", "Santos Hub", wp(33.9, 71.4), wp(34.3, 73.2));
-        edge("Santos Hub", "Second Atlantic Crossroad", wp(34.3, 73.2), wp(38.0, 63.8));
-        edge("Second Atlantic Crossroad", "Atlantic Crossroads", wp(38.0, 63.8), wp(34.9, 48.6));
-        edge("Second Atlantic Crossroad", "Kapstadt",  wp(38.0, 63.8), wp(50.0, 77.1));
-        edge("Hamburg", "Biskaya Hub", wp(47.1, 28.6), wp(40.1, 31.5));
-        edge("Biskaya Hub", "Atlantic Crossroads", wp(40.1, 31.5), wp(34.9, 48.6));
-        edge("Atlantic Crossroads", "Los Angeles", wp(34.9, 48.6), wp(25.5, 51.8), wp(25.0, 57.6), wp(15.4, 49.2), wp(15.4, 40.2));
-        edge("Santos", "Santos Hub", wp(33.9, 71.4), wp(34.3, 73.2));
-        edge("Santos Hub", "Kapstadt", wp(34.3, 73.2), wp(50.0, 77.1));
-        edge("Atlantic Crossroads", "New York", wp(34.9, 48.6), wp(26.1, 39.7));
-        edge("Mumbai", "Biskaya Hub", wp(63.7, 50.0), wp(57.6, 52.1), wp(56.1, 53.3), wp(53.0, 41.4), wp(47.5, 38.1), wp(42.3, 40.1), wp(39.9, 31.3), wp(40.1, 31.5));
-        edge("Mumbai", "Indian Ocean Hub", wp(63.7, 50.0), wp(63.2, 53.3), wp(64.8, 62.9));
-        edge("Singapur", "Indian Ocean Hub",  wp(70.9, 58.0), wp(73.4, 62.3), wp(77.8, 63.3), wp(76.7, 66.2), wp(64.8, 62.9));
-        edge("Singapur", "Phillipinen Hub", wp(70.9, 58.0), wp(74.4, 54.3), wp(82.6, 55.7));
-        edge("Sydney", "Indian Ocean Hub", wp(82.1, 82.2), wp(74.4, 82.9),  wp(64.8, 62.9));
-        edge("Sydney", "Phillipinen Hub", wp(82.1, 82.2), wp(85.9, 72.8), wp(82.6, 55.7));
-        edge("Shanghai", "Phillipinen Hub", wp(75.0, 43.0), wp(82.6, 55.7));
-        edge("Kapstadt", "Indian Ocean Hub", wp(50.0, 77.1), wp(50.2, 80.4), wp(56.3, 77.5), wp(64.8, 62.9));
+        edgeWithWeight("Santos", "Santos Hub", 1.84, wp(33.9, 71.4), wp(34.3, 73.2));
+        edgeWithWeight("Santos Hub", "Second Atlantic Crossroad", 10.10, wp(34.3, 73.2), wp(38.0, 63.8));
+        edgeWithWeight("Second Atlantic Crossroad", "Atlantic Crossroads", 15.51, wp(38.0, 63.8), wp(34.9, 48.6));
+        edgeWithWeight("Second Atlantic Crossroad", "Kapstadt", 17.91, wp(38.0, 63.8), wp(50.0, 77.1));
+        edgeWithWeight("Hamburg", "Biskaya Hub", 7.58, wp(47.1, 28.6), wp(40.1, 31.5));
+        edgeWithWeight("Biskaya Hub", "Atlantic Crossroads", 17.87, wp(40.1, 31.5), wp(34.9, 48.6));
+        edgeWithWeight("Atlantic Crossroads", "Los Angeles", 37.51, wp(34.9, 48.6), wp(25.5, 51.8), wp(25.0, 57.6), wp(15.4, 49.2), wp(15.4, 40.2));
+        edgeWithWeight("Santos Hub", "Kapstadt", 16.18, wp(34.3, 73.2), wp(50.0, 77.1));
+        edgeWithWeight("Atlantic Crossroads", "New York", 14.52, wp(34.9, 48.6), wp(26.1, 39.7));
+        edgeWithWeight("Mumbai", "Biskaya Hub", 42.06, wp(63.7, 50.0), wp(57.6, 52.1), wp(56.1, 53.3), wp(53.0, 41.4), wp(47.5, 38.1), wp(42.3, 40.1), wp(39.9, 31.3), wp(40.1, 31.5));
+        edgeWithWeight("Mumbai", "Indian Ocean Hub", 13.07, wp(63.7, 50.0), wp(63.2, 53.3), wp(64.8, 62.9));
+        edgeWithWeight("Singapur", "Indian Ocean Hub", 24.94, wp(70.9, 58.0), wp(73.4, 62.3), wp(77.8, 63.3), wp(76.7, 66.2), wp(64.8, 62.9));
+        edgeWithWeight("Singapur", "Phillipinen Hub", 13.41, wp(70.9, 58.0), wp(74.4, 54.3), wp(82.6, 55.7));
+        edgeWithWeight("Sydney", "Indian Ocean Hub", 31.92, wp(82.1, 82.2), wp(74.4, 82.9), wp(64.8, 62.9));
+        edgeWithWeight("Sydney", "Phillipinen Hub", 29.55, wp(82.1, 82.2), wp(85.9, 72.8), wp(82.6, 55.7));
+        edgeWithWeight("Shanghai", "Phillipinen Hub", 14.80, wp(75.0, 43.0), wp(82.6, 55.7));
+        edgeWithWeight("Los Angeles", "Phillipinen Hub", 38.0, wp(15.4, 40.2), wp(0.0, 47.0), wp(100.0, 50.0), wp(82.6, 55.7));
+        edgeWithWeight("Kapstadt", "Indian Ocean Hub", 26.95, wp(50.0, 77.1), wp(50.2, 80.4), wp(56.3, 77.5), wp(64.8, 62.9));
 
         routeDesc("Hamburg", "Mumbai",     "Reise über den Suezkanal. Oft erlebt man hier schlechte Wetterbedingungen.");
         routeDesc("Hamburg", "Singapur",   "Lange Passage durch Mittelmeer und Suezkanal. Erfahrene Kapitäne empfohlen.");
@@ -62,6 +62,9 @@ public final class RoutePathfinder {
         routeDesc("Singapur", "Shanghai",  "Geschäftige Route durch das Südchinesische Meer.");
         routeDesc("Shanghai", "Sydney",    "Pazifische Inselroute mit traumhaften Sonnenuntergängen.");
         routeDesc("Singapur", "Sydney",    "Reise durch die indonesische Inselwelt nach Australien.");
+        routeDesc("Los Angeles", "Shanghai", "Transpazifische Passage — quer über den offenen Pazifik nach Ostasien.");
+        routeDesc("Los Angeles", "Singapur", "Lange Transpazifik-Route über den Phillipinen-Hub.");
+        routeDesc("Los Angeles", "Sydney",   "Pazifik-Überquerung Richtung Australien.");
 
     }
 
@@ -95,24 +98,12 @@ public final class RoutePathfinder {
         return new double[]{x, y};
     }
 
-    private static void edge(String a, String b, double[]... waypoints) {
+    private static void edgeWithWeight(String a, String b, double weight, double[]... waypoints) {
         List<double[]> wpList = Arrays.asList(waypoints);
-        double weight = pathLength(nodePos(a), wpList, nodePos(b));
         GRAPH.computeIfAbsent(a, k -> new ArrayList<>()).add(new Edge(b, wpList, weight));
         List<double[]> reversed = new ArrayList<>(wpList);
         Collections.reverse(reversed);
         GRAPH.computeIfAbsent(b, k -> new ArrayList<>()).add(new Edge(a, reversed, weight));
-    }
-
-    private static double pathLength(double[] from, List<double[]> waypoints, double[] to) {
-        double total = 0;
-        double[] prev = from;
-        for (double[] wp : waypoints) {
-            total += Math.hypot(wp[0] - prev[0], wp[1] - prev[1]);
-            prev = wp;
-        }
-        total += Math.hypot(to[0] - prev[0], to[1] - prev[1]);
-        return total;
     }
 
     private RoutePathfinder() {
@@ -195,7 +186,7 @@ public final class RoutePathfinder {
     }
 
     private static double heuristic(double[] a, double[] b) {
-        return Math.hypot(a[0] - b[0], a[1] - b[1]);
+        return 0.0;
     }
 
     private static List<String> reconstructPath(Map<String, String> cameFrom, String current) {

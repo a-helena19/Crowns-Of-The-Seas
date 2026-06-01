@@ -4,6 +4,7 @@ import at.fhv.backend.application.services.cargo.CustomsService;
 import at.fhv.backend.application.services.minigame.ObstacleMinigameService;
 import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.minigame.StormMinigameService;
+import at.fhv.backend.application.services.minigame.TreasureHuntMinigameService;
 import at.fhv.backend.application.services.smuggle.SmuggleService;
 import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.RegressService;
@@ -17,6 +18,7 @@ import at.fhv.backend.domain.model.customs.CustomsInspection;
 import at.fhv.backend.domain.model.customs.CustomsInspectionOutcome;
 import at.fhv.backend.domain.model.customs.RegressFine;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
+import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.domain.model.port.Port;
 import at.fhv.backend.domain.model.port.PortId;
 import at.fhv.backend.domain.model.port.PortRepository;
@@ -61,6 +63,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
     private final RegressService regressService;
     private final StormMinigameService stormMinigameService;
     private final ObstacleMinigameService obstacleMinigameService;
+    private final TreasureHuntMinigameService treasureHuntMinigameService;
+    private final at.fhv.backend.domain.model.player.SessionPlayerRepository sessionPlayerRepository;
 
     public CargoUnloadingPhaseServiceImpl(
             SessionCargoRepository sessionCargoRepository,
@@ -75,8 +79,10 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             RatMinigameService ratMinigameService,
             StormMinigameService stormMinigameService,
             ObstacleMinigameService obstacleMinigameService,
+            TreasureHuntMinigameService treasureHuntMinigameService,
             CustomsService customsService,
-            RegressService regressService) {
+            RegressService regressService,
+            SessionPlayerRepository sessionPlayerRepository) {
         this.sessionCargoRepository = sessionCargoRepository;
         this.playerShipRepository = playerShipRepository;
         this.gameSessionRepository = gameSessionRepository;
@@ -89,8 +95,10 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         this.ratMinigameService = ratMinigameService;
         this.stormMinigameService = stormMinigameService;
         this.obstacleMinigameService = obstacleMinigameService;
+        this.treasureHuntMinigameService = treasureHuntMinigameService;
         this.customsService = customsService;
         this.regressService = regressService;
+        this.sessionPlayerRepository = sessionPlayerRepository;
     }
 
     @Override
@@ -112,7 +120,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         }
 
         markCargosAsDelivered(travel, cargosForPlayer);
-        BigDecimal cargoReward = rewardCalculationService.calculateTotalReward(travel, cargosForPlayer);
+        BigDecimal cargoReward = rewardCalculationService.calculateTotalReward(travel, cargosForThisTravel);
 
         CustomsInspection inspection = customsService.consumeInspection(travel.getTravelId());
         boolean smuggleConfiscated = inspection != null
@@ -142,6 +150,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         gross = ratMinigameService.applyRewardModifier(travel.getTravelId(), gross);
         gross = stormMinigameService.applyRewardModifier(travel.getTravelId(), gross);
         gross = obstacleMinigameService.applyRewardModifier(travel.getTravelId(), gross);
+        gross = treasureHuntMinigameService.applyRewardModifier(travel.getTravelId(), gross);
 
         BigDecimal arrivalFine = travel.getDockingFine() != null
                 ? travel.getDockingFine() : BigDecimal.ZERO;
@@ -171,31 +180,23 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         BigDecimal newBalance = BigDecimal.ZERO;
 
         UUID playerId = travel.getPlayerId();
-        GameSession session = gameSessionRepository.findById(travel.getSessionId()).orElse(null);
-        if (session != null) {
-            ISessionPlayer player = null;
-            for (ISessionPlayer p : session.getPlayers()) {
-                if (p.getUserId().equals(playerId)) {
-                    player = p;
-                    break;
-                }
-            }
+        ISessionPlayer player = sessionPlayerRepository
+                .findByUserIdAndSessionId(playerId, travel.getSessionId())
+                .orElse(null);
+        if (player != null) {
+            BigDecimal currentBalance = player.getBalance();
+            previousBalance = currentBalance.add(customsAlreadyDeducted);
 
-            if (player != null) {
-                BigDecimal currentBalance = player.getBalance();
-                previousBalance = currentBalance.add(customsAlreadyDeducted);
-
-                if (payout.compareTo(BigDecimal.ZERO) > 0) {
-                    player.addBalance(payout);
-                }
-                newBalance = player.getBalance();
-                gameSessionRepository.save(session);
+            if (payout.compareTo(BigDecimal.ZERO) > 0) {
+                player.addBalance(payout);
             }
+            newBalance = player.getBalance();
+            sessionPlayerRepository.save(player);
         }
 
         RegressSummary regressSummary = toRegressSummary(regressFine);
         sendUnloadingCompleteEvent(
-                travel, playerId, cargosForPlayer,
+                travel, playerId, cargosForThisTravel,
                 previousBalance, newBalance,
                 acceptedOffer, bonusPerCargo, totalBonus,
                 payout, departureFine, arrivalFine, pilotageRefund,
@@ -295,14 +296,28 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
             Port destinationPort = portRepository.findById(destinationPortId).orElse(null);
             String destinationPortName = destinationPort != null ? destinationPort.getName() : "Unknown Port";
 
+            System.out.println("[CargoUnloading][Breakdown] travelId=" + travel.getTravelId()
+                    + " playerShipId=" + travel.getPlayerShipId()
+                    + " destPort=" + travel.getDestinationPortId()
+                    + " candidates=" + cargosForPlayer.size());
+
             List<CargoRewardBreakdown> cargoRewards = new ArrayList<>();
             for (SessionCargo sessionCargo : cargosForPlayer) {
+                boolean isForThisShip = sessionCargo.getAssignedPlayerShipId() != null
+                        && sessionCargo.getAssignedPlayerShipId().equals(travel.getPlayerShipId());
                 boolean isForThisPort = sessionCargo.getDestinationPortId()
                         .equals(travel.getDestinationPortId());
                 boolean isDeliveredOrExpired =
                         sessionCargo.getCargoStatus() == CargoStatus.DELIVERED
                                 || sessionCargo.getCargoStatus() == CargoStatus.EXPIRED;
-                if (!(isForThisPort && isDeliveredOrExpired)) {
+
+                System.out.println("[CargoUnloading][Breakdown]   cargo=" + sessionCargo.getId()
+                        + " assignedShip=" + sessionCargo.getAssignedPlayerShipId()
+                        + " destPort=" + sessionCargo.getDestinationPortId()
+                        + " status=" + sessionCargo.getCargoStatus()
+                        + " -> ship=" + isForThisShip + " port=" + isForThisPort + " ok=" + isDeliveredOrExpired);
+
+                if (!(isForThisShip && isForThisPort && isDeliveredOrExpired)) {
                     continue;
                 }
 
@@ -325,7 +340,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                         bonus,
                         percentage,
                         sessionCargo.getCargoStatus().toString(),
-                        sessionCargo.getCargoType().toString()
+                        sessionCargo.getCargoType().toString(),
+                        travel.getPlayerShipId().toString()
                 ));
             }
 
@@ -347,7 +363,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                         BigDecimal.ZERO,
                         smuggleConfiscated ? 0 : 100,
                         smuggleStatus,
-                        "SMUGGLE"
+                        "SMUGGLE",
+                        travel.getPlayerShipId().toString()
                 ));
             }
 
@@ -381,14 +398,25 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
                     ratMinigameService.consumeTravelSummary(travel.getTravelId()),
                     stormMinigameService.consumeTravelSummary(travel.getTravelId()),
                     obstacleMinigameService.consumeTravelSummary(travel.getTravelId()),
+                    treasureHuntMinigameService.consumeTravelSummary(travel.getTravelId()),
                     customsSummary,
                     regressSummary
             );
 
-            webSocketController.broadcastTravelComplete(
-                    travel.getSessionId().toString(),
-                    event
-            );
+            final String broadcastSessionId = travel.getSessionId().toString();
+            final TravelCompleteEvent broadcastEvent = event;
+            if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+                org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                        new org.springframework.transaction.support.TransactionSynchronization() {
+                            @Override
+                            public void afterCommit() {
+                                webSocketController.broadcastTravelComplete(broadcastSessionId, broadcastEvent);
+                            }
+                        }
+                );
+            } else {
+                webSocketController.broadcastTravelComplete(broadcastSessionId, broadcastEvent);
+            }
         } catch (Exception e) {
             System.err.println("Error sending unloading complete event: " + e.getMessage());
             e.printStackTrace();

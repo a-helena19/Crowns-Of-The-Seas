@@ -8,6 +8,7 @@ export interface CargoRewardEntry {
     percentage: number;
     status: string;
     cargoType: string;
+    playerShipId?: string;
 }
 
 export interface CustomsSummary {
@@ -79,6 +80,13 @@ export interface AssignedCargoEntry {
         conditionDamagePercent?: number;
         failureReason?: string;
         routeViewType?: "VIEW_A" | "VIEW_B";
+    };
+    treasureHuntMinigameSummary?: {
+        triggered: boolean;
+        result?: "SUCCESS" | "FAILED" | "DECLINED";
+        bonusAmount?: number;
+        penaltyAmount?: number;
+        cargoLossPercent?: number;
     };
     customsSummary?: CustomsSummary;
     regressSummary?: RegressSummary;
