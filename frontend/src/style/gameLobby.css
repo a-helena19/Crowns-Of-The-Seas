@@ -78,6 +78,9 @@
     border: 1px solid rgba(120, 90, 40, 0.35);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 
+    position: relative;
+    z-index: 100;
+
     opacity: 0;
     animation: panelReveal 0.6s ease-out 1.2s forwards;
 }
@@ -129,6 +132,9 @@
     background: #f4ecd2;
     border: 1px solid rgba(120, 90, 40, 0.35);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+    position: relative;
+    z-index: 100;
 }
 
 .lobby-header h1 {
