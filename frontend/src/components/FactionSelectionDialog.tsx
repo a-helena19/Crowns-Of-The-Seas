@@ -109,13 +109,16 @@ export default function FactionSelectionDialog({
     };
 
     useEffect(() => {
-        if (isReady || hasTimedOut) return;
+        if (hasTimedOut) return;
 
         const timer = setInterval(() => {
             setTimeRemaining(prev => {
                 if (prev <= 1) {
                     clearInterval(timer);
                     setHasTimedOut(true);
+                    if (isReady || readySubmittedRef.current) {
+                        return 0;
+                    }
                     void (async () => {
                         const factionToSubmit =
                             currentlySelectedFaction ??

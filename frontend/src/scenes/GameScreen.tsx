@@ -2,12 +2,14 @@ import { useEffect, useCallback, useState, useRef } from "react";
 import TopBar from "../components/TopBar.tsx";
 import Game from "../Game.tsx";
 import BottomBar from "../components/BottomBar.tsx";
+import QuickNavSidebar from "../components/QuickNavSidebar.tsx";
 import HarborScene from "../scenes/HarborScene.tsx";
 import ShipBrokerScene from "../scenes/ShipBrokerScene.tsx";
 import OfficeScene from "../scenes/OfficeScene.tsx";
 import PortProfileScreen from "../scenes/PortProfileScreen.tsx";
 import MarketplaceScene from "./MarketplaceScene.tsx";
 import { useGameSessionWebSocket } from "../hooks/useGameSessionWebSocket.ts";
+import "../style/gameScreen.css";
 import CargoManagementScreen from "../scenes/CargoManagementScreen";
 import DockingMiniGame from "../scenes/DockingMiniGame";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
@@ -35,7 +37,6 @@ import GameOverScreen from "../components/GameOverScreen";
 import audioEngine from '../audio/AudioEngine';
 
 export const TOP_BAR_HEIGHT = '9vh';
-export const BOTTOM_BAR_HEIGHT = '20vh';
 
 interface CustomsInspectionPayload {
     inspectionId: string;
@@ -96,6 +97,18 @@ export default function GameScreen() {
     const userData = localStorage.getItem('crowns_user');
     const playerId: string | null = userData ? JSON.parse(userData).id : null;
 
+    // Einmalig auslesen, ob dieser GameScreen über einen Wieder-Beitritt betreten
+    // wurde. Der Marker wird sofort entfernt, damit ein späterer Reload nicht
+    // fälschlich erneut eine "wieder beigetreten"-Benachrichtigung auslöst.
+    const rejoinUserIdRef = useRef<string | null>(null);
+    if (rejoinUserIdRef.current === null) {
+        const marker = sessionStorage.getItem('rejoinUserId');
+        if (marker) {
+            rejoinUserIdRef.current = marker;
+            sessionStorage.removeItem('rejoinUserId');
+        }
+    }
+
     const [gameOver, setGameOver] = useState(false);
 
     const [assignedCargos, setAssignedCargos] = useState<AssignedCargoEntry[]>([]);
@@ -135,6 +148,7 @@ export default function GameScreen() {
     const [pendingArrivalDocking, setPendingArrivalDocking] = useState<AssignedCargoEntry | null>(null);
     const [activePilotStrikes, setActivePilotStrikes] = useState<Record<string, { portName: string }>>({});
     const [strikeNotice, setStrikeNotice] = useState<string | null>(null);
+    const [leftNotice, setLeftNotice] = useState<{ text: string; kind: 'left' | 'rejoined' } | null>(null);
     const [ownedShips, setOwnedShips] = useState<OwnedShipSummary[]>([]);
     const ownedShipsRef = useRef<OwnedShipSummary[]>([]);
     const [focusShipIdForCargoManagement, setFocusShipIdForCargoManagement] = useState<string | null>(null);
@@ -1399,17 +1413,42 @@ export default function GameScreen() {
         return () => clearInterval(interval);
     }, [assignedCargos]);
 
-    const handleSessionUpdate = useCallback((event: { type?: string; status?: string }) => {
+    const handleSessionUpdate = useCallback((event: { type?: string; status?: string; affectedPlayerName?: string; affectedUserId?: string }) => {
         if (event.status === "FINISHED" || event.type === "GAME_FINISHED") {
             audioEngine.playSfx('gameOver');
             audioEngine.fadeOutMusic(2000);
             setTimeout(() => setGameOver(true), 500);
+            return;
         }
-    }, []);
+
+        // Eigene Aktionen nicht als Banner anzeigen.
+        const isAboutSelf = event.affectedUserId != null && event.affectedUserId === playerId;
+
+        if (event.type === "PLAYER_LEFT" && !isAboutSelf) {
+            const name = event.affectedPlayerName?.trim();
+            setLeftNotice({
+                text: name ? `${name} hat die Session verlassen.` : "Ein Mitspieler hat die Session verlassen.",
+                kind: 'left',
+            });
+            audioEngine.playSfx('buttonClick');
+            setTimeout(() => setLeftNotice(null), 6000);
+        }
+
+        if (event.type === "PLAYER_REJOINED" && !isAboutSelf) {
+            const name = event.affectedPlayerName?.trim();
+            setLeftNotice({
+                text: name ? `${name} ist der Session wieder beigetreten.` : "Ein Mitspieler ist wieder beigetreten.",
+                kind: 'rejoined',
+            });
+            audioEngine.playSfx('buttonClick');
+            setTimeout(() => setLeftNotice(null), 6000);
+        }
+    }, [playerId]);
 
     const { isConnected, stompClient } = useGameSessionWebSocket({
         sessionId,
         onSessionUpdate: handleSessionUpdate,
+        rejoinUserId: rejoinUserIdRef.current,
     });
 
     useEffect(() => {
@@ -1581,34 +1620,38 @@ export default function GameScreen() {
                 <PortProfileScreen port={selectedPort} onClose={() => {setView("map"); audioEngine.playSfx('buttonClick');}} />
             )}
             {(view === "map" || view === "portProfile") && !isMinigameActive && (
+                <QuickNavSidebar
+                    onOpenOffice={() => {
+                        audioEngine.playSfx('door');
+                        setOverlayReturnView("map");
+                        setView("office");
+                    }}
+                    onOpenOrders={() => {
+                        audioEngine.playSfx('door');
+                        setFocusShipIdForCargoManagement(null);
+                        setOverlayReturnView("map");
+                        setView("cargoManagement");
+                    }}
+                    onOpenShipMarket={() => {
+                        audioEngine.playSfx('door');
+                        setOverlayReturnView("map");
+                        setView("broker");
+                    }}
+                    onOpenFreightMarket={() => {
+                        audioEngine.playSfx('door');
+                        setOpenCargoForShipId(null);
+                        setOverlayReturnView("map");
+                        setView("harbor");
+                    }}
+                />
+            )}
+            {(view === "map" || view === "portProfile") && !isMinigameActive && (
                 <div className="bottom">
                     <BottomBar
                         send={send}
                         connected={isConnected}
                         ships={ownedShips}
                         pendingEventsByShipId={pendingEventsByShipId}
-                        onOpenOffice={() => {
-                            audioEngine.playSfx('door');
-                            setOverlayReturnView("map");
-                            setView("office");
-                        }}
-                        onOpenOrders={() => {
-                            audioEngine.playSfx('door');
-                            setFocusShipIdForCargoManagement(null);
-                            setOverlayReturnView("map");
-                            setView("cargoManagement");
-                        }}
-                        onOpenShipMarket={() => {
-                            audioEngine.playSfx('door');
-                            setOverlayReturnView("map");
-                            setView("broker");
-                        }}
-                        onOpenFreightMarket={() => {
-                            audioEngine.playSfx('door');
-                            setOpenCargoForShipId(null);
-                            setOverlayReturnView("map");
-                            setView("harbor");
-                        }}
                         urgentShipIds={urgentShipIds}
                         onShipCardClick={(ship) => {
                             audioEngine.playSfx('buttonClick');
@@ -1704,6 +1747,23 @@ export default function GameScreen() {
                             cursor: "pointer",
                             fontSize: 16,
                         }}
+                        aria-label="Schließen"
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
+
+            {leftNotice && (
+                <div className={`player-notice ${leftNotice.kind}`} role="status">
+                    <span className="player-notice-icon" aria-hidden="true">
+                        {leftNotice.kind === 'rejoined' ? '↺' : '⊘'}
+                    </span>
+                    <span className="player-notice-text">{leftNotice.text}</span>
+                    <button
+                        type="button"
+                        className="player-notice-close"
+                        onClick={() => setLeftNotice(null)}
                         aria-label="Schließen"
                     >
                         ×

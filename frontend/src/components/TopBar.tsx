@@ -28,6 +28,7 @@ export default function TopBar() {
     const [endingToastHiding, setEndingToastHiding] = useState(false);
     const { settings, setMusicEnabled, setSfxEnabled, setMusicVolume, setSfxVolume } = useAudioSettings();
     const [audioMenuOpen, setAudioMenuOpen] = useState(false);
+    const [leaving, setLeaving] = useState(false);
     const audioMenuRef = useRef<HTMLDivElement | null>(null);
 
     const factionWrapperRef = useRef<HTMLDivElement | null>(null);
@@ -37,6 +38,28 @@ export default function TopBar() {
     const token = localStorage.getItem('auth_token') ?? '';
     const sessionData = sessionStorage.getItem('currentSession');
     const sessionId = sessionData ? JSON.parse(sessionData).id : null;
+
+    // Session aktiv verlassen: Backend benachrichtigen (entfernt Spieler, weist
+    // ggf. neuen Host zu, beendet leere Session), danach Musik stoppen und in die
+    // Lobby navigieren. Der GameScreen wird dadurch ausgehängt, wodurch der
+    // WebSocket-Hook die Verbindung trennt – es kommen keine Session-Events mehr an.
+    const handleLeaveSession = async () => {
+        if (leaving) return;
+        setLeaving(true);
+        audioEngine.playSfx('buttonClick');
+        try {
+            if (sessionId) {
+                await sessionApi.leaveSession(sessionId);
+            }
+        } catch (err) {
+            // Auch bei einem Fehler navigieren wir, damit der Spieler nicht festhängt.
+            console.warn('Konnte Session nicht sauber verlassen:', err);
+        } finally {
+            audioEngine.stopMusic();
+            sessionStorage.removeItem('currentSession');
+            navigate('/lobby');
+        }
+    };
 
     // leaderboard
     const [lbOpen, setLbOpen] = useState(false);
@@ -427,12 +450,8 @@ export default function TopBar() {
 
                             <div className="audio-popover-divider" />
 
-                            <button className="audio-popover-leave" onClick={() => {
-                                audioEngine.stopMusic();
-                                audioEngine.playSfx('buttonClick');
-                                navigate('/lobby');
-                            }}>
-                                Zurück zur Lobby
+                            <button className="audio-popover-leave" disabled={leaving} onClick={handleLeaveSession}>
+                                {leaving ? 'Verlasse …' : 'Zurück zur Lobby'}
                             </button>
 
                         </div>

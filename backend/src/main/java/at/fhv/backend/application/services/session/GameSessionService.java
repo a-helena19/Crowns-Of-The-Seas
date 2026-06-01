@@ -15,7 +15,10 @@ public interface GameSessionService {
     SessionDTO startGame(UUID sessionId, UUID hostUserId);
     SessionDTO changeTickRate(UUID sessionId, UUID hostUserId, int tickRateSeconds);
     List<SessionDTO> getActiveSessionsForUser(UUID userId);
+    SessionDTO getSession(UUID sessionId);
     SessionDTO leaveSession(UUID sessionId, UUID userId);
+    SessionDTO rejoinSession(UUID sessionId, UUID userId);
+    void notifyPlayerRejoined(UUID sessionId, UUID userId);
     void assignPlayerFaction(UUID sessionId, UUID userId, String factionName);
     Optional<PlayerFaction> getPlayerFaction(UUID sessionId, UUID userId);
     void assignHomePort(UUID sessionId, UUID userId, UUID portId);

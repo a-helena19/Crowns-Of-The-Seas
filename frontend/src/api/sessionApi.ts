@@ -87,6 +87,16 @@ export const sessionApi = {
         return response.data;
     },
 
+    async rejoinSession(sessionId: string): Promise<SessionDTO> {
+        const response = await apiClient.post<SessionDTO>(`/${sessionId}/rejoin`, {});
+        return response.data;
+    },
+
+    async getActiveSessions(): Promise<SessionDTO[]> {
+        const response = await apiClient.get<SessionDTO[]>('/my');
+        return response.data;
+    },
+
     async assignPlayerFaction(
         sessionId: string,
         userId: string,

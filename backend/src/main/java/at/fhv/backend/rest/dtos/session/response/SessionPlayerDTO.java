@@ -11,5 +11,6 @@ public record SessionPlayerDTO(
         String playerName,
         boolean isHost,
         String faction,
-        UUID homePortId
+        UUID homePortId,
+        boolean disconnected
 ) {}

@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSessionContext } from '../context/useSessionContext';
 import { useAudioSettings } from '../audio/AudioSettingsContext';
+import { sessionApi } from '../api/sessionApi';
+import type { SessionDTO } from '../types/session';
 import audioEngine from '../audio/AudioEngine';
 import '../style/gameLobby.css';
 
@@ -29,6 +31,70 @@ export default function GameLobby() {
         gameCode: '',
         playerName: user?.username || ''
     });
+
+    // Aktive Sessions des Spielers (zum Wiederbeitreten)
+    const [activeSessions, setActiveSessions] = useState<SessionDTO[]>([]);
+    const [rejoiningId, setRejoiningId] = useState<string | null>(null);
+
+    const loadActiveSessions = useCallback(async () => {
+        try {
+            const sessions = await sessionApi.getActiveSessions();
+            setActiveSessions(sessions);
+        } catch (err) {
+            console.warn('Konnte aktive Sessions nicht laden:', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadActiveSessions();
+        // Regelmäßig aktualisieren, damit Status/Spielerzahl aktuell bleiben.
+        const id = window.setInterval(loadActiveSessions, 5000);
+        return () => window.clearInterval(id);
+    }, [loadActiveSessions]);
+
+    // In eine aktive Session zurückkehren. Bei laufender Session (RUNNING) wird der
+    // Spieler über das Backend wieder als verbunden markiert und direkt ins Spiel
+    // geleitet; LOBBY/FACTION_SELECTION führen in den Wartebildschirm.
+    const handleRejoin = async (session: SessionDTO) => {
+        if (rejoiningId) return;
+        setRejoiningId(session.id);
+        setError('');
+        try {
+            let target = session;
+            if (session.status === 'RUNNING') {
+                target = await sessionApi.rejoinSession(session.id);
+            }
+
+            audioEngine.playSfx('buttonClick');
+            sessionStorage.setItem('currentSession', JSON.stringify(target));
+
+            const me = target.players.find(p => p.userId === user?.id);
+            sessionStorage.setItem('userRole', me?.isHost ? 'host' : 'guest');
+
+            if (target.status === 'RUNNING') {
+                // Marker setzen, damit der GameScreen beim WS-Subscribe signalisiert,
+                // dass dies ein Wieder-Beitritt ist (→ andere Spieler werden benachrichtigt).
+                sessionStorage.setItem('rejoinUserId', user?.id ?? '');
+                navigate('/game');
+            } else {
+                navigate('/session-waiting');
+            }
+        } catch (err: unknown) {
+            const axiosError = err as { response?: { status?: number; data?: string } };
+            if (axiosError.response?.status === 403) {
+                showError('Du warst nicht Teil dieser Session.');
+            } else if (axiosError.response?.status === 409) {
+                showError('Diese Session läuft nicht mehr.');
+            } else if (axiosError.response?.status === 404) {
+                showError('Diese Session existiert nicht mehr.');
+                loadActiveSessions();
+            } else {
+                showError('Wiederbeitritt fehlgeschlagen. Bitte versuche es erneut.');
+            }
+        } finally {
+            setRejoiningId(null);
+        }
+    };
 
     function showError(msg: string) {
         audioEngine.playSfx('error');
@@ -130,9 +196,12 @@ export default function GameLobby() {
     };
 
     useEffect(() => {
-        if (audioEngine.userHasInteracted) {
-            audioEngine.playMusic('lobby');
-        }
+        // playMusic immer aufrufen – auch ohne vorherige Interaktion und auch im
+        // stummgeschalteten Zustand. Bei deaktivierter Musik merkt sich die
+        // AudioEngine nur den gewünschten Track ('lobby'), ohne ein Audio-Element
+        // zu erzeugen. Dadurch wird die Musik korrekt gestartet, sobald sie wieder
+        // aktiviert wird – z.B. nach einem Reload im stummgeschalteten Zustand.
+        audioEngine.playMusic('lobby');
         return () => {};
     }, []);
 
@@ -240,7 +309,7 @@ export default function GameLobby() {
                     </div>
                 </div>
 
-                <div className="lobby-content">
+                <div className="lobby-content lobby-content-split">
                     <div className="form-section">
                         <div className="tabs">
                             <button
@@ -361,6 +430,60 @@ export default function GameLobby() {
                             </form>
                         )}
                     </div>
+
+                    <aside className="active-sessions-section">
+                        <h2 className="active-sessions-title">Deine aktiven Spiele</h2>
+
+                        {activeSessions.length === 0 ? (
+                            <p className="active-sessions-empty">
+                                Du hast aktuell keine aktiven Sessions. Erstelle eine neue Session
+                                oder tritt mit einem Code bei.
+                            </p>
+                        ) : (
+                            <ul className="active-sessions-list">
+                                {activeSessions.map(s => {
+                                    const me = s.players.find(p => p.userId === user?.id);
+                                    const connectedCount = s.players.filter(p => !p.disconnected).length;
+                                    const statusLabel =
+                                        s.status === 'RUNNING' ? 'Läuft'
+                                            : s.status === 'FACTION_SELECTION' ? 'Fraktionswahl'
+                                                : s.status === 'LOBBY' ? 'Lobby'
+                                                    : s.status;
+                                    const isRejoining = rejoiningId === s.id;
+
+                                    return (
+                                        <li key={s.id} className="active-session-card">
+                                            <div className="active-session-head">
+                                                <span className="active-session-code">{s.gameCode}</span>
+                                                <span className={`active-session-status status-${s.status.toLowerCase()}`}>
+                                                    {statusLabel}
+                                                </span>
+                                            </div>
+
+                                            <div className="active-session-meta">
+                                                <span>👥 {connectedCount}/{s.maxPlayers} aktiv</span>
+                                                <span>📅 Tag {s.currentTick}/{s.totalTicks}</span>
+                                                {me?.disconnected && (
+                                                    <span className="active-session-left-tag">verlassen</span>
+                                                )}
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                className="active-session-rejoin-btn"
+                                                onClick={() => handleRejoin(s)}
+                                                disabled={isRejoining || !!rejoiningId}
+                                            >
+                                                {isRejoining ? 'Trete bei …'
+                                                    : s.status === 'RUNNING' ? 'Spiel fortsetzen'
+                                                        : 'Zur Session'}
+                                            </button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </aside>
                 </div>
             </div>
         </div>

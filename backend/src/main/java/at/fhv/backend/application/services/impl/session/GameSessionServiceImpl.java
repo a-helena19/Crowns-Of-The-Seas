@@ -58,6 +58,15 @@ public class GameSessionServiceImpl implements GameSessionService {
     }
 
     private void broadcastSessionUpdate(GameSession session, String type) {
+        broadcastSessionUpdate(session, type, null, null);
+    }
+
+    private void broadcastSessionUpdate(GameSession session, String type, String affectedPlayerName) {
+        broadcastSessionUpdate(session, type, affectedPlayerName, null);
+    }
+
+    private void broadcastSessionUpdate(GameSession session, String type,
+                                        String affectedPlayerName, UUID affectedUserId) {
         SessionUpdateEvent event = new SessionUpdateEvent(
                 session.getId(),
                 session.getGameCode(),
@@ -73,9 +82,12 @@ public class GameSessionServiceImpl implements GameSessionService {
                                         ? session.getPlayerFactions().get(p.getUserId()).name()
                                         : null,
                                 session.getPlayerHomePorts().get(p.getUserId()),
-                                session.getReadyPlayers().contains(p.getUserId())))
+                                session.getReadyPlayers().contains(p.getUserId()),
+                                session.isPlayerDisconnected(p.getUserId())))
                         .collect(Collectors.toList()),
-                type
+                type,
+                affectedPlayerName,
+                affectedUserId
         );
         webSocketController.broadcastSessionUpdate(session.getId().toString(), event);
     }
@@ -90,9 +102,20 @@ public class GameSessionServiceImpl implements GameSessionService {
     }
 
     @Override
+    @Transactional
     public SessionDTO joinSession(String gameCode, UUID userId, String playerName) {
         GameSession session = gameSessionRepository.findByGameCode(gameCode)
                 .orElseThrow(() -> new SessionNotFoundException(gameCode));
+
+        // War der Spieler bereits Teil dieser Session (z.B. nach dem Verlassen einer
+        // laufenden Partie)? Dann ist dies ein Wieder-Beitritt: Daten bleiben erhalten.
+        if (session.isPlayerInSession(userId)) {
+            return rejoinSession(session.getId(), userId);
+        }
+
+        // Neuer Spieler: regulärer Beitritt (nur in LOBBY erlaubt – addPlayer wirft
+        // andernfalls die passende Exception, sodass Fremde keiner laufenden Session
+        // beitreten können).
         ISessionPlayer player = new BaseSessionPlayer(userId, session.getId(), playerName, false);
         session.addPlayer(player);
         SessionDTO savedSession = sessionDTOMapper.sessionToDTO(gameSessionRepository.save(session));
@@ -138,31 +161,99 @@ public class GameSessionServiceImpl implements GameSessionService {
     }
 
     @Override
+    public SessionDTO getSession(UUID sessionId) {
+        GameSession session = gameSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new SessionNotFoundException(sessionId));
+        return sessionDTOMapper.sessionToDTO(session);
+    }
+
+    @Override
     @Transactional
     public SessionDTO leaveSession(UUID sessionId, UUID userId) {
         GameSession session = gameSessionRepository.findByIdWithLock(sessionId)
                 .orElseThrow(() -> new SessionNotFoundException(sessionId));
 
-        boolean wasHost = session.getPlayers().stream()
-                .anyMatch(p -> p.getUserId().equals(userId) && p.isHost());
+        // Namen des verlassenden Spielers merken (für die Benachrichtigung).
+        String leavingPlayerName = session.getPlayers().stream()
+                .filter(p -> p.getUserId().equals(userId))
+                .map(ISessionPlayer::getPlayerName)
+                .findFirst()
+                .orElse(null);
 
-        session.removePlayer(userId);
+        boolean wasHost = session.getHostUserId().equals(userId);
 
-        if (session.getPlayers().isEmpty()) {
+        // Spieler als "getrennt" markieren – funktioniert auch in einer laufenden
+        // Session. Der Spieler bleibt mit allen Daten (Fraktion, Heimathafen,
+        // Kontostand) erhalten, ebenso seine Schiffe & Cargos, damit er später
+        // wieder beitreten kann.
+        session.leave(userId);
+
+        // Kein verbundener Spieler mehr übrig → Session beenden und Tick stoppen.
+        if (session.getConnectedPlayerCount() == 0) {
+            gameTickScheduler.stopForSession(session.getId());
             gameSessionRepository.deleteById(session.getId());
             return null;
         }
 
+        // Host hat verlassen → ersten verbundenen Spieler zum neuen Host machen.
         if (wasHost) {
-            ISessionPlayer newHost = session.getPlayers().get(0);
-            session.makePlayerHost(newHost.getUserId());
+            session.getPlayers().stream()
+                    .filter(p -> session.isPlayerConnected(p.getUserId()))
+                    .findFirst()
+                    .ifPresent(newHost -> session.makePlayerHost(newHost.getUserId()));
         }
 
         SessionDTO savedSession = sessionDTOMapper.sessionToDTO(gameSessionRepository.save(session));
 
-        broadcastSessionUpdate(session, "PLAYER_LEFT");
+        // Verbleibende Spieler benachrichtigen, dass der Spieler die Session verlassen hat.
+        broadcastSessionUpdate(session, "PLAYER_LEFT", leavingPlayerName, userId);
 
         return savedSession;
+    }
+
+    @Override
+    @Transactional
+    public SessionDTO rejoinSession(UUID sessionId, UUID userId) {
+        GameSession session = gameSessionRepository.findByIdWithLock(sessionId)
+                .orElseThrow(() -> new SessionNotFoundException(sessionId));
+
+        // rejoin() prüft selbst: Session muss RUNNING sein und der Spieler muss
+        // vorher bereits Teil der Session gewesen sein (Fremde können einer
+        // laufenden Session nicht beitreten → PlayerNotFoundException).
+        session.rejoin(userId);
+
+        SessionDTO savedSession = sessionDTOMapper.sessionToDTO(gameSessionRepository.save(session));
+
+        // Hinweis: Das PLAYER_REJOINED-Event wird NICHT hier gesendet, sondern erst,
+        // wenn der zurückkehrende Client tatsächlich per WebSocket subscribed ist
+        // (siehe notifyPlayerRejoined / GameSessionWebSocketController). Andernfalls
+        // würde die Nachricht gesendet, bevor irgendein Client sie empfangen kann
+        // (STOMP-Topics haben kein Replay).
+
+        return savedSession;
+    }
+
+    @Override
+    public void notifyPlayerRejoined(UUID sessionId, UUID userId) {
+        GameSession session = gameSessionRepository.findById(sessionId)
+                .orElse(null);
+        if (session == null) return;
+
+        // Nur benachrichtigen, wenn der Spieler tatsächlich (wieder) verbunden ist.
+        if (!session.isPlayerConnected(userId)) return;
+
+        String rejoiningPlayerName = session.getPlayers().stream()
+                .filter(p -> p.getUserId().equals(userId))
+                .map(ISessionPlayer::getPlayerName)
+                .findFirst()
+                .orElse(null);
+
+        // Andere Spieler benachrichtigen, dass der Spieler wieder beigetreten ist.
+        broadcastSessionUpdate(session, "PLAYER_REJOINED", rejoiningPlayerName, userId);
+
+        // Aktuellen Spielstand (Schiffspositionen) sofort senden, damit der
+        // wiederbeigetretene Client umgehend den aktuellen Stand sieht.
+        gameTickScheduler.triggerImmediateBroadcast(sessionId);
     }
 
     @Override

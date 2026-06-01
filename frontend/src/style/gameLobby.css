@@ -78,6 +78,9 @@
     border: 1px solid rgba(120, 90, 40, 0.35);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 
+    position: relative;
+    z-index: 100;
+
     opacity: 0;
     animation: panelReveal 0.6s ease-out 1.2s forwards;
 }
@@ -115,7 +118,7 @@
 }
 
 .lobby-container {
-    max-width: 960px;
+    max-width: 1040px;
     margin: 0 auto;
 }
 
@@ -129,6 +132,9 @@
     background: #f4ecd2;
     border: 1px solid rgba(120, 90, 40, 0.35);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+    position: relative;
+    z-index: 100;
 }
 
 .lobby-header h1 {
@@ -701,4 +707,165 @@
 .lobby-menu-logout:hover {
     background: rgba(139, 46, 31, 0.08);
     border-color: rgba(139, 46, 31, 0.5);
+}
+/* ===== Aktive Sessions (Wiederbeitreten) ===== */
+.lobby-content-split {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+}
+
+.active-sessions-section {
+    background: rgba(244, 236, 210, 0.95);
+    border: 1px solid rgba(120, 90, 40, 0.35);
+    padding: 28px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+    opacity: 0;
+    animation: panelReveal 0.6s ease-out 1.8s forwards;
+}
+
+.active-sessions-title {
+    font-family: var(--font-game);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #3a2f1a;
+    margin: 0 0 20px 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(120, 90, 40, 0.35);
+}
+
+.active-sessions-empty {
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    color: #7a6a4a;
+    font-style: italic;
+    margin: 0;
+}
+
+.active-sessions-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.active-session-card {
+    border: 1px solid rgba(120, 90, 40, 0.35);
+    background: #fbf6e6;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.active-session-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.active-session-code {
+    font-family: var(--font-game);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    color: #3a2f1a;
+}
+
+.active-session-status {
+    font-family: var(--font-game);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 2px;
+    white-space: nowrap;
+}
+
+.active-session-status.status-running {
+    background: #2f5d3a;
+    color: #eafbe9;
+}
+
+.active-session-status.status-lobby,
+.active-session-status.status-faction_selection {
+    background: #8a6d2f;
+    color: #fdf6e3;
+}
+
+.active-session-status.status-finished {
+    background: #6b6b6b;
+    color: #f0f0f0;
+}
+
+.active-session-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: #5f5436;
+}
+
+.active-session-left-tag {
+    font-family: var(--font-game);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #8a3a2f;
+    border: 1px solid #8a3a2f;
+    padding: 2px 8px;
+    border-radius: 2px;
+}
+
+.active-session-rejoin-btn {
+    font-family: var(--font-game);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 11px 16px;
+
+    background: #533c1d;
+    color: #ffffff;
+    border: 1px solid #2a1408;
+    border-bottom: 3px solid #2a1408;
+    border-radius: 0;
+
+    cursor: pointer;
+    transition: all 0.15s ease;
+    margin-top: 2px;
+}
+
+.active-session-rejoin-btn:hover:not(:disabled) {
+    background: #6d4f25;
+    transform: translateY(-1px);
+}
+
+.active-session-rejoin-btn:active:not(:disabled) {
+    transform: translateY(1px);
+    border-bottom-width: 1px;
+}
+
+.active-session-rejoin-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .lobby-content-split {
+        grid-template-columns: 1fr;
+    }
+
+    .active-sessions-section {
+        padding: 20px;
+    }
 }

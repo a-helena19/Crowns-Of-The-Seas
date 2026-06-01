@@ -17,6 +17,7 @@ export interface SessionPlayerDTO {
     isHost: boolean;
     faction: string | null;
     homePortId: string | null;
+    disconnected: boolean;
 }
 
 // Request DTOs
@@ -40,10 +41,11 @@ export interface StartGameRequest {
 }
 
 // Status Type (not enum due to erasableSyntaxOnly)
-export type SessionStatus = "LOBBY" | "RUNNING" | "FINISHED";
+export type SessionStatus = "LOBBY" | "FACTION_SELECTION" | "RUNNING" | "FINISHED";
 
 export const SESSION_STATUS = {
     LOBBY: "LOBBY" as SessionStatus,
+    FACTION_SELECTION: "FACTION_SELECTION" as SessionStatus,
     RUNNING: "RUNNING" as SessionStatus,
     FINISHED: "FINISHED" as SessionStatus
 } as const;

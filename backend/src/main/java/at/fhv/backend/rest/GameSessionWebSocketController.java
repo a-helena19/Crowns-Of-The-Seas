@@ -1,23 +1,65 @@
 package at.fhv.backend.rest;
 
+import at.fhv.backend.application.services.impl.session.GameTickScheduler;
+import at.fhv.backend.application.services.session.GameSessionService;
 import at.fhv.backend.rest.dtos.websocket.*;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
+
+import java.util.Map;
+import java.util.UUID;
 
 @Controller
 public class GameSessionWebSocketController {
 
     private final SimpMessagingTemplate messagingTemplate;
+    private final GameTickScheduler gameTickScheduler;
+    private final GameSessionService gameSessionService;
 
-    public GameSessionWebSocketController(SimpMessagingTemplate messagingTemplate) {
+    public GameSessionWebSocketController(SimpMessagingTemplate messagingTemplate,
+                                          @Lazy GameTickScheduler gameTickScheduler,
+                                          @Lazy GameSessionService gameSessionService) {
         this.messagingTemplate = messagingTemplate;
+        this.gameTickScheduler = gameTickScheduler;
+        this.gameSessionService = gameSessionService;
     }
 
     @MessageMapping("/session/{sessionId}/subscribe")
-    public void subscribeToSession(@DestinationVariable String sessionId) {
-        // Just subscribe, backend will push updates when events happen
+    public void subscribeToSession(@DestinationVariable String sessionId,
+                                   @Payload(required = false) Map<String, Object> payload) {
+        UUID sessionUuid;
+        try {
+            sessionUuid = UUID.fromString(sessionId);
+        } catch (Exception e) {
+            return; // Ungültige ID – ignorieren.
+        }
+
+        // Sobald ein Client subscribed ist, sofort den aktuellen Spielstand
+        // (Schiffspositionen) senden, damit nicht bis zum nächsten Tick eine leere
+        // Karte angezeigt wird.
+        try {
+            gameTickScheduler.triggerImmediateBroadcast(sessionUuid);
+        } catch (Exception e) {
+            // Subscription bleibt unberührt.
+        }
+
+        // Handelt es sich um einen Wieder-Beitritt? Dann jetzt – wo der Client
+        // garantiert subscribed ist – die anderen Spieler benachrichtigen.
+        if (payload != null) {
+            Object rejoinedUserId = payload.get("rejoinedUserId");
+            if (rejoinedUserId != null) {
+                try {
+                    gameSessionService.notifyPlayerRejoined(
+                            sessionUuid, UUID.fromString(rejoinedUserId.toString()));
+                } catch (Exception e) {
+                    // Benachrichtigung ist best-effort; Fehler nicht eskalieren.
+                }
+            }
+        }
     }
 
     public void broadcastSessionUpdate(String sessionId, SessionUpdateEvent event) {
