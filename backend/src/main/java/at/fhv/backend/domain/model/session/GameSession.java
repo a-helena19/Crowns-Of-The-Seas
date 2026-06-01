@@ -127,6 +127,15 @@ public class GameSession {
         playerReadyStatus.remove(userId);
     }
 
+    public void leave(UUID userId) {
+        boolean removed = players.removeIf(p -> p.getUserId().equals(userId));
+        if (!removed)
+            throw new PlayerNotFoundException(userId);
+        playerFactions.remove(userId);
+        playerHomePorts.remove(userId);
+        playerReadyStatus.remove(userId);
+    }
+
     public void makePlayerHost(UUID userId) {
         for (ISessionPlayer player : this.players) {
             player.setHost(false);

@@ -122,6 +122,7 @@ export default function GameScreen() {
     const [pendingArrivalDocking, setPendingArrivalDocking] = useState<AssignedCargoEntry | null>(null);
     const [activePilotStrikes, setActivePilotStrikes] = useState<Record<string, { portName: string }>>({});
     const [strikeNotice, setStrikeNotice] = useState<string | null>(null);
+    const [leftNotice, setLeftNotice] = useState<string | null>(null);
     const [ownedShips, setOwnedShips] = useState<OwnedShipSummary[]>([]);
     const ownedShipsRef = useRef<OwnedShipSummary[]>([]);
     const [focusShipIdForCargoManagement, setFocusShipIdForCargoManagement] = useState<string | null>(null);
@@ -1129,11 +1130,19 @@ export default function GameScreen() {
         return () => clearInterval(interval);
     }, [assignedCargos]);
 
-    const handleSessionUpdate = useCallback((event: { type?: string; status?: string }) => {
+    const handleSessionUpdate = useCallback((event: { type?: string; status?: string; affectedPlayerName?: string }) => {
         if (event.status === "FINISHED" || event.type === "GAME_FINISHED") {
             audioEngine.playSfx('gameOver');
             audioEngine.fadeOutMusic(2000);
             setTimeout(() => setGameOver(true), 500);
+            return;
+        }
+
+        if (event.type === "PLAYER_LEFT") {
+            const name = event.affectedPlayerName?.trim();
+            setLeftNotice(name ? `${name} hat die Session verlassen.` : "Ein Mitspieler hat die Session verlassen.");
+            audioEngine.playSfx('buttonClick');
+            setTimeout(() => setLeftNotice(null), 6000);
         }
     }, []);
 
@@ -1371,6 +1380,27 @@ export default function GameScreen() {
                     <button
                         type="button"
                         onClick={() => setStrikeNotice(null)}
+                        style={{
+                            marginLeft: 12,
+                            background: "transparent",
+                            border: "none",
+                            color: "#fadbd8",
+                            cursor: "pointer",
+                            fontSize: 16,
+                        }}
+                        aria-label="Schließen"
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
+
+            {leftNotice && (
+                <div className="pilot-strike-banner" style={{ background: "rgba(30, 41, 59, 0.95)" }}>
+                    {leftNotice}
+                    <button
+                        type="button"
+                        onClick={() => setLeftNotice(null)}
                         style={{
                             marginLeft: 12,
                             background: "transparent",

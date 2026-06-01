@@ -15,6 +15,7 @@ interface SessionUpdateEvent {
     }>;
     type: string;
     message?: string;
+    affectedPlayerName?: string;
 }
 
 interface PortInfo {

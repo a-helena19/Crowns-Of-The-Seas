@@ -195,7 +195,8 @@ public class GameTickProcessor {
                                     session.getPlayerHomePorts().get(p.getUserId()),
                                     session.getReadyPlayers().contains(p.getUserId())))
                             .collect(Collectors.toList()),
-                    "GAME_FINISHED"
+                    "GAME_FINISHED",
+                    null
             );
 
             webSocketController.broadcastSessionUpdate(sessionId.toString(), finishedEvent);

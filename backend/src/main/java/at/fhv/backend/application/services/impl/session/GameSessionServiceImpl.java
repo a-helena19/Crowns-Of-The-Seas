@@ -58,6 +58,10 @@ public class GameSessionServiceImpl implements GameSessionService {
     }
 
     private void broadcastSessionUpdate(GameSession session, String type) {
+        broadcastSessionUpdate(session, type, null);
+    }
+
+    private void broadcastSessionUpdate(GameSession session, String type, String affectedPlayerName) {
         SessionUpdateEvent event = new SessionUpdateEvent(
                 session.getId(),
                 session.getGameCode(),
@@ -75,7 +79,8 @@ public class GameSessionServiceImpl implements GameSessionService {
                                 session.getPlayerHomePorts().get(p.getUserId()),
                                 session.getReadyPlayers().contains(p.getUserId())))
                         .collect(Collectors.toList()),
-                type
+                type,
+                affectedPlayerName
         );
         webSocketController.broadcastSessionUpdate(session.getId().toString(), event);
     }
@@ -143,16 +148,26 @@ public class GameSessionServiceImpl implements GameSessionService {
         GameSession session = gameSessionRepository.findByIdWithLock(sessionId)
                 .orElseThrow(() -> new SessionNotFoundException(sessionId));
 
-        boolean wasHost = session.getPlayers().stream()
-                .anyMatch(p -> p.getUserId().equals(userId) && p.isHost());
+        // Namen des verlassenden Spielers VOR dem Entfernen merken (für die
+        // Benachrichtigung der anderen Spieler).
+        String leavingPlayerName = session.getPlayers().stream()
+                .filter(p -> p.getUserId().equals(userId))
+                .map(ISessionPlayer::getPlayerName)
+                .findFirst()
+                .orElse(null);
 
-        session.removePlayer(userId);
+        boolean wasHost = session.getHostUserId().equals(userId);
 
+        session.leave(userId);
+
+        // Letzter Spieler hat die Session verlassen → Session beenden.
         if (session.getPlayers().isEmpty()) {
+            gameTickScheduler.stopForSession(session.getId());
             gameSessionRepository.deleteById(session.getId());
             return null;
         }
 
+        // Host hat verlassen → ersten verbleibenden Spieler zum neuen Host machen.
         if (wasHost) {
             ISessionPlayer newHost = session.getPlayers().get(0);
             session.makePlayerHost(newHost.getUserId());
@@ -160,7 +175,8 @@ public class GameSessionServiceImpl implements GameSessionService {
 
         SessionDTO savedSession = sessionDTOMapper.sessionToDTO(gameSessionRepository.save(session));
 
-        broadcastSessionUpdate(session, "PLAYER_LEFT");
+        // Verbleibende Spieler benachrichtigen, dass der Spieler die Session verlassen hat.
+        broadcastSessionUpdate(session, "PLAYER_LEFT", leavingPlayerName);
 
         return savedSession;
     }
