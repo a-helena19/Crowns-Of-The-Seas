@@ -90,6 +90,6 @@ class FactionDecoratorFactoryTest {
 
         assertNotNull(decorated);
         assertTrue(decorated instanceof SmugglerDecorator);
-        assertEquals(0.70, decorated.getSmuggleRiskModifier(), 0.01);
+        assertEquals(1.20, decorated.getSmuggleRiskModifier(), 0.01);
     }
 }

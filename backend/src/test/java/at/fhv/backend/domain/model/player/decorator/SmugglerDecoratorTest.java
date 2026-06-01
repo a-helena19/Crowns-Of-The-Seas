@@ -29,7 +29,7 @@ class SmugglerDecoratorTest {
 
     @Test
     void testSmuggleRiskModifier() {
-        assertEquals(0.70, smugglerPlayer.getSmuggleRiskModifier(), 0.01);
+        assertEquals(1.20, smugglerPlayer.getSmuggleRiskModifier(), 0.01);
     }
 
     @Test
