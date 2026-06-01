@@ -193,9 +193,11 @@ public class GameTickProcessor {
                                             ? session.getPlayerFactions().get(p.getUserId()).name()
                                             : null,
                                     session.getPlayerHomePorts().get(p.getUserId()),
-                                    session.getReadyPlayers().contains(p.getUserId())))
+                                    session.getReadyPlayers().contains(p.getUserId()),
+                                    session.isPlayerDisconnected(p.getUserId())))
                             .collect(Collectors.toList()),
                     "GAME_FINISHED",
+                    null,
                     null
             );
 

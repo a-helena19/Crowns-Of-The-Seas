@@ -16,6 +16,7 @@ interface SessionUpdateEvent {
     type: string;
     message?: string;
     affectedPlayerName?: string;
+    affectedUserId?: string;
 }
 
 interface PortInfo {
@@ -161,11 +162,15 @@ interface UseGameSessionWebSocketProps {
     sessionId: string | null;
     onSessionUpdate: (event: SessionUpdateEvent) => void;
     onTickUpdate?: (event: TickUpdateEvent) => void;
+    // Wenn gesetzt, signalisiert der Client beim Subscribe, dass dieser Spieler
+    // gerade (wieder) beigetreten ist – das Backend benachrichtigt dann die anderen.
+    rejoinUserId?: string | null;
 }
 export function useGameSessionWebSocket({
                                             sessionId,
                                             onSessionUpdate,
-                                            onTickUpdate
+                                            onTickUpdate,
+                                            rejoinUserId
                                         }: UseGameSessionWebSocketProps) {
     const stompClientRef = useRef<Client | null>(null);
     const [isConnected, setIsConnected] = useState(false);
@@ -180,6 +185,11 @@ export function useGameSessionWebSocket({
     useEffect(() => {
         onSessionUpdateRef.current = onSessionUpdate;
     }, [onSessionUpdate]);
+
+    const rejoinUserIdRef = useRef(rejoinUserId);
+    useEffect(() => {
+        rejoinUserIdRef.current = rejoinUserId;
+    }, [rejoinUserId]);
 
     useEffect(() => {
         if (!sessionId) return;
@@ -382,7 +392,10 @@ export function useGameSessionWebSocket({
                             }
                         });
 
-                        client.send(`/app/session/${sessionId}/subscribe`, {});
+                        const subscribePayload = rejoinUserIdRef.current
+                            ? { rejoinedUserId: rejoinUserIdRef.current }
+                            : {};
+                        client.send(`/app/session/${sessionId}/subscribe`, {}, JSON.stringify(subscribePayload));
                     },
                     (error) => {
                         console.error('WebSocket connection error:', error);

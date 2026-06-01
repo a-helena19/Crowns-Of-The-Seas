@@ -22,7 +22,8 @@ public class SessionDTOMapperImpl implements SessionDTOMapper {
                 player.getPlayerName(),
                 player.isHost(),
                 faction != null ? faction.name() : null,
-                player.getHomePortId()
+                player.getHomePortId(),
+                false
         );
     }
 
@@ -38,7 +39,8 @@ public class SessionDTOMapperImpl implements SessionDTOMapper {
                             p.getPlayerName(),
                             p.isHost(),
                             faction != null ? faction.name() : null,
-                            homePortId
+                            homePortId,
+                            session.isPlayerDisconnected(p.getUserId())
                     );
                 })
                 .toList();

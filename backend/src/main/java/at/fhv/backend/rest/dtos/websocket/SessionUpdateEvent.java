@@ -11,7 +11,8 @@ public record SessionUpdateEvent(
         int maxPlayers,
         List<PlayerInfo> players,
         String type,
-        String affectedPlayerName
+        String affectedPlayerName,
+        UUID affectedUserId
 ) {
     public record PlayerInfo(
             UUID userId,
@@ -19,6 +20,7 @@ public record SessionUpdateEvent(
             boolean isHost,
             String faction,
             UUID homePortId,
-            boolean ready
+            boolean ready,
+            boolean disconnected
     ) {}
 }

@@ -87,6 +87,18 @@ export default function GameScreen() {
     const userData = localStorage.getItem('crowns_user');
     const playerId: string | null = userData ? JSON.parse(userData).id : null;
 
+    // Einmalig auslesen, ob dieser GameScreen über einen Wieder-Beitritt betreten
+    // wurde. Der Marker wird sofort entfernt, damit ein späterer Reload nicht
+    // fälschlich erneut eine "wieder beigetreten"-Benachrichtigung auslöst.
+    const rejoinUserIdRef = useRef<string | null>(null);
+    if (rejoinUserIdRef.current === null) {
+        const marker = sessionStorage.getItem('rejoinUserId');
+        if (marker) {
+            rejoinUserIdRef.current = marker;
+            sessionStorage.removeItem('rejoinUserId');
+        }
+    }
+
     const [gameOver, setGameOver] = useState(false);
 
     const [assignedCargos, setAssignedCargos] = useState<AssignedCargoEntry[]>([]);
@@ -122,7 +134,7 @@ export default function GameScreen() {
     const [pendingArrivalDocking, setPendingArrivalDocking] = useState<AssignedCargoEntry | null>(null);
     const [activePilotStrikes, setActivePilotStrikes] = useState<Record<string, { portName: string }>>({});
     const [strikeNotice, setStrikeNotice] = useState<string | null>(null);
-    const [leftNotice, setLeftNotice] = useState<string | null>(null);
+    const [leftNotice, setLeftNotice] = useState<{ text: string; kind: 'left' | 'rejoined' } | null>(null);
     const [ownedShips, setOwnedShips] = useState<OwnedShipSummary[]>([]);
     const ownedShipsRef = useRef<OwnedShipSummary[]>([]);
     const [focusShipIdForCargoManagement, setFocusShipIdForCargoManagement] = useState<string | null>(null);
@@ -1130,7 +1142,7 @@ export default function GameScreen() {
         return () => clearInterval(interval);
     }, [assignedCargos]);
 
-    const handleSessionUpdate = useCallback((event: { type?: string; status?: string; affectedPlayerName?: string }) => {
+    const handleSessionUpdate = useCallback((event: { type?: string; status?: string; affectedPlayerName?: string; affectedUserId?: string }) => {
         if (event.status === "FINISHED" || event.type === "GAME_FINISHED") {
             audioEngine.playSfx('gameOver');
             audioEngine.fadeOutMusic(2000);
@@ -1138,17 +1150,34 @@ export default function GameScreen() {
             return;
         }
 
-        if (event.type === "PLAYER_LEFT") {
+        // Eigene Aktionen nicht als Banner anzeigen.
+        const isAboutSelf = event.affectedUserId != null && event.affectedUserId === playerId;
+
+        if (event.type === "PLAYER_LEFT" && !isAboutSelf) {
             const name = event.affectedPlayerName?.trim();
-            setLeftNotice(name ? `${name} hat die Session verlassen.` : "Ein Mitspieler hat die Session verlassen.");
+            setLeftNotice({
+                text: name ? `${name} hat die Session verlassen.` : "Ein Mitspieler hat die Session verlassen.",
+                kind: 'left',
+            });
             audioEngine.playSfx('buttonClick');
             setTimeout(() => setLeftNotice(null), 6000);
         }
-    }, []);
+
+        if (event.type === "PLAYER_REJOINED" && !isAboutSelf) {
+            const name = event.affectedPlayerName?.trim();
+            setLeftNotice({
+                text: name ? `${name} ist der Session wieder beigetreten.` : "Ein Mitspieler ist wieder beigetreten.",
+                kind: 'rejoined',
+            });
+            audioEngine.playSfx('buttonClick');
+            setTimeout(() => setLeftNotice(null), 6000);
+        }
+    }, [playerId]);
 
     const { isConnected, stompClient } = useGameSessionWebSocket({
         sessionId,
         onSessionUpdate: handleSessionUpdate,
+        rejoinUserId: rejoinUserIdRef.current,
     });
 
     useEffect(() => {
@@ -1396,8 +1425,15 @@ export default function GameScreen() {
             )}
 
             {leftNotice && (
-                <div className="pilot-strike-banner" style={{ background: "rgba(30, 41, 59, 0.95)" }}>
-                    {leftNotice}
+                <div
+                    className="pilot-strike-banner"
+                    style={{
+                        background: leftNotice.kind === 'rejoined'
+                            ? "rgba(34, 84, 51, 0.96)"
+                            : "rgba(112, 38, 32, 0.96)",
+                    }}
+                >
+                    {leftNotice.text}
                     <button
                         type="button"
                         onClick={() => setLeftNotice(null)}
@@ -1405,7 +1441,7 @@ export default function GameScreen() {
                             marginLeft: 12,
                             background: "transparent",
                             border: "none",
-                            color: "#fadbd8",
+                            color: leftNotice.kind === 'rejoined' ? "#d7f5df" : "#fadbd8",
                             cursor: "pointer",
                             fontSize: 16,
                         }}

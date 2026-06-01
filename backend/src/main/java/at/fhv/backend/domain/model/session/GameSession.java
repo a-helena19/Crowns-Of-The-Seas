@@ -29,6 +29,7 @@ public class GameSession {
     private LocalDateTime startTime;
     private final Duration duration;
     private final Map<UUID, Boolean> playerReadyStatus = new HashMap<>();
+    private final Set<UUID> disconnectedPlayers = new HashSet<>();
 
     public GameSession(UUID hostUserId, int maxPlayers, int tickRateSeconds, int totalTicks, Duration duration) {
         this.id = UUID.randomUUID();
@@ -128,12 +129,48 @@ public class GameSession {
     }
 
     public void leave(UUID userId) {
-        boolean removed = players.removeIf(p -> p.getUserId().equals(userId));
-        if (!removed)
+        boolean exists = players.stream().anyMatch(p -> p.getUserId().equals(userId));
+        if (!exists)
             throw new PlayerNotFoundException(userId);
-        playerFactions.remove(userId);
-        playerHomePorts.remove(userId);
+        disconnectedPlayers.add(userId);
         playerReadyStatus.remove(userId);
+    }
+
+    public void rejoin(UUID userId) {
+        if (status != SessionStatus.RUNNING)
+            throw new SessionNotRunningException(id);
+        boolean wasInSession = players.stream().anyMatch(p -> p.getUserId().equals(userId));
+        if (!wasInSession)
+            throw new PlayerNotFoundException(userId);
+        disconnectedPlayers.remove(userId);
+    }
+
+    public boolean isPlayerConnected(UUID userId) {
+        return players.stream().anyMatch(p -> p.getUserId().equals(userId))
+                && !disconnectedPlayers.contains(userId);
+    }
+
+    public boolean isPlayerInSession(UUID userId) {
+        return players.stream().anyMatch(p -> p.getUserId().equals(userId));
+    }
+
+    public boolean isPlayerDisconnected(UUID userId) {
+        return disconnectedPlayers.contains(userId);
+    }
+
+    /** Anzahl aktuell verbundener (nicht getrennter) Spieler. */
+    public long getConnectedPlayerCount() {
+        return players.stream()
+                .filter(p -> !disconnectedPlayers.contains(p.getUserId()))
+                .count();
+    }
+
+    public Set<UUID> getDisconnectedPlayers() {
+        return Collections.unmodifiableSet(disconnectedPlayers);
+    }
+
+    public void setDisconnectedPlayers(Set<UUID> disconnected) {
+        this.disconnectedPlayers.addAll(disconnected);
     }
 
     public void makePlayerHost(UUID userId) {
