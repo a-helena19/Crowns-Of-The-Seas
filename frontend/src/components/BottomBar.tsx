@@ -1,6 +1,6 @@
 import { BOTTOM_BAR_HEIGHT } from '../scenes/GameScreen';
 import "../style/BottomBar.css";
-import housesImage from "../assets/marketplace/Häuser.png";
+import housesImage from "../assets/marketplace/Houses.png";
 import ShipStatusCard from "./ShipStatusCard";
 
 interface OwnedShipSummary {

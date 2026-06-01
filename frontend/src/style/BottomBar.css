@@ -1,5 +1,6 @@
 .bottom-bar {
-    min-height: 200px;
+    height: 100%;
+    box-sizing: border-box;
 
     background: linear-gradient(180deg, #2d1d12 0%, #20140d 100%);
     position: relative;
@@ -33,9 +34,10 @@
 }
 
 .bottom-nav-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px 10px;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 10px;
     width: auto;
 }
 
