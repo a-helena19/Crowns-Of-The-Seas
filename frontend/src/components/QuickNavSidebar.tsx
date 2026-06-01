@@ -1,5 +1,5 @@
 import "../style/QuickNavSidebar.css";
-import housesImage from "../assets/marketplace/Houses.png";
+import housesImage from "../assets/marketplace/Houses1.png";
 
 interface QuickNavSidebarProps {
     onOpenOffice?: () => void;

@@ -18,6 +18,7 @@ import dockingMusicUrl from '../assets/audio/docking-music.mp3';
 import ratMusicUrl from '../assets/audio/rat-music.mp3';
 import stormMusicUrl from '../assets/audio/storm-music.mp3';
 import obstacleMusicUrl from '../assets/audio/obstacle-music.mp3';
+import treasureMusicUrl from '../assets/audio/treasure-music.mp3';
 
 // ─── SFX-Imports ───
 import clickSfxUrl from '../assets/audio/sfx/click.mp3';
@@ -88,6 +89,14 @@ export const MUSIC_TRACKS: Record<string, SoundDefinition> = {
     obstacle: {
         key: 'music_obstacle',
         url: obstacleMusicUrl,
+        category: 'music',
+        loop: true,
+        volume: 0.8,
+    },
+
+    treasure: {
+        key: 'music_treasure',
+        url: treasureMusicUrl,
         category: 'music',
         loop: true,
         volume: 0.8,
