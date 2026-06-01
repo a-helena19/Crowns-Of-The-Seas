@@ -8,6 +8,7 @@ import OfficeScene from "../scenes/OfficeScene.tsx";
 import PortProfileScreen from "../scenes/PortProfileScreen.tsx";
 import MarketplaceScene from "./MarketplaceScene.tsx";
 import { useGameSessionWebSocket } from "../hooks/useGameSessionWebSocket.ts";
+import "../style/gameScreen.css";
 import CargoManagementScreen from "../scenes/CargoManagementScreen";
 import DockingMiniGame from "../scenes/DockingMiniGame";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
@@ -1425,26 +1426,15 @@ export default function GameScreen() {
             )}
 
             {leftNotice && (
-                <div
-                    className="pilot-strike-banner"
-                    style={{
-                        background: leftNotice.kind === 'rejoined'
-                            ? "rgba(34, 84, 51, 0.96)"
-                            : "rgba(112, 38, 32, 0.96)",
-                    }}
-                >
-                    {leftNotice.text}
+                <div className={`player-notice ${leftNotice.kind}`} role="status">
+                    <span className="player-notice-icon" aria-hidden="true">
+                        {leftNotice.kind === 'rejoined' ? '↺' : '⊘'}
+                    </span>
+                    <span className="player-notice-text">{leftNotice.text}</span>
                     <button
                         type="button"
+                        className="player-notice-close"
                         onClick={() => setLeftNotice(null)}
-                        style={{
-                            marginLeft: 12,
-                            background: "transparent",
-                            border: "none",
-                            color: leftNotice.kind === 'rejoined' ? "#d7f5df" : "#fadbd8",
-                            cursor: "pointer",
-                            fontSize: 16,
-                        }}
                         aria-label="Schließen"
                     >
                         ×
