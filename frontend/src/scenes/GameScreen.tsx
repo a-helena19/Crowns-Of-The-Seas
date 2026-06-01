@@ -2,6 +2,7 @@ import { useEffect, useCallback, useState, useRef } from "react";
 import TopBar from "../components/TopBar.tsx";
 import Game from "../Game.tsx";
 import BottomBar from "../components/BottomBar.tsx";
+import QuickNavSidebar from "../components/QuickNavSidebar.tsx";
 import HarborScene from "../scenes/HarborScene.tsx";
 import ShipBrokerScene from "../scenes/ShipBrokerScene.tsx";
 import OfficeScene from "../scenes/OfficeScene.tsx";
@@ -36,7 +37,6 @@ import GameOverScreen from "../components/GameOverScreen";
 import audioEngine from '../audio/AudioEngine';
 
 export const TOP_BAR_HEIGHT = '9vh';
-export const BOTTOM_BAR_HEIGHT = '20vh';
 
 interface CustomsInspectionPayload {
     inspectionId: string;
@@ -1620,34 +1620,38 @@ export default function GameScreen() {
                 <PortProfileScreen port={selectedPort} onClose={() => {setView("map"); audioEngine.playSfx('buttonClick');}} />
             )}
             {(view === "map" || view === "portProfile") && !isMinigameActive && (
+                <QuickNavSidebar
+                    onOpenOffice={() => {
+                        audioEngine.playSfx('door');
+                        setOverlayReturnView("map");
+                        setView("office");
+                    }}
+                    onOpenOrders={() => {
+                        audioEngine.playSfx('door');
+                        setFocusShipIdForCargoManagement(null);
+                        setOverlayReturnView("map");
+                        setView("cargoManagement");
+                    }}
+                    onOpenShipMarket={() => {
+                        audioEngine.playSfx('door');
+                        setOverlayReturnView("map");
+                        setView("broker");
+                    }}
+                    onOpenFreightMarket={() => {
+                        audioEngine.playSfx('door');
+                        setOpenCargoForShipId(null);
+                        setOverlayReturnView("map");
+                        setView("harbor");
+                    }}
+                />
+            )}
+            {(view === "map" || view === "portProfile") && !isMinigameActive && (
                 <div className="bottom">
                     <BottomBar
                         send={send}
                         connected={isConnected}
                         ships={ownedShips}
                         pendingEventsByShipId={pendingEventsByShipId}
-                        onOpenOffice={() => {
-                            audioEngine.playSfx('door');
-                            setOverlayReturnView("map");
-                            setView("office");
-                        }}
-                        onOpenOrders={() => {
-                            audioEngine.playSfx('door');
-                            setFocusShipIdForCargoManagement(null);
-                            setOverlayReturnView("map");
-                            setView("cargoManagement");
-                        }}
-                        onOpenShipMarket={() => {
-                            audioEngine.playSfx('door');
-                            setOverlayReturnView("map");
-                            setView("broker");
-                        }}
-                        onOpenFreightMarket={() => {
-                            audioEngine.playSfx('door');
-                            setOpenCargoForShipId(null);
-                            setOverlayReturnView("map");
-                            setView("harbor");
-                        }}
                         urgentShipIds={urgentShipIds}
                         onShipCardClick={(ship) => {
                             audioEngine.playSfx('buttonClick');
