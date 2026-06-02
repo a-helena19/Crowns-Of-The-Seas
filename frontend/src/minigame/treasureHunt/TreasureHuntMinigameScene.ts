@@ -88,7 +88,7 @@ export class TreasureHuntMinigameScene extends Phaser.Scene {
     }
 
     create() {
-        audioEngine.crossfadeTo("obstacle", 250);
+        audioEngine.crossfadeTo("treasure", 250);
         this.cameras.main.setBackgroundColor("#090d16");
 
         const gridWidth = LAYOUT[0].length;

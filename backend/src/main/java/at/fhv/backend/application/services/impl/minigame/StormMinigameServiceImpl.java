@@ -2,6 +2,8 @@ package at.fhv.backend.application.services.impl.minigame;
 
 import at.fhv.backend.application.services.minigame.StormMinigameService;
 import at.fhv.backend.application.services.travel.TravelPauseService;
+import at.fhv.backend.domain.model.player.ISessionPlayer;
+import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.travel.Travel;
@@ -31,6 +33,7 @@ public class StormMinigameServiceImpl implements StormMinigameService {
     private final TravelPauseService travelPauseService;
     private final GameSessionWebSocketController webSocketController;
     private final PlayerShipRepository playerShipRepository;
+    private final SessionPlayerRepository sessionPlayerRepository;
     private final Random random = new Random();
 
     private final Set<UUID> triggeredTravelIds = ConcurrentHashMap.newKeySet();
@@ -40,10 +43,12 @@ public class StormMinigameServiceImpl implements StormMinigameService {
 
     public StormMinigameServiceImpl(TravelPauseService travelPauseService,
                                     GameSessionWebSocketController webSocketController,
-                                    PlayerShipRepository playerShipRepository) {
+                                    PlayerShipRepository playerShipRepository,
+                                    SessionPlayerRepository sessionPlayerRepository) {
         this.travelPauseService = travelPauseService;
         this.webSocketController = webSocketController;
         this.playerShipRepository = playerShipRepository;
+        this.sessionPlayerRepository = sessionPlayerRepository;
     }
 
     @Override
@@ -52,7 +57,12 @@ public class StormMinigameServiceImpl implements StormMinigameService {
         if (travelPauseService.isTravelPaused(travelId)) return;
         if (triggeredTravelIds.contains(travelId)) return;
         if (pendingEvents.containsKey(travelId)) return;
-        if (random.nextDouble() >= TRIGGER_CHANCE_PER_TICK) return;
+
+        double miniGameModifier = sessionPlayerRepository
+                .findByUserIdAndSessionId(travel.getPlayerId(), sessionId)
+                .map(ISessionPlayer::getMiniGameRiskModifier)
+                .orElse(1.0);
+        if (random.nextDouble() >= TRIGGER_CHANCE_PER_TICK * miniGameModifier) return;
 
         triggeredTravelIds.add(travelId);
         UUID eventId = UUID.randomUUID();
