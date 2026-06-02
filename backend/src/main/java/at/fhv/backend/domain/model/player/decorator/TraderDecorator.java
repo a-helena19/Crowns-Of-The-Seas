@@ -18,8 +18,10 @@ public class TraderDecorator extends SessionPlayerDecorator {
         return 1.20;
     }
 
+    // Nachteil: Weniger Schmuggel-Angebote (−20%) — Händler agieren legal und
+    // werden von Schmugglern seltener angesprochen.
     @Override
     public double getSmuggleRiskModifier() {
-        return 1.20;
+        return 0.80;
     }
 }

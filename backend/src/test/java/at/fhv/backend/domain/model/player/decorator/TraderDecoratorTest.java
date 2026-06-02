@@ -34,7 +34,12 @@ class TraderDecoratorTest {
 
     @Test
     void testSmuggleRiskModifier() {
-        assertEquals(1.20, traderPlayer.getSmuggleRiskModifier(), 0.01);
+        assertEquals(0.80, traderPlayer.getSmuggleRiskModifier(), 0.01);
+    }
+
+    @Test
+    void testCustomsRiskUnmodified() {
+        assertEquals(1.0, traderPlayer.getCustomsRiskModifier(), 0.01);
     }
 
     @Test

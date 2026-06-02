@@ -130,7 +130,15 @@ public class CustomsServiceImpl implements CustomsService {
             return inspection;
         }
 
-        boolean detected = random.nextDouble() < DETECTION_CHANCE_WHEN_SMUGGLING;
+        double customsRiskModifier = lookupCustomsRiskModifier(playerId, travel.getSessionId());
+        double detectionChance = DETECTION_CHANCE_WHEN_SMUGGLING * customsRiskModifier;
+        if (detectionChance < 0.0) {
+            detectionChance = 0.0;
+        }
+        if (detectionChance > 1.0) {
+            detectionChance = 1.0;
+        }
+        boolean detected = random.nextDouble() < detectionChance;
         if (!detected) {
             inspection.completeAsHidden();
             storeInspection(inspection);
@@ -410,6 +418,15 @@ public class CustomsServiceImpl implements CustomsService {
             fine = MAX_FINE;
         }
         return fine;
+    }
+
+    private double lookupCustomsRiskModifier(UUID playerId, UUID sessionId) {
+        ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
+                .orElse(null);
+        if (player == null) {
+            return 1.0;
+        }
+        return player.getCustomsRiskModifier();
     }
 
     private String lookupShipName(UUID playerShipId) {
