@@ -1,5 +1,5 @@
 import "../style/QuickNavSidebar.css";
-import housesImage from "../assets/marketplace/Houses1.png";
+import housesImage from "../assets/marketplace/NewHouses.png";
 
 interface QuickNavSidebarProps {
     onOpenOffice?: () => void;
@@ -16,9 +16,9 @@ export default function QuickNavSidebar({
                                         }: QuickNavSidebarProps) {
     const items = [
         { key: "office", label: "Büro", spriteClass: "sprite-office", onClick: onOpenOffice, ariaLabel: "Büro öffnen" },
-        { key: "orders", label: "Aufträge", spriteClass: "sprite-orders", onClick: onOpenOrders, ariaLabel: "Aufträge öffnen" },
         { key: "shipmarket", label: "Schiffmarkt", spriteClass: "sprite-shipmarket", onClick: onOpenShipMarket, ariaLabel: "Schiffmarkt öffnen" },
         { key: "freight", label: "Fracht Börse", spriteClass: "sprite-freight", onClick: onOpenFreightMarket, ariaLabel: "Fracht Börse öffnen" },
+        { key: "orders", label: "Aufträge", spriteClass: "sprite-orders", onClick: onOpenOrders, ariaLabel: "Aufträge öffnen" },
     ].filter(item => !!item.onClick);
 
     if (items.length === 0) return null;
