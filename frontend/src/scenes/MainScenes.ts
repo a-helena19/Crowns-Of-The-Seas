@@ -15,6 +15,7 @@ interface PortData {
 
 interface ShipPositionData {
     playerShipId: string;
+    playerId: string;
     playerName: string;
     iconUrl: string;
     x: number;
@@ -62,10 +63,15 @@ interface ShipEntry {
 export default class MainScene extends Phaser.Scene {
     private static readonly ARRIVAL_CATCHUP_MIN_MS = 180;
     private static readonly ARRIVAL_CATCHUP_MAX_MS = 900;
+    private static readonly OTHER_SHIP_ALPHA = 0.7;
     private ship!: Phaser.GameObjects.Sprite;
     private shipController!: Ship;
 
     private shipSprites: Map<string, ShipEntry> = new Map();
+
+    private currentPlayerId: string | null = null;
+    private showOtherShips: boolean = true;
+    private onToggleOtherShips!: (e: Event) => void;
 
     private isDragging: boolean = false;
     private dragStartX: number = 0;
@@ -105,6 +111,14 @@ export default class MainScene extends Phaser.Scene {
         this.lastSceneWidth = this.scale.width;
         this.lastSceneHeight = this.scale.height;
 
+        try {
+            const userData = localStorage.getItem('crowns_user');
+            this.currentPlayerId = userData ? JSON.parse(userData).id ?? null : null;
+        } catch {
+            this.currentPlayerId = null;
+        }
+        this.showOtherShips = window.__showOtherShips !== false;
+
         const latestShip = window.__latestShip;
         const shipStartX = latestShip ? (latestShip.x / 100) * this.scale.width : this.scale.width * 0.5;
         const shipStartY = latestShip ? (latestShip.y / 100) * this.scale.height : this.scale.height * 0.5;
@@ -140,10 +154,18 @@ export default class MainScene extends Phaser.Scene {
             this.handleTravelResumed(payload);
         };
 
+        this.onToggleOtherShips = (e: Event) => {
+            const detail = (e as CustomEvent<{ visible: boolean }>).detail;
+            this.showOtherShips = detail?.visible !== false;
+            this.applyOtherShipsVisibility();
+            this.renderRoutes();
+        };
+
         window.addEventListener('backend-ship-position', this.onShipPosition);
         window.addEventListener('backend-ports', this.onPorts);
         window.addEventListener('backend-ship-positions', this.onShipPositions);
         window.addEventListener('travel-resumed', this.onTravelResumed);
+        window.addEventListener('toggle-other-ships', this.onToggleOtherShips);
         this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this);
 
         this.onBlinkPortPin = (e: Event) => {
@@ -242,7 +264,8 @@ export default class MainScene extends Phaser.Scene {
             portMap.set(p.id, { x: p.x, y: p.y });
         }
 
-        const activePairs = new Set<string>();
+        const ownActivePairs = new Set<string>();
+        const otherActivePairs = new Set<string>();
         const ships = window.__latestShips ?? [];
         for (const ship of ships) {
             if (ship.status !== 'EN_ROUTE') continue;
@@ -250,20 +273,41 @@ export default class MainScene extends Phaser.Scene {
                 || ship.destX == null || ship.destY == null) continue;
             const originPort = this.findPortAt(ports, ship.originX, ship.originY);
             const destPort = this.findPortAt(ports, ship.destX, ship.destY);
-            if (originPort && destPort) {
-                activePairs.add(this.pairKey(originPort.id, destPort.id));
+            if (!originPort || !destPort) continue;
+            const key = this.pairKey(originPort.id, destPort.id);
+            const isOwn = this.currentPlayerId != null && ship.playerId === this.currentPlayerId;
+            if (isOwn) {
+                ownActivePairs.add(key);
+            } else {
+                otherActivePairs.add(key);
             }
         }
 
+        // Faint baseline network for all lanes without a relevant highlighted ship.
+        // When other ships are hidden, their lanes fall back to this faint state.
         this.routeGraphics.lineStyle(0.8, 0xffffff, 0.04);
         for (const route of this.routeData) {
-            if (activePairs.has(this.pairKey(route.originPortId, route.destinationPortId))) continue;
+            const key = this.pairKey(route.originPortId, route.destinationPortId);
+            const otherHighlighted = this.showOtherShips && otherActivePairs.has(key);
+            if (ownActivePairs.has(key) || otherHighlighted) continue;
             this.drawRoutePath(route, portMap);
         }
 
-        this.routeGraphics.lineStyle(1.9, 0xcc2020, 0.7);
+        // Other players' active routes — distinct colour + lower opacity, only while shown.
+        if (this.showOtherShips) {
+            this.routeGraphics.lineStyle(1.7, 0x35c75a, 0.6);
+            for (const route of this.routeData) {
+                const key = this.pairKey(route.originPortId, route.destinationPortId);
+                if (ownActivePairs.has(key) || !otherActivePairs.has(key)) continue;
+                this.drawRoutePath(route, portMap);
+            }
+        }
+
+        // Own active routes — bold, drawn last so they sit on top.
+        this.routeGraphics.lineStyle(1.9, 0xcc2020, 0.85);
         for (const route of this.routeData) {
-            if (!activePairs.has(this.pairKey(route.originPortId, route.destinationPortId))) continue;
+            const key = this.pairKey(route.originPortId, route.destinationPortId);
+            if (!ownActivePairs.has(key)) continue;
             this.drawRoutePath(route, portMap);
         }
     }
@@ -354,6 +398,20 @@ export default class MainScene extends Phaser.Scene {
             y: (destY / 100) * this.scale.height,
         });
         return polyline;
+    }
+
+    private isOwnShip(shipData: ShipPositionData): boolean {
+        return this.currentPlayerId != null && shipData.playerId === this.currentPlayerId;
+    }
+
+    private applyOtherShipsVisibility() {
+        for (const entry of this.shipSprites.values()) {
+            if (this.isOwnShip(entry.lastShipData)) continue;
+            entry.sprite.setVisible(this.showOtherShips);
+            if (!this.showOtherShips) {
+                entry.tooltip.setVisible(false);
+            }
+        }
     }
 
     private updateShipSprites(ships: ShipPositionData[], currentTick: number) {
@@ -531,6 +589,12 @@ export default class MainScene extends Phaser.Scene {
         const sprite = this.add.sprite(spawnX, spawnY, initialTexture)
             .setScale(0.065).setInteractive().setDepth(5);
 
+        const isOwn = this.isOwnShip(shipData);
+        sprite.setAlpha(isOwn ? 1 : MainScene.OTHER_SHIP_ALPHA);
+        if (!isOwn && !this.showOtherShips) {
+            sprite.setVisible(false);
+        }
+
         const shipTooltip = this.add.text(spawnX + 12, spawnY - 20, playerName, {
             fontSize: '12px',
             color: '#ffffff',
@@ -539,9 +603,11 @@ export default class MainScene extends Phaser.Scene {
         }).setDepth(11).setVisible(false);
 
         sprite.on('pointerover', () => {
+            if (!sprite.visible) return;
             shipTooltip.setPosition(sprite.x + 12, sprite.y - 20).setVisible(true);
         });
         sprite.on('pointermove', () => {
+            if (!sprite.visible) return;
             shipTooltip.setPosition(sprite.x + 12, sprite.y - 20);
         });
         sprite.on('pointerout', () => shipTooltip.setVisible(false));
@@ -904,6 +970,7 @@ export default class MainScene extends Phaser.Scene {
         window.removeEventListener('backend-ship-positions', this.onShipPositions);
         window.removeEventListener('travel-resumed', this.onTravelResumed);
         window.removeEventListener('blink-port-pin', this.onBlinkPortPin);
+        window.removeEventListener('toggle-other-ships', this.onToggleOtherShips);
         this.unsubscribeMinigameEvents?.();
         this.unsubscribeMinigameEvents = null;
         this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this);
