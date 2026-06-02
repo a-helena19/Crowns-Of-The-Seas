@@ -23,7 +23,7 @@ public class SmugglerDecorator extends SessionPlayerDecorator {
 
     // Nachteil: Teurerer Treibstoff (+20%) — Sprit vom Schwarzmarkt kostet mehr.
     @Override
-    public double getFuelCostModifier() {
+    public double getMiniGamesModifier() {
         return 1.20;
     }
 }
