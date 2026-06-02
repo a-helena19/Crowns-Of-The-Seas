@@ -91,8 +91,8 @@ export const FACTION_DATA: Record<PlayerFaction, FactionDetails> = {
         icon1: smug1,
         icon2: smug2,
         description: 'Hohes Risiko, hohe Beute – nichts für schwache Nerven.',
-        pros: ['−40% Zoll-Risiko', '+20% mehr Schmuggel-Angebote'],
-        cons: ['+20% teurerer Treibstoff'],
+        pros: ['−20% Zoll-Risiko', '+20% mehr Schmuggel-Angebote'],
+        cons: ['+30% mehr Ereignisse'],
         color: '#FFA502',
         image: schmugglerBg
     },
