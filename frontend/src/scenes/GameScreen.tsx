@@ -1568,25 +1568,7 @@ export default function GameScreen() {
             <div className="game">
                 <Game view={view} />
                 {view === "map" && !isMinigameActive && (
-                    <label
-                        style={{
-                            position: "absolute",
-                            top: 12,
-                            left: 12,
-                            zIndex: 20,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            padding: "6px 10px",
-                            borderRadius: 8,
-                            background: "rgba(20, 14, 9, 0.72)",
-                            border: "1px solid rgba(255, 255, 255, 0.18)",
-                            color: "#f5e9d8",
-                            fontSize: 13,
-                            cursor: "pointer",
-                            userSelect: "none",
-                        }}
-                    >
+                    <label id={'show-other-ships-checkbox'}>
                         <input
                             type="checkbox"
                             checked={showOtherShips}
@@ -1594,7 +1576,7 @@ export default function GameScreen() {
                                 audioEngine.playSfx('buttonClick');
                                 setShowOtherShips(e.target.checked);
                             }}
-                            style={{ cursor: "pointer" }}
+                            style={{ cursor: "pointer", accentColor: "#7a5230" }}
                         />
                         Andere Schiffe anzeigen
                     </label>
