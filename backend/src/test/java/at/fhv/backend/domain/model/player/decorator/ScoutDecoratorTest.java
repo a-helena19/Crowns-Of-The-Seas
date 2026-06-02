@@ -41,4 +41,9 @@ class ScoutDecoratorTest {
     void testFuelCostUnmodified() {
         assertEquals(1.0, scoutPlayer.getFuelCostModifier(), 0.01);
     }
+
+    @Test
+    void testMinigameRiskModifier() {
+        assertEquals(0.70, scoutPlayer.getMiniGameRiskModifier(), 0.01);
+    }
 }

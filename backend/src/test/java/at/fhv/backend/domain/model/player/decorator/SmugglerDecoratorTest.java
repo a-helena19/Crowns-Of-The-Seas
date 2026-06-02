@@ -58,6 +58,11 @@ class SmugglerDecoratorTest {
     }
 
     @Test
+    void testMinigameRiskModifier() {
+        assertEquals(1.30, smugglerPlayer.getMiniGameRiskModifier(), 0.01);
+    }
+
+    @Test
     void testDelegationOfBalance() {
         assertEquals(basePlayer.getBalance(), smugglerPlayer.getBalance());
     }
