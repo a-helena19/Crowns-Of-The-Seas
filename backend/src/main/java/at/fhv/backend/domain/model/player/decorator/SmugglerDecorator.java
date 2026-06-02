@@ -26,4 +26,10 @@ public class SmugglerDecorator extends SessionPlayerDecorator {
     public double getMiniGamesModifier() {
         return 1.20;
     }
+
+    // Hohes Risiko, hohe Beute: volatilere Reisen → +30% Minispiel-Häufigkeit
+    @Override
+    public double getMiniGameRiskModifier() {
+        return 1.30;
+    }
 }

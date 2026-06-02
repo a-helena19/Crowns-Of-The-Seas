@@ -13,6 +13,12 @@ public class ScoutDecorator extends SessionPlayerDecorator {
         return 0.50;
     }
 
+    // Scouts erkennen Gefahren früh und fahren ruhigere Routen: −30% Minispiel-Häufigkeit
+    @Override
+    public double getMiniGameRiskModifier() {
+        return 0.70;
+    }
+
     @Override
     public double getFuelTimeModifier() {
         return 1.20;

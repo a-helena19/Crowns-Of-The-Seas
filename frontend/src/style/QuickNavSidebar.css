@@ -49,8 +49,8 @@
 /* Eingeklappt (Standard): schmaler vertikaler Tab, Schrift vertikal, braun.
    So bleibt die Karte möglichst frei. Das Haus-Sprite ist zusammengeklappt. */
 .quick-nav-btn-sprite {
-    width: 86px;
-    height: 161px;
+    width: 100px;
+    height: 206px;
     max-height: 0;
     opacity: 0;
     margin: 0;
@@ -85,7 +85,7 @@
 .quick-nav-btn:hover,
 .quick-nav-btn:focus-visible {
     width: 150px;
-    height: 206px;
+    height: 260px;
     background-color: #f1e6cb;
     border-color: #7a5736;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 4px 12px rgba(0, 0, 0, 0.45);
@@ -95,7 +95,7 @@
 
 .quick-nav-btn:hover .quick-nav-btn-sprite,
 .quick-nav-btn:focus-visible .quick-nav-btn-sprite {
-    max-height: 161px;
+    max-height: 206px;
     opacity: 1;
     margin-bottom: 6px;
 }

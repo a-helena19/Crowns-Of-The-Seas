@@ -134,3 +134,22 @@
     background: rgba(232, 116, 106, 0.2);
     color: #f8cfca;
 }
+
+#show-other-ships-checkbox {
+    position: absolute;
+    top: 24px;
+    left: 10px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: rgba(237, 224, 200, 0.78);
+    border: 1px solid #7a5230;
+    color: #4a2f17;
+    font-size: 12px;
+    font-weight: 550;
+    cursor: pointer;
+    user-select: none;
+}

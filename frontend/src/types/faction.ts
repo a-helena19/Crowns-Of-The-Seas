@@ -102,7 +102,7 @@ export const FACTION_DATA: Record<PlayerFaction, FactionDetails> = {
         icon1: scout1,
         icon2: scout2,
         description: 'Immer einen Schritt voraus – sie sehen, was andere nicht sehen.',
-        pros: ['+50% frühere Auftragserkennung'],
+        pros: ['+50% frühere Auftragserkennung', '−30% seltenere Ereignisse'],
         cons: ['+20% längere Tank-/Reparaturzeit'],
         color: '#95E1D3',
         image: scoutsBg

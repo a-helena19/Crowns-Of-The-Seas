@@ -153,9 +153,15 @@ export default function GameScreen() {
     const ownedShipsRef = useRef<OwnedShipSummary[]>([]);
     const [focusShipIdForCargoManagement, setFocusShipIdForCargoManagement] = useState<string | null>(null);
     const [openCargoForShipId, setOpenCargoForShipId] = useState<string | null>(null);
+    const [showOtherShips, setShowOtherShips] = useState<boolean>(window.__showOtherShips !== false);
     const minigameFallbackRequests = useRef<Set<string>>(new Set());
 
     const authToken = localStorage.getItem("auth_token") ?? "";
+
+    useEffect(() => {
+        window.__showOtherShips = showOtherShips;
+        window.dispatchEvent(new CustomEvent('toggle-other-ships', { detail: { visible: showOtherShips } }));
+    }, [showOtherShips, view]);
 
     const loadOwnedShips = useCallback(() => {
         if (!playerId || !sessionId) return;
@@ -1559,7 +1565,23 @@ export default function GameScreen() {
             <div className="top">
                 <TopBar />
             </div>
-            <div className="game"><Game view={view} /></div>
+            <div className="game">
+                <Game view={view} />
+                {view === "map" && !isMinigameActive && (
+                    <label id={'show-other-ships-checkbox'}>
+                        <input
+                            type="checkbox"
+                            checked={showOtherShips}
+                            onChange={(e) => {
+                                audioEngine.playSfx('buttonClick');
+                                setShowOtherShips(e.target.checked);
+                            }}
+                            style={{ cursor: "pointer", accentColor: "#7a5230" }}
+                        />
+                        Andere Schiffe anzeigen
+                    </label>
+                )}
+            </div>
             <div className={`fullscreen-overlay ${
                 (view === "marketplace" || view === "harbor" || view === "broker" || view === "cargoManagement" || view === "office") ? "open" : "closed"
             }`}>
