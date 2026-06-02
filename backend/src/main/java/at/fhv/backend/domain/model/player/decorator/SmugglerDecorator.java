@@ -21,12 +21,6 @@ public class SmugglerDecorator extends SessionPlayerDecorator {
         return 0.80;
     }
 
-    // Nachteil: Teurerer Treibstoff (+20%) — Sprit vom Schwarzmarkt kostet mehr.
-    @Override
-    public double getMiniGamesModifier() {
-        return 1.20;
-    }
-
     // Hohes Risiko, hohe Beute: volatilere Reisen → +30% Minispiel-Häufigkeit
     @Override
     public double getMiniGameRiskModifier() {

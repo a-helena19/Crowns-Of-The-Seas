@@ -34,7 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class ShipDealServiceImpl implements ShipDealService {
 
-    private static final int MAX_ACTIVE_DEALS = 4;
+    private static final int MAX_ACTIVE_DEALS = 5;
     private static final int BASE_VISIBLE_DEALS = 3;
 
     private static final double MIN_DISCOUNT = 0.10;
