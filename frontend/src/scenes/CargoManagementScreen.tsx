@@ -486,7 +486,7 @@ export default function CargoManagementScreen({
         handleStartTravel(entry, false);
     }, [showDockingGame, handleStartTravel]);
 
-    const handleDockingFailure = useCallback(async () => {
+    const handleDockingFailure = useCallback(async (_strikes: number) => {
         if (!showDockingGame) return;
         const entry = showDockingGame;
         setShowDockingGame(null);
