@@ -1,6 +1,7 @@
 package at.fhv.backend.application.services.impl.travel;
 
 import at.fhv.backend.application.services.cargo.CustomsService;
+import at.fhv.backend.application.services.travel.CargoUnloadingPhaseService;
 import at.fhv.backend.application.services.travel.CustomsCheckCompletionService;
 import at.fhv.backend.application.services.travel.UnloadingStartService;
 import at.fhv.backend.domain.model.exception.TravelNotFoundException;
@@ -12,6 +13,7 @@ import at.fhv.backend.domain.model.travel.TravelRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.UUID;
 
 @Service
@@ -20,15 +22,18 @@ public class CustomsCheckCompletionServiceImpl implements CustomsCheckCompletion
     private final PlayerShipRepository playerShipRepository;
     private final CustomsService customsService;
     private final UnloadingStartService unloadingStartService;
+    private final CargoUnloadingPhaseService cargoUnloadingPhaseService;
 
     public CustomsCheckCompletionServiceImpl(TravelRepository travelRepository,
                                              PlayerShipRepository playerShipRepository,
                                              CustomsService customsService,
-                                             UnloadingStartService unloadingStartService) {
+                                             UnloadingStartService unloadingStartService,
+                                             CargoUnloadingPhaseService cargoUnloadingPhaseService) {
         this.travelRepository = travelRepository;
         this.playerShipRepository = playerShipRepository;
         this.customsService = customsService;
         this.unloadingStartService = unloadingStartService;
+        this.cargoUnloadingPhaseService = cargoUnloadingPhaseService;
     }
 
     @Override
@@ -52,6 +57,13 @@ public class CustomsCheckCompletionServiceImpl implements CustomsCheckCompletion
             playerShipRepository.save(ship);
             System.out.println("[CustomsCheck] Ship " + ship.getId()
                     + " — 2-tick customs check ended, illegal cargo DETECTED — now BLOCKED");
+            return;
+        }
+
+        if (travel.isEmptyVoyage()) {
+            cargoUnloadingPhaseService.completeUnloadingPhase(travel, Collections.emptyList());
+            System.out.println("[CustomsCheck] Ship " + ship.getId()
+                    + " — Leerfahrt: Zoll-Check beendet, Reise abgeschlossen (kein Entladen)");
             return;
         }
 

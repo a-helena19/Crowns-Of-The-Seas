@@ -4,6 +4,7 @@ import Stomp, { Client } from "stompjs";
 import "../style/cargo.css";
 import { useTravelDuration } from "./TravelDurationInfo";
 import CargoRouteMapView from "./CargoRouteMapView";
+import EmptyVoyageScreen, { type VoyageStartedInfo } from "./EmptyVoyageScreen";
 import Briefmarke from "../assets/Briefmarke.png";
 import audioEngine from '../audio/AudioEngine';
 
@@ -52,14 +53,16 @@ const getExpiredRewardPercent = (t: string) =>
 
 interface Props {
     onCargoAccepted: (cargo: AcceptedCargo) => void;
+    onEmptyVoyageStarted: (info: VoyageStartedInfo) => void;
     currentPortId: string | null;
     playerShipId: string | null;
 }
 
-export default function CargoScreen({ onCargoAccepted, currentPortId, playerShipId }: Props) {
+export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, currentPortId, playerShipId }: Props) {
     const [cargos, setCargos] = useState<SessionCargoDTO[]>([]);
     const [selected, setSelected] = useState<SessionCargoDTO | null>(null);
     const [loading, setLoading] = useState(true);
+    const [tab, setTab] = useState<"fracht" | "leer">("fracht");
     const stompRef = useRef<Client | null>(null);
     const [speedIndex, setSpeedIndex] = useState(2);
     const [fuelEstimate, setFuelEstimate] = useState<FuelEstimate | null>(null);
@@ -240,213 +243,233 @@ export default function CargoScreen({ onCargoAccepted, currentPortId, playerShip
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentTick]);
 
-    if (loading) return <div className="cs-screen"><p className="cs-loading">Lade Frachtbörse…</p></div>;
-
     const startBtnDisabled = !selected || !playerShipId || !currentPortId || shipInTransit || !canAfford || hasNoAffordableOption || starting;
     const selectedDurationTicks = fuelEstimate ? findDuration(SPEED_SETTINGS[speedIndex]) : null;
 
 
     return (
         <div className="cs-screen">
-            <h1 className="cs-title">Frachtbörse</h1>
-            <div className="cs-body">
+            <div className="cs-header">
+                <h1 className="cs-title">{tab === "leer" ? "Leerfahrt" : "Frachtbörse"}</h1>
+                <button
+                    type="button"
+                    className="cs-switch-btn"
+                    onClick={() => { audioEngine.playSfx("buttonClick"); setTab(tab === "leer" ? "fracht" : "leer"); }}
+                >
+                    {tab === "leer" ? "← Zur Frachtbörse" : "Zur Leerfahrt →"}
+                </button>
+            </div>
 
-                <div className="cs-list-panel">
-                    <div className="cs-list-header">
-                        <span>Verfügbare Frachten ({cargos.length})</span>
-                        <img src={Briefmarke} alt="" className="cs-list-stamp" />
-                    </div>
+            {tab === "leer" && (
+                <EmptyVoyageScreen
+                    currentPortId={currentPortId}
+                    playerShipId={playerShipId}
+                    onVoyageStarted={onEmptyVoyageStarted}
+                />
+            )}
 
-                    {cargos.length === 0 && (
-                        <div className="cs-list-empty">
-                            Momentan keine Fracht verfügbar.<br />
-                            <span>Neue Angebote erscheinen mit der Zeit.</span>
+            {tab === "fracht" && loading && <p className="cs-loading">Lade Frachtbörse…</p>}
+
+            {tab === "fracht" && !loading && (
+                <div className="cs-body">
+
+                    <div className="cs-list-panel">
+                        <div className="cs-list-header">
+                            <span>Verfügbare Frachten ({cargos.length})</span>
+                            <img src={Briefmarke} alt="" className="cs-list-stamp" />
                         </div>
-                    )}
 
-                    {cargos.map(c => {
-                        const tl = ticksUntilExpiry(c);
-                        return (
-                            <div key={c.id}
-                                 onClick={() => { setSelected(c); setFuelError(null); setAcceptError(null); }}
-                                 className={`cs-list-item${selected?.id === c.id ? " cs-list-item--active" : ""}`}>
-                                <div className="cs-item-row1">
-                                    <span className="cs-item-name">{c.name}</span>
-                                    <span className="cs-item-reward">{Number(c.reward).toLocaleString("de-DE")} T</span>
-                                </div>
-                                <div className="cs-item-row2">
+                        {cargos.length === 0 && (
+                            <div className="cs-list-empty">
+                                Momentan keine Fracht verfügbar.<br />
+                                <span>Neue Angebote erscheinen mit der Zeit.</span>
+                            </div>
+                        )}
+
+                        {cargos.map(c => {
+                            const tl = ticksUntilExpiry(c);
+                            return (
+                                <div key={c.id}
+                                     onClick={() => { setSelected(c); setFuelError(null); setAcceptError(null); }}
+                                     className={`cs-list-item${selected?.id === c.id ? " cs-list-item--active" : ""}`}>
+                                    <div className="cs-item-row1">
+                                        <span className="cs-item-name">{c.name}</span>
+                                        <span className="cs-item-reward">{Number(c.reward).toLocaleString("de-DE")} T</span>
+                                    </div>
+                                    <div className="cs-item-row2">
                                     <span className="cs-type-badge" style={{ background: TYPE_COLORS[c.cargoType]+"22", color: TYPE_COLORS[c.cargoType] }}>
                                         {TYPE_LABELS[c.cargoType] ?? c.cargoType}
                                     </span>
-                                    <span className="cs-item-route">{c.originPortName} → {c.destinationPortName}</span>
-                                    {tl != null && (
-                                        <span className={`cs-item-expiry ${expiryClass(tl)}`}>
+                                        <span className="cs-item-route">{c.originPortName} → {c.destinationPortName}</span>
+                                        {tl != null && (
+                                            <span className={`cs-item-expiry ${expiryClass(tl)}`}>
                                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                                 <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/>
                                             </svg>
-                                            {tl} {tl === 1 ? "Tag" : "Tage"}
+                                                {tl} {tl === 1 ? "Tag" : "Tage"}
                                         </span>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-
-                <div className="cs-detail-panel">
-                    {selected ? (
-                        <>
-                            <div className="cs-detail-header">
-                                <div>
-                                    <h2 className="cs-detail-title">{selected.name}</h2>
-                                    <p className="cs-detail-desc">
-                                        {selected.description?.trim()
-                                            || `${TYPE_LABELS[selected.cargoType]} – Standardfracht ohne besondere Anforderungen.`}
-                                    </p>
-                                </div>
-                                <div className="cs-header-badges">
-                                    {(selected.cargoType === "FOOD" || selected.cargoType === "HAZARDOUS") && (
-                                        <div className="cs-perishable-badge">
-                                            ⚠ {selected.cargoType === "FOOD"
-                                            ? "Verderbliche Ware – schnelle Lieferung erforderlich!"
-                                            : "Gefährliches Material – wird bei Ablauf entsorgt!"}
-                                        </div>
-                                    )}
-                                    {selected.cargoStatus === "EXPIRED" && (
-                                        <div className="cs-expired-badge">
-                                            ⚠ Abgelaufen – nur noch {getExpiredRewardPercent(selected.cargoType)}% Belohnung.
-                                        </div>
-                                    )}
-                                    {(() => {
-                                        const tl = ticksUntilExpiry(selected);
-                                        if (tl == null) return null;
-                                        return (
-                                            <div className={`cs-expiry-badge ${expiryClass(tl)}`}>
-                                                <div className="cs-expiry-label">VERFÜGBAR NOCH</div>
-                                                <div className="cs-expiry-row">
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                        <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/>
-                                                    </svg>
-                                                    <strong>{tl} {tl === 1 ? "Tag" : "Tage"}</strong>
-                                                </div>
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-                            </div>
-
-                            <div className="cs-route-bar">
-                                <span className="cs-port-from">{selected.originPortName}</span>
-                                <span className="cs-port-to">{selected.destinationPortName}</span>
-                            </div>
-
-                            <div className="cs-stats-grid">
-                                <div className="cs-stat">
-                                    <div className="cs-stat-label">Belohnung</div>
-                                    <div className="cs-stat-value">
-                                        {Number(selected.reward).toLocaleString("de-DE")} T
-                                        {selected.cargoStatus === "EXPIRED" && (
-                                            <span className="cs-stat-reduced"> ({getExpiredRewardPercent(selected.cargoType)}%)</span>
                                         )}
                                     </div>
                                 </div>
-                                <div className="cs-stat">
-                                    <div className="cs-stat-label">Kapazität</div>
-                                    <div className="cs-stat-value">{selected.capacity}t</div>
-                                </div>
-                                <div className="cs-stat">
-                                    <div className="cs-stat-label">Risiko</div>
-                                    <div className={`cs-stat-value ${riskClass(selected.risk)}`}>{riskLabel(selected.risk)}</div>
-                                </div>
-                                <div className="cs-stat">
-                                    <div className="cs-stat-label">Typ</div>
-                                    <div className="cs-stat-value" style={{ color: TYPE_COLORS[selected.cargoType] }}>
-                                        {TYPE_LABELS[selected.cargoType]}
+                            );
+                        })}
+                    </div>
+
+                    <div className="cs-detail-panel">
+                        {selected ? (
+                            <>
+                                <div className="cs-detail-header">
+                                    <div>
+                                        <h2 className="cs-detail-title">{selected.name}</h2>
+                                        <p className="cs-detail-desc">
+                                            {selected.description?.trim()
+                                                || `${TYPE_LABELS[selected.cargoType]} – Standardfracht ohne besondere Anforderungen.`}
+                                        </p>
                                     </div>
-                                </div>
-                            </div>
-
-
-                            {!playerShipId && <div className="cs-hint">Wähle zuerst ein Schiff aus, um eine Fracht anzunehmen.</div>}
-                            {playerShipId && (!currentPortId || shipInTransit) && (
-                                <div className="cs-hint">Dieses Schiff ist aktuell unterwegs. Werte sind erst wieder im Hafen verfügbar.</div>
-                            )}
-                            {playerShipId && currentPortId && !shipInTransit && (
-                                <div className="cs-speed-section">
-                                    <div className="cs-speed-title">REISEGESCHWINDIGKEIT</div>
-                                    {estimateLoading && !fuelEstimate && <div className="cs-hint">Berechne Treibstoffverbrauch…</div>}
-                                    {fuelEstimate && (
-                                        <>
-                                            <div className="cs-fuel-row">
-                                                <span className="cs-fuel-label">Tank</span>
-                                                <div className="cs-fuel-track">
-                                                    <div className="cs-fuel-fill" style={{ width: `${Math.min(100,(fuelEstimate.currentFuelAbsolute/fuelEstimate.maxFuel)*100)}%` }} />
+                                    <div className="cs-header-badges">
+                                        {(selected.cargoType === "FOOD" || selected.cargoType === "HAZARDOUS") && (
+                                            <div className="cs-perishable-badge">
+                                                ⚠ {selected.cargoType === "FOOD"
+                                                ? "Verderbliche Ware – schnelle Lieferung erforderlich!"
+                                                : "Gefährliches Material – wird bei Ablauf entsorgt!"}
+                                            </div>
+                                        )}
+                                        {selected.cargoStatus === "EXPIRED" && (
+                                            <div className="cs-expired-badge">
+                                                ⚠ Abgelaufen – nur noch {getExpiredRewardPercent(selected.cargoType)}% Belohnung.
+                                            </div>
+                                        )}
+                                        {(() => {
+                                            const tl = ticksUntilExpiry(selected);
+                                            if (tl == null) return null;
+                                            return (
+                                                <div className={`cs-expiry-badge ${expiryClass(tl)}`}>
+                                                    <div className="cs-expiry-label">VERFÜGBAR NOCH</div>
+                                                    <div className="cs-expiry-row">
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                            <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/>
+                                                        </svg>
+                                                        <strong>{tl} {tl === 1 ? "Tag" : "Tage"}</strong>
+                                                    </div>
                                                 </div>
-                                                <span className="cs-fuel-nums">
-                                                    {fuelEstimate.currentFuelAbsolute.toFixed(0)} / {fuelEstimate.maxFuel.toFixed(0)}
-                                                    {currentSpeedOpt && (
-                                                        <span style={{ color: currentSpeedOpt.canAfford?"#4a8a4a":"#c04040", marginLeft:8, fontWeight:"bold" }}>
-                                                            {currentSpeedOpt.canAfford?"":"⚠ "}
-                                                            −{currentSpeedOpt.fuelRequiredAbsolute.toFixed(0)} = {(fuelEstimate.currentFuelAbsolute-currentSpeedOpt.fuelRequiredAbsolute).toFixed(0)}
-                                                        </span>
-                                                    )}
-                                                </span>
-                                            </div>
-                                            <div className="cs-speed-buttons">
-                                                {fuelEstimate.speedOptions.map((opt, idx) => {
-                                                    const dis = !opt.possible || !opt.canAfford;
-                                                    const ticks = findDuration(opt.speedSetting);
-                                                    return (
-                                                        <button key={idx} type="button"
-                                                                className={`cs-speed-btn${speedIndex===idx?" cs-speed-btn--active":""}${!opt.possible?" cs-speed-btn--impossible":!opt.canAfford?" cs-speed-btn--unaffordable":""}`}
-                                                                onClick={() => { if (!dis) { setSpeedIndex(idx); setFuelError(null); } }}
-                                                                disabled={dis}>
-                                                            <span className="cs-speed-name">{opt.label}</span>
-                                                            <span className="cs-speed-fuel">−{opt.fuelRequiredAbsolute.toFixed(0)}</span>
-                                                            {ticks != null && <span className="cs-speed-days">{ticks}d</span>}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                            {hasNoAffordableOption && !fuelEstimate.speedOptions.every(o=>!o.possible) && <div className="cs-warn">Nicht genug Treibstoff. Tank muss aufgefüllt werden.</div>}
-                                            {fuelEstimate.speedOptions.every(o=>!o.possible) && <div className="cs-warn">Strecke zu lang für dieses Schiff.</div>}
-                                        </>
-                                    )}
-                                </div>
-                            )}
-
-                            <div className="cs-bottom">
-                                <div className="cs-bottom-left">
-                                    <div className="cs-route-section-label">ROUTE</div>
-                                    <p className="cs-route-desc">
-                                        {routeDescription}
-                                    </p>
-                                    {selectedDurationTicks != null && (
-                                        <div className="cs-duration">{selectedDurationTicks} Tage</div>
-                                    )}
-                                    <div className="cs-error-slot">
-                                        {fuelError && <div className="cs-error">{fuelError}</div>}
-                                        {acceptError && <div className="cs-error">{acceptError}</div>}
+                                            );
+                                        })()}
                                     </div>
-                                    <button type="button" className="cs-accept-btn" onClick={handleAcceptCargo} disabled={startBtnDisabled}>
-                                        Reise Starten
-                                    </button>
                                 </div>
-                                <div className="cs-map-wrapper">
-                                    <CargoRouteMapView
-                                        fromPortName={selected.originPortName}
-                                        toPortName={selected.destinationPortName}
-                                        fromPortId={selected.originPortId}
-                                        toPortId={selected.destinationPortId}
-                                    />
+
+                                <div className="cs-route-bar">
+                                    <span className="cs-port-from">{selected.originPortName}</span>
+                                    <span className="cs-port-to">{selected.destinationPortName}</span>
                                 </div>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="cs-empty-detail">Wähle ein Frachtangebot aus.</div>
-                    )}
+
+                                <div className="cs-stats-grid">
+                                    <div className="cs-stat">
+                                        <div className="cs-stat-label">Belohnung</div>
+                                        <div className="cs-stat-value">
+                                            {Number(selected.reward).toLocaleString("de-DE")} T
+                                            {selected.cargoStatus === "EXPIRED" && (
+                                                <span className="cs-stat-reduced"> ({getExpiredRewardPercent(selected.cargoType)}%)</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="cs-stat">
+                                        <div className="cs-stat-label">Kapazität</div>
+                                        <div className="cs-stat-value">{selected.capacity}t</div>
+                                    </div>
+                                    <div className="cs-stat">
+                                        <div className="cs-stat-label">Risiko</div>
+                                        <div className={`cs-stat-value ${riskClass(selected.risk)}`}>{riskLabel(selected.risk)}</div>
+                                    </div>
+                                    <div className="cs-stat">
+                                        <div className="cs-stat-label">Typ</div>
+                                        <div className="cs-stat-value" style={{ color: TYPE_COLORS[selected.cargoType] }}>
+                                            {TYPE_LABELS[selected.cargoType]}
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                                {!playerShipId && <div className="cs-hint">Wähle zuerst ein Schiff aus, um eine Fracht anzunehmen.</div>}
+                                {playerShipId && (!currentPortId || shipInTransit) && (
+                                    <div className="cs-hint">Dieses Schiff ist aktuell unterwegs. Werte sind erst wieder im Hafen verfügbar.</div>
+                                )}
+                                {playerShipId && currentPortId && !shipInTransit && (
+                                    <div className="cs-speed-section">
+                                        <div className="cs-speed-title">REISEGESCHWINDIGKEIT</div>
+                                        {estimateLoading && !fuelEstimate && <div className="cs-hint">Berechne Treibstoffverbrauch…</div>}
+                                        {fuelEstimate && (
+                                            <>
+                                                <div className="cs-fuel-row">
+                                                    <span className="cs-fuel-label">Tank</span>
+                                                    <div className="cs-fuel-track">
+                                                        <div className="cs-fuel-fill" style={{ width: `${Math.min(100,(fuelEstimate.currentFuelAbsolute/fuelEstimate.maxFuel)*100)}%` }} />
+                                                    </div>
+                                                    <span className="cs-fuel-nums">
+                                                    {fuelEstimate.currentFuelAbsolute.toFixed(0)} / {fuelEstimate.maxFuel.toFixed(0)}
+                                                        {currentSpeedOpt && (
+                                                            <span style={{ color: currentSpeedOpt.canAfford?"#4a8a4a":"#c04040", marginLeft:8, fontWeight:"bold" }}>
+                                                            {currentSpeedOpt.canAfford?"":"⚠ "}
+                                                                −{currentSpeedOpt.fuelRequiredAbsolute.toFixed(0)} = {(fuelEstimate.currentFuelAbsolute-currentSpeedOpt.fuelRequiredAbsolute).toFixed(0)}
+                                                        </span>
+                                                        )}
+                                                </span>
+                                                </div>
+                                                <div className="cs-speed-buttons">
+                                                    {fuelEstimate.speedOptions.map((opt, idx) => {
+                                                        const dis = !opt.possible || !opt.canAfford;
+                                                        const ticks = findDuration(opt.speedSetting);
+                                                        return (
+                                                            <button key={idx} type="button"
+                                                                    className={`cs-speed-btn${speedIndex===idx?" cs-speed-btn--active":""}${!opt.possible?" cs-speed-btn--impossible":!opt.canAfford?" cs-speed-btn--unaffordable":""}`}
+                                                                    onClick={() => { if (!dis) { setSpeedIndex(idx); setFuelError(null); } }}
+                                                                    disabled={dis}>
+                                                                <span className="cs-speed-name">{opt.label}</span>
+                                                                <span className="cs-speed-fuel">−{opt.fuelRequiredAbsolute.toFixed(0)}</span>
+                                                                {ticks != null && <span className="cs-speed-days">{ticks}d</span>}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                                {hasNoAffordableOption && !fuelEstimate.speedOptions.every(o=>!o.possible) && <div className="cs-warn">Nicht genug Treibstoff. Tank muss aufgefüllt werden.</div>}
+                                                {fuelEstimate.speedOptions.every(o=>!o.possible) && <div className="cs-warn">Strecke zu lang für dieses Schiff.</div>}
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="cs-bottom">
+                                    <div className="cs-bottom-left">
+                                        <div className="cs-route-section-label">ROUTE</div>
+                                        <p className="cs-route-desc">
+                                            {routeDescription}
+                                        </p>
+                                        {selectedDurationTicks != null && (
+                                            <div className="cs-duration">{selectedDurationTicks} Tage</div>
+                                        )}
+                                        <div className="cs-error-slot">
+                                            {fuelError && <div className="cs-error">{fuelError}</div>}
+                                            {acceptError && <div className="cs-error">{acceptError}</div>}
+                                        </div>
+                                        <button type="button" className="cs-accept-btn" onClick={handleAcceptCargo} disabled={startBtnDisabled}>
+                                            Reise Starten
+                                        </button>
+                                    </div>
+                                    <div className="cs-map-wrapper">
+                                        <CargoRouteMapView
+                                            fromPortName={selected.originPortName}
+                                            toPortName={selected.destinationPortName}
+                                            fromPortId={selected.originPortId}
+                                            toPortId={selected.destinationPortId}
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="cs-empty-detail">Wähle ein Frachtangebot aus.</div>
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

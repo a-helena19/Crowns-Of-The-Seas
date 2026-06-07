@@ -91,8 +91,8 @@ export const FACTION_DATA: Record<PlayerFaction, FactionDetails> = {
         icon1: smug1,
         icon2: smug2,
         description: 'Hohes Risiko, hohe Beute – nichts für schwache Nerven.',
-        pros: ['+30% bessere Marktpreise', '−30% Schmuggel-Risiko'],
-        cons: ['+40% höheres Zoll-Risiko', '+30% häufigere Ereignisse'],
+        pros: ['−20% Zoll-Risiko', '+20% mehr Schmuggel-Angebote'],
+        cons: ['+30% mehr Ereignisse'],
         color: '#FFA502',
         image: schmugglerBg
     },
@@ -114,7 +114,7 @@ export const FACTION_DATA: Record<PlayerFaction, FactionDetails> = {
         icon2: hae2,
         description: 'Wo andere handeln, verdienen sie doppelt.',
         pros: ['+20% bessere Marktpreise', '+20% mehr Angebotsmenge'],
-        cons: ['+20% höheres Schmuggel-Risiko'],
+        cons: ['−20% weniger Schmuggel-Angebote'],
         color: '#F38181',
         image: haendlerBg
     },

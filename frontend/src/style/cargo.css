@@ -42,6 +42,38 @@
     flex-shrink: 0;
 }
 
+.cs-header {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px 0 14px;
+    flex-shrink: 0;
+}
+
+.cs-switch-btn {
+    position: absolute;
+    right: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: "Georgia", "Palatino Linotype", serif;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    color: #f5edda;
+    background: rgba(40, 26, 10, 0.6);
+    border: 1px solid rgba(180, 140, 60, 0.5);
+    padding: 9px 18px;
+    cursor: pointer;
+    transition: all 0.13s;
+    white-space: nowrap;
+}
+.cs-switch-btn:hover {
+    background: rgba(74, 46, 16, 0.85);
+    border-color: #b89b5e;
+}
+
 .cs-body {
     display: flex;
     align-items: flex-start;
@@ -532,4 +564,27 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+}
+
+.cs-list-scroll::-webkit-scrollbar,
+.cs-detail-panel::-webkit-scrollbar {
+    width: 8px;
+}
+.cs-list-scroll::-webkit-scrollbar-track,
+.cs-detail-panel::-webkit-scrollbar-track {
+    background: rgba(90, 58, 10, 0.06);
+}
+.cs-list-scroll::-webkit-scrollbar-thumb,
+.cs-detail-panel::-webkit-scrollbar-thumb {
+    background: rgba(90, 58, 10, 0.2);
+    border-radius: 4px;
+}
+.cs-list-scroll::-webkit-scrollbar-thumb:hover,
+.cs-detail-panel::-webkit-scrollbar-thumb:hover {
+    background: rgba(90, 58, 10, 0.35);
+}
+.cs-list-scroll,
+.cs-detail-panel {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(90, 58, 10, 0.2) rgba(90, 58, 10, 0.06);
 }

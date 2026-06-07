@@ -104,7 +104,7 @@ public class DockingPenaltyServiceImpl implements DockingPenaltyService {
         GameSession session = gameSessionRepository.findById(sessionId).orElse(null);
         int currentTick = session != null ? session.getCurrentTick() : travel.getArrivalTick();
 
-        if (!hasCargoForArrival(travel)) {
+        if (!travel.isEmptyVoyage() && !hasCargoForArrival(travel)) {
             unloadingStartService.startUnloadingImmediately(travel);
             System.out.println("[DockingPenalty] Ship " + ship.getId()
                     + " — kein Cargo, direkt Entladen nach Anlegen");
@@ -116,7 +116,8 @@ public class DockingPenaltyServiceImpl implements DockingPenaltyService {
         playerShipRepository.save(ship);
 
         System.out.println("[DockingPenalty] Ship " + ship.getId()
-                + " — Anlegen abgeschlossen, CUSTOMS_CHECK gestartet (bis Tick " + customsCheckCompletedAtTick + ")");
+                + " — Anlegen abgeschlossen, CUSTOMS_CHECK gestartet (bis Tick " + customsCheckCompletedAtTick + ")"
+                + (travel.isEmptyVoyage() ? " [Leerfahrt — kein Entladen]" : ""));
     }
 
     private boolean hasCargoForArrival(Travel travel) {

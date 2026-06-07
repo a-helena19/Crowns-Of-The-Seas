@@ -1619,6 +1619,12 @@ export default function GameScreen() {
                         }}
                         onCargoAssigned={handleCargoAssigned}
                         openCargoForShipId={openCargoForShipId}
+                        onOpenOrdersForShip={(shipId) => {
+                            setOpenCargoForShipId(null);
+                            setFocusShipIdForCargoManagement(shipId);
+                            setOverlayReturnView("map");
+                            setView("cargoManagement");
+                        }}
                     />
                 )}
                 {view === "broker" && <ShipBrokerScene onClose={() => setView(overlayReturnView)} />}
@@ -1632,7 +1638,7 @@ export default function GameScreen() {
                         onCargoRemoved={handleCargoRemoved}
                         onCargoPhaseChange={handleCargoPhaseChange}
                         onTravelStarted={handleTravelStarted}
-                        onClose={() => setView(overlayReturnView)}
+                        onClose={() => { setFocusShipIdForCargoManagement(null); setView(overlayReturnView); }}
                         onDepartureStarted={handleDepartureStarted}
                         onDepartureComplete={handleDepartureComplete}
                     />
@@ -1693,6 +1699,15 @@ export default function GameScreen() {
                                     return;
                                 }
                                 setOpenedEventId(pendingEvent.eventId);
+                                return;
+                            }
+                            const activeVoyageEntry = assignedCargos.find(
+                                e => e.shipId === ship.id && e.phase !== "completed"
+                            );
+                            if (activeVoyageEntry) {
+                                setFocusShipIdForCargoManagement(ship.id);
+                                setOverlayReturnView("map");
+                                setView("cargoManagement");
                                 return;
                             }
                             if (ship.status === "AT_PORT") {

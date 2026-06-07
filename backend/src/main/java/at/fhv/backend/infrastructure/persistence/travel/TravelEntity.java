@@ -78,6 +78,9 @@ public class TravelEntity {
     @Column(name = "arrival_mini_game_pending", nullable = false, columnDefinition = "boolean default false")
     private boolean arrivalMiniGamePending = false;
 
+    @Column(name = "empty_voyage", nullable = false, columnDefinition = "boolean default false")
+    private boolean emptyVoyage = false;
+
     public TravelEntity() {}
 
     public UUID getTravelId() {
@@ -254,5 +257,13 @@ public class TravelEntity {
 
     public void setArrivalMiniGamePending(boolean arrivalMiniGamePending) {
         this.arrivalMiniGamePending = arrivalMiniGamePending;
+    }
+
+    public boolean isEmptyVoyage() {
+        return emptyVoyage;
+    }
+
+    public void setEmptyVoyage(boolean emptyVoyage) {
+        this.emptyVoyage = emptyVoyage;
     }
 }

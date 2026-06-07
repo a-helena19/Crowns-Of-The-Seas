@@ -8,22 +8,17 @@ public class SmugglerDecorator extends SessionPlayerDecorator {
         super(wrappedPlayer);
     }
 
-    // Höhere Marktpreise/Belohnungen — passend zu "höhere Belohnungen"
-    @Override
-    public double getMarketOfferModifier() {
-        return 1.30;
-    }
-
-    // Niedrigeres Eigen-Risiko beim Schmuggeln (Smuggler sind im Schmuggeln gut)
+    // Vorteil: Mehr Schmuggel-Angebote (+20%) — der Schmuggler bekommt häufiger Angebote.
     @Override
     public double getSmuggleRiskModifier() {
-        return 1.2;
+        return 1.20;
     }
 
-    // Höheres Zoll-Risiko — passt zur "höheres Risiko"-Beschreibung
+    // Vorteil: Geringeres Zoll-Risiko (−40%) — Schmuggler sind Profis im Ausweichen
+    // und werden bei der Zollkontrolle seltener erwischt.
     @Override
     public double getCustomsRiskModifier() {
-        return 1.40;
+        return 0.80;
     }
 
     // Hohes Risiko, hohe Beute: volatilere Reisen → +30% Minispiel-Häufigkeit

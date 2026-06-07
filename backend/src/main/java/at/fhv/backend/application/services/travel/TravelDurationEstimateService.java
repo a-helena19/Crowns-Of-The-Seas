@@ -6,4 +6,5 @@ import java.util.UUID;
 
 public interface TravelDurationEstimateService {
     TravelDurationEstimateDTO estimate(UUID playerId, UUID sessionId, UUID playerShipId, UUID sessionCargoId);
+    TravelDurationEstimateDTO estimateForPort(UUID playerId, UUID sessionId, UUID playerShipId, UUID destinationPortId);
 }

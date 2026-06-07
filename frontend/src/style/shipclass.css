@@ -623,3 +623,77 @@
     text-transform: uppercase;
     letter-spacing: 1px;
 }
+
+.ship-deal-timer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 4;
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--ink-light);
+    background: var(--gold-pale);
+    border-left: 1px solid rgba(100,60,20,0.35);
+    border-bottom: 1px solid rgba(100,60,20,0.35);
+    padding: 3px 9px;
+}
+
+.ship-deal-timer.urgent {
+    color: #b03030;
+    background: #f3e0d2;
+    font-weight: 700;
+}
+
+.ship-deal-tags {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.ship-deal-badge {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 2px 9px;
+    color: var(--ink);
+    background: var(--gold-pale);
+    border: 1px solid var(--gold);
+}
+
+.ship-deal-badge.trader {
+    background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 100%);
+    border-color: var(--wood-dark);
+    color: var(--ink);
+}
+
+.ship-deal-pricing {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 9px;
+}
+
+.ship-listing-price.original {
+    display: inline;
+    margin-bottom: 0;
+    font-size: 14px;
+    color: #a85a5a;
+    text-decoration: line-through;
+    text-shadow: none;
+    opacity: 0.8;
+}
+
+.ship-deal-price {
+    font-family: 'Cinzel', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 1px;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.12);
+}

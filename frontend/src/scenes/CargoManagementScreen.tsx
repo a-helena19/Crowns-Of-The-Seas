@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import LoadingScreen from "./LoadingScreen";
 import background from "../assets/background-cargomanagement.png";
 import shipIcon from "../assets/icon-ship.png";
@@ -190,11 +190,18 @@ export default function CargoManagementScreen({
         }
     }, [assignedCargos, completedHistory, selectedCargoId]);
 
+    const appliedFocusRef = useRef<string | null>(null);
     useEffect(() => {
-        if (!focusShipId) return;
+        if (!focusShipId) {
+            appliedFocusRef.current = null;
+            return;
+        }
+
+        if (appliedFocusRef.current === focusShipId) return;
         const firstMatchingCargo = assignedCargos.find(e => e.shipId === focusShipId);
         if (firstMatchingCargo) {
             setSelectedCargoId(firstMatchingCargo.cargoId);
+            appliedFocusRef.current = focusShipId;
         }
     }, [focusShipId, assignedCargos]);
 
@@ -289,6 +296,24 @@ export default function CargoManagementScreen({
         return () => clearInterval(interval);
     }, [selectedActiveEntry?.cargoId, selectedActiveEntry?.phase, onCargoRemoved]);
 
+    useEffect(() => {
+        const hasCompleted = assignedCargos.some(e => e.phase === "completed");
+        if (!hasCompleted) return;
+        const interval = setInterval(() => {
+            for (const entry of assignedCargos) {
+                if (entry.phase !== "completed") continue;
+                const completedAt = completedAtMap[entry.cargoId];
+                if (completedAt && Date.now() - completedAt >= 10000) {
+                    delete completedAtMap[entry.cargoId];
+                    onCargoRemoved(entry.cargoId);
+                    setSelectedCargoId(prev => (prev === entry.cargoId ? null : prev));
+                }
+            }
+        }, 1000);
+        return () => clearInterval(interval);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [assignedCargos, onCargoRemoved]);
+
     const selectedHistoryEntry = selectedCargoId ? completedHistory[selectedCargoId]?.entry ?? null : null;
     const selectedEntry = selectedActiveEntry ?? selectedHistoryEntry;
     const selectedCompletedFromHistoryOnly = !!selectedHistoryEntry && !selectedActiveEntry;
@@ -364,17 +389,30 @@ export default function CargoManagementScreen({
                 if (retriesLeft === MAX_RETRIES) {
                     onDepartureStarted?.();
                 }
-                const response = await fetch(`/api/travels/start/${playerId}?sessionId=${sessionId}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                    body: JSON.stringify({
+                const isEmpty = entry.isEmptyVoyage === true;
+                const startUrl = isEmpty
+                    ? `/api/travels/start-empty/${playerId}?sessionId=${sessionId}`
+                    : `/api/travels/start/${playerId}?sessionId=${sessionId}`;
+                const startBody = isEmpty
+                    ? {
+                        playerShipId: entry.shipId,
+                        destinationPortId: entry.destinationPortId,
+                        speedSetting: entry.speedSetting,
+                        pilotageService: pilotageMap[entry.cargoId] ?? false,
+                        miniGameFailedDeparture: miniGameFailed,
+                    }
+                    : {
                         playerShipId: entry.shipId,
                         destinationPortId: entry.destinationPortId,
                         sessionCargoId: entry.cargoId,
                         speedSetting: entry.speedSetting,
                         pilotageService: pilotageMap[entry.cargoId] ?? false,
                         miniGameFailedDeparture: miniGameFailed,
-                    }),
+                    };
+                const response = await fetch(startUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                    body: JSON.stringify(startBody),
                 });
 
                 if (response.ok) {
@@ -550,23 +588,36 @@ export default function CargoManagementScreen({
 
                         {selectedEntry.phase === "loading" && (
                             <>
-                                <LoadingScreen
-                                    ship={{
-                                        id: selectedEntry.shipId,
-                                        name: selectedEntry.shipName,
-                                        maxCargoCapacity: selectedEntry.maxCargoCapacity,
-                                        iconUrl: selectedEntry.shipIconUrl,
-                                    }}
-                                    cargo={{
-                                        from: selectedEntry.from,
-                                        to: selectedEntry.to,
-                                        weight: selectedEntry.weight,
-                                    }}
-                                    done={selectedEntry.loadingDone || getRemainingSeconds(selectedEntry) <= 0}
-                                    onComplete={() => onCargoLoadingDone(selectedEntry.cargoId)}
-                                    loadingDurationSeconds={selectedEntry.loadingDurationSeconds}
-                                    elapsedRatio={getLoadingPct(selectedEntry) / 100}
-                                />
+                                {selectedEntry.isEmptyVoyage ? (
+                                    <div className="cm-travel-panel">
+                                        <div className="cm-travel-header">
+                                            <img src={shipIcon} alt="" className="cm-travel-icon" />
+                                            <div className="cm-travel-title">Bereit zur Abfahrt</div>
+                                        </div>
+                                        <div className="cm-travel-route">{selectedEntry.from} → {selectedEntry.to}</div>
+                                        <p style={{ fontSize: 13, color: "#6a5030", margin: "8px 0 0", fontStyle: "italic" }}>
+                                            Leerfahrt ohne Fracht.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <LoadingScreen
+                                        ship={{
+                                            id: selectedEntry.shipId,
+                                            name: selectedEntry.shipName,
+                                            maxCargoCapacity: selectedEntry.maxCargoCapacity,
+                                            iconUrl: selectedEntry.shipIconUrl,
+                                        }}
+                                        cargo={{
+                                            from: selectedEntry.from,
+                                            to: selectedEntry.to,
+                                            weight: selectedEntry.weight,
+                                        }}
+                                        done={selectedEntry.loadingDone || getRemainingSeconds(selectedEntry) <= 0}
+                                        onComplete={() => onCargoLoadingDone(selectedEntry.cargoId)}
+                                        loadingDurationSeconds={selectedEntry.loadingDurationSeconds}
+                                        elapsedRatio={getLoadingPct(selectedEntry) / 100}
+                                    />
+                                )}
                                 {(selectedEntry.loadingDone || getRemainingSeconds(selectedEntry) <= 0) && (() => {
                                     const { strikeAtOrigin, strikeAtDest, pilotBlocked } = getStrikeInfo(selectedEntry);
                                     const strikeNames = [

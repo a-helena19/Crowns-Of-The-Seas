@@ -66,7 +66,7 @@ public class TravelArrivalServiceImpl implements TravelArrivalService {
             return;
         }
 
-        if (!hasCargoForArrival(travel)) {
+        if (!travel.isEmptyVoyage() && !hasCargoForArrival(travel)) {
             unloadingStartService.startUnloadingImmediately(travel);
             System.out.println("[TravelArrival] Ship " + ship.getId()
                     + " arrived at port " + travel.getDestinationPortId()
@@ -80,7 +80,8 @@ public class TravelArrivalServiceImpl implements TravelArrivalService {
 
         System.out.println("[TravelArrival] Ship " + ship.getId()
                 + " arrived at port " + travel.getDestinationPortId()
-                + " — entered CUSTOMS_CHECK (2 ticks, until tick " + customsCheckCompletedAtTick + ")");
+                + " — entered CUSTOMS_CHECK (2 ticks, until tick " + customsCheckCompletedAtTick + ")"
+                + (travel.isEmptyVoyage() ? " [Leerfahrt — kein Entladen]" : ""));
     }
 
     private List<SessionCargo> collectCargosOnBoardForTravel(Travel travel) {
