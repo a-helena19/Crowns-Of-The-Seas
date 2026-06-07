@@ -1,0 +1,21 @@
+services:
+  auth-postgres:
+    image: postgres:16-alpine
+    container_name: crowns-auth-postgres-container
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: auth_service
+      POSTGRES_USER: crowns
+      POSTGRES_PASSWORD: crowns
+    volumes:
+      - crowns-auth-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crowns -d auth_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  crowns-auth-postgres-data:
