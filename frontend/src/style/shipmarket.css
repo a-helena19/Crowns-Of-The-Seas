@@ -109,6 +109,7 @@
     padding-right: 4px;
 }
 
+/* Scrollbar im Stil von CargoManagement statt der Browser-Default-Scrollbar */
 .sm-grid-scroll::-webkit-scrollbar {
     width: 8px;
 }
@@ -310,7 +311,6 @@
 
 .sm-price-row {
     display: flex;
-    flex-wrap: wrap;
     align-items: baseline;
     justify-content: center;
     gap: 9px;
@@ -336,17 +336,18 @@
     color: #9a6a1a;
 }
 
-.sm-deal-tag {
+.sm-trader-banner {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
     font-size: 10px;
     font-weight: bold;
-    letter-spacing: 0.3px;
-    color: #4a3410;
-    background: linear-gradient(180deg, #f4d27a 0%, #e0b454 100%);
-    border: 1px solid #b8862e;
+    color: #6a4e1a;
+    background: rgba(224, 180, 84, 0.2);
+    border: 1px solid rgba(184, 134, 46, 0.55);
     border-radius: 999px;
-    padding: 2px 8px;
-    white-space: nowrap;
-    box-shadow: 0 1px 2px rgba(90, 58, 10, 0.25);
+    padding: 1px 8px;
+    margin-bottom: 8px;
 }
 
 .sm-buy-btn {

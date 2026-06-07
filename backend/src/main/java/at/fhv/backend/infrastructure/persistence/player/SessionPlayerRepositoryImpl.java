@@ -1,6 +1,5 @@
 package at.fhv.backend.infrastructure.persistence.player;
 
-import at.fhv.backend.domain.model.player.BaseSessionPlayer;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.infrastructure.mapper.SessionPlayerMapper;
@@ -29,7 +28,7 @@ public class SessionPlayerRepositoryImpl implements SessionPlayerRepository {
 
     @Override
     public ISessionPlayer save(ISessionPlayer player) {
-        SessionPlayerEntity entity = mapper.toEntity(player, null);
+        SessionPlayerEntity entity = mapper.toEntity(player, player.getFaction());
         SessionPlayerEntity saved = jpaRepository.save(entity);
         return mapper.toDomain(saved);
     }

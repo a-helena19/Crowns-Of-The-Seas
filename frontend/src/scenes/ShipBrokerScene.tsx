@@ -466,6 +466,8 @@ function ClassShipCard({
                     </span>
                 </div>
 
+                {deal?.traderBonus && <div className="sm-trader-banner">Händler-Vorteil</div>}
+
                 <p className="sm-card-desc">{ship.description}</p>
 
                 <ShipStats
@@ -483,7 +485,6 @@ function ClassShipCard({
                             <>
                                 <span className="sm-price sm-price--original">{fmt(deal.originalPrice)}</span>
                                 <span className="sm-price--deal">{fmt(deal.dealPrice)}</span>
-                                {deal.traderBonus && <span className="sm-deal-tag">Händler-Vorteil</span>}
                             </>
                         ) : (
                             <span className="sm-price">{fmt(ship.price)}</span>
@@ -599,6 +600,8 @@ function DealCard({
                     </span>
                 </div>
 
+                {deal.traderBonus && <div className="sm-trader-banner">Händler-Vorteil</div>}
+
                 <p className="sm-card-desc">{deal.description}</p>
 
                 <ShipStats
@@ -614,7 +617,6 @@ function DealCard({
                     <div className="sm-price-row">
                         <span className="sm-price sm-price--original">{fmt(deal.originalPrice)}</span>
                         <span className="sm-price--deal">{fmt(deal.dealPrice)}</span>
-                        {deal.traderBonus && <span className="sm-deal-tag">Händler-Vorteil</span>}
                     </div>
                     <button
                         className="sm-buy-btn"
