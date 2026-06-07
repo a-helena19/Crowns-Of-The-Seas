@@ -25,6 +25,7 @@ import at.fhv.backend.domain.model.port.PortRepository;
 import at.fhv.backend.domain.model.session.GameSession;
 import at.fhv.backend.domain.model.session.GameSessionRepository;
 import at.fhv.backend.domain.model.ship.PlayerShip;
+import at.fhv.backend.domain.model.ship.ShipStatus;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.smuggle.SmuggleOffer;
 import at.fhv.backend.domain.model.travel.Travel;
@@ -166,8 +167,7 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
         BigDecimal payout = gross
                 .subtract(totalFine)
                 .add(pilotageRefund)
-                .subtract(regressTotal)
-                .max(BigDecimal.ZERO);
+                .subtract(regressTotal);
 
         BigDecimal customsAlreadyDeducted = BigDecimal.ZERO;
         if (inspection != null) {
@@ -189,6 +189,8 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
 
             if (payout.compareTo(BigDecimal.ZERO) > 0) {
                 player.addBalance(payout);
+            } else if (payout.compareTo(BigDecimal.ZERO) < 0) {
+                player.forceSubtractBalance(payout.negate());
             }
             newBalance = player.getBalance();
             sessionPlayerRepository.save(player);
@@ -216,7 +218,11 @@ public class CargoUnloadingPhaseServiceImpl implements CargoUnloadingPhaseServic
 
         PlayerShip ship = playerShipRepository.findById(travel.getPlayerShipId()).orElse(null);
         if (ship != null) {
-            ship.completeUnloading();
+            if (ship.getStatus() == ShipStatus.CUSTOMS_CHECK) {
+                ship.completeCustomsCheckToPort();
+            } else {
+                ship.completeUnloading();
+            }
             playerShipRepository.save(ship);
         }
 

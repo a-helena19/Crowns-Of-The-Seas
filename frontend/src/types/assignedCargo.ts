@@ -51,6 +51,7 @@ export interface AssignedCargoEntry {
     loadingDone: boolean;
     phase: "loading" | "en_route" | "awaiting_docking" | "customs_check" | "blocked" | "unloading" | "completed";
     travelId?: string;
+    isEmptyVoyage?: boolean;
     currentTick?: number;
     arrivalTick?: number;
     reward?: number;

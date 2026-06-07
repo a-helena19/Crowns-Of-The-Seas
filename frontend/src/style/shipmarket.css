@@ -109,7 +109,6 @@
     padding-right: 4px;
 }
 
-/* Scrollbar im Stil von CargoManagement statt der Browser-Default-Scrollbar */
 .sm-grid-scroll::-webkit-scrollbar {
     width: 8px;
 }
@@ -158,7 +157,6 @@
 
 .sm-card--deal {
     border-color: #c8a040;
-    box-shadow: 0 8px 18px rgba(40,28,10,0.34), inset 0 0 0 1px rgba(200,160,64,0.45);
 }
 
 .sm-pin {

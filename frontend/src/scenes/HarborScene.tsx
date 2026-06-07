@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import CargoScreen from "./CargoScreen";
+import type { VoyageStartedInfo } from "./EmptyVoyageScreen";
 import ShipScreen from "./ShipScreen";
 import Sailor from "../components/Sailor";
 import DialogBubble from "../components/DialogBubble";
@@ -18,9 +19,10 @@ interface HarborSceneProps {
     onClose: () => void;
     onCargoAssigned: (entry: AssignedCargoEntry) => void;
     openCargoForShipId?: string | null;
+    onOpenOrdersForShip?: (shipId: string) => void;
 }
 
-export default function HarborScene({ onClose, onCargoAssigned, openCargoForShipId = null }: HarborSceneProps) {
+export default function HarborScene({ onClose, onCargoAssigned, openCargoForShipId = null, onOpenOrdersForShip }: HarborSceneProps) {
     const [view, setView] = useState<"main" | "cargo" | "ship">("main");
     const [selectedPortId, setSelectedPortId] = useState<string | null>(null);
     const [myPorts, setMyPorts] = useState<Port[]>([]);
@@ -132,6 +134,40 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
         onClose();
     }
 
+    function handleEmptyVoyageStarted(v: VoyageStartedInfo) {
+        if (!selectedShip) return;
+        const originPortName =
+            myPorts.find(p => p.id === selectedPortId)?.name
+            ?? window.__latestPorts?.find(p => p.id === selectedPortId)?.name
+            ?? "";
+
+        const entry: AssignedCargoEntry = {
+            cargoId: `empty-${crypto.randomUUID()}`,
+            shipId: selectedShip.id,
+            shipName: selectedShip.name,
+            shipIconUrl: selectedShip.iconUrl,
+            from: originPortName,
+            to: v.destinationPortName,
+            weight: 0,
+            maxCargoCapacity: selectedShip.maxCargoCapacity ?? 0,
+            originPortId: selectedPortId ?? undefined,
+            destinationPortId: v.destinationPortId,
+            speedSetting: v.speedSetting,
+            loadingDurationSeconds: 0,
+            loadingStartedAt: Date.now(),
+            loadingDone: true,
+            phase: "loading",
+            isEmptyVoyage: true,
+        };
+        onCargoAssigned(entry);
+        audioEngine.playSfx('cargoLoad');
+        if (onOpenOrdersForShip) {
+            onOpenOrdersForShip(selectedShip.id);
+        } else {
+            onClose();
+        }
+    }
+
     return (
         <div className="scene">
             <img src={background} className="background" alt="" />
@@ -179,6 +215,7 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
                     currentPortId={selectedPortId}
                     playerShipId={selectedShip?.id ?? null}
                     onCargoAccepted={handleCargoAccepted}
+                    onEmptyVoyageStarted={handleEmptyVoyageStarted}
                 />
             )}
         </div>

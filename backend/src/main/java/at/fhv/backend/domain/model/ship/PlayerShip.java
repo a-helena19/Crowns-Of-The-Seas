@@ -279,6 +279,15 @@ public class PlayerShip {
         this.unloadingCompletedAtTick = -1;
     }
 
+    public void completeCustomsCheckToPort() {
+        if (this.status != ShipStatus.CUSTOMS_CHECK) {
+            throw new InvalidShipStatusTransition(
+                    "Ship must have the status CUSTOMS_CHECK to finish an empty voyage", "shipId", shipId);
+        }
+        this.status = ShipStatus.AT_PORT;
+        this.unloadingCompletedAtTick = -1;
+    }
+
     public void startRefueling(int refuelingCompletedAtTick, double fuelAmount) {
         if (this.status != ShipStatus.AT_PORT) {
             throw new InvalidShipStatusTransition(
