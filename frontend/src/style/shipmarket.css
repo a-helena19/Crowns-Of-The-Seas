@@ -109,6 +109,23 @@
     padding-right: 4px;
 }
 
+.sm-grid-scroll::-webkit-scrollbar {
+    width: 8px;
+}
+
+.sm-grid-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sm-grid-scroll::-webkit-scrollbar-thumb {
+    background: rgba(90, 58, 10, 0.2);
+    border-radius: 4px;
+}
+
+.sm-grid-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(90, 58, 10, 0.35);
+}
+
 .sm-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -293,6 +310,7 @@
 
 .sm-price-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     justify-content: center;
     gap: 9px;
@@ -321,9 +339,14 @@
 .sm-deal-tag {
     font-size: 10px;
     font-weight: bold;
-    color: #6a5030;
-    border: 1px solid rgba(120,90,40,0.4);
-    padding: 1px 6px;
+    letter-spacing: 0.3px;
+    color: #4a3410;
+    background: linear-gradient(180deg, #f4d27a 0%, #e0b454 100%);
+    border: 1px solid #b8862e;
+    border-radius: 999px;
+    padding: 2px 8px;
+    white-space: nowrap;
+    box-shadow: 0 1px 2px rgba(90, 58, 10, 0.25);
 }
 
 .sm-buy-btn {
