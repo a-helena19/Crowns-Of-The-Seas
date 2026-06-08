@@ -51,6 +51,7 @@ export default function BottomBar({
                         condition={ship.condition}
                         currentPortName={ship.currentPortId ? portsById.get(ship.currentPortId) ?? null : null}
                         pendingEventLabel={pendingEventsByShipId[ship.id]?.label}
+                        pendingEventKind={pendingEventsByShipId[ship.id]?.kind}
                         urgent={urgentShipIds[ship.id]}
                         onClick={onShipCardClick ? () => onShipCardClick(ship) : undefined}
                     />
