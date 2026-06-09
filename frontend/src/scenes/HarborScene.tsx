@@ -15,6 +15,17 @@ interface Port {
     name: string;
 }
 
+interface Ship {
+    id: string;
+    name: string;
+    fuel: number;
+    condition: number;
+    status: string;
+    maxCargoCapacity?: number;
+    iconUrl?: string;
+    currentPortId?: string;
+}
+
 interface HarborSceneProps {
     onClose: () => void;
     onCargoAssigned: (entry: AssignedCargoEntry) => void;
@@ -23,14 +34,10 @@ interface HarborSceneProps {
 }
 
 export default function HarborScene({ onClose, onCargoAssigned, openCargoForShipId = null, onOpenOrdersForShip }: HarborSceneProps) {
-    const [view, setView] = useState<"main" | "cargo" | "ship">("main");
+    const [view, setView] = useState<"main" | "cargo" | "ship" | "leerfahrt" | "frachtboerse">("main");
     const [selectedPortId, setSelectedPortId] = useState<string | null>(null);
     const [myPorts, setMyPorts] = useState<Port[]>([]);
-    const [selectedShip, setSelectedShip] = useState<{
-        id: string; name: string; fuel: number; condition: number;
-        status: string; maxCargoCapacity?: number; iconUrl?: string;
-        currentPortId?: string;
-    } | null>(null);
+    const [selectedShip, setSelectedShip] = useState<Ship | null>(null);
 
     const userData = localStorage.getItem("crowns_user");
     const playerId = userData ? JSON.parse(userData).id : null;
@@ -44,7 +51,7 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
             headers: { Authorization: `Bearer ${token}` },
         })
             .then(r => r.json())
-            .then((ships: any[]) => {
+            .then((ships: Ship[]) => {
                 if (openCargoForShipId) {
                     const targetShip = ships.find((s) => s.id === openCargoForShipId);
                     if (targetShip) {
@@ -58,14 +65,16 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
                 ships
                     .filter(s => ["AT_PORT", "REFUELING", "REPAIRING", "LOADING", "UNLOADING", "READY_TO_DEPART"].includes(s.status) && s.currentPortId)
                     .forEach(s => {
-                        const portName = window.__latestPorts?.find((p: any) => p.id === s.currentPortId)?.name ?? s.currentPortId;
-                        portsMap.set(s.currentPortId, portName);
+                        const portId = s.currentPortId;
+                        if (!portId) return;
+                        const portName = window.__latestPorts?.find(p => p.id === portId)?.name ?? portId;
+                        portsMap.set(portId, portName);
                     });
 
                 // Heimathafen immer in der Liste anzeigen
                 const homePortId = window.__homePortId;
                 if (homePortId && !portsMap.has(homePortId)) {
-                    const homePort = window.__latestPorts?.find((p: any) => p.id === homePortId);
+                    const homePort = window.__latestPorts?.find(p => p.id === homePortId);
                     if (homePort) {
                         portsMap.set(homePort.id, homePort.name);
                     }
@@ -74,7 +83,7 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
                 // Wenn immer noch keine Ports → Heimathafen als einzigen verwenden
                 if (portsMap.size === 0) {
                     const homePort = homePortId
-                        ? window.__latestPorts?.find((p: any) => p.id === homePortId)
+                        ? window.__latestPorts?.find(p => p.id === homePortId)
                         : null;
                     if (homePort) {
                         portsMap.set(homePort.id, homePort.name);
@@ -95,7 +104,7 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
             .catch(console.error);
     }, [playerId, sessionId, token, openCargoForShipId]);
 
-    function handleShipSelect(ship: any) {
+    function handleShipSelect(ship: Ship) {
         setSelectedShip(ship);
         if (ship.currentPortId) setSelectedPortId(ship.currentPortId);
         setView("main");
@@ -196,7 +205,8 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
                     )}
 
                     <DialogBubble
-                        onOpenCargo={() => setView("cargo")}
+                        onOpenCargo={() => setView("frachtboerse")}
+                        onOpenEmptyVoyage={() => setView("leerfahrt")}
                         onOpenShip={() => setView("ship")}
                         selectedShipName={selectedShip?.name}
                     />
@@ -216,6 +226,30 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
                     playerShipId={selectedShip?.id ?? null}
                     onCargoAccepted={handleCargoAccepted}
                     onEmptyVoyageStarted={handleEmptyVoyageStarted}
+                    initialTab="fracht"
+                    allowTabSwitch={true}
+                />
+            )}
+
+            {view === "frachtboerse" && (
+                <CargoScreen
+                    currentPortId={selectedPortId}
+                    playerShipId={selectedShip?.id ?? null}
+                    onCargoAccepted={handleCargoAccepted}
+                    onEmptyVoyageStarted={handleEmptyVoyageStarted}
+                    initialTab="fracht"
+                    allowTabSwitch={false}
+                />
+            )}
+
+            {view === "leerfahrt" && (
+                <CargoScreen
+                    currentPortId={selectedPortId}
+                    playerShipId={selectedShip?.id ?? null}
+                    onCargoAccepted={handleCargoAccepted}
+                    onEmptyVoyageStarted={handleEmptyVoyageStarted}
+                    initialTab="leer"
+                    allowTabSwitch={false}
                 />
             )}
         </div>
