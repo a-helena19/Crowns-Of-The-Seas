@@ -229,6 +229,14 @@ export default function GameScreen() {
     }
 
     function handleTravelStarted(cargoId: string, pilotageUsed: boolean, pilotageStrikeRevoked?: boolean) {
+        // Sofort ownedShips auf EN_ROUTE setzen — sonst bleibt die Weltkarte auf "Reisebereit"
+        // bis zum nächsten WebSocket-Tick (kann mehrere Sekunden dauern).
+        const cargo = assignedCargos.find(e => e.cargoId === cargoId);
+        if (cargo?.shipId) {
+            setOwnedShips(prev => prev.map(ship =>
+                ship.id === cargo.shipId ? { ...ship, status: 'EN_ROUTE' } : ship
+            ));
+        }
         setAssignedCargos(prev => prev.map(e =>
             e.cargoId === cargoId
                 ? { ...e, pilotageUsed, ...(pilotageStrikeRevoked != null ? { pilotageStrikeRevoked } : {}) }
@@ -619,14 +627,14 @@ export default function GameScreen() {
         } catch { /* nicht-fatal */ }
     }, [showArrivalDocking, playerId, sessionId, authToken]);
 
-    const handleArrivalDockingFailure = useCallback(async () => {
+    const handleArrivalDockingFailure = useCallback(async (strikes: number) => {
         const entry = showArrivalDocking;
         setShowArrivalDocking(null);
         setPendingArrivalDocking(null);
         if (!entry?.travelId || !playerId || !sessionId) return;
         try {
             await fetch(
-                `/api/travels/${entry.travelId}/docking-failed?playerId=${playerId}&sessionId=${sessionId}`,
+                `/api/travels/${entry.travelId}/docking-failed?playerId=${playerId}&sessionId=${sessionId}&strikes=${strikes}`,
                 { method: "POST", headers: { Authorization: `Bearer ${authToken}` } }
             );
             window.dispatchEvent(new CustomEvent("player-balance-updated"));

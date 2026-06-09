@@ -8,22 +8,28 @@ interface DockingMiniGameProps {
     shipIconUrl: string;
     portName?: string;
     onSuccess: () => void;
-    onFailure: () => void;
+    onFailure: (strikes: number) => void;
 }
 
 export default function DockingMiniGame({ mode, shipIconUrl, portName, onSuccess, onFailure }: DockingMiniGameProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const gameRef = useRef<Phaser.Game | null>(null);
     const resolvedRef = useRef(false);
+    // Refs ensure the Phaser callback always calls the latest handlers,
+    // even if parent re-renders (e.g. pilotageMap WebSocket update) recreate them mid-game.
+    const onSuccessRef = useRef(onSuccess);
+    const onFailureRef = useRef(onFailure);
+    onSuccessRef.current = onSuccess;
+    onFailureRef.current = onFailure;
 
-    const resolve = useCallback((succeeded: boolean) => {
+    const resolve = useCallback((succeeded: boolean, strikes: number = 3) => {
         if (resolvedRef.current) return;
         resolvedRef.current = true;
         gameRef.current?.destroy(true);
         gameRef.current = null;
-        if (succeeded) onSuccess();
-        else onFailure();
-    }, [onSuccess, onFailure]);
+        if (succeeded) onSuccessRef.current();
+        else onFailureRef.current(strikes);
+    }, []); // stable — refs always point to latest handlers
 
     useEffect(() => {
         const container = containerRef.current;
@@ -36,7 +42,7 @@ export default function DockingMiniGame({ mode, shipIconUrl, portName, onSuccess
             shipIconUrl,
             portName,
             onSuccess: () => resolve(true),
-            onFailure: () => resolve(false),
+            onFailure: (strikes: number) => resolve(false, strikes),
         };
 
         const getSize = () => {
