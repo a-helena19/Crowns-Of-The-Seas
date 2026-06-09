@@ -10,6 +10,7 @@ import at.fhv.backend.domain.model.port.PortRepository;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.travel.Travel;
+import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.rest.GameSessionWebSocketController;
 import at.fhv.backend.rest.dtos.minigame.request.ObstacleMinigameResultRequest;
 import at.fhv.backend.rest.dtos.websocket.ObstacleMinigameEvent;
@@ -33,7 +34,6 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
     private static final int DEFAULT_TIME_LIMIT_SECONDS = 24;
     private static final int DEFAULT_START_HEALTH = 100;
     private static final int FAILED_CARGO_LOSS_PERCENT = 50;
-    private static final BigDecimal FAILED_REWARD_MODIFIER = new BigDecimal("0.50");
     private static final BigDecimal SUCCESS_REWARD_MODIFIER = BigDecimal.ONE;
 
     private final TravelPauseService travelPauseService;
@@ -41,6 +41,7 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
     private final PlayerShipRepository playerShipRepository;
     private final PortRepository portRepository;
     private final SessionPlayerRepository sessionPlayerRepository;
+    private final TravelRepository travelRepository;
     private final Random random = new Random();
 
     private final Set<UUID> triggeredTravelIds = ConcurrentHashMap.newKeySet();
@@ -52,12 +53,14 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
                                        GameSessionWebSocketController webSocketController,
                                        PlayerShipRepository playerShipRepository,
                                        PortRepository portRepository,
-                                       SessionPlayerRepository sessionPlayerRepository) {
+                                       SessionPlayerRepository sessionPlayerRepository,
+                                       TravelRepository travelRepository) {
         this.travelPauseService = travelPauseService;
         this.webSocketController = webSocketController;
         this.playerShipRepository = playerShipRepository;
         this.portRepository = portRepository;
         this.sessionPlayerRepository = sessionPlayerRepository;
+        this.travelRepository = travelRepository;
     }
 
     @Override
@@ -150,7 +153,8 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
         playerShip.applyWear(conditionDamage);
         playerShipRepository.save(playerShip);
 
-        rewardModifiersByTravelId.put(request.getTravelId(), FAILED_REWARD_MODIFIER);
+        rewardModifiersByTravelId.put(request.getTravelId(), SUCCESS_REWARD_MODIFIER);
+        applyCargoLossToTravel(request.getTravelId(), FAILED_CARGO_LOSS_PERCENT);
         summaryByTravelId.put(request.getTravelId(),
                 new ObstacleSummaryState(true, "FAILED", BigDecimal.ZERO, FAILED_CARGO_LOSS_PERCENT,
                         conditionDamage, request.getFailureReason(), routeViewType));
@@ -158,8 +162,15 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
 
         return new ObstacleMinigameSubmitResult(
                 "OBSTACLE", "FAILED", request.getRemainingHealth(), request.getTimeLeftSeconds(),
-                request.getTimeLimitSeconds(), request.getFailureReason(), routeViewType, FAILED_REWARD_MODIFIER
+                request.getTimeLimitSeconds(), request.getFailureReason(), routeViewType, SUCCESS_REWARD_MODIFIER
         );
+    }
+
+    private void applyCargoLossToTravel(UUID travelId, int cargoLossPercent) {
+        travelRepository.findById(travelId).ifPresent(travel -> {
+            travel.applyCargoLossPercent(cargoLossPercent);
+            travelRepository.save(travel);
+        });
     }
 
     @Override
@@ -190,8 +201,8 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
         BigDecimal modifier = rewardModifiersByTravelId.remove(travelId);
         if (modifier == null) return totalReward;
 
-        BigDecimal modified = totalReward.multiply(modifier).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal penalty = totalReward.subtract(modified).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal modified = totalReward.multiply(modifier).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal penalty = totalReward.subtract(modified).max(BigDecimal.ZERO).setScale(0, RoundingMode.HALF_UP);
 
         ObstacleSummaryState existing = summaryByTravelId.get(travelId);
         if (existing != null) {

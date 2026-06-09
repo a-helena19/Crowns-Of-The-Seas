@@ -70,7 +70,7 @@ public class RefuelShipServiceImpl implements RefuelShipService {
 
         double costModifier = player.getFuelCostModifier();
         BigDecimal totalCost = BigDecimal.valueOf(fuelNeededAbsolute * FUEL_PRICE_PER_UNIT * costModifier)
-                .setScale(2, java.math.RoundingMode.HALF_UP);
+                .setScale(0, java.math.RoundingMode.HALF_UP);
 
         if (player.getBalance().compareTo(totalCost) < 0) {
             throw new InsufficientFundsException(totalCost, player.getBalance());

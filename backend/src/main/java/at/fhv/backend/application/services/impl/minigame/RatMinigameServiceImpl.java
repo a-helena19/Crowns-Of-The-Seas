@@ -157,8 +157,8 @@ public class RatMinigameServiceImpl implements RatMinigameService {
     public BigDecimal applyRewardModifier(UUID travelId, BigDecimal totalReward) {
         BigDecimal modifier = rewardModifiersByTravelId.remove(travelId);
         if (modifier == null) return totalReward;
-        BigDecimal modified = totalReward.multiply(modifier).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal penalty = totalReward.subtract(modified).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal modified = totalReward.multiply(modifier).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal penalty = totalReward.subtract(modified).max(BigDecimal.ZERO).setScale(0, RoundingMode.HALF_UP);
 
         RatSummaryState existing = summaryByTravelId.get(travelId);
         if (existing != null) {

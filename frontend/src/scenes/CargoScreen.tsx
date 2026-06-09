@@ -50,6 +50,9 @@ interface AcceptedCargo {
 const getExpiredRewardPercent = (t: string) =>
     ({ FOOD:0, HAZARDOUS:0, FRAGILE:10, ELECTRONICS:15, LUXURY_GOODS:20, GENERAL_GOODS:40, INDUSTRIAL_GOODS:50 }[t] ?? 0);
 
+const formatTalers = (value: number | undefined | null) =>
+    Number(value ?? 0).toLocaleString("de-DE", { maximumFractionDigits: 0 });
+
 
 interface Props {
     onCargoAccepted: (cargo: AcceptedCargo) => void;
@@ -294,7 +297,7 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
                                      className={`cs-list-item${selected?.id === c.id ? " cs-list-item--active" : ""}`}>
                                     <div className="cs-item-row1">
                                         <span className="cs-item-name">{c.name}</span>
-                                        <span className="cs-item-reward">{Number(c.reward).toLocaleString("de-DE")} T</span>
+	                                        <span className="cs-item-reward">{formatTalers(c.reward)} T</span>
                                     </div>
                                     <div className="cs-item-row2">
                                     <span className="cs-type-badge" style={{ background: TYPE_COLORS[c.cargoType]+"22", color: TYPE_COLORS[c.cargoType] }}>
@@ -366,7 +369,7 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
                                     <div className="cs-stat">
                                         <div className="cs-stat-label">Belohnung</div>
                                         <div className="cs-stat-value">
-                                            {Number(selected.reward).toLocaleString("de-DE")} T
+                                            {formatTalers(selected.reward)} T
                                             {selected.cargoStatus === "EXPIRED" && (
                                                 <span className="cs-stat-reduced"> ({getExpiredRewardPercent(selected.cargoType)}%)</span>
                                             )}

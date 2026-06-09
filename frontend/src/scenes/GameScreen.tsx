@@ -640,6 +640,16 @@ export default function GameScreen() {
                 travelId: string;
                 playerId: string;
                 totalReward: number;
+                netPayout?: number;
+                cargoReward?: number;
+                bonusReward?: number;
+                smuggleReward?: number;
+                grossReward?: number;
+                minigameDeductions?: number;
+                minigameBonus?: number;
+                customsPaid?: number;
+                dockingFines?: number;
+                regress?: number;
                 baseReward: number;
                 newBalance?: number;
                 previousBalance?: number;
@@ -662,6 +672,8 @@ export default function GameScreen() {
                     overdueTicks: number;
                     delayComponent: number;
                     damageComponent: number;
+                    cargoLossComponent?: number;
+                    cargoLossPercent?: number;
                     damagePercent: number;
                     specialCargoMultiplier: number;
                     hadPerishableCargo: boolean;
@@ -713,7 +725,17 @@ export default function GameScreen() {
                     return {
                         ...entry,
                         phase: "completed" as const,
-                        reward: data.totalReward,
+                        reward: data.netPayout ?? data.totalReward,
+                        netPayout: data.netPayout ?? data.totalReward,
+                        cargoReward: data.cargoReward,
+                        bonusReward: data.bonusReward,
+                        smuggleReward: data.smuggleReward,
+                        grossReward: data.grossReward,
+                        minigameDeductions: data.minigameDeductions,
+                        minigameBonus: data.minigameBonus,
+                        customsPaid: data.customsPaid,
+                        dockingFines: data.dockingFines,
+                        regress: data.regress,
                         dockingFine: data.dockingFine ?? 0,
                         departureDockingFine: data.departureDockingFine ?? 0,
                         pilotageRefund: data.pilotageRefund ?? 0,
@@ -741,13 +763,13 @@ export default function GameScreen() {
                 if (matched) {
                     setRewardToasts(t => {
                         if (t.some(toast => toast.id === data.travelId)) return t;
-                        return [...t, {
-                            id: data.travelId,
-                            shipName: matched.shipName,
-                            from: matched.from,
-                            to: matched.to,
-                            reward: data.totalReward,
-                        }];
+	                        return [...t, {
+	                            id: data.travelId,
+	                            shipName: matched.shipName,
+	                            from: matched.from,
+	                            to: matched.to,
+	                            reward: data.netPayout ?? data.totalReward,
+	                        }];
                     });
                 }
                 return prev;

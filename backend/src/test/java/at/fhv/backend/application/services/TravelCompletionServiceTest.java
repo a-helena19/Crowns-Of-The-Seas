@@ -26,6 +26,7 @@ import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.domain.model.travel.TravelStatus;
 import at.fhv.backend.rest.GameSessionWebSocketController;
+import at.fhv.backend.rest.dtos.websocket.TravelCompleteEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -524,7 +526,7 @@ class TravelCompletionServiceTest {
         }
 
         @Test
-        void givenCustomsFine_whenCompleteUnloadingPhase_thenFineSubtractedFromPayout() {
+        void givenCustomsFineAlreadyPaid_whenCompleteUnloadingPhase_thenFineShownSeparatelyAndNotDeductedAgain() {
             UUID userId = UUID.randomUUID();
             UUID sessionId = UUID.randomUUID();
             UUID playerShipId = UUID.randomUUID();
@@ -571,6 +573,17 @@ class TravelCompletionServiceTest {
             // The customs service deducts the fine when the player cooperates.
             // Unloading adds cargo reward plus the existing random bonus without deducting it a second time.
             assertThat(player.getBalance()).isBetween(new BigDecimal("45000.00"), new BigDecimal("50000.00"));
+
+            org.mockito.ArgumentCaptor<TravelCompleteEvent> eventCaptor =
+                    org.mockito.ArgumentCaptor.forClass(TravelCompleteEvent.class);
+            verify(webSocketController).broadcastTravelComplete(anyString(), eventCaptor.capture());
+            TravelCompleteEvent event = eventCaptor.getValue();
+
+            assertThat(event.getPreviousBalance()).isEqualByComparingTo(new BigDecimal("35000"));
+            assertThat(event.getCustomsPaid()).isEqualByComparingTo(new BigDecimal("5000"));
+            assertThat(event.getNetPayout()).isEqualByComparingTo(event.getTotalReward());
+            assertThat(event.getNewBalance().subtract(event.getPreviousBalance()))
+                    .isEqualByComparingTo(event.getNetPayout());
         }
     }
 }

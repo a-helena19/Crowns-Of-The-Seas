@@ -162,7 +162,7 @@ public class UsedShipMarketServiceImpl implements UsedShipMarketService {
         dto.setPlayerShipId(playerShip.getId());
         dto.setShipName(ship.getName());
         dto.setOriginalPrice(ship.getPrice());
-        dto.setBaseSellPrice(ship.getPrice().multiply(SELL_BASE_FACTOR).setScale(2, RoundingMode.HALF_UP));
+        dto.setBaseSellPrice(ship.getPrice().multiply(SELL_BASE_FACTOR).setScale(0, RoundingMode.HALF_UP));
         dto.setCondition(playerShip.getCondition());
         dto.setFuel(playerShip.getFuel());
         dto.setConditionWeight(CONDITION_WEIGHT.doubleValue());

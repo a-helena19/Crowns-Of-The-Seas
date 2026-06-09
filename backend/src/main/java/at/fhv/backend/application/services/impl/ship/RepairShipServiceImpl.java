@@ -70,7 +70,7 @@ public class RepairShipServiceImpl implements RepairShipService {
         double costModifier = player.getRepairCostModifier();
         double repairCostRaw = repairNeededPercent / 100.0 * ship.getOperatingCost().doubleValue() * REPAIR_PRICE_FACTOR;
         BigDecimal totalCost = BigDecimal.valueOf(repairCostRaw * costModifier)
-                .setScale(2, java.math.RoundingMode.HALF_UP);
+                .setScale(0, java.math.RoundingMode.HALF_UP);
 
         if (player.getBalance().compareTo(totalCost) < 0) {
             throw new InsufficientFundsException(totalCost, player.getBalance());
