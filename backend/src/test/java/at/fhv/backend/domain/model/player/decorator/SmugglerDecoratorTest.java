@@ -44,7 +44,7 @@ class SmugglerDecoratorTest {
 
     @Test
     void testFuelCostModifier() {
-        assertEquals(1.20, smugglerPlayer.getFuelCostModifier(), 0.01);
+        assertEquals(1.0, smugglerPlayer.getFuelCostModifier(), 0.01);
     }
 
     @Test

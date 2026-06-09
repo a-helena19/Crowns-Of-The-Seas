@@ -58,7 +58,11 @@ function IconCheck() {
 
 function formatSignedTalers(value: number): string {
     const sign = value >= 0 ? "+" : "";
-    return `${sign}${value.toLocaleString("de-DE")} T`;
+    return `${sign}${formatTalers(value)} T`;
+}
+
+function formatTalers(value: number | undefined | null): string {
+    return `${value ?? 0}`.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
 
@@ -832,33 +836,38 @@ export default function CargoManagementScreen({
                             const customs = selectedEntry.customsSummary;
                             const finePaid = customs?.finePaid ?? 0;
                             const bribePaid = customs?.bribePaid ?? 0;
-                            const customsTotalOut = finePaid + bribePaid;
-
                             const regress = selectedEntry.regressSummary;
-                            const regressTotal = regress?.totalFine ?? 0;
+                            const regressTotal = selectedEntry.regress ?? regress?.totalFine ?? 0;
                             const regressDelay = regress?.delayComponent ?? 0;
                             const regressDamage = regress?.damageComponent ?? 0;
+                            const regressCargoLoss = regress?.cargoLossComponent ?? 0;
+                            const regressCargoLossPercent = regress?.cargoLossPercent ?? 0;
 
                             const dockingFine = selectedEntry.dockingFine ?? 0;
                             const departureDockingFine = selectedEntry.departureDockingFine ?? 0;
                             const pilotageRefund = selectedEntry.pilotageRefund ?? 0;
                             const hasDockingPenalty = dockingFine > 0 || departureDockingFine > 0;
 
-                            const cargoBaseTotal = cargoItems.reduce((s, r) => s + (r.actualReward - (r.bonusReward ?? 0)), 0);
-                            const bonusTotal = cargoItems.reduce((s, r) => s + (r.bonusReward ?? 0), 0);
-                            const smuggleTotal = smuggleItem?.actualReward ?? 0;
+                            const cargoBaseTotal = selectedEntry.cargoReward
+                                ?? cargoItems.reduce((s, r) => s + (r.actualReward - (r.bonusReward ?? 0)), 0);
+                            const bonusTotal = selectedEntry.bonusReward
+                                ?? cargoItems.reduce((s, r) => s + (r.bonusReward ?? 0), 0);
+                            const smuggleTotal = selectedEntry.smuggleReward ?? smuggleItem?.actualReward ?? 0;
                             const ratPenalty = selectedEntry.ratMinigameSummary?.result === "FAILED"
                                 ? (selectedEntry.ratMinigameSummary.penaltyAmount ?? 0) : 0;
+                            const stormPenalty = selectedEntry.stormMinigameSummary?.result === "FAILED"
+                                ? (selectedEntry.stormMinigameSummary.penaltyAmount ?? 0) : 0;
+                            const obstaclePenalty = selectedEntry.obstacleMinigameSummary?.result === "FAILED"
+                                ? (selectedEntry.obstacleMinigameSummary.penaltyAmount ?? 0) : 0;
                             const treasureBonus = selectedEntry.treasureHuntMinigameSummary?.result === "SUCCESS"
                                 ? (selectedEntry.treasureHuntMinigameSummary.bonusAmount ?? 0) : 0;
                             const treasurePenalty = selectedEntry.treasureHuntMinigameSummary?.result === "FAILED"
                                 ? (selectedEntry.treasureHuntMinigameSummary.penaltyAmount ?? 0) : 0;
-                            const computedNetTotal = cargoBaseTotal + bonusTotal + smuggleTotal
-                                - ratPenalty - treasurePenalty + treasureBonus - customsTotalOut - regressTotal
-                                - dockingFine - departureDockingFine + pilotageRefund;
-                            const netTotal = selectedEntry.reward ?? computedNetTotal;
+                            const netTotal = selectedEntry.netPayout ?? selectedEntry.reward ?? 0;
 
-                            const isPerfect = cargoItems.every(r => r.percentage >= 100) && !hasDockingPenalty;
+                            const isPerfect = cargoItems.every(r => r.percentage >= 100)
+                                && !hasDockingPenalty
+                                && regressTotal === 0;
 
                             return (
                                 <div className="cm-reward-panel">
@@ -888,7 +897,7 @@ export default function CargoManagementScreen({
                                                     </div>
                                                 </div>
                                                 <span className={`cm-reward-cargo-amount${isExpired ? " expired" : ""}`}>
-                                                    +{item.actualReward.toLocaleString("de-DE")} T
+                                                    +{formatTalers(item.actualReward)} T
                                                 </span>
                                             </div>
                                         );
@@ -903,111 +912,7 @@ export default function CargoManagementScreen({
                                                 </div>
                                             </div>
                                             <span className={`cm-reward-cargo-amount${smuggleItem.actualReward === 0 ? " expired" : ""}`}>
-                                                +{smuggleItem.actualReward.toLocaleString("de-DE")} T
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {selectedEntry.ratMinigameSummary?.triggered && selectedEntry.ratMinigameSummary.result === "SUCCESS" && (
-                                        <div className="cm-reward-cargo-item">
-                                            <div style={{ flex: 1 }}>
-                                                <div className="cm-reward-cargo-name">
-                                                    <IconCheck />
-                                                    Ratten abgewehrt
-                                                </div>
-                                                <div className="cm-reward-cargo-sub">Ratten-Event</div>
-                                            </div>
-                                            <span className="cm-reward-cargo-amount">+0 T</span>
-                                        </div>
-                                    )}
-
-                                    {selectedEntry.ratMinigameSummary?.triggered && selectedEntry.ratMinigameSummary.result === "FAILED" && (
-                                        <div className="cm-reward-cargo-item expired">
-                                            <div style={{ flex: 1 }}>
-                                                <div className="cm-reward-cargo-name">
-                                                    <IconWarning />
-                                                    Ratten haben Fracht beschädigt
-                                                </div>
-                                                <div className="cm-reward-cargo-sub">Ratten-Event</div>
-                                            </div>
-                                            <span className="cm-reward-cargo-amount expired">
-                                                -{Math.round(ratPenalty).toLocaleString("de-DE")} T
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {selectedEntry.stormMinigameSummary?.triggered && selectedEntry.stormMinigameSummary.result === "SUCCESS" && (
-                                        <div className="cm-reward-cargo-item">
-                                            <div style={{ flex: 1 }}>
-                                                <div className="cm-reward-cargo-name">Sturm erfolgreich überstanden</div>
-                                                <div className="cm-reward-cargo-sub">Sturm-Event</div>
-                                            </div>
-                                            <span className="cm-reward-cargo-amount">+0T</span>
-                                        </div>
-                                    )}
-
-                                    {selectedEntry.stormMinigameSummary?.triggered && selectedEntry.stormMinigameSummary.result === "FAILED" && (
-                                        <div className="cm-reward-cargo-item expired">
-                                            <div style={{ flex: 1 }}>
-                                                <div className="cm-reward-cargo-name">Sturm hat Schiff und Fracht beschaedigt</div>
-                                                <div className="cm-reward-cargo-sub">
-                                                    {Math.round(selectedEntry.stormMinigameSummary.conditionDamagePercent ?? 0)}% Schiffsschaden,
-                                                    {" "}{selectedEntry.stormMinigameSummary.cargoLossPercent ?? 0}% Frachtwert verloren
-                                                </div>
-                                            </div>
-                                            <span className="cm-reward-cargo-amount expired">
-                                                -{Math.round(selectedEntry.stormMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {selectedEntry.obstacleMinigameSummary?.triggered && selectedEntry.obstacleMinigameSummary.result === "SUCCESS" && (
-                                        <div className="cm-reward-cargo-item">
-                                            <div style={{ flex: 1 }}>
-                                                <div className="cm-reward-cargo-name">Hindernisse erfolgreich umfahren</div>
-                                                <div className="cm-reward-cargo-sub">Hindernis-Event</div>
-                                            </div>
-                                            <span className="cm-reward-cargo-amount">+0T</span>
-                                        </div>
-                                    )}
-
-                                    {selectedEntry.obstacleMinigameSummary?.triggered && selectedEntry.obstacleMinigameSummary.result === "FAILED" && (
-                                        <div className="cm-reward-cargo-item expired">
-                                            <div style={{ flex: 1 }}>
-                                                <div className="cm-reward-cargo-name">Hindernis hat Schiff und Fracht beschaedigt</div>
-                                                <div className="cm-reward-cargo-sub">
-                                                    {Math.round(selectedEntry.obstacleMinigameSummary.conditionDamagePercent ?? 0)}% Schiffsschaden,
-                                                    {" "}{selectedEntry.obstacleMinigameSummary.cargoLossPercent ?? 0}% Frachtwert verloren
-                                                </div>
-                                            </div>
-                                            <span className="cm-reward-cargo-amount expired">
-                                                -{Math.round(selectedEntry.obstacleMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {selectedEntry.treasureHuntMinigameSummary?.triggered && selectedEntry.treasureHuntMinigameSummary.result === "SUCCESS" && (
-                                        <div className="cm-reward-cargo-item">
-                                            <div style={{ flex: 1 }}>
-                                                <div className="cm-reward-cargo-name">Schatzjagd erfolgreich</div>
-                                                <div className="cm-reward-cargo-sub">Bonus durch geborgenen Schatz</div>
-                                            </div>
-                                            <span className="cm-reward-cargo-amount">
-                                                +{Math.round(selectedEntry.treasureHuntMinigameSummary.bonusAmount ?? 0).toLocaleString("de-DE")}T
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {selectedEntry.treasureHuntMinigameSummary?.triggered && selectedEntry.treasureHuntMinigameSummary.result === "FAILED" && (
-                                        <div className="cm-reward-cargo-item expired">
-                                            <div style={{ flex: 1 }}>
-                                                <div className="cm-reward-cargo-name">Schatzjagd fehlgeschlagen</div>
-                                                <div className="cm-reward-cargo-sub">
-                                                    Piraten erbeuteten {selectedEntry.treasureHuntMinigameSummary.cargoLossPercent ?? 0}% der Fracht
-                                                </div>
-                                            </div>
-                                            <span className="cm-reward-cargo-amount expired">
-                                                -{Math.round(selectedEntry.treasureHuntMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                                +{formatTalers(smuggleItem.actualReward)} T
                                             </span>
                                         </div>
                                     )}
@@ -1015,50 +920,38 @@ export default function CargoManagementScreen({
                                     <div className="cm-reward-breakdown">
                                         {cargoBaseTotal > 0 && (
                                             <div className="cm-reward-row">
-                                                <span>Cargo-Belohnung</span>
-                                                <span className="cm-reward-row-value">+{cargoBaseTotal.toLocaleString("de-DE")} T</span>
+                                                <span>Frachtwert</span>
+                                                <span className="cm-reward-row-value">+{formatTalers(cargoBaseTotal)} T</span>
                                             </div>
                                         )}
                                         {bonusTotal > 0 && (
                                             <div className="cm-reward-row bonus">
-                                                <span>Reisebonus</span>
-                                                <span>+{bonusTotal.toLocaleString("de-DE")} T</span>
+                                                <span>Bonus</span>
+                                                <span>+{formatTalers(bonusTotal)} T</span>
                                             </div>
                                         )}
                                         {smuggleTotal > 0 && (
                                             <div className="cm-reward-row bonus">
-                                                <span>Mysteriöse Kiste</span>
-                                                <span>+{smuggleTotal.toLocaleString("de-DE")} T</span>
-                                            </div>
-                                        )}
-                                        {ratPenalty > 0 && (
-                                            <div className="cm-reward-row warn">
-                                                <span>Ratten-Strafe</span>
-                                                <span>-{Math.round(ratPenalty).toLocaleString("de-DE")} T</span>
+                                                <span>Schmuggelbonus</span>
+                                                <span>+{formatTalers(smuggleTotal)} T</span>
                                             </div>
                                         )}
                                         {treasureBonus > 0 && (
                                             <div className="cm-reward-row bonus">
                                                 <span>Schatzjagd-Bonus</span>
-                                                <span>+{Math.round(treasureBonus).toLocaleString("de-DE")} T</span>
-                                            </div>
-                                        )}
-                                        {treasurePenalty > 0 && (
-                                            <div className="cm-reward-row warn">
-                                                <span>Schatzjagd-Verlust</span>
-                                                <span>-{Math.round(treasurePenalty).toLocaleString("de-DE")} T</span>
+                                                <span>+{formatTalers(treasureBonus)} T</span>
                                             </div>
                                         )}
                                         {bribePaid > 0 && (
                                             <div className="cm-reward-row warn">
-                                                <span>Bestechung</span>
-                                                <span>-{bribePaid.toLocaleString("de-DE")} T</span>
+                                                <span>Zoll - Bestechung (bereits bezahlt)</span>
+                                                <span>-{formatTalers(bribePaid)} T</span>
                                             </div>
                                         )}
                                         {finePaid > 0 && (
                                             <div className="cm-reward-row warn">
-                                                <span>Zollstrafe</span>
-                                                <span>-{finePaid.toLocaleString("de-DE")} T</span>
+                                                <span>Zoll - Strafe (bereits bezahlt)</span>
+                                                <span>-{formatTalers(finePaid)} T</span>
                                             </div>
                                         )}
                                         {regress && regress.delayTicks > 0 && regressDelay > 0 && (
@@ -1072,7 +965,7 @@ export default function CargoManagementScreen({
                                                             : ""})
                                                     </span>
                                                 </span>
-                                                <span>-{Math.round(regressDelay).toLocaleString("de-DE")} T</span>
+                                                <span>-{formatTalers(regressDelay)} T</span>
                                             </div>
                                         )}
                                         {regressDamage > 0 && (
@@ -1088,61 +981,77 @@ export default function CargoManagementScreen({
                                                         </span>
                                                     )}
                                                 </span>
-                                                <span>-{Math.round(regressDamage).toLocaleString("de-DE")} T</span>
+                                                <span>-{formatTalers(regressDamage)} T</span>
+                                            </div>
+                                        )}
+                                        {regressCargoLoss > 0 && (
+                                            <div className="cm-reward-row warn">
+                                                <span>
+                                                    Regress — Frachtverlust
+                                                    {regressCargoLossPercent > 0 && (
+                                                        <span className="cm-reward-row-sub">
+                                                            {" "}({regressCargoLossPercent.toFixed(1)} % verloren
+                                                            {regress && regress.specialCargoMultiplier > 1
+                                                                ? `, ×${regress.specialCargoMultiplier.toFixed(1)}`
+                                                                : ""})
+                                                        </span>
+                                                    )}
+                                                </span>
+                                                <span>-{formatTalers(regressCargoLoss)} T</span>
                                             </div>
                                         )}
                                         {selectedEntry.ratMinigameSummary?.triggered && selectedEntry.ratMinigameSummary.result === "FAILED" && (
                                             <div className="cm-reward-row warn">
-                                                <span>⚠ Ratten-Event Schaden</span>
+                                                <span>Minigame-Abzug - Ratten</span>
                                                 <span className="cm-reward-row-value">
-                                                    -{Math.round(selectedEntry.ratMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                                    -{formatTalers(ratPenalty)} T
                                                 </span>
                                             </div>
                                         )}
-                                        {selectedEntry.stormMinigameSummary?.triggered && selectedEntry.stormMinigameSummary.result === "FAILED" && (
+                                        {selectedEntry.stormMinigameSummary?.triggered && selectedEntry.stormMinigameSummary.result === "FAILED" && stormPenalty > 0 && (
                                             <div className="cm-reward-row warn">
-                                                <span>⚠ Sturm-Event Schaden</span>
+                                                <span>Minigame-Abzug - Sturm</span>
                                                 <span className="cm-reward-row-value">
-                                                    -{Math.round(selectedEntry.stormMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                                    -{formatTalers(stormPenalty)} T
                                                 </span>
                                             </div>
                                         )}
-                                        {selectedEntry.obstacleMinigameSummary?.triggered && selectedEntry.obstacleMinigameSummary.result === "FAILED" && (
+                                        {selectedEntry.obstacleMinigameSummary?.triggered && selectedEntry.obstacleMinigameSummary.result === "FAILED" && obstaclePenalty > 0 && (
                                             <div className="cm-reward-row warn">
-                                                <span>⚠ Hindernis-Event Schaden</span>
+                                                <span>Minigame-Abzug - Hindernis</span>
                                                 <span className="cm-reward-row-value">
-                                                    -{Math.round(selectedEntry.obstacleMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                                    -{formatTalers(obstaclePenalty)} T
                                                 </span>
                                             </div>
                                         )}
-                                        {selectedEntry.treasureHuntMinigameSummary?.triggered && selectedEntry.treasureHuntMinigameSummary.result === "FAILED" && (
+                                        {selectedEntry.treasureHuntMinigameSummary?.triggered && selectedEntry.treasureHuntMinigameSummary.result === "FAILED" && treasurePenalty > 0 && (
                                             <div className="cm-reward-row warn">
-                                                <span>⚠ Schatzjagd-Verlust</span>
+                                                <span>Minigame-Abzug - Schatzjagd</span>
                                                 <span className="cm-reward-row-value">
-                                                    -{Math.round(selectedEntry.treasureHuntMinigameSummary.penaltyAmount ?? 0).toLocaleString("de-DE")}T
+                                                    -{formatTalers(treasurePenalty)} T
                                                 </span>
                                             </div>
                                         )}
                                         {departureDockingFine > 0 && (
                                             <div className="cm-reward-row warn">
-                                                <span>⚠ Ablege-Schaden (Kollision)</span>
-                                                <span className="cm-reward-row-value">-{departureDockingFine.toLocaleString("de-DE")}T</span>
+                                                <span>Hafengebühren - Ablege-Schaden</span>
+                                                <span className="cm-reward-row-value">-{formatTalers(departureDockingFine)} T</span>
                                             </div>
                                         )}
                                         {dockingFine > 0 && (
                                             <div className="cm-reward-row warn">
-                                                <span>⚠ Anlege-Schaden (Kollision)</span>
-                                                <span className="cm-reward-row-value">-{dockingFine.toLocaleString("de-DE")}T</span>
+                                                <span>Hafengebühren - Anlege-Schaden</span>
+                                                <span className="cm-reward-row-value">-{formatTalers(dockingFine)} T</span>
                                             </div>
                                         )}
                                         {pilotageRefund > 0 && (
                                             <div className="cm-reward-row bonus">
                                                 <span>Lotsenerstattung (Streik)</span>
-                                                <span className="cm-reward-row-value">+{pilotageRefund.toLocaleString("de-DE")}T</span>
+                                                <span className="cm-reward-row-value">+{formatTalers(pilotageRefund)} T</span>
                                             </div>
                                         )}
                                         <div className="cm-reward-row total">
-                                            <span>Gesamt</span>
+                                            <span>Netto-Auszahlung</span>
                                             <span className="cm-reward-row-value" style={{ color: netTotal < 0 ? "#a0521a" : undefined }}>
                                                 {formatSignedTalers(netTotal)}
                                             </span>

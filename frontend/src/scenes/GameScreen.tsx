@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useRef } from "react";
+import {useEffect, useCallback, useState, useRef, useMemo} from "react";
 import TopBar from "../components/TopBar.tsx";
 import Game from "../Game.tsx";
 import BottomBar from "../components/BottomBar.tsx";
@@ -69,6 +69,8 @@ interface OwnedShipSummary {
     fuel: number;
     condition: number;
     currentPortId?: string;
+    serviceStartTick?: number;
+    serviceCompletionTick?: number;
 }
 
 interface PendingShipEvent {
@@ -85,6 +87,7 @@ type ActiveMinigameEventPayload =
 
 export default function GameScreen() {
     const [view, setView] = useState<"map" | "marketplace" | "harbor" | "broker" | "portProfile" | "cargoManagement" | "office">("map");
+    const [currentTick, setCurrentTick] = useState(0);
     const [marketplaceReturnView] = useState<"map" | "portProfile">("map");
     const [overlayReturnView, setOverlayReturnView] = useState<"map" | "marketplace">("map");
     const viewRef = useRef(view);
@@ -157,6 +160,14 @@ export default function GameScreen() {
     const minigameFallbackRequests = useRef<Set<string>>(new Set());
 
     const authToken = localStorage.getItem("auth_token") ?? "";
+    const [nowMs, setNowMs] = useState(Date.now());
+
+    useEffect(() => {
+        const anyLoading = assignedCargos.some(e => e.phase === "loading" && !e.loadingDone);
+        if (!anyLoading) return;
+        const id = setInterval(() => setNowMs(Date.now()), 500);
+        return () => clearInterval(id);
+    }, [assignedCargos]);
 
     useEffect(() => {
         window.__showOtherShips = showOtherShips;
@@ -231,6 +242,22 @@ export default function GameScreen() {
                 ? { ...e, pilotageUsed, ...(pilotageStrikeRevoked != null ? { pilotageStrikeRevoked } : {}) }
                 : e
         ));
+    }
+
+    function getLoadingPct(entry: AssignedCargoEntry): number {
+        if (entry.loadingDone) return 100;
+        if (entry.loadingDurationSeconds <= 0) return 100;
+        const elapsed = (Date.now() - entry.loadingStartedAt) / 1000;
+        return Math.min(100, (elapsed / entry.loadingDurationSeconds) * 100);
+    }
+
+    function getTickPct(currentTick?: number, endTick?: number, startTick?: number): number {
+        if (currentTick == null || endTick == null) return 0;
+        if (endTick <= currentTick) return 100;
+        if (startTick != null && endTick > startTick) {
+            return Math.min(100, Math.max(0, ((currentTick - startTick) / (endTick - startTick)) * 100));
+        }
+        return 0;
     }
 
     useEffect(() => {
@@ -309,6 +336,29 @@ export default function GameScreen() {
         return () => window.removeEventListener('port-clicked', onPortClicked);
     }, []);
 
+    const progressByShipId = useMemo(() => {
+        const map: Record<string, number> = {};
+        for (const entry of assignedCargos) {
+            if (entry.phase === "completed") continue;
+            let pct: number | null = null;
+            if (entry.phase === "loading") {
+                pct = getLoadingPct(entry);
+            } else if (entry.phase === "en_route") {
+                pct = getTickPct(entry.currentTick, entry.arrivalTick, entry.startTick);
+            } else if (entry.phase === "unloading") {
+                pct = getTickPct(entry.currentTick, entry.unloadingCompletedAtTick, entry.unloadingStartTick);
+            }
+            if (pct != null) map[entry.shipId] = pct;
+        }
+        for (const ship of ownedShips) {
+            if ((ship.status === "REFUELING" || ship.status === "REPAIRING")
+                && ship.serviceCompletionTick != null) {
+                map[ship.id] = getTickPct(currentTick, ship.serviceCompletionTick, ship.serviceStartTick);
+            }
+        }
+        return map;
+    }, [assignedCargos, ownedShips, currentTick, nowMs]);
+
     useEffect(() => {
         const handler = (e: Event) => {
             const detail = (e as CustomEvent<{
@@ -323,6 +373,8 @@ export default function GameScreen() {
                     paused?: boolean;
                 }[]
             }>).detail;
+
+            setCurrentTick(detail.currentTick);
 
             setAssignedCargos(prev => prev.map(entry => {
                 if (entry.phase !== "en_route"
@@ -389,19 +441,32 @@ export default function GameScreen() {
             const wsShips = detail.ships ?? [];
             const previousShips = ownedShipsRef.current;
             const hasUnknownShip = wsShips.some(ws => !previousShips.some(ship => ship.id === ws.playerShipId));
+            const VOYAGE_END_STATUSES = [
+                "EN_ROUTE", "UNLOADING", "AWAITING_DOCKING",
+                "CUSTOMS_CHECK", "BLOCKED", "REFUELING", "REPAIRING",
+            ];
             const shouldRefreshShipDetails = wsShips.some(ws => {
                 const prev = previousShips.find(ship => ship.id === ws.playerShipId);
                 if (!prev) return false;
-                return (prev.status === "REFUELING" || prev.status === "REPAIRING") && ws.status === "AT_PORT";
+                return VOYAGE_END_STATUSES.includes(prev.status) && ws.status === "AT_PORT";
             });
 
             setOwnedShips(prev => prev.map(ship => {
                 const wsShip = wsShips.find(s => s.playerShipId === ship.id);
                 if (!wsShip) return ship;
+                const nextStatus = wsShip.status ?? ship.status;
+                const inService = nextStatus === "REFUELING" || nextStatus === "REPAIRING";
+                const justEntered = inService && ship.status !== nextStatus;
                 return {
                     ...ship,
-                    status: wsShip.status ?? ship.status,
+                    status: nextStatus,
                     currentPortId: wsShip.currentPortId ?? ship.currentPortId,
+                    serviceCompletionTick: inService
+                        ? (wsShip.arrivalTick ?? ship.serviceCompletionTick)
+                        : undefined,
+                    serviceStartTick: inService
+                        ? (justEntered ? detail.currentTick : (ship.serviceStartTick ?? detail.currentTick))
+                        : undefined,
                 };
             }));
 
@@ -583,6 +648,16 @@ export default function GameScreen() {
                 travelId: string;
                 playerId: string;
                 totalReward: number;
+                netPayout?: number;
+                cargoReward?: number;
+                bonusReward?: number;
+                smuggleReward?: number;
+                grossReward?: number;
+                minigameDeductions?: number;
+                minigameBonus?: number;
+                customsPaid?: number;
+                dockingFines?: number;
+                regress?: number;
                 baseReward: number;
                 newBalance?: number;
                 previousBalance?: number;
@@ -605,6 +680,8 @@ export default function GameScreen() {
                     overdueTicks: number;
                     delayComponent: number;
                     damageComponent: number;
+                    cargoLossComponent?: number;
+                    cargoLossPercent?: number;
                     damagePercent: number;
                     specialCargoMultiplier: number;
                     hadPerishableCargo: boolean;
@@ -656,7 +733,17 @@ export default function GameScreen() {
                     return {
                         ...entry,
                         phase: "completed" as const,
-                        reward: data.totalReward,
+                        reward: data.netPayout ?? data.totalReward,
+                        netPayout: data.netPayout ?? data.totalReward,
+                        cargoReward: data.cargoReward,
+                        bonusReward: data.bonusReward,
+                        smuggleReward: data.smuggleReward,
+                        grossReward: data.grossReward,
+                        minigameDeductions: data.minigameDeductions,
+                        minigameBonus: data.minigameBonus,
+                        customsPaid: data.customsPaid,
+                        dockingFines: data.dockingFines,
+                        regress: data.regress,
                         dockingFine: data.dockingFine ?? 0,
                         departureDockingFine: data.departureDockingFine ?? 0,
                         pilotageRefund: data.pilotageRefund ?? 0,
@@ -684,13 +771,13 @@ export default function GameScreen() {
                 if (matched) {
                     setRewardToasts(t => {
                         if (t.some(toast => toast.id === data.travelId)) return t;
-                        return [...t, {
-                            id: data.travelId,
-                            shipName: matched.shipName,
-                            from: matched.from,
-                            to: matched.to,
-                            reward: data.totalReward,
-                        }];
+	                        return [...t, {
+	                            id: data.travelId,
+	                            shipName: matched.shipName,
+	                            from: matched.from,
+	                            to: matched.to,
+	                            reward: data.netPayout ?? data.totalReward,
+	                        }];
                     });
                 }
                 return prev;
@@ -1689,6 +1776,7 @@ export default function GameScreen() {
                         ships={ownedShips}
                         pendingEventsByShipId={pendingEventsByShipId}
                         urgentShipIds={urgentShipIds}
+                        progressByShipId={progressByShipId}
                         onShipCardClick={(ship) => {
                             audioEngine.playSfx('buttonClick');
                             const pendingEvent = pendingEventsByShipId[ship.id];

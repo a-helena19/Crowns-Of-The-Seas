@@ -5,6 +5,7 @@ import at.fhv.backend.application.services.travel.TravelPauseService;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
 import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.domain.model.travel.Travel;
+import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.rest.GameSessionWebSocketController;
 import at.fhv.backend.rest.dtos.minigame.request.TreasureHuntMinigameResultRequest;
 import at.fhv.backend.rest.dtos.websocket.TreasureHuntMinigameEvent;
@@ -30,12 +31,12 @@ public class TreasureHuntMinigameServiceImpl implements TreasureHuntMinigameServ
     private static final int FAILED_CARGO_LOSS_PERCENT = 70;
     private static final int SUCCESS_CHEST_BONUS_MIN = 3000;
     private static final int SUCCESS_CHEST_BONUS_MAX = 5000;
-    private static final BigDecimal FAILED_REWARD_MODIFIER = new BigDecimal("0.30");
     private static final BigDecimal DECLINED_REWARD_MODIFIER = BigDecimal.ONE;
 
     private final TravelPauseService travelPauseService;
     private final GameSessionWebSocketController webSocketController;
     private final SessionPlayerRepository sessionPlayerRepository;
+    private final TravelRepository travelRepository;
     private final Random random = new Random();
 
     private final Set<UUID> triggeredTravelIds = ConcurrentHashMap.newKeySet();
@@ -46,10 +47,12 @@ public class TreasureHuntMinigameServiceImpl implements TreasureHuntMinigameServ
 
     public TreasureHuntMinigameServiceImpl(TravelPauseService travelPauseService,
                                            GameSessionWebSocketController webSocketController,
-                                           SessionPlayerRepository sessionPlayerRepository) {
+                                           SessionPlayerRepository sessionPlayerRepository,
+                                           TravelRepository travelRepository) {
         this.travelPauseService = travelPauseService;
         this.webSocketController = webSocketController;
         this.sessionPlayerRepository = sessionPlayerRepository;
+        this.travelRepository = travelRepository;
     }
 
     @Override
@@ -120,8 +123,9 @@ public class TreasureHuntMinigameServiceImpl implements TreasureHuntMinigameServ
             rewardModifier = BigDecimal.ONE;
             successBonus = calculateSuccessBonus(request.getCollectedTreasures());
         } else if (normalizedResult.equals("FAILED")) {
-            rewardModifier = FAILED_REWARD_MODIFIER;
+            rewardModifier = BigDecimal.ONE;
             cargoLossPercent = FAILED_CARGO_LOSS_PERCENT;
+            applyCargoLossToTravel(request.getTravelId(), FAILED_CARGO_LOSS_PERCENT);
         } else {
             rewardModifier = DECLINED_REWARD_MODIFIER;
         }
@@ -154,6 +158,13 @@ public class TreasureHuntMinigameServiceImpl implements TreasureHuntMinigameServ
         );
     }
 
+    private void applyCargoLossToTravel(UUID travelId, int cargoLossPercent) {
+        travelRepository.findById(travelId).ifPresent(travel -> {
+            travel.applyCargoLossPercent(cargoLossPercent);
+            travelRepository.save(travel);
+        });
+    }
+
     @Override
     public Optional<TreasureHuntMinigameEvent> getPendingEvent(UUID travelId, UUID playerId, UUID sessionId) {
         PendingTreasureHuntEvent event = pendingEvents.get(travelId);
@@ -180,13 +191,13 @@ public class TreasureHuntMinigameServiceImpl implements TreasureHuntMinigameServ
         BigDecimal successBonus = successBonusByTravelId.remove(travelId);
         if (successBonus == null) successBonus = BigDecimal.ZERO;
 
-        BigDecimal modified = totalReward.multiply(modifier).add(successBonus).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal delta = modified.subtract(totalReward).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal modified = totalReward.multiply(modifier).add(successBonus).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal delta = modified.subtract(totalReward).setScale(0, RoundingMode.HALF_UP);
 
         TreasureHuntSummaryState existing = summaryByTravelId.get(travelId);
         if (existing != null) {
             BigDecimal bonusFromDelta = delta.compareTo(BigDecimal.ZERO) > 0 ? delta : BigDecimal.ZERO;
-            BigDecimal bonusAmount = existing.bonusAmount().max(bonusFromDelta).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal bonusAmount = existing.bonusAmount().max(bonusFromDelta).setScale(0, RoundingMode.HALF_UP);
             BigDecimal penaltyAmount = delta.compareTo(BigDecimal.ZERO) < 0
                     ? delta.abs()
                     : BigDecimal.ZERO;
@@ -208,7 +219,7 @@ public class TreasureHuntMinigameServiceImpl implements TreasureHuntMinigameServ
         for (int i = 0; i < chests; i++) {
             bonus += random.nextInt(SUCCESS_CHEST_BONUS_MAX - SUCCESS_CHEST_BONUS_MIN + 1) + SUCCESS_CHEST_BONUS_MIN;
         }
-        return BigDecimal.valueOf(bonus).setScale(2, RoundingMode.HALF_UP);
+        return BigDecimal.valueOf(bonus).setScale(0, RoundingMode.HALF_UP);
     }
 
     @Override

@@ -32,6 +32,7 @@ public class TravelMapper implements  EntityMapper<Travel, TravelEntity> {
         entity.setPilotageRefund(travel.getPilotageRefund());
         entity.setArrivalMiniGamePending(travel.isArrivalMiniGamePending());
         entity.setEmptyVoyage(travel.isEmptyVoyage());
+        entity.setRemainingCargoFactor(travel.getRemainingCargoFactor());
         return entity;
     }
 
@@ -60,7 +61,8 @@ public class TravelMapper implements  EntityMapper<Travel, TravelEntity> {
                 entity.isPilotageStrikeRevoked(),
                 entity.getPilotageRefund(),
                 entity.isArrivalMiniGamePending(),
-                entity.isEmptyVoyage()
+                entity.isEmptyVoyage(),
+                entity.getRemainingCargoFactor()
         );
     }
 }

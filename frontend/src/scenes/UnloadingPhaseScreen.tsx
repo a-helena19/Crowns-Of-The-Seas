@@ -33,6 +33,9 @@ interface UnloadingPhaseScreenProps {
     onComplete?: (rewards?: { totalReward: number; cargoBreakdown?: CargoRewardBreakdown[] }) => void;
 }
 
+const formatTalers = (value: number | undefined | null) =>
+    Number(value ?? 0).toLocaleString("de-DE", { maximumFractionDigits: 0 });
+
 export const UnloadingPhaseScreen: React.FC<UnloadingPhaseScreenProps> = ({
                                                                               shipName,
                                                                               portName,
@@ -135,7 +138,7 @@ export const UnloadingPhaseScreen: React.FC<UnloadingPhaseScreenProps> = ({
                                         <span className="cargo-status-badge">
                                             {unloadedCargos.has(cargo.id) ? '✅ Entladen' : '⏳ Lädt...'}
                                         </span>
-                                        <span className="cargo-reward">+{cargo.actualReward ?? cargo.reward}G</span>
+	                                        <span className="cargo-reward">+{formatTalers(cargo.actualReward ?? cargo.reward)}G</span>
                                     </div>
                                 </div>
                             ))}
@@ -185,16 +188,16 @@ export const UnloadingPhaseScreen: React.FC<UnloadingPhaseScreenProps> = ({
                             <div className="reward-breakdown">
                                 {cargoList.length > 0 && cargoList.some(c => c.actualReward) && (
                                     <p className="reward-breakdown-item">
-                                        Fracht: +{cargoList.reduce((sum, c) => sum + (c.actualReward ?? 0), 0).toLocaleString()}G
+	                                        Fracht: +{formatTalers(cargoList.reduce((sum, c) => sum + (c.actualReward ?? 0), 0))}G
                                     </p>
                                 )}
                                 {baseReward > 0 && (
                                     <p className="reward-breakdown-item">
-                                        Bonus: +{baseReward.toLocaleString()}G
+	                                        Bonus: +{formatTalers(baseReward)}G
                                     </p>
                                 )}
                             </div>
-                            <p className="reward-amount">+{totalReward.toLocaleString()} Gold</p>
+	                            <p className="reward-amount">+{formatTalers(totalReward)} Gold</p>
                         </div>
                     </div>
                     {/* Floating Gold Animation */}

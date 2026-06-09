@@ -7,6 +7,7 @@ import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.travel.Travel;
+import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.rest.GameSessionWebSocketController;
 import at.fhv.backend.rest.dtos.minigame.request.StormMinigameResultRequest;
 import at.fhv.backend.rest.dtos.websocket.StormMinigameEvent;
@@ -27,13 +28,13 @@ public class StormMinigameServiceImpl implements StormMinigameService {
     private static final int DEFAULT_START_HEALTH = 100;
     private static final double FAILED_CONDITION_DAMAGE_PERCENT = 50.0;
     private static final int FAILED_CARGO_LOSS_PERCENT = 50;
-    private static final BigDecimal FAILED_REWARD_MODIFIER = new BigDecimal("0.50");
     private static final BigDecimal SUCCESS_REWARD_MODIFIER = BigDecimal.ONE;
 
     private final TravelPauseService travelPauseService;
     private final GameSessionWebSocketController webSocketController;
     private final PlayerShipRepository playerShipRepository;
     private final SessionPlayerRepository sessionPlayerRepository;
+    private final TravelRepository travelRepository;
     private final Random random = new Random();
 
     private final Set<UUID> triggeredTravelIds = ConcurrentHashMap.newKeySet();
@@ -44,11 +45,13 @@ public class StormMinigameServiceImpl implements StormMinigameService {
     public StormMinigameServiceImpl(TravelPauseService travelPauseService,
                                     GameSessionWebSocketController webSocketController,
                                     PlayerShipRepository playerShipRepository,
-                                    SessionPlayerRepository sessionPlayerRepository) {
+                                    SessionPlayerRepository sessionPlayerRepository,
+                                    TravelRepository travelRepository) {
         this.travelPauseService = travelPauseService;
         this.webSocketController = webSocketController;
         this.playerShipRepository = playerShipRepository;
         this.sessionPlayerRepository = sessionPlayerRepository;
+        this.travelRepository = travelRepository;
     }
 
     @Override
@@ -122,7 +125,8 @@ public class StormMinigameServiceImpl implements StormMinigameService {
                                                                    StormMinigameResultRequest request) {
         PlayerShip playerShip = playerShipRepository.findById(event.playerShipId()).orElseThrow();
 
-        rewardModifiersByTravelId.put(request.getTravelId(), FAILED_REWARD_MODIFIER);
+        rewardModifiersByTravelId.put(request.getTravelId(), SUCCESS_REWARD_MODIFIER);
+        applyCargoLossToTravel(request.getTravelId(), FAILED_CARGO_LOSS_PERCENT);
         playerShip.applyWear(FAILED_CONDITION_DAMAGE_PERCENT);
         playerShipRepository.save(playerShip);
         summaryByTravelId.put(request.getTravelId(),
@@ -135,6 +139,13 @@ public class StormMinigameServiceImpl implements StormMinigameService {
                 request.getRemainingHealth(), request.getTimeLeftSeconds(), request.getTimeLimitSeconds(),
                 BigDecimal.ZERO
         );
+    }
+
+    private void applyCargoLossToTravel(UUID travelId, int cargoLossPercent) {
+        travelRepository.findById(travelId).ifPresent(travel -> {
+            travel.applyCargoLossPercent(cargoLossPercent);
+            travelRepository.save(travel);
+        });
     }
 
     @Override
@@ -161,8 +172,8 @@ public class StormMinigameServiceImpl implements StormMinigameService {
         BigDecimal modifier = rewardModifiersByTravelId.remove(travelId);
         if (modifier == null) return totalReward;
 
-        BigDecimal modified = totalReward.multiply(modifier).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal penalty = totalReward.subtract(modified).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal modified = totalReward.multiply(modifier).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal penalty = totalReward.subtract(modified).max(BigDecimal.ZERO).setScale(0, RoundingMode.HALF_UP);
 
         StormSummaryState existing = summaryByTravelId.get(travelId);
         if (existing != null) {

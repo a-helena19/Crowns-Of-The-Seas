@@ -3,10 +3,12 @@ import PixelPanel from "./PixelPanel";
 
 export default function DialogBubble({
                                          onOpenCargo,
+                                         onOpenEmptyVoyage,
                                          onOpenShip,
                                          selectedShipName,
                                      }: {
     onOpenCargo?: () => void;
+    onOpenEmptyVoyage?: () => void;
     onOpenShip: () => void;
     selectedShipName?: string;
 }) {
@@ -24,6 +26,9 @@ export default function DialogBubble({
                 </GameButton>
                 <GameButton onClick={onOpenCargo ?? (() => {})}>
                     Frachtbörse öffnen
+                </GameButton>
+                <GameButton onClick={onOpenEmptyVoyage ?? (() => {})}>
+                    Leerfahrt
                 </GameButton>
             </div>
         </PixelPanel>

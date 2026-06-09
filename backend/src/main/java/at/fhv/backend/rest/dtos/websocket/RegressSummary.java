@@ -8,6 +8,8 @@ public class RegressSummary {
     private final int overdueTicks;
     private final BigDecimal delayComponent;
     private final BigDecimal damageComponent;
+    private final BigDecimal cargoLossComponent;
+    private final double cargoLossPercent;
     private final double damagePercent;
     private final double specialCargoMultiplier;
     private final boolean hadPerishableCargo;
@@ -16,6 +18,7 @@ public class RegressSummary {
 
     public RegressSummary(int delayTicks, int toleranceTicks, int overdueTicks,
                           BigDecimal delayComponent, BigDecimal damageComponent,
+                          BigDecimal cargoLossComponent, double cargoLossPercent,
                           double damagePercent, double specialCargoMultiplier,
                           boolean hadPerishableCargo, boolean hadFragileCargo,
                           BigDecimal totalFine) {
@@ -24,6 +27,8 @@ public class RegressSummary {
         this.overdueTicks = overdueTicks;
         this.delayComponent = delayComponent;
         this.damageComponent = damageComponent;
+        this.cargoLossComponent = cargoLossComponent;
+        this.cargoLossPercent = cargoLossPercent;
         this.damagePercent = damagePercent;
         this.specialCargoMultiplier = specialCargoMultiplier;
         this.hadPerishableCargo = hadPerishableCargo;
@@ -49,6 +54,14 @@ public class RegressSummary {
 
     public BigDecimal getDamageComponent() {
         return damageComponent;
+    }
+
+    public BigDecimal getCargoLossComponent() {
+        return cargoLossComponent;
+    }
+
+    public double getCargoLossPercent() {
+        return cargoLossPercent;
     }
 
     public double getDamagePercent() {

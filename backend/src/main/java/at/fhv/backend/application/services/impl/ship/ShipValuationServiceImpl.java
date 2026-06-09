@@ -26,6 +26,6 @@ public class ShipValuationServiceImpl implements ShipValuationService {
         return ship.getPrice()
                 .multiply(SELL_BASE_FACTOR)
                 .multiply(conditionFactor.add(fuelFactor))
-                .setScale(2, RoundingMode.HALF_UP);
+                .setScale(0, RoundingMode.HALF_UP);
     }
 }

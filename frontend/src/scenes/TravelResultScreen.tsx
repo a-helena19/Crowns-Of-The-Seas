@@ -29,6 +29,8 @@ export interface RegressSummary {
     overdueTicks: number;
     delayComponent: number;
     damageComponent: number;
+    cargoLossComponent?: number;
+    cargoLossPercent?: number;
     damagePercent: number;
     specialCargoMultiplier: number;
     hadPerishableCargo: boolean;
@@ -111,10 +113,13 @@ function customsInfo(s: CustomsSummary): { good: boolean; title: string; detail:
     }
 }
 
+function formatTalers(value: number | undefined | null): string {
+    return `${value ?? 0}`.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
 
 export default function TravelResultScreen({
                                                cargos,
-                                               baseReward,
+                                               totalReward,
                                                previousBalance,
                                                newBalance,
                                                customsSummary,
@@ -135,8 +140,8 @@ export default function TravelResultScreen({
         let i = 0;
         const t = setInterval(() => {
             i++;
-            setDisplayedBalance(Math.floor(previousBalance + inc * i));
-            setDisplayedDelta(Math.floor(inc * i));
+            setDisplayedBalance(previousBalance + inc * i);
+            setDisplayedDelta(inc * i);
             if (i >= steps) {
                 clearInterval(t);
                 setDisplayedBalance(newBalance);
@@ -156,6 +161,8 @@ export default function TravelResultScreen({
     const regressTotal  = regressSummary?.totalFine       ?? 0;
     const regressDelay  = regressSummary?.delayComponent  ?? 0;
     const regressDamage = regressSummary?.damageComponent ?? 0;
+    const regressCargoLoss = regressSummary?.cargoLossComponent ?? 0;
+    const regressCargoLossPercent = regressSummary?.cargoLossPercent ?? 0;
 
     const hasDockingPenalty = dockingFine > 0 || departureDockingFine > 0;
     const isPerfect = regularCargos.length > 0
@@ -165,9 +172,10 @@ export default function TravelResultScreen({
 
     // Summary numbers
     const cargoBase    = regularCargos.reduce((s, c) => s + (c.actualReward - (c.bonusReward ?? 0)), 0);
+    const bonusTotal   = regularCargos.reduce((s, c) => s + (c.bonusReward ?? 0), 0);
     const smuggleTotal = smuggleCargo?.actualReward ?? 0;
 
-    const fmt = (n: number) => n.toLocaleString("de-DE");
+    const fmt = formatTalers;
 
     return (
         <div className="travel-result-overlay">
@@ -202,9 +210,8 @@ export default function TravelResultScreen({
                             </div>
                             {customsTotal > 0 && (
                                 <div className="tr-customs-costs">
-                                    {customsBribe > 0 && <div>Bestechung: -{fmt(customsBribe)} T</div>}
-                                    {customsFine  > 0 && <div>Strafe: -{fmt(customsFine)} T</div>}
-                                    <div className="tr-customs-costs-total">-{fmt(customsTotal)} T</div>
+                                    {customsBribe > 0 && <div>Bestechung bezahlt: -{fmt(customsBribe)} T</div>}
+                                    {customsFine  > 0 && <div>Strafe bezahlt: -{fmt(customsFine)} T</div>}
                                 </div>
                             )}
                         </div>
@@ -257,16 +264,16 @@ export default function TravelResultScreen({
                     <div className="tr-summary">
                         {cargoBase > 0 && (
                             <div className="tr-summary-row">
-                                <span className="tr-summary-label">Cargo</span>
-                                <span className="tr-summary-value positive">+{fmt(cargoBase)} T</span>
-                            </div>
-                        )}
-                        {baseReward > 0 && (
-                            <div className="tr-summary-row bonus">
-                                <span className="tr-summary-label">Reisebonus</span>
-                                <span className="tr-summary-value positive">+{fmt(baseReward)} T</span>
-                            </div>
-                        )}
+	                                <span className="tr-summary-label">Frachtwert</span>
+	                                <span className="tr-summary-value positive">+{fmt(cargoBase)} T</span>
+	                            </div>
+	                        )}
+	                        {bonusTotal > 0 && (
+	                            <div className="tr-summary-row bonus">
+	                                <span className="tr-summary-label">Bonus</span>
+	                                <span className="tr-summary-value positive">+{fmt(bonusTotal)} T</span>
+	                            </div>
+	                        )}
                         {smuggleTotal > 0 && (
                             <div className="tr-summary-row bonus">
                                 <span className="tr-summary-label">Schmuggel</span>
@@ -275,19 +282,19 @@ export default function TravelResultScreen({
                         )}
                         {pilotageRefund > 0 && (
                             <div className="cm-reward-row bonus">
-                                <span>Lotsenerstattung (Streik)</span>
-                                <span className="cm-reward-row-value">+{pilotageRefund.toLocaleString("de-DE")}T</span>
+	                                <span>Lotsenerstattung (Streik)</span>
+	                                <span className="cm-reward-row-value">+{fmt(pilotageRefund)} T</span>
                             </div>
                         )}
                         {customsBribe > 0 && (
                             <div className="tr-summary-row deduction">
-                                <span className="tr-summary-label">Bestechung</span>
+	                                <span className="tr-summary-label">Zoll - Bestechung (bereits bezahlt)</span>
                                 <span className="tr-summary-value negative">-{fmt(customsBribe)} T</span>
                             </div>
                         )}
                         {customsFine > 0 && (
                             <div className="tr-summary-row deduction">
-                                <span className="tr-summary-label">Zollstrafe</span>
+	                                <span className="tr-summary-label">Zoll - Strafe (bereits bezahlt)</span>
                                 <span className="tr-summary-value negative">-{fmt(customsFine)} T</span>
                             </div>
                         )}
@@ -308,7 +315,7 @@ export default function TravelResultScreen({
                                         : ""})
                                 </span>
                             </span>
-                                <span className="tr-summary-value negative">-{fmt(Math.round(regressDelay))} T</span>
+	                                <span className="tr-summary-value negative">-{fmt(regressDelay)} T</span>
                             </div>
                         )}
                         {regressDamage > 0 && (
@@ -324,25 +331,41 @@ export default function TravelResultScreen({
                                     </span>
                                 )}
                             </span>
-                                <span className="tr-summary-value negative">-{fmt(Math.round(regressDamage))} T</span>
+	                                <span className="tr-summary-value negative">-{fmt(regressDamage)} T</span>
+                            </div>
+                        )}
+                        {regressCargoLoss > 0 && (
+                            <div className="tr-summary-row deduction">
+                                <span className="tr-summary-label">
+                                    Regress - Frachtverlust
+                                    {regressCargoLossPercent > 0 && (
+                                        <span className="tr-summary-sub">
+                                            {" "}({regressCargoLossPercent.toFixed(1)} % verloren
+                                            {regressSummary && regressSummary.specialCargoMultiplier > 1
+                                                ? `, x${regressSummary.specialCargoMultiplier.toFixed(1)}`
+                                                : ""})
+                                        </span>
+                                    )}
+                                </span>
+                                <span className="tr-summary-value negative">-{fmt(regressCargoLoss)} T</span>
                             </div>
                         )}
                         {departureDockingFine > 0 && (
                             <div className="cm-reward-row warn">
-                                <span>⚠ Ablege-Schaden (Kollision)</span>
-                                <span className="cm-reward-row-value">-{departureDockingFine.toLocaleString("de-DE")}T</span>
+	                                <span>Hafengebühren - Ablege-Schaden</span>
+	                                <span className="cm-reward-row-value">-{fmt(departureDockingFine)} T</span>
                             </div>
                         )}
                         {dockingFine > 0 && (
                             <div className="cm-reward-row warn">
-                                <span>⚠ Anlege-Schaden (Kollision)</span>
-                                <span className="cm-reward-row-value">-{dockingFine.toLocaleString("de-DE")}T</span>
+	                                <span>Hafengebühren - Anlege-Schaden</span>
+	                                <span className="cm-reward-row-value">-{fmt(dockingFine)} T</span>
                             </div>
                         )}
                         <div className="tr-summary-row total">
                             <span className="tr-summary-label">Netto</span>
-                            <span className={`tr-summary-value ${balanceGain >= 0 ? "positive" : "negative"}`}>
-                            {balanceGain >= 0 ? "+" : ""}{fmt(balanceGain)} T
+	                            <span className={`tr-summary-value ${totalReward >= 0 ? "positive" : "negative"}`}>
+	                            {totalReward >= 0 ? "+" : ""}{fmt(totalReward)} T
                         </span>
                         </div>
                     </div>

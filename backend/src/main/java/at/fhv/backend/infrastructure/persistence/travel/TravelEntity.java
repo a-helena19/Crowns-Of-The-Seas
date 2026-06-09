@@ -81,6 +81,9 @@ public class TravelEntity {
     @Column(name = "empty_voyage", nullable = false, columnDefinition = "boolean default false")
     private boolean emptyVoyage = false;
 
+    @Column(name = "remaining_cargo_factor", nullable = false, columnDefinition = "double precision default 1.0")
+    private double remainingCargoFactor = 1.0;
+
     public TravelEntity() {}
 
     public UUID getTravelId() {
@@ -265,5 +268,13 @@ public class TravelEntity {
 
     public void setEmptyVoyage(boolean emptyVoyage) {
         this.emptyVoyage = emptyVoyage;
+    }
+
+    public double getRemainingCargoFactor() {
+        return remainingCargoFactor;
+    }
+
+    public void setRemainingCargoFactor(double remainingCargoFactor) {
+        this.remainingCargoFactor = remainingCargoFactor;
     }
 }

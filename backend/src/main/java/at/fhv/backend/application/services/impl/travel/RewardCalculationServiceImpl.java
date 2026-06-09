@@ -30,7 +30,7 @@ public class RewardCalculationServiceImpl implements RewardCalculationService {
             }
         }
 
-        return totalReward.max(BigDecimal.ZERO);
+        return roundToWholeThaler(totalReward.max(BigDecimal.ZERO));
     }
     @Override
     public BigDecimal calculateCargoReward(SessionCargo cargo) {
@@ -41,7 +41,7 @@ public class RewardCalculationServiceImpl implements RewardCalculationService {
 
         switch (cargo.getCargoStatus()) {
             case DELIVERED:
-                return cargo.getReward();
+                return roundToWholeThaler(cargo.getReward());
             case EXPIRED:
                 return calculateExpiredCargoReward(cargo);
             default:
@@ -55,8 +55,7 @@ public class RewardCalculationServiceImpl implements RewardCalculationService {
             return BigDecimal.ZERO;
         }
         double bonusFactor = random.nextDouble() * MAX_BONUS_FACTOR;
-        return cargoReward.multiply(BigDecimal.valueOf(bonusFactor))
-                .setScale(2, RoundingMode.HALF_UP);
+        return roundToWholeThaler(cargoReward.multiply(BigDecimal.valueOf(bonusFactor)));
     }
 
     private BigDecimal calculateExpiredCargoReward(SessionCargo cargo) {
@@ -73,7 +72,13 @@ public class RewardCalculationServiceImpl implements RewardCalculationService {
             case INDUSTRIAL_GOODS -> new BigDecimal("0.50");
         };
 
-        return baseReward.multiply(rewardPercentage);
+        return roundToWholeThaler(baseReward.multiply(rewardPercentage));
+    }
+
+    private BigDecimal roundToWholeThaler(BigDecimal amount) {
+        return amount == null
+                ? BigDecimal.ZERO
+                : amount.setScale(0, RoundingMode.HALF_UP);
     }
 
     private boolean isCargoRelevantForThisTravel(SessionCargo cargo, Travel travel) {

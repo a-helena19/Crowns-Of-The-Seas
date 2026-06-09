@@ -85,12 +85,36 @@ interface TravelCompleteEvent {
     cargoRewards: CargoRewardBreakdown[];
     baseReward: number;
     totalReward: number;
+    netPayout?: number;
+    cargoReward?: number;
+    bonusReward?: number;
+    smuggleReward?: number;
+    grossReward?: number;
+    minigameDeductions?: number;
+    minigameBonus?: number;
+    customsPaid?: number;
+    dockingFines?: number;
+    regress?: number;
     previousBalance: number;
     newBalance: number;
     dockingFine?: number;
     departureDockingFine?: number;
     pilotageRefund?: number;
     customsSummary?: CustomsSummary | null;
+    regressSummary?: {
+        delayTicks: number;
+        toleranceTicks: number;
+        overdueTicks: number;
+        delayComponent: number;
+        damageComponent: number;
+        cargoLossComponent?: number;
+        cargoLossPercent?: number;
+        damagePercent: number;
+        specialCargoMultiplier: number;
+        hadPerishableCargo: boolean;
+        hadFragileCargo: boolean;
+        totalFine: number;
+    } | null;
 }
 
 interface RatMinigameEvent {
