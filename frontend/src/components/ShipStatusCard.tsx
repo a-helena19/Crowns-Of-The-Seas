@@ -116,14 +116,14 @@ export default function ShipStatusCard({
                             <strong>{shipClass}</strong>
                         </div>
                     )}
-                    {urgent && (
-                        <div className="ship-status-action-hint">⚠ Tippen zum Entscheiden</div>
-                    )}
                     {currentPortName && (
                         <div className="ship-status-line">
                             <span>Ort</span>
                             <strong>{currentPortName}</strong>
                         </div>
+                    )}
+                    {urgent && (
+                        <div className="ship-status-action-hint">⚠ Tippen zum Entscheiden</div>
                     )}
                 </div>
             </div>
