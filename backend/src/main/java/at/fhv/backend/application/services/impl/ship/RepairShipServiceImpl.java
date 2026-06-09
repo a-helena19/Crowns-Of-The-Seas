@@ -27,7 +27,7 @@ import java.util.UUID;
 @Service
 public class RepairShipServiceImpl implements RepairShipService {
 
-    private static final double REPAIR_PRICE_FACTOR = 50.0;
+    private static final double REPAIR_PRICE_FACTOR = 100.0;
     private static final int BASE_REPAIRING_TICKS = 4;
 
     private final PlayerShipRepository playerShipRepository;

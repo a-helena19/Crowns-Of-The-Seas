@@ -39,7 +39,7 @@ import java.util.UUID;
 public class StartEmptyVoyageServiceImpl implements StartEmptyVoyageService {
     private static final double GLOBAL_TRAVEL_SPEED_FACTOR = 0.75;
     private static final double CONDITION_WEAR_FACTOR = 0.08;
-    private static final BigDecimal PILOTAGE_COST = new BigDecimal("600");
+    private static final BigDecimal PILOTAGE_COST = new BigDecimal("1000");
     private static final int DEPARTURE_ANIMATION_MS = 3000;
     private static final int DEPARTURE_START_BUFFER_TICKS = 0;
 

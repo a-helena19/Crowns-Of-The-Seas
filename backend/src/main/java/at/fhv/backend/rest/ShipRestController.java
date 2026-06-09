@@ -132,8 +132,9 @@ public class ShipRestController {
     public ResponseEntity<RefuelResponseDTO> refuelShip(
             @PathVariable UUID playerShipId,
             @RequestParam UUID playerId,
-            @RequestParam UUID sessionId) {
-        return ResponseEntity.ok(refuelShipService.refuel(playerShipId, playerId, sessionId));
+            @RequestParam UUID sessionId,
+            @RequestParam(defaultValue = "100.0") double targetFuelPercent) {
+        return ResponseEntity.ok(refuelShipService.refuel(playerShipId, playerId, sessionId, targetFuelPercent));
     }
 
     @PostMapping("/{playerShipId}/repair")

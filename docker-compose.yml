@@ -24,10 +24,8 @@ services:
     image: postgres:16-alpine
     container_name: crowns-auth-postgres-container
     profiles:
-      - local
+      - local-auth
       - app
-    labels:
-      org.springframework.boot.ignore: "true"
     ports:
       - "5433:5432"
     environment:
@@ -47,7 +45,6 @@ services:
     image: eateam6-auth-service:latest
     container_name: eateam6-auth-service-container
     profiles:
-      - local
       - app
     ports:
       - "8081:8081"

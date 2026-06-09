@@ -27,7 +27,7 @@ import java.util.UUID;
 @Service
 public class RefuelShipServiceImpl implements RefuelShipService {
 
-    private static final double FUEL_PRICE_PER_UNIT = 3.0;
+    private static final double FUEL_PRICE_PER_UNIT = 8.0;
     private static final int BASE_REFUELING_TICKS = 3;
 
     private final PlayerShipRepository playerShipRepository;
@@ -50,7 +50,7 @@ public class RefuelShipServiceImpl implements RefuelShipService {
 
     @Override
     @Transactional
-    public RefuelResponseDTO refuel(UUID playerShipId, UUID playerId, UUID sessionId) {
+    public RefuelResponseDTO refuel(UUID playerShipId, UUID playerId, UUID sessionId, double targetFuelPercent) {
         PlayerShip playerShip = playerShipRepository
                 .findByIdAndPlayerIdAndSessionId(playerShipId, playerId, sessionId)
                 .orElseThrow(() -> new ShipNotOwnedException("Ship not found or not owned by player", playerShipId));
@@ -62,7 +62,8 @@ public class RefuelShipServiceImpl implements RefuelShipService {
         Ship ship = shipRepository.findById(playerShip.getShipId())
                 .orElseThrow(() -> new ShipNotFoundException("shipId", playerShip.getShipId()));
 
-        double fuelNeededPercent = 100.0 - playerShip.getFuel();
+        double clampedTarget = Math.min(100.0, Math.max(playerShip.getFuel(), targetFuelPercent));
+        double fuelNeededPercent = clampedTarget - playerShip.getFuel();
         double fuelNeededAbsolute = fuelNeededPercent / 100.0 * ship.getMaxFuel().doubleValue();
 
         ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
