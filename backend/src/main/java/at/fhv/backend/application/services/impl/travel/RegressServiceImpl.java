@@ -81,6 +81,8 @@ public class RegressServiceImpl implements RegressService {
                 stored.getToleranceTicks(),
                 newDelayComponent,
                 stored.getDamageComponent(),
+                stored.getCargoLossComponent(),
+                stored.getCargoLossPercent(),
                 stored.getDamagePercent(),
                 stored.getSpecialCargoMultiplier(),
                 stored.hadPerishableCargo(),
@@ -129,10 +131,19 @@ public class RegressServiceImpl implements RegressService {
 
         BigDecimal multipliedDelay = applyMultiplier(delayComponent, multiplier);
         BigDecimal multipliedDamage = applyMultiplier(damageComponent, multiplier);
+        double cargoLossFactor = Math.max(0.0, Math.min(1.0, travel.getCargoLossFactor()));
+        BigDecimal cargoLossComponent = BigDecimal.ZERO;
+        if (cargoLossFactor > 0.0 && cargoValue.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal rawCargoLoss = cargoValue
+                    .multiply(BigDecimal.valueOf(cargoLossFactor))
+                    .setScale(0, RoundingMode.HALF_UP);
+            cargoLossComponent = applyMultiplier(rawCargoLoss, multiplier);
+        }
 
         RegressFine fine = new RegressFine(
                 delayTicks, 0,
                 multipliedDelay, multipliedDamage,
+                cargoLossComponent, cargoLossFactor * 100.0,
                 damagePercent, multiplier,
                 flags.hasPerishable, flags.hasFragile
         );
@@ -145,10 +156,12 @@ public class RegressServiceImpl implements RegressService {
                 + " originalArrivalTick=" + originalArrivalTick
                 + " delayTicks=" + delayTicks
                 + " cargoValue=" + cargoValue + " T"
+                + " cargoLoss=" + String.format("%.1f", cargoLossFactor * 100.0) + "%"
                 + " damage=" + String.format("%.1f", damagePercent) + "%"
                 + " multiplier=" + multiplier
                 + " => delayComponent=" + multipliedDelay + " T"
                 + ", damageComponent=" + multipliedDamage + " T"
+                + ", cargoLossComponent=" + cargoLossComponent + " T"
                 + ", total=" + fine.getTotalFine() + " T");
 
         return fine;

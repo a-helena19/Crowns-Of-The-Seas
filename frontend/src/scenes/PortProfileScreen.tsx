@@ -63,6 +63,8 @@ const TYPE_COLORS: Record<string, string> = {
 
 const riskLabel = (r: number) => r < 0.1 ? "Niedrig" : r < 0.25 ? "Mittel" : r < 0.4 ? "Hoch" : "Extrem";
 const riskClass = (r: number) => r < 0.1 ? "risk-low" : r < 0.25 ? "risk-medium" : r < 0.4 ? "risk-high" : "risk-extreme";
+const formatTalers = (value: number | undefined | null) =>
+    Number(value ?? 0).toLocaleString("de-DE", { maximumFractionDigits: 0 });
 
 export default function PortProfileScreen({ port, onClose }: Props) {
     const [cargos, setCargos] = useState<SessionCargoDTO[]>([]);
@@ -139,7 +141,7 @@ export default function PortProfileScreen({ port, onClose }: Props) {
                             <div key={c.id} className="port-profile-cargo-item">
                                 <div className="port-profile-cargo-row">
                                     <span className="port-profile-cargo-name">{c.name}</span>
-                                    <span className="port-profile-cargo-reward">{Number(c.reward).toLocaleString("de-DE")} T</span>
+	                                    <span className="port-profile-cargo-reward">{formatTalers(c.reward)} T</span>
                                 </div>
                                 <div className="port-profile-cargo-sub">
                                     <span

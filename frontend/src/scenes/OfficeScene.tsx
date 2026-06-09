@@ -445,11 +445,11 @@ function statusLabel(status: string) {
 }
 
 function roundMoney(value: number) {
-    return Math.round(value * 100) / 100;
+    return Math.round(value);
 }
 
 function formatMoney(value: number) {
-    return Number(value).toLocaleString("de-DE", { maximumFractionDigits: 2 });
+    return Math.round(Number(value)).toLocaleString("de-DE", { maximumFractionDigits: 0 });
 }
 
 function TickProgressBar({ completionTick, label }: { completionTick: number; label: string }) {

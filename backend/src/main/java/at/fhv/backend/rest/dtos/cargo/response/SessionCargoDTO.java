@@ -4,6 +4,7 @@ import at.fhv.backend.domain.model.cargo.CargoStatus;
 import at.fhv.backend.domain.model.cargo.CargoType;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.UUID;
 
 public class SessionCargoDTO {
@@ -88,7 +89,7 @@ public class SessionCargoDTO {
     }
 
     public void setReward(BigDecimal reward) {
-        this.reward = reward;
+        this.reward = reward == null ? BigDecimal.ZERO : reward.setScale(0, RoundingMode.HALF_UP);
     }
 
     public boolean isContainsIllegal() {

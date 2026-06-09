@@ -21,6 +21,15 @@ public class TravelCompleteEvent {
     private BigDecimal departureDockingFine;
     private BigDecimal dockingFine;
     private BigDecimal pilotageRefund;
+    private BigDecimal cargoReward;
+    private BigDecimal smuggleReward;
+    private BigDecimal grossReward;
+    private BigDecimal minigameDeductions;
+    private BigDecimal minigameBonus;
+    private BigDecimal customsPaid;
+    private BigDecimal dockingFines;
+    private BigDecimal regress;
+    private BigDecimal netPayout;
 
     public TravelCompleteEvent(String travelId, String playerId,
                                List<CargoRewardBreakdown> cargoRewards,
@@ -28,6 +37,15 @@ public class TravelCompleteEvent {
                                BigDecimal previousBalance, BigDecimal newBalance,
                                BigDecimal departureDockingFine, BigDecimal dockingFine,
                                BigDecimal pilotageRefund,
+                               BigDecimal cargoReward,
+                               BigDecimal smuggleReward,
+                               BigDecimal grossReward,
+                               BigDecimal minigameDeductions,
+                               BigDecimal minigameBonus,
+                               BigDecimal customsPaid,
+                               BigDecimal dockingFines,
+                               BigDecimal regress,
+                               BigDecimal netPayout,
                                RatMinigameTravelSummary ratMinigameSummary,
                                StormMinigameTravelSummary stormMinigameSummary,
                                ObstacleMinigameTravelSummary obstacleMinigameSummary,
@@ -50,6 +68,15 @@ public class TravelCompleteEvent {
         this.departureDockingFine = departureDockingFine != null ? departureDockingFine : BigDecimal.ZERO;
         this.dockingFine = dockingFine != null ? dockingFine : BigDecimal.ZERO;
         this.pilotageRefund = pilotageRefund != null ? pilotageRefund : BigDecimal.ZERO;
+        this.cargoReward = cargoReward != null ? cargoReward : BigDecimal.ZERO;
+        this.smuggleReward = smuggleReward != null ? smuggleReward : BigDecimal.ZERO;
+        this.grossReward = grossReward != null ? grossReward : BigDecimal.ZERO;
+        this.minigameDeductions = minigameDeductions != null ? minigameDeductions : BigDecimal.ZERO;
+        this.minigameBonus = minigameBonus != null ? minigameBonus : BigDecimal.ZERO;
+        this.customsPaid = customsPaid != null ? customsPaid : BigDecimal.ZERO;
+        this.dockingFines = dockingFines != null ? dockingFines : BigDecimal.ZERO;
+        this.regress = regress != null ? regress : BigDecimal.ZERO;
+        this.netPayout = netPayout != null ? netPayout : BigDecimal.ZERO;
         this.stormMinigameSummary = stormMinigameSummary;
     }
 
@@ -95,6 +122,42 @@ public class TravelCompleteEvent {
 
     public BigDecimal getPilotageRefund() {
         return pilotageRefund;
+    }
+
+    public BigDecimal getCargoReward() {
+        return cargoReward;
+    }
+
+    public BigDecimal getSmuggleReward() {
+        return smuggleReward;
+    }
+
+    public BigDecimal getGrossReward() {
+        return grossReward;
+    }
+
+    public BigDecimal getMinigameDeductions() {
+        return minigameDeductions;
+    }
+
+    public BigDecimal getMinigameBonus() {
+        return minigameBonus;
+    }
+
+    public BigDecimal getCustomsPaid() {
+        return customsPaid;
+    }
+
+    public BigDecimal getDockingFines() {
+        return dockingFines;
+    }
+
+    public BigDecimal getRegress() {
+        return regress;
+    }
+
+    public BigDecimal getNetPayout() {
+        return netPayout;
     }
 
     public RatMinigameTravelSummary getRatMinigameSummary() {

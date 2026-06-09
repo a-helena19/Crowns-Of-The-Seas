@@ -61,12 +61,12 @@ export default function ShipManagementScene({ playerShipId, onActionComplete, on
 
     const fuelNeededPercent = ship ? Math.max(0, 100 - ship.fuel) : 0;
     const fuelCost = ship
-        ? Math.round((fuelNeededPercent / 100) * ship.maxFuel * FUEL_PRICE_PER_UNIT * 100) / 100
+        ? Math.round((fuelNeededPercent / 100) * ship.maxFuel * FUEL_PRICE_PER_UNIT)
         : 0;
 
     const repairNeededPercent = ship ? Math.max(0, 100 - ship.condition) : 0;
     const repairCost = ship
-        ? Math.round((repairNeededPercent / 100) * ship.operatingCost * REPAIR_PRICE_FACTOR * 100) / 100
+        ? Math.round((repairNeededPercent / 100) * ship.operatingCost * REPAIR_PRICE_FACTOR)
         : 0;
 
     const canAffordFuel = balance !== null && balance >= fuelCost;
@@ -179,7 +179,7 @@ export default function ShipManagementScene({ playerShipId, onActionComplete, on
                         </div>
                     </div>
                     {balance !== null && (
-                        <div className="mgmt-balance">Kontostand: <strong>{balance.toLocaleString("de-DE")} T</strong></div>
+                        <div className="mgmt-balance">Kontostand: <strong>{formatTalers(balance)} T</strong></div>
                     )}
                 </div>
 
@@ -196,7 +196,7 @@ export default function ShipManagementScene({ playerShipId, onActionComplete, on
                                 </div>
                                 <div className="mgmt-action-cost">
                                     <span>Kosten</span>
-                                    <span className="mgmt-cost-value">{fuelCost.toLocaleString("de-DE")} T</span>
+                                    <span className="mgmt-cost-value">{formatTalers(fuelCost)} T</span>
                                 </div>
                                 {!canAffordFuel && <div className="mgmt-action-warn">Nicht genug Credits</div>}
                             </>
@@ -221,7 +221,7 @@ export default function ShipManagementScene({ playerShipId, onActionComplete, on
                                 </div>
                                 <div className="mgmt-action-cost">
                                     <span>Kosten</span>
-                                    <span className="mgmt-cost-value">{repairCost.toLocaleString("de-DE")} T</span>
+                                    <span className="mgmt-cost-value">{formatTalers(repairCost)} T</span>
                                 </div>
                                 {!canAffordRepair && <div className="mgmt-action-warn">Nicht genug Credits</div>}
                             </>
@@ -244,4 +244,8 @@ export default function ShipManagementScene({ playerShipId, onActionComplete, on
             </div>
         </div>
     );
+}
+
+function formatTalers(value: number) {
+    return Math.round(value).toLocaleString("de-DE", { maximumFractionDigits: 0 });
 }

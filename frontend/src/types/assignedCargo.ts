@@ -27,6 +27,8 @@ export interface RegressSummary {
     overdueTicks: number;
     delayComponent: number;
     damageComponent: number;
+    cargoLossComponent?: number;
+    cargoLossPercent?: number;
     damagePercent: number;
     specialCargoMultiplier: number;
     hadPerishableCargo: boolean;
@@ -55,6 +57,16 @@ export interface AssignedCargoEntry {
     currentTick?: number;
     arrivalTick?: number;
     reward?: number;
+    cargoReward?: number;
+    bonusReward?: number;
+    smuggleReward?: number;
+    grossReward?: number;
+    minigameDeductions?: number;
+    minigameBonus?: number;
+    customsPaid?: number;
+    dockingFines?: number;
+    regress?: number;
+    netPayout?: number;
     rewardDetails?: {
         baseReward: number;
         actualReward: number;

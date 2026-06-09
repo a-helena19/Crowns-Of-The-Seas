@@ -9,6 +9,9 @@ interface RewardToastProps {
     onDismiss: () => void;
 }
 
+const formatTalers = (value: number | undefined | null) =>
+    Number(value ?? 0).toLocaleString("de-DE", { maximumFractionDigits: 0 });
+
 export default function RewardToast({ shipName, from, to, reward, onDismiss }: RewardToastProps) {
     const toastRef = useRef<HTMLDivElement>(null);
     const dismissedRef = useRef(false);
@@ -40,7 +43,7 @@ export default function RewardToast({ shipName, from, to, reward, onDismiss }: R
             <div className="reward-toast-content">
                 <div className="reward-toast-ship">{shipName}</div>
                 <div className="reward-toast-route">{from} → {to}</div>
-                <div className="reward-toast-amount">+{reward.toLocaleString("de-DE")} T</div>
+	                <div className="reward-toast-amount">+{formatTalers(reward)} T</div>
             </div>
             <button className="reward-toast-close" onClick={dismiss}>✕</button>
         </div>
