@@ -1,2 +1,4 @@
+name: crowns-of-the-seas
+
 include:
   - path: ../docker-compose.yml
