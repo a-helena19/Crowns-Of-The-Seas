@@ -24,6 +24,7 @@ interface BottomBarProps {
     ships?: OwnedShipSummary[];
     pendingEventsByShipId?: Record<string, PendingShipEvent>;
     urgentShipIds?: Record<string, boolean>;
+    progressByShipId?: Record<string, number>;
     onShipCardClick?: (ship: OwnedShipSummary) => void;
 }
 
@@ -33,6 +34,7 @@ export default function BottomBar({
                                       ships = [],
                                       pendingEventsByShipId = {},
                                       urgentShipIds = {},
+                                      progressByShipId = {},
                                       onShipCardClick,
                                   }: BottomBarProps) {
     const portsById = new Map((window.__latestPorts ?? []).map(p => [p.id, p.name]));
@@ -51,7 +53,9 @@ export default function BottomBar({
                         condition={ship.condition}
                         currentPortName={ship.currentPortId ? portsById.get(ship.currentPortId) ?? null : null}
                         pendingEventLabel={pendingEventsByShipId[ship.id]?.label}
+                        pendingEventKind={pendingEventsByShipId[ship.id]?.kind}
                         urgent={urgentShipIds[ship.id]}
+                        progress={progressByShipId[ship.id]}
                         onClick={onShipCardClick ? () => onShipCardClick(ship) : undefined}
                     />
                 ))}

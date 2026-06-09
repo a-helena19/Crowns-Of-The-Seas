@@ -33,6 +33,9 @@ function speedLabel(s: number): string {
     return SPEED_LABELS[key] ?? `${(s * 100).toFixed(0)}%`;
 }
 
+const formatTalers = (value: number | undefined | null) =>
+    Number(value ?? 0).toLocaleString("de-DE", { maximumFractionDigits: 0 });
+
 export interface InfoPanelCargo {
     name: string;
     originPortName: string;
@@ -86,7 +89,7 @@ export default function InfoPanel({ cargo, ship, speedSetting }: InfoPanelProps)
                     <div className="info-row"><span>Nach</span><strong>{cargo.destinationPortName}</strong></div>
                     <div className="info-row">
                         <span>Belohnung</span>
-                        <strong style={{ color: "#b89b5e" }}>{Number(cargo.reward).toLocaleString("de-DE")} T</strong>
+	                        <strong style={{ color: "#b89b5e" }}>{formatTalers(cargo.reward)} T</strong>
                     </div>
                     <div className="info-row"><span>Kapazität</span><strong>{cargo.capacity} t</strong></div>
                     {cargo.cargoType && (

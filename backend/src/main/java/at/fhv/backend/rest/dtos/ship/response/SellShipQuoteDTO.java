@@ -1,6 +1,7 @@
 package at.fhv.backend.rest.dtos.ship.response;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.UUID;
 
 public class SellShipQuoteDTO {
@@ -35,7 +36,7 @@ public class SellShipQuoteDTO {
     }
 
     public void setOriginalPrice(BigDecimal originalPrice) {
-        this.originalPrice = originalPrice;
+        this.originalPrice = roundTalers(originalPrice);
     }
 
     public BigDecimal getBaseSellPrice() {
@@ -43,7 +44,7 @@ public class SellShipQuoteDTO {
     }
 
     public void setBaseSellPrice(BigDecimal baseSellPrice) {
-        this.baseSellPrice = baseSellPrice;
+        this.baseSellPrice = roundTalers(baseSellPrice);
     }
 
     public double getCondition() {
@@ -83,6 +84,10 @@ public class SellShipQuoteDTO {
     }
 
     public void setFinalPrice(BigDecimal finalPrice) {
-        this.finalPrice = finalPrice;
+        this.finalPrice = roundTalers(finalPrice);
+    }
+
+    private BigDecimal roundTalers(BigDecimal value) {
+        return value == null ? null : value.setScale(0, RoundingMode.HALF_UP);
     }
 }

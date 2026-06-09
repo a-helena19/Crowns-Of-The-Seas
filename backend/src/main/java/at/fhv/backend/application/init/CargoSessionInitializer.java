@@ -114,7 +114,7 @@ public class CargoSessionInitializer {
         BigDecimal reward = template.getBaseReward()
                 .multiply(BigDecimal.valueOf(cfg.rewardMultiplier))
                 .multiply(BigDecimal.valueOf(variance))
-                .setScale(2, java.math.RoundingMode.HALF_UP);
+                .setScale(0, java.math.RoundingMode.HALF_UP);
 
         return SessionCargo.create(
                 template.getId(), sessionId,
@@ -156,7 +156,7 @@ public class CargoSessionInitializer {
             BigDecimal reward = template.getBaseReward()
                     .multiply(BigDecimal.valueOf(cfg.rewardMultiplier))
                     .multiply(BigDecimal.valueOf(variance))
-                    .setScale(2, java.math.RoundingMode.HALF_UP);
+                    .setScale(0, java.math.RoundingMode.HALF_UP);
 
             boolean illegal = false;
 

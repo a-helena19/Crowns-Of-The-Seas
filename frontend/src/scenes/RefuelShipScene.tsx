@@ -57,7 +57,7 @@ export default function RefuelShipScene({ playerShipId, onRefuelComplete, onCanc
 
     const fuelNeededPercent = ship ? Math.max(0, 100 - ship.fuel) : 0;
     const fuelNeededAbsolute = ship ? (fuelNeededPercent / 100) * ship.maxFuel : 0;
-    const totalCost = Math.round(fuelNeededAbsolute * FUEL_PRICE_PER_UNIT * 100) / 100;
+    const totalCost = Math.round(fuelNeededAbsolute * FUEL_PRICE_PER_UNIT);
     const canAfford = balance !== null && balance >= totalCost;
     const alreadyFull = fuelNeededPercent < 0.01;
 
@@ -156,12 +156,12 @@ export default function RefuelShipScene({ playerShipId, onRefuelComplete, onCanc
                         </div>
                         <div className="refuel-info-row refuel-cost-row">
                             <span>Kosten</span>
-                            <span className="refuel-cost-value">{totalCost.toLocaleString("de-DE")} T</span>
+                            <span className="refuel-cost-value">{formatTalers(totalCost)} T</span>
                         </div>
                         <div className="refuel-info-row">
                             <span>Kontostand</span>
                             <span className={canAfford ? "refuel-balance-ok" : "refuel-balance-low"}>
-                                {balance?.toLocaleString("de-DE")} T
+                                {balance !== null ? formatTalers(balance) : "-"} T
                             </span>
                         </div>
                         {!canAfford && (
@@ -186,4 +186,8 @@ export default function RefuelShipScene({ playerShipId, onRefuelComplete, onCanc
             </div>
         </div>
     );
+}
+
+function formatTalers(value: number) {
+    return Math.round(value).toLocaleString("de-DE", { maximumFractionDigits: 0 });
 }

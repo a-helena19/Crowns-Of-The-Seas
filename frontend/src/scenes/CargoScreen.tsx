@@ -50,19 +50,24 @@ interface AcceptedCargo {
 const getExpiredRewardPercent = (t: string) =>
     ({ FOOD:0, HAZARDOUS:0, FRAGILE:10, ELECTRONICS:15, LUXURY_GOODS:20, GENERAL_GOODS:40, INDUSTRIAL_GOODS:50 }[t] ?? 0);
 
+const formatTalers = (value: number | undefined | null) =>
+    Number(value ?? 0).toLocaleString("de-DE", { maximumFractionDigits: 0 });
+
 
 interface Props {
     onCargoAccepted: (cargo: AcceptedCargo) => void;
     onEmptyVoyageStarted: (info: VoyageStartedInfo) => void;
     currentPortId: string | null;
     playerShipId: string | null;
+    initialTab?: "fracht" | "leer";
+    allowTabSwitch?: boolean;
 }
 
-export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, currentPortId, playerShipId }: Props) {
+export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, currentPortId, playerShipId, initialTab = "fracht", allowTabSwitch = true }: Props) {
     const [cargos, setCargos] = useState<SessionCargoDTO[]>([]);
     const [selected, setSelected] = useState<SessionCargoDTO | null>(null);
     const [loading, setLoading] = useState(true);
-    const [tab, setTab] = useState<"fracht" | "leer">("fracht");
+    const [tab, setTab] = useState<"fracht" | "leer">(initialTab);
     const stompRef = useRef<Client | null>(null);
     const [speedIndex, setSpeedIndex] = useState(2);
     const [fuelEstimate, setFuelEstimate] = useState<FuelEstimate | null>(null);
@@ -251,13 +256,15 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
         <div className="cs-screen">
             <div className="cs-header">
                 <h1 className="cs-title">{tab === "leer" ? "Leerfahrt" : "Frachtbörse"}</h1>
-                <button
-                    type="button"
-                    className="cs-switch-btn"
-                    onClick={() => { audioEngine.playSfx("buttonClick"); setTab(tab === "leer" ? "fracht" : "leer"); }}
-                >
-                    {tab === "leer" ? "← Zur Frachtbörse" : "Zur Leerfahrt →"}
-                </button>
+                {allowTabSwitch && (
+                    <button
+                        type="button"
+                        className="cs-switch-btn"
+                        onClick={() => { audioEngine.playSfx("buttonClick"); setTab(tab === "leer" ? "fracht" : "leer"); }}
+                    >
+                        {tab === "leer" ? "← Zur Frachtbörse" : "Zur Leerfahrt →"}
+                    </button>
+                )}
             </div>
 
             {tab === "leer" && (
@@ -294,7 +301,7 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
                                      className={`cs-list-item${selected?.id === c.id ? " cs-list-item--active" : ""}`}>
                                     <div className="cs-item-row1">
                                         <span className="cs-item-name">{c.name}</span>
-                                        <span className="cs-item-reward">{Number(c.reward).toLocaleString("de-DE")} T</span>
+	                                        <span className="cs-item-reward">{formatTalers(c.reward)} T</span>
                                     </div>
                                     <div className="cs-item-row2">
                                     <span className="cs-type-badge" style={{ background: TYPE_COLORS[c.cargoType]+"22", color: TYPE_COLORS[c.cargoType] }}>
@@ -366,7 +373,7 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
                                     <div className="cs-stat">
                                         <div className="cs-stat-label">Belohnung</div>
                                         <div className="cs-stat-value">
-                                            {Number(selected.reward).toLocaleString("de-DE")} T
+                                            {formatTalers(selected.reward)} T
                                             {selected.cargoStatus === "EXPIRED" && (
                                                 <span className="cs-stat-reduced"> ({getExpiredRewardPercent(selected.cargoType)}%)</span>
                                             )}

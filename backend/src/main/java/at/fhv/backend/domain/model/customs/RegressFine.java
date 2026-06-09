@@ -7,6 +7,8 @@ public class RegressFine {
     private final int toleranceTicks;
     private final BigDecimal delayComponent;
     private final BigDecimal damageComponent;
+    private final BigDecimal cargoLossComponent;
+    private final double cargoLossPercent;
     private final double damagePercent;
     private final double specialCargoMultiplier;
     private final boolean hadPerishableCargo;
@@ -17,15 +19,27 @@ public class RegressFine {
                        BigDecimal delayComponent, BigDecimal damageComponent,
                        double damagePercent, double specialCargoMultiplier,
                        boolean hadPerishableCargo, boolean hadFragileCargo) {
+        this(delayTicks, toleranceTicks, delayComponent, damageComponent,
+                BigDecimal.ZERO, 0.0, damagePercent, specialCargoMultiplier,
+                hadPerishableCargo, hadFragileCargo);
+    }
+
+    public RegressFine(int delayTicks, int toleranceTicks,
+                       BigDecimal delayComponent, BigDecimal damageComponent,
+                       BigDecimal cargoLossComponent, double cargoLossPercent,
+                       double damagePercent, double specialCargoMultiplier,
+                       boolean hadPerishableCargo, boolean hadFragileCargo) {
         this.delayTicks = Math.max(0, delayTicks);
         this.toleranceTicks = Math.max(0, toleranceTicks);
         this.delayComponent = delayComponent == null ? BigDecimal.ZERO : delayComponent;
         this.damageComponent = damageComponent == null ? BigDecimal.ZERO : damageComponent;
+        this.cargoLossComponent = cargoLossComponent == null ? BigDecimal.ZERO : cargoLossComponent;
+        this.cargoLossPercent = Math.max(0.0, cargoLossPercent);
         this.damagePercent = Math.max(0.0, damagePercent);
         this.specialCargoMultiplier = specialCargoMultiplier <= 0 ? 1.0 : specialCargoMultiplier;
         this.hadPerishableCargo = hadPerishableCargo;
         this.hadFragileCargo = hadFragileCargo;
-        this.totalFine = this.delayComponent.add(this.damageComponent);
+        this.totalFine = this.delayComponent.add(this.damageComponent).add(this.cargoLossComponent);
     }
 
     public static RegressFine none() {
@@ -56,6 +70,14 @@ public class RegressFine {
 
     public BigDecimal getDamageComponent() {
         return damageComponent;
+    }
+
+    public BigDecimal getCargoLossComponent() {
+        return cargoLossComponent;
+    }
+
+    public double getCargoLossPercent() {
+        return cargoLossPercent;
     }
 
     public double getDamagePercent() {
