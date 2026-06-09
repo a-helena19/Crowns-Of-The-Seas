@@ -1,7 +1,7 @@
 .bottom-bar {
     box-sizing: border-box;
     width: 100vw;
-    min-height: 168px;
+    height: 170px;
 
     background: linear-gradient(180deg, #2d1d12 0%, #20140d 100%);
     position: relative;
@@ -73,7 +73,8 @@
             inset 0 1px 0 rgba(255, 255, 255, 0.45),
             0 2px 6px rgba(0, 0, 0, 0.3),
             0 0 8px color-mix(in srgb, var(--status-color) 45%, transparent);
-    padding: 8px;
+    padding: 6px 7px;
+    min-height: 140px;
     color: #3f2a18;
 }
 
@@ -103,12 +104,13 @@
 }
 
 .ship-status-action-hint {
-    margin-top: 4px;
-    font-size: 11px;
+    margin-top: 2px;
+    font-size: 10px;
     font-weight: 700;
     color: #a32d2d;
     text-align: center;
     letter-spacing: 0.2px;
+    white-space: nowrap;
 }
 
 @keyframes ship-card-pulse {
@@ -161,11 +163,11 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 
 .ship-status-name {
-    font-size: 13px;
+    font-size: 12px;
     min-width: 0;
     overflow-wrap: anywhere;
 }
@@ -177,13 +179,13 @@
 
 .ship-status-body {
     display: flex;
-    gap: 8px;
-    margin-bottom: 8px;
+    gap: 7px;
+    margin-bottom: 5px;
 }
 
 .ship-status-icon {
-    width: 56px;
-    height: 40px;
+    width: 46px;
+    height: 32px;
     object-fit: contain;
     image-rendering: pixelated;
 }
@@ -197,8 +199,8 @@
     display: flex;
     justify-content: space-between;
     gap: 8px;
-    font-size: 11px;
-    margin-bottom: 2px;
+    font-size: 10px;
+    margin-bottom: 1px;
 }
 
 .ship-status-line strong {
@@ -209,11 +211,11 @@
     display: inline-flex;
     align-items: center;
     flex-shrink: 0;
-    padding: 2px 9px;
+    padding: 1px 8px;
     border-radius: 999px;
     background: var(--status-color);
     color: #fff;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     line-height: 1.5;
     letter-spacing: 0.2px;
@@ -224,10 +226,25 @@
             0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
+.ship-status-progress {
+    height: 5px;
+    margin: 0 0 5px;
+    background: color-mix(in srgb, var(--status-color) 18%, rgba(45, 29, 18, 0.18));
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.ship-status-progress-fill {
+    height: 100%;
+    background: var(--status-color);
+    border-radius: inherit;
+    transition: width 0.3s ease;
+}
+
 .ship-status-bars {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
 }
 
 .ship-status-bar-wrap {
@@ -239,7 +256,7 @@
 .ship-status-bar-top {
     display: flex;
     justify-content: space-between;
-    font-size: 11px;
+    font-size: 10px;
 }
 
 .ship-status-bar {

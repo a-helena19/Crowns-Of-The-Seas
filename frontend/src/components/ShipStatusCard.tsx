@@ -15,6 +15,7 @@ interface ShipStatusCardProps {
     pendingEventLabel?: string;
     pendingEventKind?: PendingEventKind;
     urgent?: boolean;
+    progress?: number | null;
     onClick?: () => void;
 }
 
@@ -78,6 +79,7 @@ export default function ShipStatusCard({
                                            pendingEventLabel,
                                            pendingEventKind,
                                            urgent,
+                                           progress,
                                            onClick,
                                        }: ShipStatusCardProps) {
     const visual = resolveVisual(status, pendingEventLabel, pendingEventKind);
@@ -106,6 +108,15 @@ export default function ShipStatusCard({
                 <strong className="ship-status-name">{name}</strong>
                 <span className="ship-status-badge">{visual.label}</span>
             </div>
+
+            {progress != null && (
+                <div className="ship-status-progress" aria-label={`Fortschritt ${Math.round(progress)}%`}>
+                    <div
+                        className="ship-status-progress-fill"
+                        style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+                    />
+                </div>
+            )}
 
             <div className="ship-status-body">
                 <img src={iconUrl} alt={name} className="ship-status-icon" />
