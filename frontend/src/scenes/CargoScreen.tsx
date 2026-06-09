@@ -56,13 +56,15 @@ interface Props {
     onEmptyVoyageStarted: (info: VoyageStartedInfo) => void;
     currentPortId: string | null;
     playerShipId: string | null;
+    initialTab?: "fracht" | "leer";
+    allowTabSwitch?: boolean;
 }
 
-export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, currentPortId, playerShipId }: Props) {
+export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, currentPortId, playerShipId, initialTab = "fracht", allowTabSwitch = true }: Props) {
     const [cargos, setCargos] = useState<SessionCargoDTO[]>([]);
     const [selected, setSelected] = useState<SessionCargoDTO | null>(null);
     const [loading, setLoading] = useState(true);
-    const [tab, setTab] = useState<"fracht" | "leer">("fracht");
+    const [tab, setTab] = useState<"fracht" | "leer">(initialTab);
     const stompRef = useRef<Client | null>(null);
     const [speedIndex, setSpeedIndex] = useState(2);
     const [fuelEstimate, setFuelEstimate] = useState<FuelEstimate | null>(null);
@@ -251,13 +253,15 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
         <div className="cs-screen">
             <div className="cs-header">
                 <h1 className="cs-title">{tab === "leer" ? "Leerfahrt" : "Frachtbörse"}</h1>
-                <button
-                    type="button"
-                    className="cs-switch-btn"
-                    onClick={() => { audioEngine.playSfx("buttonClick"); setTab(tab === "leer" ? "fracht" : "leer"); }}
-                >
-                    {tab === "leer" ? "← Zur Frachtbörse" : "Zur Leerfahrt →"}
-                </button>
+                {allowTabSwitch && (
+                    <button
+                        type="button"
+                        className="cs-switch-btn"
+                        onClick={() => { audioEngine.playSfx("buttonClick"); setTab(tab === "leer" ? "fracht" : "leer"); }}
+                    >
+                        {tab === "leer" ? "← Zur Frachtbörse" : "Zur Leerfahrt →"}
+                    </button>
+                )}
             </div>
 
             {tab === "leer" && (
