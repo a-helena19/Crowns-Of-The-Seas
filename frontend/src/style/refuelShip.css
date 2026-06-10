@@ -94,7 +94,7 @@
 
 @keyframes fuel-fill {
     from { width: var(--fuel-start, 0%); }
-    to   { width: 100%; }
+    to   { width: var(--fuel-target, 100%); }
 }
 
 .refuel-bar-fill.animating {
@@ -152,6 +152,43 @@
     display: flex;
     gap: 10px;
     justify-content: flex-end;
+}
+
+.refuel-slider-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.refuel-slider-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    font-weight: 600;
+    color: #3d1f0a;
+}
+
+.refuel-slider-value {
+    font-family: var(--font-game);
+    color: #5a3a0a;
+}
+
+.refuel-slider {
+    width: 100%;
+    accent-color: #8b5a2b;
+    cursor: pointer;
+}
+
+.refuel-slider:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.refuel-slider-ticks {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #8b6a40;
 }
 
 .refuel-loading {

@@ -20,6 +20,41 @@ services:
       retries: 5
     restart: unless-stopped
 
+  auth-postgres:
+    image: postgres:16-alpine
+    container_name: crowns-auth-postgres-container
+    profiles:
+      - local-auth
+      - app
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: auth_service
+      POSTGRES_USER: crowns
+      POSTGRES_PASSWORD: crowns
+    volumes:
+      - crowns-auth-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crowns -d auth_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  auth-service:
+    image: eateam6-auth-service:latest
+    container_name: eateam6-auth-service-container
+    profiles:
+      - app
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: server
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   backend:
     image: eateam6-backend:latest
     container_name: eateam6-backend-container
@@ -43,7 +78,9 @@ services:
       - "80:80"
     depends_on:
       - backend
+      - auth-service
     restart: unless-stopped
 
 volumes:
   crowns-postgres-data:
+  crowns-auth-postgres-data:

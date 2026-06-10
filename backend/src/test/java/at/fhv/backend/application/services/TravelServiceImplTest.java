@@ -583,6 +583,44 @@ class TravelServiceImplTest {
         }
 
         @Test
+        void givenPilotageService_whenStartTravel_thenDeductsOneThousandTalers() {
+            UUID playerId = UUID.randomUUID();
+            UUID sessionId = UUID.randomUUID();
+            Ship ship = buildShip();
+            PlayerShip playerShip = buildAtPortShip(playerId, sessionId, ship.getId());
+            UUID destinationPortId = UUID.randomUUID();
+            UUID sessionCargoId = UUID.randomUUID();
+            SessionCargo cargo = buildAvailableCargo(sessionCargoId, destinationPortId, sessionId, 50);
+            Travel travel = buildTravel(playerShip.getId(), playerId, sessionId);
+            at.fhv.backend.domain.model.player.BaseSessionPlayer player =
+                    new at.fhv.backend.domain.model.player.BaseSessionPlayer(
+                            playerId, sessionId, "TestPlayer", false
+                    );
+
+            when(gameSessionRepository.findById(sessionId)).thenReturn(Optional.of(buildGameSession(playerId)));
+            when(playerShipRepository.findByIdAndPlayerIdAndSessionId(playerShip.getId(), playerId, sessionId))
+                    .thenReturn(Optional.of(playerShip));
+            when(shipRepository.findById(ship.getId())).thenReturn(Optional.of(ship));
+            when(sessionCargoRepository.findByIdForUpdate(sessionCargoId)).thenReturn(Optional.of(cargo));
+            when(sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId))
+                    .thenReturn(Optional.of(player));
+            when(portDistanceForCargoService.distanceBetween(any(), any())).thenReturn(5.0);
+            when(calculateFuelConsumptionService.calculateFuelConsumption(eq(ship), anyDouble())).thenReturn(10.0);
+            doNothing().when(validateTravelService)
+                    .validateTravelStart(any(), any(), any(), any(), any(), anyDouble());
+            when(playerShipRepository.save(any())).thenReturn(playerShip);
+            when(travelRepository.save(any(Travel.class))).thenReturn(travel);
+            when(travelResponseMapper.toResponse(any())).thenReturn(new TravelDTO());
+
+            StartTravelDTO dto = buildStartTravelDTO(playerShip.getId(), destinationPortId, sessionCargoId);
+            dto.setPilotageService(true);
+
+            service.startTravel(playerId, sessionId, dto);
+
+            assertThat(player.getBalance()).isEqualByComparingTo("39000");
+        }
+
+        @Test
         void givenExistingTravel_whenGetTravelStatus_thenReturnsMappedDTO() {
             UUID playerId = UUID.randomUUID();
             UUID sessionId = UUID.randomUUID();

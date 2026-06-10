@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class PilotStrikeServiceImpl implements PilotStrikeService {
 
-    static final BigDecimal PILOTAGE_REFUND = new BigDecimal("600");
+    static final BigDecimal PILOTAGE_REFUND = new BigDecimal("1000");
 
     private final PortQueryService portQueryService;
     private final TravelRepository travelRepository;

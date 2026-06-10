@@ -3,7 +3,9 @@ package at.fhv.backend.rest;
 import at.fhv.backend.rest.dtos.ship.request.BuyShipDTO;
 import at.fhv.backend.rest.dtos.ship.response.PlayerShipDTO;
 import at.fhv.backend.rest.dtos.ship.response.RefuelResponseDTO;
+import at.fhv.backend.rest.dtos.ship.response.RefuelQuoteDTO;
 import at.fhv.backend.rest.dtos.ship.response.RepairResponseDTO;
+import at.fhv.backend.rest.dtos.ship.response.RepairQuoteDTO;
 import at.fhv.backend.rest.dtos.ship.response.SellShipQuoteDTO;
 import at.fhv.backend.rest.dtos.ship.response.SellShipResponseDTO;
 import at.fhv.backend.rest.dtos.ship.response.ShipDTO;
@@ -132,8 +134,20 @@ public class ShipRestController {
     public ResponseEntity<RefuelResponseDTO> refuelShip(
             @PathVariable UUID playerShipId,
             @RequestParam UUID playerId,
-            @RequestParam UUID sessionId) {
-        return ResponseEntity.ok(refuelShipService.refuel(playerShipId, playerId, sessionId));
+            @RequestParam UUID sessionId,
+            @RequestParam(defaultValue = "100.0") double targetFuelPercent) {
+        return ResponseEntity.ok(refuelShipService.refuel(playerShipId, playerId, sessionId, targetFuelPercent));
+    }
+
+    @GetMapping("/{playerShipId}/refuel-quote")
+    public ResponseEntity<RefuelQuoteDTO> getRefuelQuote(
+            @PathVariable UUID playerShipId,
+            @RequestParam UUID playerId,
+            @RequestParam UUID sessionId,
+            @RequestParam(defaultValue = "100.0") double targetFuelPercent) {
+        return ResponseEntity.ok(
+                refuelShipService.getRefuelQuote(playerShipId, playerId, sessionId, targetFuelPercent)
+        );
     }
 
     @PostMapping("/{playerShipId}/repair")
@@ -142,5 +156,13 @@ public class ShipRestController {
             @RequestParam UUID playerId,
             @RequestParam UUID sessionId) {
         return ResponseEntity.ok(repairShipService.repair(playerShipId, playerId, sessionId));
+    }
+
+    @GetMapping("/{playerShipId}/repair-quote")
+    public ResponseEntity<RepairQuoteDTO> getRepairQuote(
+            @PathVariable UUID playerShipId,
+            @RequestParam UUID playerId,
+            @RequestParam UUID sessionId) {
+        return ResponseEntity.ok(repairShipService.getRepairQuote(playerShipId, playerId, sessionId));
     }
 }

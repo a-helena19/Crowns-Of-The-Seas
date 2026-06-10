@@ -17,6 +17,7 @@ import at.fhv.backend.domain.model.ship.Ship;
 import at.fhv.backend.domain.model.ship.ShipRepository;
 import at.fhv.backend.domain.model.ship.ShipStatus;
 import at.fhv.backend.rest.dtos.ship.response.RepairResponseDTO;
+import at.fhv.backend.rest.dtos.ship.response.RepairQuoteDTO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +28,7 @@ import java.util.UUID;
 @Service
 public class RepairShipServiceImpl implements RepairShipService {
 
-    private static final double REPAIR_PRICE_FACTOR = 50.0;
+    private static final double REPAIR_PRICE_FACTOR = 150.0;
     private static final int BASE_REPAIRING_TICKS = 4;
 
     private final PlayerShipRepository playerShipRepository;
@@ -49,8 +50,56 @@ public class RepairShipServiceImpl implements RepairShipService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public RepairQuoteDTO getRepairQuote(UUID playerShipId, UUID playerId, UUID sessionId) {
+        RepairCalculation calculation = calculateRepair(playerShipId, playerId, sessionId);
+        return new RepairQuoteDTO(
+                calculation.playerShip().getCondition(),
+                calculation.repairNeededPercent(),
+                calculation.totalCost(),
+                calculation.player().getBalance()
+        );
+    }
+
+    @Override
     @Transactional
     public RepairResponseDTO repair(UUID playerShipId, UUID playerId, UUID sessionId) {
+        RepairCalculation calculation = calculateRepair(playerShipId, playerId, sessionId);
+        PlayerShip playerShip = calculation.playerShip();
+        ISessionPlayer player = calculation.player();
+        BigDecimal totalCost = calculation.totalCost();
+
+        if (player.getBalance().compareTo(totalCost) < 0) {
+            throw new InsufficientFundsException(totalCost, player.getBalance());
+        }
+
+        player.subtractBalance(totalCost);
+        sessionPlayerRepository.save(player);
+
+        GameSession session = gameSessionRepository.findById(sessionId).orElse(null);
+        int currentTick = session != null ? session.getCurrentTick() : 0;
+
+        double repairFactor = 1.0 + (calculation.repairNeededPercent() / 100.0);
+        double timeModifier = player.getRepairTimeModifier();
+        int repairingTicks = (int) Math.ceil(BASE_REPAIRING_TICKS * repairFactor * timeModifier);
+        repairingTicks = Math.max(1, repairingTicks);
+        int completedAtTick = currentTick + repairingTicks;
+
+        playerShip.startRepairing(completedAtTick, calculation.repairNeededPercent());
+        playerShipRepository.save(playerShip);
+
+        gameTickScheduler.triggerImmediateBroadcast(sessionId);
+
+        return new RepairResponseDTO(
+                playerShip.getCondition(),
+                totalCost,
+                player.getBalance(),
+                completedAtTick,
+                repairingTicks
+        );
+    }
+
+    private RepairCalculation calculateRepair(UUID playerShipId, UUID playerId, UUID sessionId) {
         PlayerShip playerShip = playerShipRepository
                 .findByIdAndPlayerIdAndSessionId(playerShipId, playerId, sessionId)
                 .orElseThrow(() -> new ShipNotOwnedException("Ship not found or not owned by player", playerShipId));
@@ -70,35 +119,15 @@ public class RepairShipServiceImpl implements RepairShipService {
         double costModifier = player.getRepairCostModifier();
         double repairCostRaw = repairNeededPercent / 100.0 * ship.getOperatingCost().doubleValue() * REPAIR_PRICE_FACTOR;
         BigDecimal totalCost = BigDecimal.valueOf(repairCostRaw * costModifier)
-                .setScale(0, java.math.RoundingMode.HALF_UP);
+                .setScale(0, RoundingMode.HALF_UP);
 
-        if (player.getBalance().compareTo(totalCost) < 0) {
-            throw new InsufficientFundsException(totalCost, player.getBalance());
-        }
-
-        player.subtractBalance(totalCost);
-        sessionPlayerRepository.save(player);
-
-        GameSession session = gameSessionRepository.findById(sessionId).orElse(null);
-        int currentTick = session != null ? session.getCurrentTick() : 0;
-
-        double repairFactor = 1.0 + (repairNeededPercent / 100.0);
-        double timeModifier = player.getRepairTimeModifier();
-        int repairingTicks = (int) Math.ceil(BASE_REPAIRING_TICKS * repairFactor * timeModifier);
-        repairingTicks = Math.max(1, repairingTicks);
-        int completedAtTick = currentTick + repairingTicks;
-
-        playerShip.startRepairing(completedAtTick, repairNeededPercent);
-        playerShipRepository.save(playerShip);
-
-        gameTickScheduler.triggerImmediateBroadcast(sessionId);
-
-        return new RepairResponseDTO(
-                playerShip.getCondition(),
-                totalCost,
-                player.getBalance(),
-                completedAtTick,
-                repairingTicks
-        );
+        return new RepairCalculation(playerShip, player, repairNeededPercent, totalCost);
     }
+
+    private record RepairCalculation(
+            PlayerShip playerShip,
+            ISessionPlayer player,
+            double repairNeededPercent,
+            BigDecimal totalCost
+    ) {}
 }

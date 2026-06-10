@@ -68,14 +68,6 @@ public class JwtFilter extends OncePerRequestFilter {
             return true;
         }
 
-        // Public endpoints: Register and Login
-        if (path.equals("/api/users") && method.equals("POST")) {
-            return true;
-        }
-        if (path.equals("/api/users/login") && method.equals("POST")) {
-            return true;
-        }
-
         // Only filter /api/** paths
         return !path.startsWith("/api/");
     }

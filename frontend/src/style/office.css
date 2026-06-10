@@ -215,6 +215,39 @@
     margin-top: auto;
 }
 
+.office-refuel-slider {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.office-refuel-slider label {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.office-refuel-slider label strong {
+    color: var(--wood-dark);
+}
+
+.office-refuel-slider input[type="range"] {
+    width: 100%;
+    accent-color: var(--gold);
+    cursor: pointer;
+}
+
+.office-refuel-slider input[type="range"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.office-refuel-slider small {
+    color: var(--ink-light);
+    font-size: 12px;
+}
+
 .office-modal-backdrop {
     position: fixed;
     inset: 0;

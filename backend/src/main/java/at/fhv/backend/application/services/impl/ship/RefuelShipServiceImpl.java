@@ -17,6 +17,7 @@ import at.fhv.backend.domain.model.ship.Ship;
 import at.fhv.backend.domain.model.ship.ShipRepository;
 import at.fhv.backend.domain.model.ship.ShipStatus;
 import at.fhv.backend.rest.dtos.ship.response.RefuelResponseDTO;
+import at.fhv.backend.rest.dtos.ship.response.RefuelQuoteDTO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +28,7 @@ import java.util.UUID;
 @Service
 public class RefuelShipServiceImpl implements RefuelShipService {
 
-    private static final double FUEL_PRICE_PER_UNIT = 3.0;
+    private static final double FUEL_PRICE_PER_UNIT = 12.0;
     private static final int BASE_REFUELING_TICKS = 3;
 
     private final PlayerShipRepository playerShipRepository;
@@ -49,28 +50,27 @@ public class RefuelShipServiceImpl implements RefuelShipService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public RefuelQuoteDTO getRefuelQuote(UUID playerShipId, UUID playerId, UUID sessionId,
+                                         double targetFuelPercent) {
+        RefuelCalculation calculation = calculateRefuel(playerShipId, playerId, sessionId, targetFuelPercent);
+        return new RefuelQuoteDTO(
+                calculation.playerShip().getFuel(),
+                calculation.targetFuelPercent(),
+                calculation.fuelNeededPercent(),
+                calculation.fuelNeededAbsolute(),
+                calculation.totalCost(),
+                calculation.player().getBalance()
+        );
+    }
+
+    @Override
     @Transactional
-    public RefuelResponseDTO refuel(UUID playerShipId, UUID playerId, UUID sessionId) {
-        PlayerShip playerShip = playerShipRepository
-                .findByIdAndPlayerIdAndSessionId(playerShipId, playerId, sessionId)
-                .orElseThrow(() -> new ShipNotOwnedException("Ship not found or not owned by player", playerShipId));
-
-        if (playerShip.getStatus() != ShipStatus.AT_PORT) {
-            throw new InvalidShipStatusTransition("Ship must be AT_PORT to refuel", "playerShipId", playerShipId);
-        }
-
-        Ship ship = shipRepository.findById(playerShip.getShipId())
-                .orElseThrow(() -> new ShipNotFoundException("shipId", playerShip.getShipId()));
-
-        double fuelNeededPercent = 100.0 - playerShip.getFuel();
-        double fuelNeededAbsolute = fuelNeededPercent / 100.0 * ship.getMaxFuel().doubleValue();
-
-        ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
-                .orElseThrow(() -> new PlayerNotFoundException(playerId));
-
-        double costModifier = player.getFuelCostModifier();
-        BigDecimal totalCost = BigDecimal.valueOf(fuelNeededAbsolute * FUEL_PRICE_PER_UNIT * costModifier)
-                .setScale(0, java.math.RoundingMode.HALF_UP);
+    public RefuelResponseDTO refuel(UUID playerShipId, UUID playerId, UUID sessionId, double targetFuelPercent) {
+        RefuelCalculation calculation = calculateRefuel(playerShipId, playerId, sessionId, targetFuelPercent);
+        PlayerShip playerShip = calculation.playerShip();
+        ISessionPlayer player = calculation.player();
+        BigDecimal totalCost = calculation.totalCost();
 
         if (player.getBalance().compareTo(totalCost) < 0) {
             throw new InsufficientFundsException(totalCost, player.getBalance());
@@ -82,13 +82,13 @@ public class RefuelShipServiceImpl implements RefuelShipService {
         GameSession session = gameSessionRepository.findById(sessionId).orElse(null);
         int currentTick = session != null ? session.getCurrentTick() : 0;
 
-        double fuelFactor = 1.0 + (fuelNeededPercent / 100.0);
+        double fuelFactor = 1.0 + (calculation.fuelNeededPercent() / 100.0);
         double timeModifier = player.getFuelTimeModifier();
         int refuelingTicks = (int) Math.ceil(BASE_REFUELING_TICKS * fuelFactor * timeModifier);
         refuelingTicks = Math.max(1, refuelingTicks);
         int completedAtTick = currentTick + refuelingTicks;
 
-        playerShip.startRefueling(completedAtTick, fuelNeededPercent);
+        playerShip.startRefueling(completedAtTick, calculation.fuelNeededPercent());
         playerShipRepository.save(playerShip);
 
         gameTickScheduler.triggerImmediateBroadcast(sessionId);
@@ -101,4 +101,42 @@ public class RefuelShipServiceImpl implements RefuelShipService {
                 refuelingTicks
         );
     }
+
+    private RefuelCalculation calculateRefuel(UUID playerShipId, UUID playerId, UUID sessionId,
+                                               double targetFuelPercent) {
+        PlayerShip playerShip = playerShipRepository
+                .findByIdAndPlayerIdAndSessionId(playerShipId, playerId, sessionId)
+                .orElseThrow(() -> new ShipNotOwnedException("Ship not found or not owned by player", playerShipId));
+
+        if (playerShip.getStatus() != ShipStatus.AT_PORT) {
+            throw new InvalidShipStatusTransition("Ship must be AT_PORT to refuel", "playerShipId", playerShipId);
+        }
+
+        Ship ship = shipRepository.findById(playerShip.getShipId())
+                .orElseThrow(() -> new ShipNotFoundException("shipId", playerShip.getShipId()));
+
+        double clampedTarget = Math.min(100.0, Math.max(playerShip.getFuel(), targetFuelPercent));
+        double fuelNeededPercent = clampedTarget - playerShip.getFuel();
+        double fuelNeededAbsolute = fuelNeededPercent / 100.0 * ship.getMaxFuel().doubleValue();
+
+        ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
+                .orElseThrow(() -> new PlayerNotFoundException(playerId));
+
+        double costModifier = player.getFuelCostModifier();
+        BigDecimal totalCost = BigDecimal.valueOf(fuelNeededAbsolute * FUEL_PRICE_PER_UNIT * costModifier)
+                .setScale(0, RoundingMode.HALF_UP);
+
+        return new RefuelCalculation(
+                playerShip, player, clampedTarget, fuelNeededPercent, fuelNeededAbsolute, totalCost
+        );
+    }
+
+    private record RefuelCalculation(
+            PlayerShip playerShip,
+            ISessionPlayer player,
+            double targetFuelPercent,
+            double fuelNeededPercent,
+            double fuelNeededAbsolute,
+            BigDecimal totalCost
+    ) {}
 }
