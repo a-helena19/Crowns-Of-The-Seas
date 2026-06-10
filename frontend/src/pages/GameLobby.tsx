@@ -1,17 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSessionContext } from '../context/useSessionContext';
+import { useAudioSettings } from '../audio/AudioSettingsContext';
+import { sessionApi } from '../api/sessionApi';
+import type { SessionDTO } from '../types/session';
+import audioEngine from '../audio/AudioEngine';
 import '../style/gameLobby.css';
 
 export default function GameLobby() {
     const { user, logout } = useAuth();
     const { createSession, joinSession } = useSessionContext();
+    const { settings, setMusicEnabled, setSfxEnabled, setMusicVolume, setSfxVolume } = useAudioSettings();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'create' | 'join'>('create');
     const [error, setError] = useState('');
 
-    // Create Session Form State
+    // Audio-Menü
+    const [audioMenuOpen, setAudioMenuOpen] = useState(false);
+    const audioMenuRef = useRef<HTMLDivElement | null>(null);
+
     const [createForm, setCreateForm] = useState({
         hostName: user?.username || '',
         maxPlayers: 2,
@@ -24,16 +32,84 @@ export default function GameLobby() {
         playerName: user?.username || ''
     });
 
+    // Aktive Sessions des Spielers (zum Wiederbeitreten)
+    const [activeSessions, setActiveSessions] = useState<SessionDTO[]>([]);
+    const [rejoiningId, setRejoiningId] = useState<string | null>(null);
+
+    const loadActiveSessions = useCallback(async () => {
+        try {
+            const sessions = await sessionApi.getActiveSessions();
+            setActiveSessions(sessions);
+        } catch (err) {
+            console.warn('Konnte aktive Sessions nicht laden:', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadActiveSessions();
+        // Regelmäßig aktualisieren, damit Status/Spielerzahl aktuell bleiben.
+        const id = window.setInterval(loadActiveSessions, 5000);
+        return () => window.clearInterval(id);
+    }, [loadActiveSessions]);
+
+    // In eine aktive Session zurückkehren. Bei laufender Session (RUNNING) wird der
+    // Spieler über das Backend wieder als verbunden markiert und direkt ins Spiel
+    // geleitet; LOBBY/FACTION_SELECTION führen in den Wartebildschirm.
+    const handleRejoin = async (session: SessionDTO) => {
+        if (rejoiningId) return;
+        setRejoiningId(session.id);
+        setError('');
+        try {
+            let target = session;
+            if (session.status === 'RUNNING') {
+                target = await sessionApi.rejoinSession(session.id);
+            }
+
+            audioEngine.playSfx('buttonClick');
+            sessionStorage.setItem('currentSession', JSON.stringify(target));
+
+            const me = target.players.find(p => p.userId === user?.id);
+            sessionStorage.setItem('userRole', me?.isHost ? 'host' : 'guest');
+
+            if (target.status === 'RUNNING') {
+                // Marker setzen, damit der GameScreen beim WS-Subscribe signalisiert,
+                // dass dies ein Wieder-Beitritt ist (→ andere Spieler werden benachrichtigt).
+                sessionStorage.setItem('rejoinUserId', user?.id ?? '');
+                navigate('/game');
+            } else {
+                navigate('/session-waiting');
+            }
+        } catch (err: unknown) {
+            const axiosError = err as { response?: { status?: number; data?: string } };
+            if (axiosError.response?.status === 403) {
+                showError('Du warst nicht Teil dieser Session.');
+            } else if (axiosError.response?.status === 409) {
+                showError('Diese Session läuft nicht mehr.');
+            } else if (axiosError.response?.status === 404) {
+                showError('Diese Session existiert nicht mehr.');
+                loadActiveSessions();
+            } else {
+                showError('Wiederbeitritt fehlgeschlagen. Bitte versuche es erneut.');
+            }
+        } finally {
+            setRejoiningId(null);
+        }
+    };
+
+    function showError(msg: string) {
+        audioEngine.playSfx('error');
+        setError(msg);
+    }
+
     const handleCreateSession = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
         if (!createForm.hostName.trim()) {
-            setError('Bitte gib einen Namen ein.');
+            showError('Bitte gib einen Namen ein.');
             return;
         }
 
-        // Convert duration from "1h" to "PT1H" format
         const durationMap: { [key: string]: string } = {
             '20s': 'PT20S',
             '1m': 'PT1M',
@@ -46,7 +122,6 @@ export default function GameLobby() {
         const durationSeconds = { '20s': 20, '1m': 60,'1h': 3600, '2h': 7200, '3h': 10800, '4h': 14400 }[createForm.duration] ?? 3600;
         const totalTicks = Math.round(durationSeconds / createForm.tickRateSeconds);
 
-        // Create session using context (now async)
         const newSession = await createSession(
             createForm.hostName,
             createForm.maxPlayers,
@@ -56,11 +131,12 @@ export default function GameLobby() {
         );
 
         if (!newSession) {
-            setError('Fehler beim Erstellen der Session. Ist das Backend aktiv?');
+            showError('Fehler beim Erstellen der Session. Ist das Backend aktiv?');
+            audioEngine.playSfx('error');
             return;
         }
+        audioEngine.playSfx('buttonClick');
 
-        // Redirect to session waiting screen
         sessionStorage.setItem('currentSession', JSON.stringify(newSession));
         sessionStorage.setItem('userRole', 'host');
         navigate('/session-waiting');
@@ -71,21 +147,20 @@ export default function GameLobby() {
         setError('');
 
         if (!joinForm.gameCode.trim()) {
-            setError('Bitte gib einen Spielcode ein.');
+            showError('Bitte gib einen Spielcode ein.');
             return;
         }
 
         if (!joinForm.playerName.trim()) {
-            setError('Bitte gib einen Namen ein.');
+            showError('Bitte gib einen Namen ein.');
             return;
         }
 
-        // Try to join session using context
         try {
             const session = await joinSession(joinForm.gameCode, joinForm.playerName);
 
             if (session) {
-                // Redirect to session waiting screen
+                audioEngine.playSfx('buttonClick');
                 sessionStorage.setItem('currentSession', JSON.stringify(session));
                 sessionStorage.setItem('userRole', 'guest');
                 sessionStorage.setItem('playerName', joinForm.playerName);
@@ -97,27 +172,53 @@ export default function GameLobby() {
             const axiosError = error as { response?: { data?: { code?: string; message?: string }; status?: number } };
 
             if (axiosError.response?.data?.code === 'PLAYER_ALREADY_IN_SESSION') {
-                setError('Du bist bereits dieser Session beigetreten!');
+                showError('Du bist bereits dieser Session beigetreten!');
             } else if (axiosError.response?.data?.code === 'SESSION_FULL') {
-                setError('Diese Session ist voll.');
+                showError('Diese Session ist voll.');
             } else if (axiosError.response?.data?.code === 'SESSION_NOT_FOUND') {
-                setError('Session mit diesem Code nicht gefunden. Ist das Backend aktiv?');
+                showError('Session mit diesem Code nicht gefunden. Ist das Backend aktiv?');
             } else if (axiosError.response?.status === 404) {
-                setError('Session mit diesem Code nicht gefunden. Ist das Backend aktiv?');
+                showError('Session mit diesem Code nicht gefunden. Ist das Backend aktiv?');
             } else if (axiosError.response?.status === 409) {
-                setError('Konflikt beim Beitritt - versuche es später erneut.');
+                showError('Konflikt beim Beitritt - versuche es später erneut.');
             } else if (axiosError.response?.data?.message) {
-                setError(axiosError.response.data.message);
+                showError(axiosError.response.data.message);
             } else {
-                setError('Fehler beim Beitritt zur Session. Bitte versuche es später erneut.');
+                showError('Fehler beim Beitritt zur Session. Bitte versuche es später erneut.');
             }
         }
     };
 
     const handleLogout = () => {
+        audioEngine.playSfx('buttonClick');
         logout();
         navigate('/login');
     };
+
+    useEffect(() => {
+        // playMusic immer aufrufen – auch ohne vorherige Interaktion und auch im
+        // stummgeschalteten Zustand. Bei deaktivierter Musik merkt sich die
+        // AudioEngine nur den gewünschten Track ('lobby'), ohne ein Audio-Element
+        // zu erzeugen. Dadurch wird die Musik korrekt gestartet, sobald sie wieder
+        // aktiviert wird – z.B. nach einem Reload im stummgeschalteten Zustand.
+        audioEngine.playMusic('lobby');
+        return () => {};
+    }, []);
+
+    // Audio-Menü: Klick außerhalb schließt es
+    useEffect(() => {
+        if (!audioMenuOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (audioMenuRef.current && !audioMenuRef.current.contains(e.target as Node)) {
+                setAudioMenuOpen(false);
+            }
+        };
+        const t = setTimeout(() => document.addEventListener('mousedown', handler), 0);
+        return () => {
+            clearTimeout(t);
+            document.removeEventListener('mousedown', handler);
+        };
+    }, [audioMenuOpen]);
 
     return (
         <div className="game-lobby-page">
@@ -125,22 +226,96 @@ export default function GameLobby() {
                 <div className="lobby-header">
                     <h1>Crown of the Seas</h1>
                     <p className="welcome-text">Willkommen, {user?.username}!</p>
-                    {user?.role === "ADMIN" && (
-                        <button className="admin-link-btn" onClick={() => navigate("/admin")}>
-                            ⚙ Verwaltung
-                        </button>
-                    )}
-                    <button className="logout-btn" onClick={handleLogout}>
-                        Ausloggen
-                    </button>
+
+                    <div className="lobby-header-actions">
+                        {user?.role === "ADMIN" && (
+                            <button className="admin-link-btn" onClick={() => {navigate("/admin"); audioEngine.playSfx('buttonClick');}}>
+                                ⚙ Verwaltung
+                            </button>
+                        )}
+
+                        {/* Audio-Menü */}
+                        <div className="lobby-audio-wrapper" ref={audioMenuRef}>
+                            <button
+                                type="button"
+                                className={`lobby-menu-btn ${audioMenuOpen ? 'is-open' : ''}`}
+                                onClick={() => {setAudioMenuOpen(o => !o); audioEngine.playSfx('buttonClick');}}
+                                title="Einstellungen"
+                            >
+                                ☰
+                            </button>
+
+                            {audioMenuOpen && (
+                                <div className="lobby-audio-popover">
+                                    <h3 className="lobby-audio-title">Audio</h3>
+
+                                    <div className="lobby-audio-row">
+                                        <span className="lobby-audio-label">🎵 Musik</span>
+                                        <div className="lobby-audio-controls">
+                                            <button
+                                                className={`lobby-audio-toggle ${settings.musicEnabled ? 'on' : 'off'}`}
+                                                onClick={() => {setMusicEnabled(!settings.musicEnabled); audioEngine.playSfx('buttonClick');}}
+                                            >
+                                                {settings.musicEnabled ? 'AN' : 'AUS'}
+                                            </button>
+                                            <input
+                                                type="range"
+                                                min={0}
+                                                max={100}
+                                                value={Math.round(settings.musicVolume * 100)}
+                                                onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
+                                                disabled={!settings.musicEnabled}
+                                                className="lobby-audio-slider"
+                                            />
+                                            <span className="lobby-audio-pct">
+                                                {Math.round(settings.musicVolume * 100)}%
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="lobby-audio-row">
+                                        <span className="lobby-audio-label">🔔 Effekte</span>
+                                        <div className="lobby-audio-controls">
+                                            <button
+                                                className={`lobby-audio-toggle ${settings.sfxEnabled ? 'on' : 'off'}`}
+                                                onClick={() => {setSfxEnabled(!settings.sfxEnabled); audioEngine.playSfx('buttonClick');}}
+                                            >
+                                                {settings.sfxEnabled ? 'AN' : 'AUS'}
+                                            </button>
+                                            <input
+                                                type="range"
+                                                min={0}
+                                                max={100}
+                                                value={Math.round(settings.sfxVolume * 100)}
+                                                onChange={(e) => setSfxVolume(Number(e.target.value) / 100)}
+                                                disabled={!settings.sfxEnabled}
+                                                className="lobby-audio-slider"
+                                            />
+                                            <span className="lobby-audio-pct">
+                                                {Math.round(settings.sfxVolume * 100)}%
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="lobby-menu-divider" />
+
+                                    <button className="lobby-menu-logout" onClick={handleLogout}>
+                                        Ausloggen
+                                    </button>
+
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
-                <div className="lobby-content">
+                <div className="lobby-content lobby-content-split">
                     <div className="form-section">
                         <div className="tabs">
                             <button
                                 className={`tab-btn ${activeTab === 'create' ? 'active' : ''}`}
                                 onClick={() => {
+                                    audioEngine.playSfx('buttonClick');
                                     setActiveTab('create');
                                     setError('');
                                 }}
@@ -150,6 +325,7 @@ export default function GameLobby() {
                             <button
                                 className={`tab-btn ${activeTab === 'join' ? 'active' : ''}`}
                                 onClick={() => {
+                                    audioEngine.playSfx('buttonClick');
                                     setActiveTab('join');
                                     setError('');
                                 }}
@@ -254,9 +430,62 @@ export default function GameLobby() {
                             </form>
                         )}
                     </div>
+
+                    <aside className="active-sessions-section">
+                        <h2 className="active-sessions-title">Deine aktiven Spiele</h2>
+
+                        {activeSessions.length === 0 ? (
+                            <p className="active-sessions-empty">
+                                Du hast aktuell keine aktiven Sessions. Erstelle eine neue Session
+                                oder tritt mit einem Code bei.
+                            </p>
+                        ) : (
+                            <ul className="active-sessions-list">
+                                {activeSessions.map(s => {
+                                    const me = s.players.find(p => p.userId === user?.id);
+                                    const connectedCount = s.players.filter(p => !p.disconnected).length;
+                                    const statusLabel =
+                                        s.status === 'RUNNING' ? 'Läuft'
+                                            : s.status === 'FACTION_SELECTION' ? 'Fraktionswahl'
+                                                : s.status === 'LOBBY' ? 'Lobby'
+                                                    : s.status;
+                                    const isRejoining = rejoiningId === s.id;
+
+                                    return (
+                                        <li key={s.id} className="active-session-card">
+                                            <div className="active-session-head">
+                                                <span className="active-session-code">{s.gameCode}</span>
+                                                <span className={`active-session-status status-${s.status.toLowerCase()}`}>
+                                                    {statusLabel}
+                                                </span>
+                                            </div>
+
+                                            <div className="active-session-meta">
+                                                <span>👥 {connectedCount}/{s.maxPlayers} aktiv</span>
+                                                <span>📅 Tag {s.currentTick}/{s.totalTicks}</span>
+                                                {me?.disconnected && (
+                                                    <span className="active-session-left-tag">verlassen</span>
+                                                )}
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                className="active-session-rejoin-btn"
+                                                onClick={() => handleRejoin(s)}
+                                                disabled={isRejoining || !!rejoiningId}
+                                            >
+                                                {isRejoining ? 'Trete bei …'
+                                                    : s.status === 'RUNNING' ? 'Spiel fortsetzen'
+                                                        : 'Zur Session'}
+                                            </button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </aside>
                 </div>
             </div>
         </div>
     );
 }
-

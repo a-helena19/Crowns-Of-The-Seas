@@ -10,7 +10,7 @@ interface ShipDetails {
 }
 
 interface RefuelResponse {
-    newFuelPercent: number;
+    currentFuelPercent: number;
     totalCost: number;
     newBalance: number;
 }
@@ -21,7 +21,7 @@ interface Props {
     onCancel: () => void;
 }
 
-const FUEL_PRICE_PER_UNIT = 3.0;
+const FUEL_PRICE_PER_UNIT = 8.0;
 
 export default function RefuelShipScene({ playerShipId, onRefuelComplete, onCancel }: Props) {
     const [ship, setShip] = useState<ShipDetails | null>(null);
@@ -29,6 +29,7 @@ export default function RefuelShipScene({ playerShipId, onRefuelComplete, onCanc
     const [loading, setLoading] = useState(true);
     const [refueling, setRefueling] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [targetFuelPercent, setTargetFuelPercent] = useState<number>(100);
     const animDoneRef = useRef(false);
 
     const userData = localStorage.getItem("crowns_user");
@@ -50,16 +51,19 @@ export default function RefuelShipScene({ playerShipId, onRefuelComplete, onCanc
             .then(([shipData, bal]) => {
                 setShip({ id: shipData.id, name: shipData.name, fuel: shipData.fuel, maxFuel: shipData.maxFuel });
                 setBalance(typeof bal === "number" ? bal : parseFloat(bal));
+                setTargetFuelPercent(100);
             })
             .catch(() => setError("Schiff konnte nicht geladen werden."))
             .finally(() => setLoading(false));
     }, [playerShipId, playerId, sessionId, token]);
 
-    const fuelNeededPercent = ship ? Math.max(0, 100 - ship.fuel) : 0;
-    const fuelNeededAbsolute = ship ? (fuelNeededPercent / 100) * ship.maxFuel : 0;
-    const totalCost = Math.round(fuelNeededAbsolute * FUEL_PRICE_PER_UNIT * 100) / 100;
+    const sliderMin = ship ? Math.min(99, Math.ceil(ship.fuel) + 1) : 1;
+    const effectiveTarget = ship ? Math.max(sliderMin, targetFuelPercent) : 100;
+    const fuelToAddPercent = ship ? Math.max(0, effectiveTarget - ship.fuel) : 0;
+    const fuelToAddAbsolute = ship ? (fuelToAddPercent / 100) * ship.maxFuel : 0;
+    const totalCost = Math.round(fuelToAddAbsolute * FUEL_PRICE_PER_UNIT);
     const canAfford = balance !== null && balance >= totalCost;
-    const alreadyFull = fuelNeededPercent < 0.01;
+    const alreadyFull = ship ? ship.fuel >= 99.99 : false;
 
     function fuelColorClass(percent: number) {
         if (percent < 25) return "fuel-low";
@@ -75,7 +79,7 @@ export default function RefuelShipScene({ playerShipId, onRefuelComplete, onCanc
 
         try {
             const res = await fetch(
-                `/api/ships/${playerShipId}/refuel?playerId=${playerId}&sessionId=${sessionId}`,
+                `/api/ships/${playerShipId}/refuel?playerId=${playerId}&sessionId=${sessionId}&targetFuelPercent=${effectiveTarget}`,
                 { method: "POST", headers: { Authorization: `Bearer ${token}` } }
             );
             if (!res.ok) {
@@ -85,7 +89,7 @@ export default function RefuelShipScene({ playerShipId, onRefuelComplete, onCanc
                 return;
             }
             const data: RefuelResponse = await res.json();
-            setShip(prev => prev ? { ...prev, fuel: data.newFuelPercent } : prev);
+            setShip(prev => prev ? { ...prev, fuel: data.currentFuelPercent } : prev);
             setBalance(data.newBalance);
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
 
@@ -135,13 +139,16 @@ export default function RefuelShipScene({ playerShipId, onRefuelComplete, onCanc
                     <div className="refuel-fuel-label">
                         <span>Treibstoff</span>
                         <span className={`refuel-fuel-value ${fuelColorClass(ship.fuel)}`}>
-                            {refueling ? "100" : ship.fuel.toFixed(0)}%
+                            {refueling ? effectiveTarget.toFixed(0) : ship.fuel.toFixed(0)}%
                         </span>
                     </div>
                     <div className="refuel-bar-track">
                         <div
                             className={`refuel-bar-fill ${fuelColorClass(startPct)}${refueling ? " animating" : ""}`}
-                            style={{ "--fuel-start": `${startPct}%` } as React.CSSProperties}
+                            style={{
+                                "--fuel-start": `${startPct}%`,
+                                "--fuel-target": `${effectiveTarget}%`
+                            } as React.CSSProperties}
                         />
                     </div>
                 </div>
@@ -149,25 +156,48 @@ export default function RefuelShipScene({ playerShipId, onRefuelComplete, onCanc
                 {alreadyFull ? (
                     <div className="refuel-info-row refuel-full-msg">Tank ist bereits voll!</div>
                 ) : (
-                    <div className="refuel-cost-section">
-                        <div className="refuel-info-row">
-                            <span>Fehlende Menge</span>
-                            <span>{fuelNeededAbsolute.toFixed(0)} Einheiten</span>
+                    <>
+                        <div className="refuel-slider-section">
+                            <div className="refuel-slider-label">
+                                <span>Ziel-Tankstand</span>
+                                <span className="refuel-slider-value">{effectiveTarget}%</span>
+                            </div>
+                            <input
+                                type="range"
+                                className="refuel-slider"
+                                min={sliderMin}
+                                max={100}
+                                step={5}
+                                value={effectiveTarget}
+                                onChange={e => setTargetFuelPercent(Number(e.target.value))}
+                                disabled={refueling}
+                            />
+                            <div className="refuel-slider-ticks">
+                                <span>{sliderMin}%</span>
+                                <span>100%</span>
+                            </div>
                         </div>
-                        <div className="refuel-info-row refuel-cost-row">
-                            <span>Kosten</span>
-                            <span className="refuel-cost-value">{totalCost.toLocaleString("de-DE")} T</span>
+
+                        <div className="refuel-cost-section">
+                            <div className="refuel-info-row">
+                                <span>Menge</span>
+                                <span>{fuelToAddAbsolute.toFixed(0)} Einheiten (+{fuelToAddPercent.toFixed(0)}%)</span>
+                            </div>
+                            <div className="refuel-info-row refuel-cost-row">
+                                <span>Kosten</span>
+                                <span className="refuel-cost-value">{formatTalers(totalCost)} T</span>
+                            </div>
+                            <div className="refuel-info-row">
+                                <span>Kontostand</span>
+                                <span className={canAfford ? "refuel-balance-ok" : "refuel-balance-low"}>
+                                    {balance !== null ? formatTalers(balance) : "-"} T
+                                </span>
+                            </div>
+                            {!canAfford && (
+                                <div className="refuel-error">Nicht genug Credits!</div>
+                            )}
                         </div>
-                        <div className="refuel-info-row">
-                            <span>Kontostand</span>
-                            <span className={canAfford ? "refuel-balance-ok" : "refuel-balance-low"}>
-                                {balance?.toLocaleString("de-DE")} T
-                            </span>
-                        </div>
-                        {!canAfford && (
-                            <div className="refuel-error">Nicht genug Credits!</div>
-                        )}
-                    </div>
+                    </>
                 )}
 
                 {error && <div className="refuel-error">{error}</div>}
@@ -186,4 +216,8 @@ export default function RefuelShipScene({ playerShipId, onRefuelComplete, onCanc
             </div>
         </div>
     );
+}
+
+function formatTalers(value: number) {
+    return Math.round(value).toLocaleString("de-DE", { maximumFractionDigits: 0 });
 }

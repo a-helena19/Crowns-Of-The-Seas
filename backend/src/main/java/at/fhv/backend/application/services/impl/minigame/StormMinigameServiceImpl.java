@@ -2,9 +2,12 @@ package at.fhv.backend.application.services.impl.minigame;
 
 import at.fhv.backend.application.services.minigame.StormMinigameService;
 import at.fhv.backend.application.services.travel.TravelPauseService;
+import at.fhv.backend.domain.model.player.ISessionPlayer;
+import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.travel.Travel;
+import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.rest.GameSessionWebSocketController;
 import at.fhv.backend.rest.dtos.minigame.request.StormMinigameResultRequest;
 import at.fhv.backend.rest.dtos.websocket.StormMinigameEvent;
@@ -25,12 +28,13 @@ public class StormMinigameServiceImpl implements StormMinigameService {
     private static final int DEFAULT_START_HEALTH = 100;
     private static final double FAILED_CONDITION_DAMAGE_PERCENT = 50.0;
     private static final int FAILED_CARGO_LOSS_PERCENT = 50;
-    private static final BigDecimal FAILED_REWARD_MODIFIER = new BigDecimal("0.50");
     private static final BigDecimal SUCCESS_REWARD_MODIFIER = BigDecimal.ONE;
 
     private final TravelPauseService travelPauseService;
     private final GameSessionWebSocketController webSocketController;
     private final PlayerShipRepository playerShipRepository;
+    private final SessionPlayerRepository sessionPlayerRepository;
+    private final TravelRepository travelRepository;
     private final Random random = new Random();
 
     private final Set<UUID> triggeredTravelIds = ConcurrentHashMap.newKeySet();
@@ -40,10 +44,14 @@ public class StormMinigameServiceImpl implements StormMinigameService {
 
     public StormMinigameServiceImpl(TravelPauseService travelPauseService,
                                     GameSessionWebSocketController webSocketController,
-                                    PlayerShipRepository playerShipRepository) {
+                                    PlayerShipRepository playerShipRepository,
+                                    SessionPlayerRepository sessionPlayerRepository,
+                                    TravelRepository travelRepository) {
         this.travelPauseService = travelPauseService;
         this.webSocketController = webSocketController;
         this.playerShipRepository = playerShipRepository;
+        this.sessionPlayerRepository = sessionPlayerRepository;
+        this.travelRepository = travelRepository;
     }
 
     @Override
@@ -52,7 +60,12 @@ public class StormMinigameServiceImpl implements StormMinigameService {
         if (travelPauseService.isTravelPaused(travelId)) return;
         if (triggeredTravelIds.contains(travelId)) return;
         if (pendingEvents.containsKey(travelId)) return;
-        if (random.nextDouble() >= TRIGGER_CHANCE_PER_TICK) return;
+
+        double miniGameModifier = sessionPlayerRepository
+                .findByUserIdAndSessionId(travel.getPlayerId(), sessionId)
+                .map(ISessionPlayer::getMiniGameRiskModifier)
+                .orElse(1.0);
+        if (random.nextDouble() >= TRIGGER_CHANCE_PER_TICK * miniGameModifier) return;
 
         triggeredTravelIds.add(travelId);
         UUID eventId = UUID.randomUUID();
@@ -112,7 +125,8 @@ public class StormMinigameServiceImpl implements StormMinigameService {
                                                                    StormMinigameResultRequest request) {
         PlayerShip playerShip = playerShipRepository.findById(event.playerShipId()).orElseThrow();
 
-        rewardModifiersByTravelId.put(request.getTravelId(), FAILED_REWARD_MODIFIER);
+        rewardModifiersByTravelId.put(request.getTravelId(), SUCCESS_REWARD_MODIFIER);
+        applyCargoLossToTravel(request.getTravelId(), FAILED_CARGO_LOSS_PERCENT);
         playerShip.applyWear(FAILED_CONDITION_DAMAGE_PERCENT);
         playerShipRepository.save(playerShip);
         summaryByTravelId.put(request.getTravelId(),
@@ -127,13 +141,39 @@ public class StormMinigameServiceImpl implements StormMinigameService {
         );
     }
 
+    private void applyCargoLossToTravel(UUID travelId, int cargoLossPercent) {
+        travelRepository.findById(travelId).ifPresent(travel -> {
+            travel.applyCargoLossPercent(cargoLossPercent);
+            travelRepository.save(travel);
+        });
+    }
+
+    @Override
+    public Optional<StormMinigameEvent> getPendingEvent(UUID travelId, UUID playerId, UUID sessionId) {
+        PendingStormEvent event = pendingEvents.get(travelId);
+        if (event == null || !event.playerId().equals(playerId) || !event.sessionId().equals(sessionId)) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new StormMinigameEvent(
+                event.eventId().toString(),
+                event.playerId().toString(),
+                event.sessionId().toString(),
+                event.travelId().toString(),
+                event.playerShipId().toString(),
+                event.timeLimitSeconds(),
+                event.requiredSuns(),
+                event.startHealth()
+        ));
+    }
+
     @Override
     public BigDecimal applyRewardModifier(UUID travelId, BigDecimal totalReward) {
         BigDecimal modifier = rewardModifiersByTravelId.remove(travelId);
         if (modifier == null) return totalReward;
 
-        BigDecimal modified = totalReward.multiply(modifier).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal penalty = totalReward.subtract(modified).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal modified = totalReward.multiply(modifier).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal penalty = totalReward.subtract(modified).max(BigDecimal.ZERO).setScale(0, RoundingMode.HALF_UP);
 
         StormSummaryState existing = summaryByTravelId.get(travelId);
         if (existing != null) {

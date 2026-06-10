@@ -78,4 +78,14 @@ public class PlayerShipRepositoryImpl implements PlayerShipRepository {
     public long countByShipIdAndSessionId(UUID shipId, UUID sessionId) {
         return playerShipJpaRepository.countByShipIdAndSessionId(shipId, sessionId);
     }
+
+    @Override
+    public List<PlayerShip> saveAll(List<PlayerShip> ships) {
+        List<PlayerShipEntity> entities = ships.stream()
+                .map(playerShipMapper::toJpaEntity)
+                .collect(Collectors.toList());
+        return playerShipJpaRepository.saveAll(entities).stream()
+                .map(playerShipMapper::toDomainModel)
+                .collect(Collectors.toList());
+    }
 }

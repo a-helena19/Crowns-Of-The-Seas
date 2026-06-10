@@ -5,7 +5,8 @@ import GameButton from "../components/GameButton";
 import "../style/harbor.css";
 import "../style/shipbroker.css";
 import "../style/shipclass.css"
-import backIcon from "../assets/goback.png";
+import audioEngine from '../audio/AudioEngine';
+import BackButton from "../components/BackButton.tsx";
 
 interface PurchasedShipResponse {
     id: string;
@@ -156,6 +157,7 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
             setBoughtIds(prev => new Set(prev).add(ship.id));
             setBalance(prev => prev !== null ? prev - ship.price : null);
             window.dispatchEvent(new CustomEvent('player-balance-updated'));
+            audioEngine.playSfx('coinReward');
             showToast(`${ship.name} gekauft!`);
             // Reload triggern, damit availableStock fuer alle Schiffe aktualisiert wird
             // (auch fuer andere Spieler-Kaeufe waeren ein WebSocket-Push praeziser, aber Reload reicht hier).
@@ -199,9 +201,7 @@ export default function ShipClassScreen({ shipClass, onBack }: Props) {
     return (
         <div className="shipclass-scene">
 
-            <div className="back-icon-btn" onClick={onBack}>
-                <img src={backIcon} alt="Zurück" />
-            </div>
+            <BackButton onClick={onBack} />
 
             <div className="shipclass-title-area">
                 <div className="shipclass-title-main">Schiffsmarkt</div>

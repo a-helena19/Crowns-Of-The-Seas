@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { loginUser, type ApiError } from '../api/userApi';
 import '../style/auth.css';
+import audioEngine from "../audio/AudioEngine.ts";
 
 export default function LoginPage() {
     const [username, setUsername] = useState('');
@@ -25,6 +26,7 @@ export default function LoginPage() {
 
             // Check if there's a redirect parameter (e.g., /join/ABC123)
             const redirect = searchParams.get('redirect');
+            audioEngine.playSfx('buttonClick');
             if (redirect) {
                 navigate(redirect);
             } else {
@@ -33,8 +35,10 @@ export default function LoginPage() {
         } catch (err) {
             const apiError = err as ApiError;
             if (apiError.errorCode === 'INVALID_CREDENTIALS') {
+                audioEngine.playSfx('error');
                 setError('Falscher Benutzername oder Passwort.');
             } else {
+                audioEngine.playSfx('error');
                 setError(apiError.message || 'Ein Fehler ist aufgetreten.');
             }
         } finally {

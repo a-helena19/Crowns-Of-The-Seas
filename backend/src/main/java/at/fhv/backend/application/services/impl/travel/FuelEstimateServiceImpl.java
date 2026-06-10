@@ -47,15 +47,21 @@ public class FuelEstimateServiceImpl implements FuelEstimateService {
     @Override
     @Transactional(readOnly = true)
     public FuelEstimateDTO estimate(UUID playerId, UUID sessionId, UUID playerShipId, UUID sessionCargoId) {
+        SessionCargo cargo = sessionCargoRepository.findById(sessionCargoId)
+                .orElseThrow(() -> new CargoNotFoundException(sessionCargoId));
+
+        return estimateForPort(playerId, sessionId, playerShipId, cargo.getDestinationPortId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public FuelEstimateDTO estimateForPort(UUID playerId, UUID sessionId, UUID playerShipId, UUID destinationPortId) {
         PlayerShip playerShip = playerShipRepository
                 .findByIdAndPlayerIdAndSessionId(playerShipId, playerId, sessionId)
                 .orElseThrow(() -> new ShipNotFoundException("PlayerShip", playerShipId));
 
         Ship ship = shipRepository.findById(playerShip.getShipId())
                 .orElseThrow(() -> new ShipNotFoundException("Ship", playerShip.getShipId()));
-
-        SessionCargo cargo = sessionCargoRepository.findById(sessionCargoId)
-                .orElseThrow(() -> new CargoNotFoundException(sessionCargoId));
 
         if (playerShip.getCurrentPortId() == null) {
             throw new InvalidTravelDataException(
@@ -67,7 +73,7 @@ public class FuelEstimateServiceImpl implements FuelEstimateService {
 
         double distance = portDistanceService.distanceBetween(
                 playerShip.getCurrentPortId(),
-                cargo.getDestinationPortId()
+                destinationPortId
         );
 
         double maxFuel = ship.getMaxFuel().doubleValue();

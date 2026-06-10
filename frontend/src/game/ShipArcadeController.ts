@@ -3,6 +3,7 @@ import Phaser from "phaser";
 interface ShipArcadeControllerOptions {
     maxSpeed?: number;
     acceleration?: number;
+    /** Natural deceleration when no key is pressed — lower = more drift. */
     deceleration?: number;
 }
 
@@ -27,7 +28,7 @@ export class ShipArcadeController {
         this.shipBody = shipBody;
         this.maxSpeed = options.maxSpeed ?? 120;
         this.acceleration = options.acceleration ?? 150;
-        this.deceleration = options.deceleration ?? 180;
+        this.deceleration = options.deceleration ?? 25;
 
         this.cursors = scene.input.keyboard!.createCursorKeys();
         this.wasd = {

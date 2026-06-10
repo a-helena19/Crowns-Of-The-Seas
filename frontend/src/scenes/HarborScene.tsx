@@ -1,33 +1,43 @@
 import { useEffect, useState } from "react";
 import CargoScreen from "./CargoScreen";
+import type { VoyageStartedInfo } from "./EmptyVoyageScreen";
 import ShipScreen from "./ShipScreen";
 import Sailor from "../components/Sailor";
 import DialogBubble from "../components/DialogBubble";
-import backIcon from "../assets/goback.png";
 import background from "../assets/background.jpg";
 import "../style/harbor.css";
 import type { AssignedCargoEntry } from "../types/assignedCargo";
+import audioEngine from '../audio/AudioEngine';
+import BackButton from "../components/BackButton.tsx";
 
 interface Port {
     id: string;
     name: string;
 }
 
+interface Ship {
+    id: string;
+    name: string;
+    fuel: number;
+    condition: number;
+    status: string;
+    maxCargoCapacity?: number;
+    iconUrl?: string;
+    currentPortId?: string;
+}
+
 interface HarborSceneProps {
     onClose: () => void;
     onCargoAssigned: (entry: AssignedCargoEntry) => void;
     openCargoForShipId?: string | null;
+    onOpenOrdersForShip?: (shipId: string) => void;
 }
 
-export default function HarborScene({ onClose, onCargoAssigned, openCargoForShipId = null }: HarborSceneProps) {
-    const [view, setView] = useState<"main" | "cargo" | "ship">("main");
+export default function HarborScene({ onClose, onCargoAssigned, openCargoForShipId = null, onOpenOrdersForShip }: HarborSceneProps) {
+    const [view, setView] = useState<"main" | "cargo" | "ship" | "leerfahrt" | "frachtboerse">("main");
     const [selectedPortId, setSelectedPortId] = useState<string | null>(null);
     const [myPorts, setMyPorts] = useState<Port[]>([]);
-    const [selectedShip, setSelectedShip] = useState<{
-        id: string; name: string; fuel: number; condition: number;
-        status: string; maxCargoCapacity?: number; iconUrl?: string;
-        currentPortId?: string;
-    } | null>(null);
+    const [selectedShip, setSelectedShip] = useState<Ship | null>(null);
 
     const userData = localStorage.getItem("crowns_user");
     const playerId = userData ? JSON.parse(userData).id : null;
@@ -41,7 +51,7 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
             headers: { Authorization: `Bearer ${token}` },
         })
             .then(r => r.json())
-            .then((ships: any[]) => {
+            .then((ships: Ship[]) => {
                 if (openCargoForShipId) {
                     const targetShip = ships.find((s) => s.id === openCargoForShipId);
                     if (targetShip) {
@@ -55,14 +65,16 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
                 ships
                     .filter(s => ["AT_PORT", "REFUELING", "REPAIRING", "LOADING", "UNLOADING", "READY_TO_DEPART"].includes(s.status) && s.currentPortId)
                     .forEach(s => {
-                        const portName = window.__latestPorts?.find((p: any) => p.id === s.currentPortId)?.name ?? s.currentPortId;
-                        portsMap.set(s.currentPortId, portName);
+                        const portId = s.currentPortId;
+                        if (!portId) return;
+                        const portName = window.__latestPorts?.find(p => p.id === portId)?.name ?? portId;
+                        portsMap.set(portId, portName);
                     });
 
                 // Heimathafen immer in der Liste anzeigen
                 const homePortId = window.__homePortId;
                 if (homePortId && !portsMap.has(homePortId)) {
-                    const homePort = window.__latestPorts?.find((p: any) => p.id === homePortId);
+                    const homePort = window.__latestPorts?.find(p => p.id === homePortId);
                     if (homePort) {
                         portsMap.set(homePort.id, homePort.name);
                     }
@@ -71,7 +83,7 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
                 // Wenn immer noch keine Ports → Heimathafen als einzigen verwenden
                 if (portsMap.size === 0) {
                     const homePort = homePortId
-                        ? window.__latestPorts?.find((p: any) => p.id === homePortId)
+                        ? window.__latestPorts?.find(p => p.id === homePortId)
                         : null;
                     if (homePort) {
                         portsMap.set(homePort.id, homePort.name);
@@ -92,7 +104,7 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
             .catch(console.error);
     }, [playerId, sessionId, token, openCargoForShipId]);
 
-    function handleShipSelect(ship: any) {
+    function handleShipSelect(ship: Ship) {
         setSelectedShip(ship);
         if (ship.currentPortId) setSelectedPortId(ship.currentPortId);
         setView("main");
@@ -127,15 +139,48 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
             phase: "loading",
         };
         onCargoAssigned(entry);
+        audioEngine.playSfx('cargoLoad');
         onClose();
+    }
+
+    function handleEmptyVoyageStarted(v: VoyageStartedInfo) {
+        if (!selectedShip) return;
+        const originPortName =
+            myPorts.find(p => p.id === selectedPortId)?.name
+            ?? window.__latestPorts?.find(p => p.id === selectedPortId)?.name
+            ?? "";
+
+        const entry: AssignedCargoEntry = {
+            cargoId: `empty-${crypto.randomUUID()}`,
+            shipId: selectedShip.id,
+            shipName: selectedShip.name,
+            shipIconUrl: selectedShip.iconUrl,
+            from: originPortName,
+            to: v.destinationPortName,
+            weight: 0,
+            maxCargoCapacity: selectedShip.maxCargoCapacity ?? 0,
+            originPortId: selectedPortId ?? undefined,
+            destinationPortId: v.destinationPortId,
+            speedSetting: v.speedSetting,
+            loadingDurationSeconds: 0,
+            loadingStartedAt: Date.now(),
+            loadingDone: true,
+            phase: "loading",
+            isEmptyVoyage: true,
+        };
+        onCargoAssigned(entry);
+        audioEngine.playSfx('cargoLoad');
+        if (onOpenOrdersForShip) {
+            onOpenOrdersForShip(selectedShip.id);
+        } else {
+            onClose();
+        }
     }
 
     return (
         <div className="scene">
             <img src={background} className="background" alt="" />
-            <div className="back-icon-btn" onClick={handleBack}>
-                <img src={backIcon} alt="Zurück" />
-            </div>
+            <BackButton onClick={handleBack} />
 
             {view === "main" && (
                 <>
@@ -160,7 +205,8 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
                     )}
 
                     <DialogBubble
-                        onOpenCargo={() => setView("cargo")}
+                        onOpenCargo={() => setView("frachtboerse")}
+                        onOpenEmptyVoyage={() => setView("leerfahrt")}
                         onOpenShip={() => setView("ship")}
                         selectedShipName={selectedShip?.name}
                     />
@@ -179,6 +225,31 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
                     currentPortId={selectedPortId}
                     playerShipId={selectedShip?.id ?? null}
                     onCargoAccepted={handleCargoAccepted}
+                    onEmptyVoyageStarted={handleEmptyVoyageStarted}
+                    initialTab="fracht"
+                    allowTabSwitch={true}
+                />
+            )}
+
+            {view === "frachtboerse" && (
+                <CargoScreen
+                    currentPortId={selectedPortId}
+                    playerShipId={selectedShip?.id ?? null}
+                    onCargoAccepted={handleCargoAccepted}
+                    onEmptyVoyageStarted={handleEmptyVoyageStarted}
+                    initialTab="fracht"
+                    allowTabSwitch={false}
+                />
+            )}
+
+            {view === "leerfahrt" && (
+                <CargoScreen
+                    currentPortId={selectedPortId}
+                    playerShipId={selectedShip?.id ?? null}
+                    onCargoAccepted={handleCargoAccepted}
+                    onEmptyVoyageStarted={handleEmptyVoyageStarted}
+                    initialTab="leer"
+                    allowTabSwitch={false}
                 />
             )}
         </div>

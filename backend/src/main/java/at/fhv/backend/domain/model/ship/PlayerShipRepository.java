@@ -26,4 +26,6 @@ public interface PlayerShipRepository {
     );
 
     long countByShipIdAndSessionId(UUID shipId, UUID sessionId);
+
+    List<PlayerShip> saveAll(List<PlayerShip> ships);
 }

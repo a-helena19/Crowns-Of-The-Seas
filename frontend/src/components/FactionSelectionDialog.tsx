@@ -3,6 +3,7 @@ import type { PlayerFaction } from '../types/faction';
 import { FACTION_DATA, PLAYER_FACTION_VALUES } from '../types/faction';
 import '../style/factionSelection.css';
 import { sessionApi } from '../api/sessionApi';
+import audioEngine from "../audio/AudioEngine.ts";
 
 interface FactionSelectionDialogProps {
     sessionId: string;
@@ -71,6 +72,7 @@ export default function FactionSelectionDialog({
             return true;
         } catch (err) {
             console.error('Error submitting faction:', err);
+            audioEngine.playSfx('error');
             setError('Fehler beim Auswählen der Fraktion. Bitte versuche es erneut.');
             return false;
         }
@@ -107,13 +109,16 @@ export default function FactionSelectionDialog({
     };
 
     useEffect(() => {
-        if (isReady || hasTimedOut) return;
+        if (hasTimedOut) return;
 
         const timer = setInterval(() => {
             setTimeRemaining(prev => {
                 if (prev <= 1) {
                     clearInterval(timer);
                     setHasTimedOut(true);
+                    if (isReady || readySubmittedRef.current) {
+                        return 0;
+                    }
                     void (async () => {
                         const factionToSubmit =
                             currentlySelectedFaction ??
@@ -151,6 +156,7 @@ export default function FactionSelectionDialog({
 
     const handleFactionClick = (faction: PlayerFaction) => {
         if (isReady || hasTimedOut) return;
+        audioEngine.playSfx('buttonClick');
         setCurrentlySelectedFaction(faction);
         setError(null);
     };
@@ -158,10 +164,12 @@ export default function FactionSelectionDialog({
     const handleReadyClicked = async () => {
         if (busy || isReady || hasTimedOut) return;
         if (!currentlySelectedFaction) {
+            audioEngine.playSfx('error');
             setError('Bitte wähle eine Fraktion!');
             return;
         }
         if (!currentlySelectedPortId) {
+            audioEngine.playSfx('error');
             setError('Bitte wähle einen Heimathafen!');
             return;
         }
@@ -175,6 +183,7 @@ export default function FactionSelectionDialog({
             if (!portOk) return;
             await submitReady();
         } finally {
+            audioEngine.playSfx('buttonClick');
             setBusy(false);
         }
     };
@@ -280,6 +289,7 @@ export default function FactionSelectionDialog({
                             value={currentlySelectedPortId ?? ''}
                             onChange={(e) => {
                                 if (locked) return;
+                                audioEngine.playSfx('buttonClick');
                                 setCurrentlySelectedPortId(e.target.value || null);
                                 setError(null);
                             }}

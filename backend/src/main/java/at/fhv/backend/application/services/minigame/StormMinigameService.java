@@ -2,15 +2,19 @@ package at.fhv.backend.application.services.minigame;
 
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.rest.dtos.minigame.request.StormMinigameResultRequest;
+import at.fhv.backend.rest.dtos.websocket.StormMinigameEvent;
 import at.fhv.backend.rest.dtos.websocket.StormMinigameTravelSummary;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface StormMinigameService {
     void tryTriggerForTravel(Travel travel, UUID sessionId);
 
     StormMinigameSubmitResult submitResult(UUID playerId, UUID sessionId, StormMinigameResultRequest request);
+
+    Optional<StormMinigameEvent> getPendingEvent(UUID travelId, UUID playerId, UUID sessionId);
 
     BigDecimal applyRewardModifier(UUID travelId, BigDecimal totalReward);
 

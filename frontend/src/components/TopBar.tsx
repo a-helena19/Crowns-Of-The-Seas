@@ -9,9 +9,13 @@ import type { PlayerFaction } from '../types/faction';
 import { sessionApi } from '../api/sessionApi';
 import { getLeaderboard } from '../api/leaderboardApi';
 import type { LeaderboardEntry } from '../types/leaderboard';
+import { useAudioSettings } from '../audio/AudioSettingsContext';
+import audioEngine from '../audio/AudioEngine';
+import { useNavigate } from 'react-router-dom';
 
 
 export default function TopBar() {
+    const navigate = useNavigate();
     const [balance, setBalance] = useState<number | null>(null);
     const [shipCount, setShipCount] = useState<number | null>(null);
     const [currentTick, setCurrentTick] = useState<number | null>(null);
@@ -22,6 +26,10 @@ export default function TopBar() {
     const [endingToastShown, setEndingToastShown] = useState(false);
     const [showEndingToast, setShowEndingToast] = useState(false);
     const [endingToastHiding, setEndingToastHiding] = useState(false);
+    const { settings, setMusicEnabled, setSfxEnabled, setMusicVolume, setSfxVolume } = useAudioSettings();
+    const [audioMenuOpen, setAudioMenuOpen] = useState(false);
+    const [leaving, setLeaving] = useState(false);
+    const audioMenuRef = useRef<HTMLDivElement | null>(null);
 
     const factionWrapperRef = useRef<HTMLDivElement | null>(null);
 
@@ -30,6 +38,28 @@ export default function TopBar() {
     const token = localStorage.getItem('auth_token') ?? '';
     const sessionData = sessionStorage.getItem('currentSession');
     const sessionId = sessionData ? JSON.parse(sessionData).id : null;
+
+    // Session aktiv verlassen: Backend benachrichtigen (entfernt Spieler, weist
+    // ggf. neuen Host zu, beendet leere Session), danach Musik stoppen und in die
+    // Lobby navigieren. Der GameScreen wird dadurch ausgehängt, wodurch der
+    // WebSocket-Hook die Verbindung trennt – es kommen keine Session-Events mehr an.
+    const handleLeaveSession = async () => {
+        if (leaving) return;
+        setLeaving(true);
+        audioEngine.playSfx('buttonClick');
+        try {
+            if (sessionId) {
+                await sessionApi.leaveSession(sessionId);
+            }
+        } catch (err) {
+            // Auch bei einem Fehler navigieren wir, damit der Spieler nicht festhängt.
+            console.warn('Konnte Session nicht sauber verlassen:', err);
+        } finally {
+            audioEngine.stopMusic();
+            sessionStorage.removeItem('currentSession');
+            navigate('/lobby');
+        }
+    };
 
     // leaderboard
     const [lbOpen, setLbOpen] = useState(false);
@@ -48,7 +78,11 @@ export default function TopBar() {
         };
         load();
         const id = window.setInterval(load, 5000);
-        return () => window.clearInterval(id);
+        window.addEventListener('player-balance-updated', load);
+        return () => {
+            window.clearInterval(id);
+            window.removeEventListener('player-balance-updated', load);
+        };
     }, [sessionId]);
 
     useEffect(() => {
@@ -86,9 +120,34 @@ export default function TopBar() {
 
         fetchPlayerData();
 
+        const applyDirectBalance = (e: Event) => {
+            const detail = (e as CustomEvent<{ balance?: number }>).detail;
+            if (detail && typeof detail.balance === 'number') {
+                setBalance(detail.balance);
+            }
+        };
+
         window.addEventListener('player-balance-updated', fetchPlayerData);
-        return () => window.removeEventListener('player-balance-updated', fetchPlayerData);
+        window.addEventListener('player-balance-set', applyDirectBalance);
+        return () => {
+            window.removeEventListener('player-balance-updated', fetchPlayerData);
+            window.removeEventListener('player-balance-set', applyDirectBalance);
+        };
     }, [playerId, sessionId, token]);
+
+    useEffect(() => {
+        if (!audioMenuOpen) return;
+        const handler = (e: MouseEvent) => {
+            if (audioMenuRef.current && !audioMenuRef.current.contains(e.target as Node)) {
+                setAudioMenuOpen(false);
+            }
+        };
+        const t = setTimeout(() => document.addEventListener('mousedown', handler), 0);
+        return () => {
+            clearTimeout(t);
+            document.removeEventListener('mousedown', handler);
+        };
+    }, [audioMenuOpen]);
 
     useEffect(() => {
         if (window.__latestTick) {
@@ -241,7 +300,7 @@ export default function TopBar() {
                         <button
                             type="button"
                             className={`topbar-panel topbar-faction-btn ${factionPanelOpen ? 'is-open' : ''}`}
-                            onClick={() => setFactionPanelOpen(o => !o)}
+                            onClick={() => {audioEngine.playSfx('buttonClick'); setFactionPanelOpen(o => !o); }}
                             aria-expanded={factionPanelOpen}
                             aria-haspopup="dialog"
                             title={`Fraktion: ${factionData.name}`}
@@ -294,7 +353,7 @@ export default function TopBar() {
                     <button
                         type="button"
                         className={`topbar-panel topbar-lb-btn ${lbOpen ? 'is-open' : ''}`}
-                        onClick={() => setLbOpen(o => !o)}
+                        onClick={() => {audioEngine.playSfx('buttonClick'); setLbOpen(o => !o);}}
                         aria-expanded={lbOpen}
                         aria-haspopup="dialog"
                         title="Rangliste"
@@ -322,6 +381,79 @@ export default function TopBar() {
                                     })}
                                 </ul>
                             )}
+                        </div>
+                    )}
+                </div>
+                <div className="topbar-audio-wrapper" ref={audioMenuRef}>
+                    <button
+                        type="button"
+                        className={`topbar-panel topbar-audio-btn ${audioMenuOpen ? 'is-open' : ''}`}
+                        onClick={() => {audioEngine.playSfx('buttonClick'); setAudioMenuOpen(o => !o);}}
+                        aria-expanded={audioMenuOpen}
+                        aria-haspopup="dialog"
+                        title="Einstellungen"
+                    >
+                        <span className="topbar-value topbar-hamburger">☰</span>
+                    </button>
+
+                    {audioMenuOpen && (
+                        <div className="audio-popover" role="dialog" aria-label="Audio Einstellungen">
+                            <h3 className="audio-popover-title">Audio</h3>
+
+                            <div className="audio-popover-row">
+                                <span className="audio-popover-label">🎵 Musik</span>
+                                <div className="audio-popover-controls">
+                                    <button
+                                        className={`audio-popover-toggle ${settings.musicEnabled ? 'on' : 'off'}`}
+                                        onClick={() => {setMusicEnabled(!settings.musicEnabled); audioEngine.playSfx('buttonClick');}}
+                                    >
+                                        {settings.musicEnabled ? 'AN' : 'AUS'}
+                                    </button>
+                                    <input
+                                        type="range"
+                                        min={0}
+                                        max={100}
+                                        value={Math.round(settings.musicVolume * 100)}
+                                        onChange={(e) => setMusicVolume(Number(e.target.value) / 100)}
+                                        disabled={!settings.musicEnabled}
+                                        className="audio-popover-slider"
+                                    />
+                                    <span className="audio-popover-pct">
+                                        {Math.round(settings.musicVolume * 100)}%
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="audio-popover-row">
+                                <span className="audio-popover-label">🔔 Effekte</span>
+                                <div className="audio-popover-controls">
+                                    <button
+                                        className={`audio-popover-toggle ${settings.sfxEnabled ? 'on' : 'off'}`}
+                                        onClick={() => {setSfxEnabled(!settings.sfxEnabled); audioEngine.playSfx('buttonClick');}}
+                                    >
+                                        {settings.sfxEnabled ? 'AN' : 'AUS'}
+                                    </button>
+                                    <input
+                                        type="range"
+                                        min={0}
+                                        max={100}
+                                        value={Math.round(settings.sfxVolume * 100)}
+                                        onChange={(e) => setSfxVolume(Number(e.target.value) / 100)}
+                                        disabled={!settings.sfxEnabled}
+                                        className="audio-popover-slider"
+                                    />
+                                    <span className="audio-popover-pct">
+                                        {Math.round(settings.sfxVolume * 100)}%
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="audio-popover-divider" />
+
+                            <button className="audio-popover-leave" disabled={leaving} onClick={handleLeaveSession}>
+                                {leaving ? 'Verlasse …' : 'Zurück zur Lobby'}
+                            </button>
+
                         </div>
                     )}
                 </div>

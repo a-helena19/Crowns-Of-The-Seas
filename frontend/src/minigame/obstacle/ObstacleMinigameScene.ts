@@ -8,6 +8,7 @@ import rettungsringImg from "../../assets/minigame/obstaclegame/rettungsring.png
 import wrackImg from "../../assets/minigame/obstaclegame/wrack.png";
 import bretterImg from "../../assets/minigame/obstaclegame/bretter.png";
 import fassImg from "../../assets/minigame/obstaclegame/Fass.png";
+import audioEngine from "../../audio/AudioEngine.ts";
 
 export class ObstacleMinigameScene extends Phaser.Scene {
     static readonly KEY = "ObstacleMinigameScene";
@@ -51,6 +52,7 @@ export class ObstacleMinigameScene extends Phaser.Scene {
     }
 
     create() {
+        audioEngine.crossfadeTo('obstacle', 300);
         this.physics.world.setBounds(0, 0, this.scale.width, this.scale.height);
         this.drawRouteView();
 
@@ -101,6 +103,7 @@ export class ObstacleMinigameScene extends Phaser.Scene {
                 this.obstacles.splice(i, 1);
                 this.updateHud();
                 if (this.health <= 0) {
+                    audioEngine.playSfx('failed');
                     this.finish("FAILED", "SHIP_DESTROYED");
                     return;
                 }
@@ -110,6 +113,7 @@ export class ObstacleMinigameScene extends Phaser.Scene {
         if (this.ship.x >= this.scale.width - 58
             && this.ship.y >= this.goalTopY
             && this.ship.y <= this.goalBottomY) {
+            audioEngine.playSfx('success');
             this.finish("SUCCESS");
         }
     }
@@ -208,6 +212,9 @@ export class ObstacleMinigameScene extends Phaser.Scene {
         this.controller?.stop();
         for (const obstacle of this.obstacles) obstacle.view.destroy();
         this.obstacles = [];
+
+        audioEngine.stopMusic();
+        audioEngine.playMusic('game');
 
         const result: ObstacleMinigameResult = {
             eventType: "OBSTACLE",

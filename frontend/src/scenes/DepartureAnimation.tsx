@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import harborBg from "../assets/harbor_dock.png";
 import pilotBoatImg from "../assets/Pilot_Boat.png";
+import audioEngine from '../audio/AudioEngine';
 
 interface Props {
     shipIconUrl: string;
@@ -257,7 +258,7 @@ export default function DepartureAnimation({ shipIconUrl, onComplete }: Props) {
                 onCompleteRef.current();
             }
         };
-
+        audioEngine.playSfx('shipDepart');
         animFrame = requestAnimationFrame(draw);
         return () => cancelAnimationFrame(animFrame);
     }, []); // eslint-disable-line react-hooks/exhaustive-deps

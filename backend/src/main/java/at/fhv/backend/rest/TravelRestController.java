@@ -3,6 +3,10 @@ package at.fhv.backend.rest;
 import at.fhv.backend.application.services.travel.FuelEstimateService;
 import at.fhv.backend.application.services.travel.TravelDurationEstimateService;
 import at.fhv.backend.application.services.travel.DockingPenaltyService;
+import at.fhv.backend.application.services.minigame.ObstacleMinigameService;
+import at.fhv.backend.application.services.minigame.RatMinigameService;
+import at.fhv.backend.application.services.minigame.StormMinigameService;
+import at.fhv.backend.application.services.minigame.TreasureHuntMinigameService;
 import at.fhv.backend.domain.model.cargo.exception.CargoCapacityExceededException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotAvailableException;
 import at.fhv.backend.domain.model.cargo.exception.CargoNotFoundException;
@@ -12,7 +16,11 @@ import at.fhv.backend.domain.model.exception.InvalidShipStatusTransition;
 import at.fhv.backend.domain.model.player.exception.InsufficientBalanceException;
 import at.fhv.backend.domain.model.exception.PilotStrikeActiveException;
 import at.fhv.backend.domain.model.exception.ShipNotFoundException;
+import at.fhv.backend.application.services.travel.StartEmptyVoyageService;
+import at.fhv.backend.domain.model.exception.SamePortException;
 import at.fhv.backend.rest.dtos.ship.request.FuelEstimateRequest;
+import at.fhv.backend.rest.dtos.ship.request.PortEstimateRequest;
+import at.fhv.backend.rest.dtos.ship.request.StartEmptyVoyageDTO;
 import at.fhv.backend.rest.dtos.ship.request.StartTravelDTO;
 import at.fhv.backend.rest.dtos.ship.response.FuelEstimateDTO;
 import at.fhv.backend.rest.dtos.ship.response.TravelDTO;
@@ -31,18 +39,33 @@ import java.util.UUID;
 @RequestMapping("/api/travels")
 public class TravelRestController {
     private final StartTravelService startTravelService;
+    private final StartEmptyVoyageService startEmptyVoyageService;
     private final FuelEstimateService fuelEstimateService;
     private final TravelDurationEstimateService travelDurationEstimateService;
     private final DockingPenaltyService dockingPenaltyService;
+    private final RatMinigameService ratMinigameService;
+    private final StormMinigameService stormMinigameService;
+    private final ObstacleMinigameService obstacleMinigameService;
+    private final TreasureHuntMinigameService treasureHuntMinigameService;
 
     public TravelRestController(StartTravelService startTravelService,
+                                StartEmptyVoyageService startEmptyVoyageService,
                                 FuelEstimateService fuelEstimateService,
                                 TravelDurationEstimateService travelDurationEstimateService,
-                                DockingPenaltyService dockingPenaltyService) {
+                                DockingPenaltyService dockingPenaltyService,
+                                RatMinigameService ratMinigameService,
+                                StormMinigameService stormMinigameService,
+                                ObstacleMinigameService obstacleMinigameService,
+                                TreasureHuntMinigameService treasureHuntMinigameService) {
         this.startTravelService = startTravelService;
+        this.startEmptyVoyageService = startEmptyVoyageService;
         this.fuelEstimateService = fuelEstimateService;
         this.travelDurationEstimateService = travelDurationEstimateService;
         this.dockingPenaltyService = dockingPenaltyService;
+        this.ratMinigameService = ratMinigameService;
+        this.stormMinigameService = stormMinigameService;
+        this.obstacleMinigameService = obstacleMinigameService;
+        this.treasureHuntMinigameService = treasureHuntMinigameService;
     }
 
     @PostMapping("/fuel-estimate")
@@ -113,10 +136,83 @@ public class TravelRestController {
                     .body(Map.of("error", "CARGO_NOT_FOUND", "message", "Frachtangebot nicht gefunden."));
         } catch (InsufficientBalanceException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "INSUFFICIENT_BALANCE", "message", "Nicht genug Taler für den Lotsendienst (600 Taler)."));
+                    .body(Map.of("error", "INSUFFICIENT_BALANCE", "message", "Nicht genug Taler für den Lotsendienst (1.000 Taler)."));
         } catch (InvalidShipStatusTransition e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "SHIP_NOT_READY", "message", "Schiff wird noch beladen. Bitte kurz warten."));
+        } catch (PilotStrikeActiveException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "PILOT_STRIKE", "message", e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "SERVER_ERROR", "message", e.getMessage() != null ? e.getMessage() : "Unbekannter Fehler"));
+        }
+    }
+
+    @PostMapping("/fuel-estimate-port")
+    public ResponseEntity<?> getFuelEstimateForPort(
+            @RequestParam UUID playerId,
+            @RequestParam UUID sessionId,
+            @Valid @RequestBody PortEstimateRequest req) {
+        try {
+            FuelEstimateDTO result = fuelEstimateService.estimateForPort(
+                    playerId, sessionId, req.getPlayerShipId(), req.getDestinationPortId()
+            );
+            return ResponseEntity.ok(result);
+        } catch (ShipNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "SHIP_NOT_FOUND", "message", e.getMessage()));
+        } catch (InvalidTravelDataException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "TRAVEL_INVALID_DATA", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/duration-estimate-port")
+    public ResponseEntity<?> getDurationEstimateForPort(
+            @RequestParam UUID playerId,
+            @RequestParam UUID sessionId,
+            @Valid @RequestBody PortEstimateRequest req) {
+        try {
+            TravelDurationEstimateDTO result = travelDurationEstimateService.estimateForPort(
+                    playerId, sessionId, req.getPlayerShipId(), req.getDestinationPortId()
+            );
+            return ResponseEntity.ok(result);
+        } catch (ShipNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "SHIP_NOT_FOUND", "message", e.getMessage()));
+        } catch (InvalidTravelDataException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "TRAVEL_INVALID_DATA", "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/start-empty/{playerId}")
+    public ResponseEntity<?> startEmptyVoyage(
+            @PathVariable UUID playerId,
+            @RequestParam UUID sessionId,
+            @Valid @RequestBody StartEmptyVoyageDTO request) {
+        try {
+            TravelDTO result = startEmptyVoyageService.startEmptyVoyage(playerId, sessionId, request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(result);
+        } catch (InsufficientFuelException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "INSUFFICIENT_FUEL",
+                            "message", String.format("Nicht genug Treibstoff. Benötigt: %.1f%%, Verfügbar: %.1f%%",
+                                    e.getRequiredFuelPercent(), e.getFuel())));
+        } catch (SamePortException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "SAME_PORT", "message", "Das Schiff liegt bereits in diesem Hafen."));
+        } catch (InvalidShipStatusTransition e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "SHIP_NOT_READY", "message", "Schiff ist nicht bereit für eine Leerfahrt."));
+        } catch (ShipNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "SHIP_NOT_FOUND", "message", "Schiff nicht gefunden."));
+        } catch (InsufficientBalanceException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "INSUFFICIENT_BALANCE", "message", "Nicht genug Taler für den Lotsendienst (1.000 Taler)."));
         } catch (PilotStrikeActiveException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "PILOT_STRIKE", "message", e.getMessage()));
@@ -135,6 +231,21 @@ public class TravelRestController {
     @GetMapping("/{travelId}/player/{playerId}")
     public ResponseEntity<TravelDTO> getTravelStatus(@PathVariable UUID travelId, @PathVariable UUID playerId) {
         return ResponseEntity.ok(startTravelService.getTravelStatus(travelId, playerId));
+    }
+
+    @GetMapping("/{travelId}/active-event")
+    public ResponseEntity<?> getActiveEvent(@PathVariable UUID travelId,
+                                            @RequestParam UUID playerId,
+                                            @RequestParam UUID sessionId) {
+        return ratMinigameService.getPendingEvent(travelId, playerId, sessionId)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .or(() -> stormMinigameService.getPendingEvent(travelId, playerId, sessionId)
+                        .map(ResponseEntity::ok))
+                .or(() -> obstacleMinigameService.getPendingEvent(travelId, playerId, sessionId)
+                        .map(ResponseEntity::ok))
+                .or(() -> treasureHuntMinigameService.getPendingEvent(travelId, playerId, sessionId)
+                        .map(ResponseEntity::ok))
+                .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     @PostMapping("/{travelId}/docking-failed")

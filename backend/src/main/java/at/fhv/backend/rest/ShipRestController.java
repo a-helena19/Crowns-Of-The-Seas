@@ -3,12 +3,16 @@ package at.fhv.backend.rest;
 import at.fhv.backend.rest.dtos.ship.request.BuyShipDTO;
 import at.fhv.backend.rest.dtos.ship.response.PlayerShipDTO;
 import at.fhv.backend.rest.dtos.ship.response.RefuelResponseDTO;
+import at.fhv.backend.rest.dtos.ship.response.RefuelQuoteDTO;
 import at.fhv.backend.rest.dtos.ship.response.RepairResponseDTO;
+import at.fhv.backend.rest.dtos.ship.response.RepairQuoteDTO;
 import at.fhv.backend.rest.dtos.ship.response.SellShipQuoteDTO;
 import at.fhv.backend.rest.dtos.ship.response.SellShipResponseDTO;
 import at.fhv.backend.rest.dtos.ship.response.ShipDTO;
+import at.fhv.backend.rest.dtos.ship.response.ShipDealDTO;
 import at.fhv.backend.rest.dtos.ship.response.UsedShipListingDTO;
 import at.fhv.backend.application.services.ship.PurchaseShipService;
+import at.fhv.backend.application.services.ship.ShipDealService;
 import at.fhv.backend.application.services.ship.RefuelShipService;
 import at.fhv.backend.application.services.ship.RepairShipService;
 import at.fhv.backend.application.services.ship.ShipQueryService;
@@ -29,17 +33,20 @@ public class ShipRestController {
     private final RefuelShipService refuelShipService;
     private final RepairShipService repairShipService;
     private final UsedShipMarketService usedShipMarketService;
+    private final ShipDealService shipDealService;
 
     public ShipRestController(ShipQueryService shipQueryService,
                               PurchaseShipService purchaseShipService,
                               RefuelShipService refuelShipService,
                               RepairShipService repairShipService,
-                              UsedShipMarketService usedShipMarketService) {
+                              UsedShipMarketService usedShipMarketService,
+                              ShipDealService shipDealService) {
         this.shipQueryService = shipQueryService;
         this.purchaseShipService = purchaseShipService;
         this.refuelShipService = refuelShipService;
         this.repairShipService = repairShipService;
         this.usedShipMarketService = usedShipMarketService;
+        this.shipDealService = shipDealService;
     }
 
     @GetMapping("/player/{playerId}")
@@ -108,12 +115,39 @@ public class ShipRestController {
         return ResponseEntity.ok(usedShipMarketService.buyUsedShip(listingId, playerId, sessionId));
     }
 
+    @GetMapping("/deals/{playerId}")
+    public ResponseEntity<List<ShipDealDTO>> getShipDeals(
+            @PathVariable UUID playerId,
+            @RequestParam UUID sessionId) {
+        return ResponseEntity.ok(shipDealService.getDealsForPlayer(playerId, sessionId));
+    }
+
+    @PostMapping("/deals/{dealId}/buy/{playerId}")
+    public ResponseEntity<PlayerShipDTO> buyShipDeal(
+            @PathVariable UUID dealId,
+            @PathVariable UUID playerId,
+            @RequestParam UUID sessionId) {
+        return ResponseEntity.ok(shipDealService.buyDeal(dealId, playerId, sessionId));
+    }
+
     @PostMapping("/{playerShipId}/refuel")
     public ResponseEntity<RefuelResponseDTO> refuelShip(
             @PathVariable UUID playerShipId,
             @RequestParam UUID playerId,
-            @RequestParam UUID sessionId) {
-        return ResponseEntity.ok(refuelShipService.refuel(playerShipId, playerId, sessionId));
+            @RequestParam UUID sessionId,
+            @RequestParam(defaultValue = "100.0") double targetFuelPercent) {
+        return ResponseEntity.ok(refuelShipService.refuel(playerShipId, playerId, sessionId, targetFuelPercent));
+    }
+
+    @GetMapping("/{playerShipId}/refuel-quote")
+    public ResponseEntity<RefuelQuoteDTO> getRefuelQuote(
+            @PathVariable UUID playerShipId,
+            @RequestParam UUID playerId,
+            @RequestParam UUID sessionId,
+            @RequestParam(defaultValue = "100.0") double targetFuelPercent) {
+        return ResponseEntity.ok(
+                refuelShipService.getRefuelQuote(playerShipId, playerId, sessionId, targetFuelPercent)
+        );
     }
 
     @PostMapping("/{playerShipId}/repair")
@@ -122,5 +156,13 @@ public class ShipRestController {
             @RequestParam UUID playerId,
             @RequestParam UUID sessionId) {
         return ResponseEntity.ok(repairShipService.repair(playerShipId, playerId, sessionId));
+    }
+
+    @GetMapping("/{playerShipId}/repair-quote")
+    public ResponseEntity<RepairQuoteDTO> getRepairQuote(
+            @PathVariable UUID playerShipId,
+            @RequestParam UUID playerId,
+            @RequestParam UUID sessionId) {
+        return ResponseEntity.ok(repairShipService.getRepairQuote(playerShipId, playerId, sessionId));
     }
 }

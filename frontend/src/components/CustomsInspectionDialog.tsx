@@ -1,6 +1,7 @@
 import { useState } from "react";
 import customsOfficer from "../assets/customs_officer.png";
 import "../style/CustomsDialog.css";
+import audioEngine from "../audio/AudioEngine.ts";
 
 type Phase = "initial" | "bribe_success" | "bribe_failed";
 
@@ -18,6 +19,9 @@ interface CustomsInspectionDialogProps {
     onBribe: () => Promise<"BRIBE_SUCCESS" | "BRIBE_FAILED" | "ERROR">;
     onDismiss: () => void;
 }
+
+const formatTalers = (value: number | undefined | null) =>
+    Number(value ?? 0).toLocaleString("de-DE", { maximumFractionDigits: 0 });
 
 export default function CustomsInspectionDialog({
                                                     shipName,
@@ -51,8 +55,10 @@ export default function CustomsInspectionDialog({
         try {
             const outcome = await onBribe();
             if (outcome === "BRIBE_SUCCESS") {
+                audioEngine.playSfx('success');
                 setPhase("bribe_success");
             } else if (outcome === "BRIBE_FAILED") {
+                audioEngine.playSfx('failed');
                 setPhase("bribe_failed");
             } else {
                 onDismiss();
@@ -105,7 +111,7 @@ export default function CustomsInspectionDialog({
                                     >
                                         Kooperieren
                                         <span className="customs-btn-sub">
-                                            -{fineAmount.toLocaleString("de-DE")} T
+	                                            -{formatTalers(fineAmount)} T
                                             + {detentionTicks} Ticks Festsetzung
                                         </span>
                                     </button>
@@ -116,7 +122,7 @@ export default function CustomsInspectionDialog({
                                     >
                                         Bestechen
                                         <span className="customs-btn-sub">
-                                            -{bribeCost.toLocaleString("de-DE")} T — Risiko!
+	                                            -{formatTalers(bribeCost)} T — Risiko!
                                         </span>
                                     </button>
                                 </div>
@@ -146,7 +152,7 @@ export default function CustomsInspectionDialog({
                                 </p>
                                 <p className="customs-detail">
                                     Die Strafe verdoppelt sich auf{" "}
-                                    {(fineAmount * 2).toLocaleString("de-DE")} T —
+	                                    {formatTalers(fineAmount * 2)} T —
                                     das Schiff wird für {detentionTicks} Ticks festgehalten.
                                 </p>
                                 <div className="customs-buttons">

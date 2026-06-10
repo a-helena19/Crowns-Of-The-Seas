@@ -8,6 +8,7 @@ export interface CargoRewardEntry {
     percentage: number;
     status: string;
     cargoType: string;
+    playerShipId?: string;
 }
 
 export interface CustomsSummary {
@@ -26,6 +27,8 @@ export interface RegressSummary {
     overdueTicks: number;
     delayComponent: number;
     damageComponent: number;
+    cargoLossComponent?: number;
+    cargoLossPercent?: number;
     damagePercent: number;
     specialCargoMultiplier: number;
     hadPerishableCargo: boolean;
@@ -50,9 +53,20 @@ export interface AssignedCargoEntry {
     loadingDone: boolean;
     phase: "loading" | "en_route" | "awaiting_docking" | "customs_check" | "blocked" | "unloading" | "completed";
     travelId?: string;
+    isEmptyVoyage?: boolean;
     currentTick?: number;
     arrivalTick?: number;
     reward?: number;
+    cargoReward?: number;
+    bonusReward?: number;
+    smuggleReward?: number;
+    grossReward?: number;
+    minigameDeductions?: number;
+    minigameBonus?: number;
+    customsPaid?: number;
+    dockingFines?: number;
+    regress?: number;
+    netPayout?: number;
     rewardDetails?: {
         baseReward: number;
         actualReward: number;
@@ -79,6 +93,13 @@ export interface AssignedCargoEntry {
         conditionDamagePercent?: number;
         failureReason?: string;
         routeViewType?: "VIEW_A" | "VIEW_B";
+    };
+    treasureHuntMinigameSummary?: {
+        triggered: boolean;
+        result?: "SUCCESS" | "FAILED" | "DECLINED";
+        bonusAmount?: number;
+        penaltyAmount?: number;
+        cargoLossPercent?: number;
     };
     customsSummary?: CustomsSummary;
     regressSummary?: RegressSummary;

@@ -7,6 +7,7 @@ import at.fhv.backend.domain.model.player.exception.FactionAlreadyAssignedExcept
 import at.fhv.backend.domain.model.player.exception.InvalidFactionException;
 import at.fhv.backend.domain.model.player.exception.PlayerNotFoundException;
 import at.fhv.backend.domain.model.session.exception.SessionNotFoundException;
+import at.fhv.backend.domain.model.session.exception.SessionNotRunningException;
 import at.fhv.backend.rest.dtos.session.request.*;
 import at.fhv.backend.rest.dtos.session.response.SessionDTO;
 import jakarta.servlet.http.HttpServletRequest;
@@ -90,6 +91,38 @@ public class GameSessionRestController {
             @PathVariable UUID id) {
         UUID userId = (UUID) request.getAttribute("userId");
         return ResponseEntity.ok(gameSessionService.leaveSession(id, userId));
+    }
+
+    @PostMapping("/{id}/rejoin")
+    public ResponseEntity<?> rejoin(
+            HttpServletRequest request,
+            @PathVariable UUID id) {
+        UUID userId = (UUID) request.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            return ResponseEntity.ok(gameSessionService.rejoinSession(id, userId));
+        } catch (SessionNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (PlayerNotFoundException e) {
+            // Spieler war nicht Teil der Session → Fremde dürfen nicht beitreten.
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Du warst nicht Teil dieser Session.");
+        } catch (SessionNotRunningException e) {
+            // Beitritt nur möglich, solange die Session läuft.
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Diese Session läuft nicht mehr.");
+        }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<SessionDTO> getSession(@PathVariable UUID id) {
+        try {
+            return ResponseEntity.ok(gameSessionService.getSession(id));
+        } catch (SessionNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PostMapping("/{sessionId}/players/{userId}/faction")

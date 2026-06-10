@@ -11,7 +11,7 @@ html, body, #root {
     width: 100vw;
 
     grid-template-columns: 1fr;
-    grid-template-rows: 8vh 1fr 20vh;
+    grid-template-rows: 8vh 1fr auto;
 
     grid-template-areas:
         "top"
@@ -19,6 +19,7 @@ html, body, #root {
         "bottom";
 
     overflow: hidden;
+    background: #20140d;
 }
 
 /* Bereiche */
@@ -67,6 +68,7 @@ html, body, #root {
     position: relative;
     z-index: 90;
     isolation: isolate;
+    background: #20140d;
 }
 
 .bottom::before {
@@ -79,9 +81,9 @@ html, body, #root {
     pointer-events: none;
     z-index: 0;
     background:
-        radial-gradient(circle at 18px 20px, transparent 13px, #2d1d12 14px),
-        radial-gradient(circle at 54px 22px, transparent 15px, #2d1d12 16px),
-        radial-gradient(circle at 84px 20px, transparent 12px, #2d1d12 13px);
+            radial-gradient(circle at 18px 20px, transparent 13px, #2d1d12 14px),
+            radial-gradient(circle at 54px 22px, transparent 15px, #2d1d12 16px),
+            radial-gradient(circle at 84px 20px, transparent 12px, #2d1d12 13px);
     background-size: 96px 18px;
     background-repeat: repeat-x;
 }
@@ -112,9 +114,9 @@ html, body, #root {
     pointer-events: none;
     z-index: 0;
     background:
-        radial-gradient(circle at 12px -2px, transparent 13px, #2b1a10 14px),
-        radial-gradient(circle at 42px -4px, transparent 14px, #2b1a10 15px),
-        radial-gradient(circle at 72px -2px, transparent 12px, #2b1a10 13px);
+            radial-gradient(circle at 12px -2px, transparent 13px, #2b1a10 14px),
+            radial-gradient(circle at 42px -4px, transparent 14px, #2b1a10 15px),
+            radial-gradient(circle at 72px -2px, transparent 12px, #2b1a10 13px);
     background-size: 90px 18px;
     background-repeat: repeat-x;
 }

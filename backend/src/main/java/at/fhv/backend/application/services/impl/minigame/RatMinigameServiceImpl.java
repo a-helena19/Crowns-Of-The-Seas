@@ -2,6 +2,8 @@ package at.fhv.backend.application.services.impl.minigame;
 
 import at.fhv.backend.application.services.minigame.RatMinigameService;
 import at.fhv.backend.application.services.travel.TravelPauseService;
+import at.fhv.backend.domain.model.player.ISessionPlayer;
+import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.domain.model.travel.Travel;
 import at.fhv.backend.rest.GameSessionWebSocketController;
 import at.fhv.backend.rest.dtos.minigame.request.RatMinigameResultRequest;
@@ -13,6 +15,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
@@ -28,6 +31,7 @@ public class RatMinigameServiceImpl implements RatMinigameService {
 
     private final TravelPauseService travelPauseService;
     private final GameSessionWebSocketController webSocketController;
+    private final SessionPlayerRepository sessionPlayerRepository;
     private final Random random = new Random();
 
     private final Set<UUID> triggeredTravelIds = ConcurrentHashMap.newKeySet();
@@ -36,9 +40,11 @@ public class RatMinigameServiceImpl implements RatMinigameService {
     private final Map<UUID, RatSummaryState> summaryByTravelId = new ConcurrentHashMap<>();
 
     public RatMinigameServiceImpl(TravelPauseService travelPauseService,
-                                  GameSessionWebSocketController webSocketController) {
+                                  GameSessionWebSocketController webSocketController,
+                                  SessionPlayerRepository sessionPlayerRepository) {
         this.travelPauseService = travelPauseService;
         this.webSocketController = webSocketController;
+        this.sessionPlayerRepository = sessionPlayerRepository;
     }
 
     @Override
@@ -47,7 +53,12 @@ public class RatMinigameServiceImpl implements RatMinigameService {
         if (travelPauseService.isTravelPaused(travelId)) return;
         if (triggeredTravelIds.contains(travelId)) return;
         if (pendingEvents.containsKey(travelId)) return;
-        if (random.nextDouble() >= TRIGGER_CHANCE_PER_TICK) return;
+
+        double miniGameModifier = sessionPlayerRepository
+                .findByUserIdAndSessionId(travel.getPlayerId(), sessionId)
+                .map(ISessionPlayer::getMiniGameRiskModifier)
+                .orElse(1.0);
+        if (random.nextDouble() >= TRIGGER_CHANCE_PER_TICK * miniGameModifier) return;
 
         triggeredTravelIds.add(travelId);
 
@@ -125,11 +136,29 @@ public class RatMinigameServiceImpl implements RatMinigameService {
     }
 
     @Override
+    public Optional<RatMinigameEvent> getPendingEvent(UUID travelId, UUID playerId, UUID sessionId) {
+        PendingRatEvent event = pendingEvents.get(travelId);
+        if (event == null || !event.playerId().equals(playerId) || !event.sessionId().equals(sessionId)) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new RatMinigameEvent(
+                event.eventId().toString(),
+                event.playerId().toString(),
+                event.sessionId().toString(),
+                event.travelId().toString(),
+                event.playerShipId().toString(),
+                event.timeLimitSeconds(),
+                event.requiredHits()
+        ));
+    }
+
+    @Override
     public BigDecimal applyRewardModifier(UUID travelId, BigDecimal totalReward) {
         BigDecimal modifier = rewardModifiersByTravelId.remove(travelId);
         if (modifier == null) return totalReward;
-        BigDecimal modified = totalReward.multiply(modifier).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal penalty = totalReward.subtract(modified).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal modified = totalReward.multiply(modifier).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal penalty = totalReward.subtract(modified).max(BigDecimal.ZERO).setScale(0, RoundingMode.HALF_UP);
 
         RatSummaryState existing = summaryByTravelId.get(travelId);
         if (existing != null) {

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -55,6 +56,12 @@ public class GameSessionMapperImpl implements GameSessionMapper {
                         SessionPlayerEntity::getHomePortId
                 ));
 
+        Set<UUID> disconnected = entity.getPlayers()
+                .stream()
+                .filter(SessionPlayerEntity::isDisconnected)
+                .map(SessionPlayerEntity::getUserId)
+                .collect(Collectors.toSet());
+
         GameSession session = GameSession.reconstruct(
                 entity.getId(),
                 SessionStatus.valueOf(entity.getStatus().name()),
@@ -72,6 +79,7 @@ public class GameSessionMapperImpl implements GameSessionMapper {
         );
 
         session.setReadyStatus(readyStatus);
+        session.setDisconnectedPlayers(disconnected);
 
         return session;
 
@@ -99,6 +107,7 @@ public class GameSessionMapperImpl implements GameSessionMapper {
 
                     boolean isReady = domain.getReadyPlayers().contains(p.getUserId());
                     playerEntity.setReady(isReady);
+                    playerEntity.setDisconnected(domain.isPlayerDisconnected(p.getUserId()));
                     // Keep both sides of the bidirectional relation in sync so JPA reliably persists all players.
                     playerEntity.setSession(entity);
 

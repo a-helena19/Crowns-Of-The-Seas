@@ -6,6 +6,7 @@ import { StormCollectibleSpawner, type FallingCollectible } from "./StormCollect
 import stormBackground from "../../assets/minigame/storm/Storm.png";
 import stormLightning from "../../assets/minigame/storm/blitz.png";
 import stormSun from "../../assets/minigame/storm/sonne.png";
+import audioEngine from "../../audio/AudioEngine.ts";
 
 export class StormMinigameScene extends Phaser.Scene {
     static readonly KEY = "StormMinigameScene";
@@ -47,6 +48,7 @@ export class StormMinigameScene extends Phaser.Scene {
     }
 
     create() {
+        audioEngine.crossfadeTo('storm', 300);
         this.cameras.main.setBackgroundColor("#1a2433");
         this.add.image(this.scale.width * 0.5, this.scale.height * 0.5, "storm-bg")
             .setDisplaySize(this.scale.width, this.scale.height);
@@ -101,12 +103,14 @@ export class StormMinigameScene extends Phaser.Scene {
             const hazard = this.hazards[i];
             hazard.view.y += hazard.speed * (delta / 1000);
             if (Phaser.Geom.Intersects.RectangleToRectangle(shipRect, hazard.view.getBounds())) {
+                audioEngine.playSfx('stormLightning');
                 this.health = Math.max(0, this.health - 20);
                 this.applyHitFeedback();
                 hazard.view.destroy();
                 this.hazards.splice(i, 1);
                 this.updateHud();
                 if (this.health <= 0) {
+                    audioEngine.playSfx('failed');
                     this.finish("FAILED");
                     return;
                 }
@@ -122,12 +126,14 @@ export class StormMinigameScene extends Phaser.Scene {
             const sun = this.suns[i];
             sun.view.y += sun.speed * (delta / 1000);
             if (Phaser.Geom.Intersects.RectangleToRectangle(shipRect, sun.view.getBounds())) {
+                audioEngine.playSfx('stormSun');
                 this.collectedSuns += 1;
                 this.applyCollectFeedback();
                 sun.view.destroy();
                 this.suns.splice(i, 1);
                 this.updateHud();
                 if (this.collectedSuns >= this.config.requiredSuns) {
+                    audioEngine.playSfx('success');
                     this.finish("SUCCESS");
                     return;
                 }
@@ -172,6 +178,9 @@ export class StormMinigameScene extends Phaser.Scene {
         for (const s of this.suns) s.view.destroy();
         this.hazards = [];
         this.suns = [];
+
+        audioEngine.stopMusic();
+        audioEngine.playMusic('game');
 
         const result: StormMinigameResult = {
             eventType: "STORM",

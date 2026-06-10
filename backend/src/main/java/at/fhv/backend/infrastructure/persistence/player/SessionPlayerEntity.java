@@ -31,6 +31,9 @@ public class SessionPlayerEntity {
     @Column(name = "is_ready", nullable = false, columnDefinition = "boolean default false")
     private boolean isReady;
 
+    @Column(name = "is_disconnected", nullable = false, columnDefinition = "boolean default false")
+    private boolean isDisconnected;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "faction")
     private PlayerFaction faction;
@@ -82,6 +85,14 @@ public class SessionPlayerEntity {
 
     public boolean isReady() {
         return isReady;
+    }
+
+    public boolean isDisconnected() {
+        return isDisconnected;
+    }
+
+    public void setDisconnected(boolean disconnected) {
+        this.isDisconnected = disconnected;
     }
 
     public PlayerFaction getFaction() {

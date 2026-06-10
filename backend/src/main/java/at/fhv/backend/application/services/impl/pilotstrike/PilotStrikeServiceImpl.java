@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class PilotStrikeServiceImpl implements PilotStrikeService {
 
-    static final BigDecimal PILOTAGE_REFUND = new BigDecimal("600");
+    static final BigDecimal PILOTAGE_REFUND = new BigDecimal("1000");
 
     private final PortQueryService portQueryService;
     private final TravelRepository travelRepository;
@@ -46,12 +46,37 @@ public class PilotStrikeServiceImpl implements PilotStrikeService {
         this.randomProvider = randomProvider;
     }
 
+    /**
+     * Original method — loads ports and travels from DB itself.
+     * Still works for any caller outside the tick loop.
+     */
     @Override
     @Transactional
     public void processTick(UUID sessionId, int currentTick) {
-        Map<UUID, PilotStrike> strikes = activeStrikesBySession.computeIfAbsent(sessionId, k -> new ConcurrentHashMap<>());
+        processTick(sessionId, currentTick,
+                () -> portQueryService.findAll(),
+                () -> travelRepository.findAllInProgressBySessionId(sessionId));
+    }
+
+    /**
+     * Optimized overload — accepts pre-loaded data from TickContext
+     * to avoid redundant DB queries during tick processing.
+     */
+    @Override
+    @Transactional
+    public void processTick(UUID sessionId, int currentTick,
+                            List<PortResponseDTO> allPorts, List<Travel> activeTravels) {
+        processTick(sessionId, currentTick, () -> allPorts, () -> activeTravels);
+    }
+
+    private void processTick(UUID sessionId, int currentTick,
+                             java.util.function.Supplier<List<PortResponseDTO>> portsSupplier,
+                             java.util.function.Supplier<List<Travel>> travelsSupplier) {
+        Map<UUID, PilotStrike> strikes =
+                activeStrikesBySession.computeIfAbsent(sessionId, k -> new ConcurrentHashMap<>());
         PilotStrikePortConfig.StrikeSettings settings = portConfig.getSettings();
 
+        // --- Expiry (unverändert) ---
         List<UUID> expired = new ArrayList<>();
         for (Map.Entry<UUID, PilotStrike> entry : strikes.entrySet()) {
             if (currentTick >= entry.getValue().endTick()) {
@@ -69,6 +94,7 @@ public class PilotStrikeServiceImpl implements PilotStrikeService {
             cooldownUntilTickBySession.put(sessionId, currentTick + settings.cooldownTicks());
         }
 
+        // --- Frühe Abbrüche VOR dem DB-Zugriff (unverändert) ---
         if (strikes.size() >= settings.maxActiveStrikes()) {
             return;
         }
@@ -79,7 +105,9 @@ public class PilotStrikeServiceImpl implements PilotStrikeService {
             return;
         }
 
-        List<PortResponseDTO> candidates = portQueryService.findAll().stream()
+        // --- ERST JETZT laden ---
+        List<PortResponseDTO> allPorts = portsSupplier.get();
+        List<PortResponseDTO> candidates = allPorts.stream()
                 .filter(port -> portConfig.isStrikeEligible(port.name()))
                 .filter(port -> !strikes.containsKey(port.id()))
                 .toList();
@@ -95,12 +123,17 @@ public class PilotStrikeServiceImpl implements PilotStrikeService {
         PilotStrike strike = new PilotStrike(port.id(), port.name(), currentTick, endTick);
         strikes.put(port.id(), strike);
 
-        List<PilotStrikeEvent.RevokedTravel> revoked = revokePilotageForDestinationTravels(sessionId, port.id());
+        List<PilotStrikeEvent.RevokedTravel> revoked =
+                revokePilotageForDestinationTravels(travelsSupplier.get(), port.id());
 
         webSocketController.broadcastPilotStrike(
                 sessionId.toString(),
                 PilotStrikeEvent.started(port.id(), port.name(), endTick, revoked)
         );
+    }
+
+    private static UUID portId(PortResponseDTO port) {
+        return port.id();
     }
 
     @Override
@@ -124,9 +157,13 @@ public class PilotStrikeServiceImpl implements PilotStrikeService {
                 .put(strike.portId(), strike);
     }
 
-    private List<PilotStrikeEvent.RevokedTravel> revokePilotageForDestinationTravels(UUID sessionId, UUID portId) {
+    /**
+     * Uses pre-loaded travel list instead of querying DB.
+     */
+    private List<PilotStrikeEvent.RevokedTravel> revokePilotageForDestinationTravels(
+            List<Travel> activeTravels, UUID portId) {
         List<PilotStrikeEvent.RevokedTravel> revoked = new ArrayList<>();
-        for (Travel travel : travelRepository.findAllInProgressBySessionId(sessionId)) {
+        for (Travel travel : activeTravels) {
             if (!travel.getDestinationPortId().equals(portId)) {
                 continue;
             }

@@ -1,5 +1,7 @@
 .bottom-bar {
-    min-height: 200px;
+    box-sizing: border-box;
+    width: 100vw;
+    height: 170px;
 
     background: linear-gradient(180deg, #2d1d12 0%, #20140d 100%);
     position: relative;
@@ -9,46 +11,70 @@
 
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
 
     padding: 0 20px;
 
     font-family: "Courier New", monospace;
     font-size: 12px;
     color: #d2ba8c;
-
 }
 
-.bottom-left,
-.bottom-center,
-.bottom-right {
+.bottom-center {
     display: flex;
     align-items: center;
     gap: 10px;
-}
-
-.bottom-left {
-    align-self: center;
-    margin-right: 22px;
+    max-width: 100%;
+    flex-wrap: nowrap;
 }
 
 .ship-status-list {
+    display: flex;
     flex: 1;
+    min-width: 0;
+    flex-wrap: nowrap;
     align-items: stretch;
     justify-content: flex-start;
     gap: 12px;
     overflow-x: auto;
     overflow-y: hidden;
     padding: 10px 10px 12px 4px;
+    scrollbar-width: thin;
+    scrollbar-color: #6a462a rgba(0, 0, 0, 0.25);
+}
+
+.ship-status-list::-webkit-scrollbar {
+    height: 8px;
+}
+
+.ship-status-list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 999px;
+}
+
+.ship-status-list::-webkit-scrollbar-thumb {
+    background: #6a462a;
+    border-radius: 999px;
+}
+
+.ship-status-list::-webkit-scrollbar-thumb:hover {
+    background: #8a5d36;
 }
 
 .ship-status-card {
+    --status-color: #7a5736;
     flex: 0 0 220px;
-    background: linear-gradient(160deg, rgba(245, 232, 208, 0.95), rgba(232, 214, 178, 0.95));
-    border: 2px solid #7a5736;
+    background: linear-gradient(160deg,
+    color-mix(in srgb, var(--status-color) 7%, rgba(245, 232, 208, 0.95)),
+    color-mix(in srgb, var(--status-color) 13%, rgba(232, 214, 178, 0.95)));
+    border: 2px solid color-mix(in srgb, var(--status-color) 60%, #5a3f26);
     border-radius: 8px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
-    padding: 8px;
+    box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.45),
+            0 2px 6px rgba(0, 0, 0, 0.3),
+            0 0 8px color-mix(in srgb, var(--status-color) 45%, transparent);
+    padding: 6px 7px;
+    min-height: 140px;
     color: #3f2a18;
 }
 
@@ -57,66 +83,93 @@
 }
 
 .ship-status-card.actionable {
-    border-color: #c89b3c;
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.45),
-        0 0 8px rgba(255, 214, 92, 0.45);
+            inset 0 1px 0 rgba(255, 255, 255, 0.45),
+            0 0 10px color-mix(in srgb, var(--status-color) 60%, transparent);
     animation: ship-card-pulse 1.8s ease-in-out infinite;
 }
 
 .ship-status-card.event-pending {
-    border-color: #ffd65c;
-    background: linear-gradient(160deg, rgba(255, 246, 190, 0.98), rgba(238, 211, 128, 0.98));
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.55),
-        0 0 16px rgba(255, 214, 92, 0.72);
+            inset 0 1px 0 rgba(255, 255, 255, 0.55),
+            0 0 18px color-mix(in srgb, var(--status-color) 75%, transparent);
     animation: ship-event-pulse 1.05s ease-in-out infinite;
 }
 
-.ship-status-card.event-pending .ship-status-line strong {
-    color: #6f4300;
+.ship-status-card.urgent {
+    box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.55),
+            0 0 20px color-mix(in srgb, var(--status-color) 85%, transparent);
+    animation: ship-urgent-pulse 1.05s ease-in-out infinite;
 }
 
-@keyframes ship-event-pulse {
-    0%, 100% {
-        transform: scale(1);
-        box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.55),
-            0 0 10px rgba(255, 214, 92, 0.55);
-    }
-    50% {
-        transform: scale(1.018);
-        box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.55),
-            0 0 22px rgba(255, 214, 92, 0.95);
-    }
+.ship-status-action-hint {
+    margin-top: 2px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #a32d2d;
+    text-align: center;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
 }
 
 @keyframes ship-card-pulse {
     0%, 100% {
         transform: scale(1);
         box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.45),
-            0 0 8px rgba(255, 214, 92, 0.35);
+                inset 0 1px 0 rgba(255, 255, 255, 0.45),
+                0 0 8px color-mix(in srgb, var(--status-color) 45%, transparent);
     }
     50% {
         transform: scale(1.012);
         box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.45),
-            0 0 13px rgba(255, 214, 92, 0.62);
+                inset 0 1px 0 rgba(255, 255, 255, 0.45),
+                0 0 14px color-mix(in srgb, var(--status-color) 70%, transparent);
+    }
+}
+
+@keyframes ship-event-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.55),
+                0 0 12px color-mix(in srgb, var(--status-color) 60%, transparent);
+    }
+    50% {
+        transform: scale(1.018);
+        box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.55),
+                0 0 24px color-mix(in srgb, var(--status-color) 95%, transparent);
+    }
+}
+
+@keyframes ship-urgent-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.55),
+                0 0 12px color-mix(in srgb, var(--status-color) 65%, transparent);
+    }
+    50% {
+        transform: scale(1.022);
+        box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.55),
+                0 0 26px color-mix(in srgb, var(--status-color) 100%, transparent);
     }
 }
 
 .ship-status-header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 
 .ship-status-name {
-    font-size: 13px;
+    font-size: 12px;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .ship-status-class {
@@ -126,13 +179,13 @@
 
 .ship-status-body {
     display: flex;
-    gap: 8px;
-    margin-bottom: 8px;
+    gap: 7px;
+    margin-bottom: 5px;
 }
 
 .ship-status-icon {
-    width: 56px;
-    height: 40px;
+    width: 46px;
+    height: 32px;
     object-fit: contain;
     image-rendering: pixelated;
 }
@@ -146,18 +199,52 @@
     display: flex;
     justify-content: space-between;
     gap: 8px;
-    font-size: 11px;
-    margin-bottom: 2px;
+    font-size: 10px;
+    margin-bottom: 1px;
 }
 
 .ship-status-line strong {
     text-align: right;
 }
 
+.ship-status-badge {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--status-color);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.5;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+    box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.25),
+            0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.ship-status-progress {
+    height: 5px;
+    margin: 0 0 5px;
+    background: color-mix(in srgb, var(--status-color) 18%, rgba(45, 29, 18, 0.18));
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.ship-status-progress-fill {
+    height: 100%;
+    background: var(--status-color);
+    border-radius: inherit;
+    transition: width 0.3s ease;
+}
+
 .ship-status-bars {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
 }
 
 .ship-status-bar-wrap {
@@ -169,7 +256,7 @@
 .ship-status-bar-top {
     display: flex;
     justify-content: space-between;
-    font-size: 11px;
+    font-size: 10px;
 }
 
 .ship-status-bar {
@@ -192,30 +279,6 @@
 
 .ship-status-fill.condition {
     background: linear-gradient(90deg, #8a6a2d, #d2aa54);
-}
-
-.bottom-marketplace-btn {
-    border: none;
-    background: url('../assets/panel.png') center / 100% 100% no-repeat;
-    padding: 8px 12px;
-    cursor: pointer;
-    line-height: 0;
-    min-height: 72px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transform: translateY(0);
-}
-
-.bottom-marketplace-btn:hover {
-    filter: brightness(1.08);
-}
-
-.bottom-marketplace-btn-image {
-    display: block;
-    height: 125px;
-    width: auto;
-    image-rendering: auto;
 }
 
 .status-dot {

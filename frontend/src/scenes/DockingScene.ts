@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import audioEngine from '../audio/AudioEngine';
+
 import {
     HARBOR_DOCK_CONFIG,
     DEFAULT_HARBOR_CONFIG,
@@ -13,7 +15,7 @@ export interface DockingSceneData {
     shipIconUrl: string;
     portName?: string;
     onSuccess: () => void;
-    onFailure: () => void;
+    onFailure: (strikes: number) => void;
 }
 
 export default class DockingScene extends Phaser.Scene {
@@ -21,7 +23,6 @@ export default class DockingScene extends Phaser.Scene {
     private cfg!: HarborDockConfig;
     private wallsGroup!: Phaser.Physics.Arcade.StaticGroup;
     private shipBody!: Phaser.Physics.Arcade.Image;
-    private successZone!: Phaser.GameObjects.Zone;
     private shipController?: ShipArcadeController;
 
     private terrainMask: HarborTerrainMask | null = null;
@@ -29,12 +30,26 @@ export default class DockingScene extends Phaser.Scene {
     private shipRadiusNorm = 0;
 
     private gameEnded = false;
-    private countdownValue = 90;
+    private countdownValue = 60;
     private timerText!: Phaser.GameObjects.Text;
+
+    private dwellTime = 0;
+    private readonly DWELL_REQUIRED = 3000;
+    private dwellOverlay!: Phaser.GameObjects.Graphics;
+    private zoneRect = { cx: 0, cy: 0, w: 0, h: 0 };
+
+    private strikes = 0;
+    private readonly MAX_STRIKES = 3;
+    private readonly STRIKE_COOLDOWN = 1000;
+    private lastStrikeTime = 0;
+    private lifeTexts: Phaser.GameObjects.Text[] = [];
+
+    // Last position where isNavigable returned true — used to push ship back on land collision
+    private lastValidPos = { x: 0, y: 0 };
 
     private readonly MAX_SPEED = 120;
     private readonly ACCEL = 150;
-    private readonly DECEL = 180;
+    private readonly DECEL = 25;
     private readonly SHIP_COLLISION_RADIUS = 14;
 
     constructor() {
@@ -48,12 +63,18 @@ export default class DockingScene extends Phaser.Scene {
             : DEFAULT_HARBOR_CONFIG;
         this.gameEnded = false;
         this.shipController = undefined;
-        this.countdownValue = 90;
+        this.countdownValue = 60;
         this.terrainMask = null;
         this.useTerrainMask = false;
+        this.dwellTime = 0;
+        this.strikes = 0;
+        this.lastStrikeTime = 0;
+        this.lifeTexts = [];
+        this.lastValidPos = { x: 0, y: 0 };
     }
 
     create() {
+        audioEngine.crossfadeTo('docking', 300);
         const W = this.scale.width;
         const H = this.scale.height;
 
@@ -133,14 +154,13 @@ export default class DockingScene extends Phaser.Scene {
 
     private resolveSpawnNorm(): { x: number; y: number } {
         const raw = this.sceneData.mode === 'departure'
-            ? { x: this.cfg.arrivalZone.x, y: this.cfg.arrivalZone.y }
+            ? (this.cfg.departureSpawn ?? { x: this.cfg.arrivalZone.x, y: this.cfg.arrivalZone.y })
             : { ...this.cfg.arrivalSpawn };
 
         if (this.terrainMask) {
             const snapped = this.terrainMask.findNearestNavigable(raw.x, raw.y, this.shipRadiusNorm);
             if (snapped) return snapped;
         }
-        // Fallback: arrivalSpawn is guaranteed to be in open water
         return { ...this.cfg.arrivalSpawn };
     }
 
@@ -153,7 +173,9 @@ export default class DockingScene extends Phaser.Scene {
         let cy = zone.y * H;
 
         if (this.terrainMask && this.sceneData.mode === 'arrival') {
-            const snapped = this.terrainMask.findNearestWater(zone.x, zone.y);
+            // findNearestNavigable statt findNearestWater: Zone snappt auf Position
+            // mit genug Abstand für den vollen Schiffsradius — kein Pier-Randkontakt beim Dwell
+            const snapped = this.terrainMask.findNearestNavigable(zone.x, zone.y, this.shipRadiusNorm);
             if (snapped) {
                 cx = snapped.x * W;
                 cy = snapped.y * H;
@@ -162,6 +184,8 @@ export default class DockingScene extends Phaser.Scene {
 
         const zw = zone.w * W;
         const zh = zone.h * H;
+
+        this.zoneRect = { cx, cy, w: zw, h: zh };
 
         const gfx = this.add.graphics().setDepth(3);
         gfx.fillStyle(0x27ae60, 0.35);
@@ -178,9 +202,7 @@ export default class DockingScene extends Phaser.Scene {
             fontStyle: 'bold',
         }).setOrigin(0.5).setDepth(4);
 
-        this.successZone = this.add.zone(cx, cy, zw, zh);
-        this.physics.world.enable(this.successZone);
-        (this.successZone.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+        this.dwellOverlay = this.add.graphics().setDepth(6);
     }
 
     private buildShipSprite(W: number, H: number) {
@@ -205,21 +227,12 @@ export default class DockingScene extends Phaser.Scene {
                 acceleration: this.ACCEL,
                 deceleration: this.DECEL,
             });
+            // Initialize last valid position at spawn (guaranteed to be in water)
+            this.lastValidPos = { x: startX, y: startY };
 
             this.physics.add.collider(this.shipBody, this.wallsGroup, () => {
-                this.triggerFailure('Kollision mit dem Land!');
+                this.registerStrike();
             });
-            this.physics.add.overlap(this.shipBody, this.successZone, () => {
-                this.triggerSuccess();
-            });
-
-            if (this.useTerrainMask && this.terrainMask) {
-                const xNorm = this.shipBody.x / W;
-                const yNorm = this.shipBody.y / H;
-                if (!this.terrainMask.isNavigable(xNorm, yNorm, this.shipRadiusNorm)) {
-                    this.triggerFailure('Kollision mit dem Land!');
-                }
-            }
         };
 
         if (this.textures.exists(shipKey)) {
@@ -250,26 +263,56 @@ export default class DockingScene extends Phaser.Scene {
             padding: { x: 6, y: 3 },
         }).setOrigin(0.5, 1).setDepth(10);
 
-        this.timerText = this.add.text(W - 12, 12, '90', {
+        this.timerText = this.add.text(W - 12, 12, '60', {
             fontSize: '22px',
             color: '#e74c3c',
             fontStyle: 'bold',
             backgroundColor: '#00000099',
             padding: { x: 6, y: 3 },
         }).setOrigin(1, 0).setDepth(10);
+
+        this.lifeTexts = [];
+        for (let i = 0; i < this.MAX_STRIKES; i++) {
+            const t = this.add.text(12 + i * 22, 12, '♥', {
+                fontSize: '16px',
+                color: '#27ae60',
+                backgroundColor: '#00000099',
+                padding: { x: 3, y: 2 },
+            }).setDepth(10);
+            this.lifeTexts.push(t);
+        }
     }
 
     private startCountdown() {
         this.time.addEvent({
             delay: 1000,
-            repeat: 89,
+            repeat: 59,
             callback: () => {
                 if (this.gameEnded) return;
                 this.countdownValue -= 1;
                 if (this.timerText?.active) this.timerText.setText(String(this.countdownValue));
-                if (this.countdownValue <= 0) this.triggerFailure('Zeit abgelaufen!');
+                if (this.countdownValue <= 0) {
+                    this.strikes = Math.max(this.strikes, 2);
+                    this.triggerFailure('Zeit abgelaufen!');
+                }
             },
         });
+    }
+
+    private registerStrike() {
+        if (this.gameEnded) return;
+        const now = this.time.now;
+        if (now - this.lastStrikeTime < this.STRIKE_COOLDOWN) return;
+        this.lastStrikeTime = now;
+        this.strikes++;
+        const lifeText = this.lifeTexts[this.strikes - 1];
+        if (lifeText) lifeText.setColor('#e74c3c');
+        this.cameras.main.shake(200, 0.008);
+        this.cameras.main.flash(120, 255, 0, 0, false);
+        audioEngine.playSfx('dockingCrash');
+        if (this.strikes >= this.MAX_STRIKES) {
+            this.triggerFailure('Zu viele Kollisionen!');
+        }
     }
 
     update(_time: number, delta: number) {
@@ -283,13 +326,51 @@ export default class DockingScene extends Phaser.Scene {
             const xNorm = this.shipBody.x / W;
             const yNorm = this.shipBody.y / H;
             if (!this.terrainMask.isNavigable(xNorm, yNorm, this.shipRadiusNorm)) {
-                this.triggerFailure('Kollision mit dem Land!');
+                // Nur Strike zählen wenn nicht gerade aktiv am Andocken (Dwell läuft)
+                if (this.dwellTime === 0) {
+                    this.registerStrike();
+                }
+                // Sofort zurückbeamen — verhindert "auf dem Steg fahren"
+                this.shipBody.setPosition(this.lastValidPos.x, this.lastValidPos.y);
+                this.shipController?.stop();
+            } else {
+                this.lastValidPos = { x: this.shipBody.x, y: this.shipBody.y };
             }
         } else {
             const H = this.scale.height;
             if (this.shipBody.y / H < this.cfg.landBoundaryY) {
-                this.triggerFailure('Kollision mit dem Land!');
+                this.registerStrike();
             }
+        }
+
+        if (this.gameEnded) return;
+
+        const { cx, cy, w, h } = this.zoneRect;
+        const inZone =
+            this.shipBody.x > cx - w / 2 &&
+            this.shipBody.x < cx + w / 2 &&
+            this.shipBody.y > cy - h / 2 &&
+            this.shipBody.y < cy + h / 2;
+
+        if (inZone) {
+            if (this.sceneData.mode === 'departure') {
+                this.triggerSuccess();
+            } else {
+                this.dwellTime += delta;
+                const progress = Math.min(this.dwellTime / this.DWELL_REQUIRED, 1);
+                this.dwellOverlay.clear();
+                const barY = cy + h / 2 + 4;
+                this.dwellOverlay.fillStyle(0x000000, 0.5);
+                this.dwellOverlay.fillRect(cx - w / 2, barY, w, 5);
+                this.dwellOverlay.fillStyle(0x2ecc71, 1.0);
+                this.dwellOverlay.fillRect(cx - w / 2, barY, w * progress, 5);
+                if (this.dwellTime >= this.DWELL_REQUIRED) {
+                    this.triggerSuccess();
+                }
+            }
+        } else if (this.dwellTime > 0) {
+            this.dwellTime = 0;
+            this.dwellOverlay.clear();
         }
     }
 
@@ -297,20 +378,29 @@ export default class DockingScene extends Phaser.Scene {
         if (this.gameEnded) return;
         this.gameEnded = true;
         this.shipController?.stop();
+        audioEngine.stopMusic();
+        audioEngine.playSfx('success');
         this.showEndMessage(
             this.sceneData.mode === 'departure' ? 'Leinen los! ⛵' : 'Perfekt angelegt! ⚓',
             0x27ae60,
         );
-        this.time.delayedCall(1200, () => this.sceneData.onSuccess());
+        this.time.delayedCall(1200, () => {
+            audioEngine.playMusic('game');
+            this.sceneData.onSuccess()
+        });
     }
 
     private triggerFailure(msg: string) {
         if (this.gameEnded) return;
         this.gameEnded = true;
         this.shipController?.stop();
+        audioEngine.stopMusic();
         this.cameras.main.shake(300, 0.012);
         this.showEndMessage(msg, 0xe74c3c);
-        this.time.delayedCall(1800, () => this.sceneData.onFailure());
+        this.time.delayedCall(1800, () => {
+            audioEngine.playMusic('game');
+            this.sceneData.onFailure(this.strikes);
+        });
     }
 
     private showEndMessage(text: string, color: number) {

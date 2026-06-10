@@ -1,0 +1,242 @@
+.ev-panel {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 1100px;
+    align-self: center;
+    background: rgb(245, 237, 218);
+    border: 1px solid rgba(180, 140, 60, 0.35);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+    margin: 0 auto 24px;
+    padding: 22px 26px 24px;
+    max-height: calc(100% - 24px);
+    overflow-y: auto;
+    color: #2b2418;
+    font-family: "Georgia", "Palatino Linotype", serif;
+}
+
+.ev-loading {
+    text-align: center;
+    color: #6a5030;
+    padding: 40px 0;
+}
+
+.ev-section-title {
+    font-size: 22px;
+    font-weight: bold;
+    color: #4a2e10;
+    margin: 0 0 14px;
+    letter-spacing: 1px;
+}
+
+.ev-hint {
+    font-size: 13px;
+    color: #6a5030;
+    font-style: italic;
+    margin-bottom: 14px;
+}
+
+.ev-ports-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px 16px;
+    margin-bottom: 6px;
+}
+
+.ev-port-card {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    background: transparent;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.12s ease, border-color 0.12s ease;
+    font-family: inherit;
+}
+.ev-port-card:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+.ev-port-card:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+.ev-port-card--active {
+    border-color: #8c5a1a;
+}
+
+.ev-port-img-wrap {
+    width: 100%;
+    aspect-ratio: 1200 / 370;
+    overflow: hidden;
+    background: #d8cdb0;
+    border: 1px solid rgba(140, 106, 58, 0.4);
+}
+.ev-port-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    image-rendering: pixelated;
+}
+.ev-port-img--missing {
+    background: repeating-linear-gradient(45deg, #d8cdb0, #d8cdb0 10px, #cfc2a2 10px, #cfc2a2 20px);
+}
+
+.ev-port-name {
+    text-align: center;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    color: #2b2418;
+    background: #fbf6e8;
+    border: 1px solid rgba(140, 106, 58, 0.25);
+    border-top: none;
+    padding: 6px 4px;
+}
+.ev-port-card--active .ev-port-name {
+    background: #4a2e10;
+    color: #f5edda;
+    border-color: #8c5a1a;
+}
+
+.ev-speed-section {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(140, 106, 58, 0.25);
+}
+.ev-speed-title {
+    font-size: 11px;
+    letter-spacing: 2.5px;
+    color: #8a6a30;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+
+.ev-fuel-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+.ev-fuel-label {
+    font-size: 12px;
+    color: #6a5030;
+    white-space: nowrap;
+}
+.ev-fuel-track {
+    flex: 1;
+    height: 8px;
+    background: rgba(140, 106, 58, 0.2);
+    border: 1px solid rgba(140, 106, 58, 0.3);
+    overflow: hidden;
+}
+.ev-fuel-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #5a9a5a, #7aba6a);
+    transition: width 0.3s ease;
+}
+.ev-fuel-nums {
+    font-size: 11px;
+    color: #5a4020;
+    white-space: nowrap;
+    min-width: 80px;
+    text-align: right;
+}
+
+.ev-speed-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.ev-speed-btn {
+    flex: 1;
+    min-width: 96px;
+    padding: 8px 6px;
+    background: #ece4cc;
+    border: 1px solid rgba(140, 106, 58, 0.35);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.13s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-family: inherit;
+}
+.ev-speed-btn:hover:not(:disabled) { background: #f7f0d8; border-color: #b89b5e; }
+.ev-speed-btn--active {
+    background: #4a2e10;
+    border-color: #8c5a1a;
+    color: #fff;
+}
+.ev-speed-btn--unaffordable { opacity: 0.4; cursor: not-allowed; }
+.ev-speed-btn--impossible   { opacity: 0.25; cursor: not-allowed; }
+.ev-speed-name { font-size: 13px; font-weight: bold; color: inherit; }
+.ev-speed-btn--active .ev-speed-name { color: #fff; }
+.ev-speed-fuel { font-size: 11px; color: #8a6030; }
+.ev-speed-btn--active .ev-speed-fuel { color: #ffda80; }
+.ev-speed-days { font-size: 10px; color: #999; }
+.ev-speed-btn--active .ev-speed-days { color: rgba(255,255,255,0.6); }
+
+.ev-warn {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #c04040;
+    font-style: italic;
+}
+
+.ev-duration {
+    font-size: 26px;
+    font-weight: bold;
+    color: #3a7a3a;
+    line-height: 1;
+    margin: 16px 0 12px;
+}
+
+.ev-error {
+    font-size: 12px;
+    color: #c04040;
+    background: rgba(192, 64, 64, 0.08);
+    border: 1px solid rgba(192, 64, 64, 0.3);
+    padding: 6px 8px;
+    margin-bottom: 12px;
+}
+
+.ev-start-btn {
+    margin-top: 6px;
+    padding: 12px 36px;
+    background: #4a2e10;
+    color: #f5edda;
+    border: 1px solid #8c5a1a;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.13s;
+}
+.ev-start-btn:hover:not(:disabled) { background: #5e3a16; }
+.ev-start-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+@media (max-width: 1100px) {
+    .ev-ports-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.ev-panel::-webkit-scrollbar {
+    width: 8px;
+}
+.ev-panel::-webkit-scrollbar-track {
+    background: rgba(90, 58, 10, 0.06);
+}
+.ev-panel::-webkit-scrollbar-thumb {
+    background: rgba(90, 58, 10, 0.2);
+    border-radius: 4px;
+}
+.ev-panel::-webkit-scrollbar-thumb:hover {
+    background: rgba(90, 58, 10, 0.35);
+}
+.ev-panel {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(90, 58, 10, 0.2) rgba(90, 58, 10, 0.06);
+}

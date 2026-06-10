@@ -1,0 +1,125 @@
+/* Vertikale Schnellzugriff-Sidebar am rechten Kartenrand. */
+.quick-nav-sidebar {
+    position: fixed;
+    right: 14px;
+    top:11vh;          /* unterhalb der TopBar */
+    bottom: 196px;     /* oberhalb der BottomBar (Schiffskarten) */
+    z-index: 45;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 8px;
+
+    /* Leerraum der Sidebar soll Karteninteraktionen nicht blockieren –
+       nur die Buttons selbst sind klickbar. */
+    pointer-events: none;
+}
+
+.quick-nav-sidebar > * {
+    pointer-events: auto;
+}
+
+.quick-nav-btn {
+    box-sizing: border-box;
+    width: 42px;
+    height: 130px;
+    border: 1px solid rgba(122, 87, 54, 0.7);
+    border-radius: 8px;
+    background-color: #3a2618;
+    box-shadow: inset 0 1px 0 rgba(255, 232, 194, 0.12), 0 2px 6px rgba(0, 0, 0, 0.4);
+    padding: 8px 6px;
+    cursor: pointer;
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    transition:
+            width 0.18s ease,
+            height 0.18s ease,
+            background-color 0.16s ease,
+            border-color 0.16s ease,
+            box-shadow 0.16s ease;
+}
+
+/* Eingeklappt (Standard): schmaler vertikaler Tab, Schrift vertikal, braun.
+   So bleibt die Karte möglichst frei. Das Haus-Sprite ist zusammengeklappt. */
+.quick-nav-btn-sprite {
+    width: 100px;
+    height: 206px;
+    max-height: 0;
+    opacity: 0;
+    margin: 0;
+    background-repeat: no-repeat;
+    background-size: 400% 100%;
+    background-position-y: 50%;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4));
+    transition:
+            max-height 0.2s ease,
+            opacity 0.16s ease,
+            margin-bottom 0.2s ease;
+}
+
+.quick-nav-label {
+    /* Eingeklappt: vertikale Schrift entlang des Tabs, um 180° gedreht. */
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    color: #e9d6aa;
+    font-family: var(--font-game);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    line-height: 1;
+    text-align: center;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+    white-space: nowrap;
+    transition: color 0.16s ease, text-shadow 0.16s ease;
+}
+
+/* Aufgeklappt (Hover / Tastaturfokus): breiteres beiges Kärtchen, braune
+   waagerechte Schrift, großes Haus, das nach oben mehr Platz bekommt. */
+.quick-nav-btn:hover,
+.quick-nav-btn:focus-visible {
+    width: 150px;
+    height: 260px;
+    background-color: #f1e6cb;
+    border-color: #7a5736;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 4px 12px rgba(0, 0, 0, 0.45);
+    padding: 10px;
+    outline: none;
+}
+
+.quick-nav-btn:hover .quick-nav-btn-sprite,
+.quick-nav-btn:focus-visible .quick-nav-btn-sprite {
+    max-height: 206px;
+    opacity: 1;
+    margin-bottom: 6px;
+}
+
+.quick-nav-btn:hover .quick-nav-label,
+.quick-nav-btn:focus-visible .quick-nav-label {
+    writing-mode: horizontal-tb;
+    transform: none;
+    color: #3a2f1a;
+    text-shadow: none;
+}
+
+.quick-nav-btn-sprite.sprite-office {
+    background-position-x: 0%;
+}
+
+.quick-nav-btn-sprite.sprite-orders {
+    background-position-x: 33.333%;
+}
+
+.quick-nav-btn-sprite.sprite-shipmarket {
+    background-position-x: 66.666%;
+}
+
+.quick-nav-btn-sprite.sprite-freight {
+    background-position-x: 100%;
+}

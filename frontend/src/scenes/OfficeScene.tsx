@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import GameButton from "../components/GameButton";
-import backIcon from "../assets/goback.png";
 import officeBackground from "../assets/office-background.png";
 import "../style/shipclass.css";
 import "../style/office.css";
+import audioEngine from '../audio/AudioEngine';
+import BackButton from "../components/BackButton";
 
 interface PlayerShip {
     id: string;
@@ -37,18 +38,37 @@ interface SellQuote {
     finalPrice: number;
 }
 
+interface RefuelQuote {
+    currentFuelPercent: number;
+    targetFuelPercent: number;
+    fuelAddedPercent: number;
+    fuelAddedUnits: number;
+    totalCost: number;
+    currentBalance: number;
+}
+
+interface RepairQuote {
+    currentConditionPercent: number;
+    repairNeededPercent: number;
+    totalCost: number;
+    currentBalance: number;
+}
+
 interface Props {
     onClose: () => void;
 }
 
-const FUEL_PRICE_PER_UNIT = 3.0;
-const REPAIR_PRICE_FACTOR = 50.0;
-
 export default function OfficeScene({ onClose }: Props) {
     const [ships, setShips] = useState<PlayerShip[]>([]);
+    const shipsRef = useRef<PlayerShip[]>([]);
     const [selectedShipId, setSelectedShipId] = useState<string | null>(null);
     const [balance, setBalance] = useState<number | null>(null);
     const [sellQuote, setSellQuote] = useState<SellQuote | null>(null);
+    const [refuelQuote, setRefuelQuote] = useState<RefuelQuote | null>(null);
+    const [repairQuote, setRepairQuote] = useState<RepairQuote | null>(null);
+    const [refuelAmountPercent, setRefuelAmountPercent] = useState(0);
+    const [refuelQuoteLoading, setRefuelQuoteLoading] = useState(false);
+    const [repairQuoteLoading, setRepairQuoteLoading] = useState(false);
     const [loading, setLoading] = useState(true);
     const [actionBusy, setActionBusy] = useState<"refuel" | "repair" | "sell" | null>(null);
     const [showSellConfirm, setShowSellConfirm] = useState(false);
@@ -68,26 +88,40 @@ export default function OfficeScene({ onClose }: Props) {
 
     const canUseActions = selectedShip?.status === "AT_PORT";
     const fuelNeededPercent = selectedShip ? Math.max(0, 100 - selectedShip.fuel) : 0;
-    const fuelCost = selectedShip
-        ? roundMoney((fuelNeededPercent / 100) * Number(selectedShip.maxFuel) * FUEL_PRICE_PER_UNIT)
-        : 0;
+    const targetFuelPercent = selectedShip
+        ? Math.min(100, selectedShip.fuel + refuelAmountPercent)
+        : 100;
     const repairNeededPercent = selectedShip ? Math.max(0, 100 - selectedShip.condition) : 0;
-    const repairCost = selectedShip
-        ? roundMoney((repairNeededPercent / 100) * Number(selectedShip.operatingCost) * REPAIR_PRICE_FACTOR)
-        : 0;
-    const canAffordFuel = balance !== null && balance >= fuelCost;
-    const canAffordRepair = balance !== null && balance >= repairCost;
+    const fuelCost = refuelQuote?.totalCost ?? 0;
+    const repairCost = repairQuote?.totalCost ?? 0;
+    const canAffordFuel = balance !== null && refuelQuote !== null && balance >= fuelCost;
+    const canAffordRepair = balance !== null && repairQuote !== null && balance >= repairCost;
     const alreadyFull = fuelNeededPercent < 0.01;
     const alreadyRepaired = repairNeededPercent < 0.01;
+    const serviceInProgress = selectedShip?.status === "REFUELING" || selectedShip?.status === "REPAIRING";
+
+    function showError(msg: string) {
+        audioEngine.playSfx('error');
+        setError(msg);
+    }
 
     useEffect(() => {
         loadOfficeData();
     }, [playerId, sessionId, token]);
 
     useEffect(() => {
+        shipsRef.current = ships;
+    }, [ships]);
+
+    useEffect(() => {
         function handleShipPositions(e: Event) {
             const detail = (e as CustomEvent).detail;
             const wsShips: any[] = detail.ships ?? [];
+            const serviceCompleted = shipsRef.current.some(ship => {
+                const wsShip = wsShips.find((ws: any) => ws.playerShipId === ship.id);
+                return (ship.status === "REFUELING" || ship.status === "REPAIRING")
+                    && wsShip?.status === "AT_PORT";
+            });
 
             setShips(prev => prev.map(ship => {
                 const wsShip = wsShips.find((ws: any) => ws.playerShipId === ship.id);
@@ -96,14 +130,12 @@ export default function OfficeScene({ onClose }: Props) {
                 const newStatus = wsShip.status ?? ship.status;
                 const updates: Partial<PlayerShip> = { status: newStatus, completionTick: wsShip.arrivalTick };
 
-                if (ship.status === "REFUELING" && newStatus === "AT_PORT") {
-                    loadOfficeData();
-                } else if (ship.status === "REPAIRING" && newStatus === "AT_PORT") {
-                    loadOfficeData();
-                }
-
                 return { ...ship, ...updates };
             }));
+
+            if (serviceCompleted) {
+                window.setTimeout(() => loadOfficeData(), 0);
+            }
         }
 
         window.addEventListener("backend-ship-positions", handleShipPositions);
@@ -121,6 +153,97 @@ export default function OfficeScene({ onClose }: Props) {
             .then((quote: SellQuote | null) => setSellQuote(quote))
             .catch(() => setSellQuote(null));
     }, [selectedShip?.id, selectedShip?.status, selectedShip?.fuel, selectedShip?.condition, playerId, sessionId, token]);
+
+    useEffect(() => {
+        setRefuelQuote(null);
+        setRepairQuote(null);
+        setRefuelAmountPercent(selectedShip ? Math.max(0, 100 - selectedShip.fuel) : 0);
+    }, [selectedShip?.id, selectedShip?.fuel]);
+
+    useEffect(() => {
+        if (!selectedShip || !playerId || !sessionId || selectedShip.status !== "AT_PORT" || alreadyFull) {
+            setRefuelQuote(null);
+            setRefuelQuoteLoading(false);
+            return;
+        }
+
+        const controller = new AbortController();
+        setRefuelQuote(null);
+        setRefuelQuoteLoading(true);
+        const timer = window.setTimeout(() => {
+            fetch(
+                `/api/ships/${selectedShip.id}/refuel-quote?playerId=${playerId}&sessionId=${sessionId}&targetFuelPercent=${targetFuelPercent}`,
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                    signal: controller.signal,
+                },
+            )
+                .then(res => {
+                    if (!res.ok) throw new Error();
+                    return res.json();
+                })
+                .then((quote: RefuelQuote) => setRefuelQuote(quote))
+                .catch(err => {
+                    if (err.name !== "AbortError") setRefuelQuote(null);
+                })
+                .finally(() => {
+                    if (!controller.signal.aborted) setRefuelQuoteLoading(false);
+                });
+        }, 150);
+
+        return () => {
+            window.clearTimeout(timer);
+            controller.abort();
+        };
+    }, [
+        selectedShip?.id,
+        selectedShip?.status,
+        selectedShip?.fuel,
+        playerId,
+        sessionId,
+        token,
+        targetFuelPercent,
+        alreadyFull,
+    ]);
+
+    useEffect(() => {
+        if (!selectedShip || !playerId || !sessionId || selectedShip.status !== "AT_PORT" || alreadyRepaired) {
+            setRepairQuote(null);
+            setRepairQuoteLoading(false);
+            return;
+        }
+
+        const controller = new AbortController();
+        setRepairQuoteLoading(true);
+        fetch(
+            `/api/ships/${selectedShip.id}/repair-quote?playerId=${playerId}&sessionId=${sessionId}`,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+                signal: controller.signal,
+            },
+        )
+            .then(res => {
+                if (!res.ok) throw new Error();
+                return res.json();
+            })
+            .then((quote: RepairQuote) => setRepairQuote(quote))
+            .catch(err => {
+                if (err.name !== "AbortError") setRepairQuote(null);
+            })
+            .finally(() => {
+                if (!controller.signal.aborted) setRepairQuoteLoading(false);
+            });
+
+        return () => controller.abort();
+    }, [
+        selectedShip?.id,
+        selectedShip?.status,
+        selectedShip?.condition,
+        playerId,
+        sessionId,
+        token,
+        alreadyRepaired,
+    ]);
 
     function loadOfficeData() {
         if (!playerId || !sessionId) return;
@@ -145,7 +268,7 @@ export default function OfficeScene({ onClose }: Props) {
                     return shipData[0]?.id ?? null;
                 });
             })
-            .catch(() => setError("Büro konnte die Flotte nicht laden."))
+            .catch(() => showError("Büro konnte die Flotte nicht laden."))
             .finally(() => setLoading(false));
     }
 
@@ -163,10 +286,13 @@ export default function OfficeScene({ onClose }: Props) {
         setActionBusy("refuel");
         setError(null);
         try {
-            const res = await fetch(`/api/ships/${selectedShip.id}/refuel?playerId=${playerId}&sessionId=${sessionId}`, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await fetch(
+                `/api/ships/${selectedShip.id}/refuel?playerId=${playerId}&sessionId=${sessionId}&targetFuelPercent=${targetFuelPercent}`,
+                {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` },
+                },
+            );
             if (!res.ok) throw new Error();
             const data = await res.json();
             updateShipLocally(selectedShip.id, {
@@ -177,7 +303,7 @@ export default function OfficeScene({ onClose }: Props) {
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
             showToast(`${selectedShip.name} wird betankt… (${data.refuelingDurationTicks} Ticks)`);
         } catch {
-            setError("Betanken fehlgeschlagen.");
+            showError("Betanken fehlgeschlagen.");
         } finally {
             setActionBusy(null);
         }
@@ -202,7 +328,7 @@ export default function OfficeScene({ onClose }: Props) {
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
             showToast(`${selectedShip.name} wird repariert… (${data.repairingDurationTicks} Ticks)`);
         } catch {
-            setError("Reparatur fehlgeschlagen.");
+            showError("Reparatur fehlgeschlagen.");
         } finally {
             setActionBusy(null);
         }
@@ -229,9 +355,10 @@ export default function OfficeScene({ onClose }: Props) {
                 detail: { currentTick, ships: window.__latestShips ?? [] },
             }));
             window.dispatchEvent(new CustomEvent("player-balance-updated"));
+            audioEngine.playSfx('coinReward');
             showToast(`${selectedShip.name} verkauft.`);
         } catch {
-            setError("Verkauf fehlgeschlagen.");
+            showError("Verkauf fehlgeschlagen.");
         } finally {
             setActionBusy(null);
         }
@@ -240,9 +367,7 @@ export default function OfficeScene({ onClose }: Props) {
     return (
         <div className="shipclass-scene office-scene">
             <img src={officeBackground} className="office-background" alt="" />
-            <div className="back-icon-btn" onClick={onClose}>
-                <img src={backIcon} alt="Zurück" />
-            </div>
+            <BackButton onClick={onClose} />
 
             {loading && <p className="shipclass-status">Lade Büro...</p>}
             {error && <p className="shipclass-status">{error}</p>}
@@ -314,24 +439,68 @@ export default function OfficeScene({ onClose }: Props) {
 
                                 {!canUseActions && (
                                     <div className="office-action-lock">
-                                        Aktionen sind nur für Schiffe im Hafen verfügbar.
+                                        {serviceInProgress
+                                            ? "Ein Service läuft bereits. Weitere Aktionen sind danach wieder verfügbar."
+                                            : "Aktionen sind nur für Schiffe im Hafen verfügbar."}
                                     </div>
                                 )}
 
                                 <div className="office-actions">
                                     <ActionCard
                                         title="Betanken"
-                                        info={alreadyFull ? "Tank ist voll" : `Fehlend ${fuelNeededPercent.toFixed(0)}%`}
-                                        cost={alreadyFull ? undefined : `${formatMoney(fuelCost)} T`}
-                                        disabled={!canUseActions || alreadyFull || !canAffordFuel || actionBusy !== null}
+                                        info={alreadyFull
+                                            ? "Tank ist voll"
+                                            : `+${formatPercent(refuelAmountPercent)}% auf ${formatPercent(targetFuelPercent)}%`}
+                                        cost={alreadyFull
+                                            ? undefined
+                                            : selectedShip.status === "REPAIRING"
+                                                ? "Nach der Reparatur verfügbar"
+                                            : refuelQuoteLoading
+                                                ? "Preis wird berechnet"
+                                                : refuelQuote
+                                                    ? `${formatMoney(fuelCost)} T`
+                                                    : "Preis nicht verfügbar"}
+                                        disabled={!canUseActions || alreadyFull || !canAffordFuel
+                                            || refuelQuoteLoading || actionBusy !== null}
                                         buttonText={actionBusy === "refuel" ? "Läuft..." : "Betanken"}
                                         onClick={handleRefuel}
-                                    />
+                                    >
+                                        {!alreadyFull && (
+                                            <div className="office-refuel-slider">
+                                                <label htmlFor="office-refuel-amount">
+                                                    <span>Tankmenge</span>
+                                                    <strong>+{formatPercent(refuelAmountPercent)}%</strong>
+                                                </label>
+                                                <input
+                                                    id="office-refuel-amount"
+                                                    type="range"
+                                                    min={Math.min(1, fuelNeededPercent)}
+                                                    max={fuelNeededPercent}
+                                                    step={1}
+                                                    value={refuelAmountPercent}
+                                                    onChange={event => setRefuelAmountPercent(Number(event.target.value))}
+                                                    disabled={!canUseActions || actionBusy !== null}
+                                                />
+                                                {refuelQuote && (
+                                                    <small>{formatNumber(refuelQuote.fuelAddedUnits)} Treibstoffeinheiten</small>
+                                                )}
+                                            </div>
+                                        )}
+                                    </ActionCard>
                                     <ActionCard
                                         title="Reparieren"
                                         info={alreadyRepaired ? "Schiff ist heil" : `Schäden ${repairNeededPercent.toFixed(0)}%`}
-                                        cost={alreadyRepaired ? undefined : `${formatMoney(repairCost)} T`}
-                                        disabled={!canUseActions || alreadyRepaired || !canAffordRepair || actionBusy !== null}
+                                        cost={alreadyRepaired
+                                            ? undefined
+                                            : selectedShip.status === "REFUELING"
+                                                ? "Nach dem Tanken verfügbar"
+                                            : repairQuoteLoading
+                                                ? "Preis wird berechnet"
+                                                : repairQuote
+                                                    ? `${formatMoney(repairCost)} T`
+                                                    : "Preis nicht verfügbar"}
+                                        disabled={!canUseActions || alreadyRepaired || !canAffordRepair
+                                            || repairQuoteLoading || actionBusy !== null}
                                         buttonText={actionBusy === "repair" ? "Läuft..." : "Reparieren"}
                                         onClick={handleRepair}
                                     />
@@ -392,6 +561,7 @@ function ActionCard({
                         disabled,
                         buttonText,
                         onClick,
+                        children,
                     }: {
     title: string;
     info: string;
@@ -399,11 +569,13 @@ function ActionCard({
     disabled: boolean;
     buttonText: string;
     onClick: () => void;
+    children?: React.ReactNode;
 }) {
     return (
         <div className="office-action-card">
             <h3>{title}</h3>
             <span>{info}</span>
+            {children}
             {cost && <strong>{cost}</strong>}
             <GameButton onClick={onClick} disabled={disabled}>{buttonText}</GameButton>
         </div>
@@ -439,12 +611,16 @@ function statusLabel(status: string) {
     return labels[status] ?? status;
 }
 
-function roundMoney(value: number) {
-    return Math.round(value * 100) / 100;
+function formatMoney(value: number) {
+    return Math.round(Number(value)).toLocaleString("de-DE", { maximumFractionDigits: 0 });
 }
 
-function formatMoney(value: number) {
-    return Number(value).toLocaleString("de-DE", { maximumFractionDigits: 2 });
+function formatPercent(value: number) {
+    return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
+}
+
+function formatNumber(value: number) {
+    return Math.round(value).toLocaleString("de-DE", { maximumFractionDigits: 0 });
 }
 
 function TickProgressBar({ completionTick, label }: { completionTick: number; label: string }) {

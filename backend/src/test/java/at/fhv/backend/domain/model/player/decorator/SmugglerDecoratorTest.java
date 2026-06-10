@@ -23,18 +23,18 @@ class SmugglerDecoratorTest {
     }
 
     @Test
-    void testMarketOfferModifier() {
-        assertEquals(1.30, smugglerPlayer.getMarketOfferModifier(), 0.01);
+    void testMarketOfferUnmodified() {
+        assertEquals(1.0, smugglerPlayer.getMarketOfferModifier(), 0.01);
     }
 
     @Test
     void testSmuggleRiskModifier() {
-        assertEquals(0.70, smugglerPlayer.getSmuggleRiskModifier(), 0.01);
+        assertEquals(1.20, smugglerPlayer.getSmuggleRiskModifier(), 0.01);
     }
 
     @Test
     void testCustomsRiskModifier() {
-        assertEquals(1.40, smugglerPlayer.getCustomsRiskModifier(), 0.01);
+        assertEquals(0.80, smugglerPlayer.getCustomsRiskModifier(), 0.01);
     }
 
     @Test
@@ -43,7 +43,7 @@ class SmugglerDecoratorTest {
     }
 
     @Test
-    void testFuelCostUnmodified() {
+    void testFuelCostModifier() {
         assertEquals(1.0, smugglerPlayer.getFuelCostModifier(), 0.01);
     }
 
@@ -55,6 +55,11 @@ class SmugglerDecoratorTest {
     @Test
     void testUnloadingTimeUnmodified() {
         assertEquals(1.0, smugglerPlayer.getUnloadingTimeModifier(), 0.01);
+    }
+
+    @Test
+    void testMinigameRiskModifier() {
+        assertEquals(1.30, smugglerPlayer.getMiniGameRiskModifier(), 0.01);
     }
 
     @Test

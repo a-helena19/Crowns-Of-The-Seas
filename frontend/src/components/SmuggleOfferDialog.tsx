@@ -2,6 +2,7 @@ import { useState } from "react";
 import smuggleBg from "../assets/smuggle_bg.png";
 import smuggler from "../assets/smuggler.png"
 import "../style/smuggleDialog.css";
+import audioEngine from "../audio/AudioEngine.ts";
 
 interface SmuggleOfferProps {
     offerId: string;
@@ -12,6 +13,9 @@ interface SmuggleOfferProps {
     onDecline: () => void;
 }
 
+const formatTalers = (value: number | undefined | null) =>
+    Number(value ?? 0).toLocaleString("de-DE", { maximumFractionDigits: 0 });
+
 export default function SmuggleOfferDialog({reward, onAccept, onDecline} : SmuggleOfferProps) {    const [responding, setResponding] = useState(false);
 
     function handleAccept() {
@@ -19,6 +23,7 @@ export default function SmuggleOfferDialog({reward, onAccept, onDecline} : Smugg
             return;
         }
         setResponding(true);
+        audioEngine.playSfx('evilLaugh');
         onAccept();
     }
 
@@ -49,7 +54,7 @@ export default function SmuggleOfferDialog({reward, onAccept, onDecline} : Smugg
                         </div>
                         <div className="smuggle-buttons">
                             <button className="smuggle-btn smuggle-btn-decline" onClick={handleDecline} disabled={responding}>Ablehnen</button>
-                            <button className="smuggle-btn smuggle-btn-accept" onClick={handleAccept} disabled={responding}>Annehmen +{reward.toLocaleString("de-DE")}T</button>
+	                            <button className="smuggle-btn smuggle-btn-accept" onClick={handleAccept} disabled={responding}>Annehmen +{formatTalers(reward)} T</button>
                         </div>
                         <div className="smuggle-risk-hint">
                             ! Risiko bei Kontrollen

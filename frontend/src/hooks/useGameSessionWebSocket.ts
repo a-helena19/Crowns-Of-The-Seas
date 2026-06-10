@@ -15,6 +15,8 @@ interface SessionUpdateEvent {
     }>;
     type: string;
     message?: string;
+    affectedPlayerName?: string;
+    affectedUserId?: string;
 }
 
 interface PortInfo {
@@ -83,12 +85,36 @@ interface TravelCompleteEvent {
     cargoRewards: CargoRewardBreakdown[];
     baseReward: number;
     totalReward: number;
+    netPayout?: number;
+    cargoReward?: number;
+    bonusReward?: number;
+    smuggleReward?: number;
+    grossReward?: number;
+    minigameDeductions?: number;
+    minigameBonus?: number;
+    customsPaid?: number;
+    dockingFines?: number;
+    regress?: number;
     previousBalance: number;
     newBalance: number;
     dockingFine?: number;
     departureDockingFine?: number;
     pilotageRefund?: number;
     customsSummary?: CustomsSummary | null;
+    regressSummary?: {
+        delayTicks: number;
+        toleranceTicks: number;
+        overdueTicks: number;
+        delayComponent: number;
+        damageComponent: number;
+        cargoLossComponent?: number;
+        cargoLossPercent?: number;
+        damagePercent: number;
+        specialCargoMultiplier: number;
+        hadPerishableCargo: boolean;
+        hadFragileCargo: boolean;
+        totalFine: number;
+    } | null;
 }
 
 interface RatMinigameEvent {
@@ -156,15 +182,31 @@ interface ObstacleMinigameEvent {
     routeViewType?: "VIEW_A" | "VIEW_B";
 }
 
+interface TreasureHuntMinigameEvent {
+    eventId: string;
+    eventType: "TREASURE_HUNT";
+    playerId: string;
+    sessionId: string;
+    travelId: string;
+    playerShipId: string;
+    timeLimitSeconds: number;
+    requiredTreasures: number;
+    pirateCount: number;
+}
+
 interface UseGameSessionWebSocketProps {
     sessionId: string | null;
     onSessionUpdate: (event: SessionUpdateEvent) => void;
     onTickUpdate?: (event: TickUpdateEvent) => void;
+    // Wenn gesetzt, signalisiert der Client beim Subscribe, dass dieser Spieler
+    // gerade (wieder) beigetreten ist – das Backend benachrichtigt dann die anderen.
+    rejoinUserId?: string | null;
 }
 export function useGameSessionWebSocket({
                                             sessionId,
                                             onSessionUpdate,
-                                            onTickUpdate
+                                            onTickUpdate,
+                                            rejoinUserId
                                         }: UseGameSessionWebSocketProps) {
     const stompClientRef = useRef<Client | null>(null);
     const [isConnected, setIsConnected] = useState(false);
@@ -179,6 +221,11 @@ export function useGameSessionWebSocket({
     useEffect(() => {
         onSessionUpdateRef.current = onSessionUpdate;
     }, [onSessionUpdate]);
+
+    const rejoinUserIdRef = useRef(rejoinUserId);
+    useEffect(() => {
+        rejoinUserIdRef.current = rejoinUserId;
+    }, [rejoinUserId]);
 
     useEffect(() => {
         if (!sessionId) return;
@@ -327,6 +374,15 @@ export function useGameSessionWebSocket({
                             }
                         });
 
+                        client.subscribe(`/topic/session/${sessionId}/treasure-hunt-event`, (message) => {
+                            try {
+                                const event = JSON.parse(message.body) as TreasureHuntMinigameEvent;
+                                window.dispatchEvent(new CustomEvent('treasure-hunt-event', { detail: event }));
+                            } catch (error) {
+                                console.error('Error parsing treasure-hunt-event:', error);
+                            }
+                        });
+
                         client.subscribe(`/topic/session/${sessionId}/pilot-strike`, (message) => {
                             try {
                                 const event = JSON.parse(message.body);
@@ -381,7 +437,10 @@ export function useGameSessionWebSocket({
                             }
                         });
 
-                        client.send(`/app/session/${sessionId}/subscribe`, {});
+                        const subscribePayload = rejoinUserIdRef.current
+                            ? { rejoinedUserId: rejoinUserIdRef.current }
+                            : {};
+                        client.send(`/app/session/${sessionId}/subscribe`, {}, JSON.stringify(subscribePayload));
                     },
                     (error) => {
                         console.error('WebSocket connection error:', error);

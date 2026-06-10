@@ -42,7 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class CustomsServiceImpl implements CustomsService {
 
-    private static final double DETECTION_CHANCE_WHEN_SMUGGLING = 0.55;
+    private static final double DETECTION_CHANCE_WHEN_SMUGGLING = 0.5;
     private static final double BRIBE_SUCCESS_CHANCE = 0.50;
     private static final int MIN_DETENTION_TICKS = 3;
     private static final int MAX_DETENTION_TICKS = 8;
@@ -130,7 +130,15 @@ public class CustomsServiceImpl implements CustomsService {
             return inspection;
         }
 
-        boolean detected = random.nextDouble() < DETECTION_CHANCE_WHEN_SMUGGLING;
+        double customsRiskModifier = lookupCustomsRiskModifier(playerId, travel.getSessionId());
+        double detectionChance = DETECTION_CHANCE_WHEN_SMUGGLING * customsRiskModifier;
+        if (detectionChance < 0.0) {
+            detectionChance = 0.0;
+        }
+        if (detectionChance > 1.0) {
+            detectionChance = 1.0;
+        }
+        boolean detected = random.nextDouble() < detectionChance;
         if (!detected) {
             inspection.completeAsHidden();
             storeInspection(inspection);
@@ -410,6 +418,15 @@ public class CustomsServiceImpl implements CustomsService {
             fine = MAX_FINE;
         }
         return fine;
+    }
+
+    private double lookupCustomsRiskModifier(UUID playerId, UUID sessionId) {
+        ISessionPlayer player = sessionPlayerRepository.findByUserIdAndSessionId(playerId, sessionId)
+                .orElse(null);
+        if (player == null) {
+            return 1.0;
+        }
+        return player.getCustomsRiskModifier();
     }
 
     private String lookupShipName(UUID playerShipId) {

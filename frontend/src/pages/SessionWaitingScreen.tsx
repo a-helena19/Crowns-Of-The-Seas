@@ -6,6 +6,7 @@ import '../style/sessionWaiting.css';
 import FactionSelectionDialog from '../components/FactionSelectionDialog';
 import type { PlayerFaction } from '../types/faction';
 import { sessionApi } from '../api/sessionApi';
+import audioEngine from '../audio/AudioEngine';
 
 interface PlayerInfo {
     userId: string;
@@ -146,6 +147,12 @@ export default function SessionWaitingScreen() {
             .catch(err => console.warn('Initial session fetch failed:', err));
     }, [sessionId]);
 
+    useEffect(() => {
+        if (!audioEngine.isMusicPlaying) {
+            audioEngine.playMusic('lobby');
+        }
+    }, []);
+
     const handleFactionSelected = (faction: PlayerFaction) => {
         setSelectedFaction(faction);
     };
@@ -165,8 +172,10 @@ export default function SessionWaitingScreen() {
         try {
             console.log('Calling backend to start game with sessionId:', sessionId);
             await sessionApi.startGame(sessionId, {});
+            audioEngine.playSfx('buttonClick');
         } catch (error) {
             console.error('Error starting game:', error);
+            audioEngine.playSfx('error');
             setErrorMessage('Fehler beim Starten des Spiels. Bitte versuchen Sie es später erneut.');
         }
     };
@@ -186,6 +195,7 @@ export default function SessionWaitingScreen() {
                 console.error('Error leaving session:', error);
             }
         }
+        audioEngine.playSfx('buttonClick');
         cleanupSessionStorage();
         navigate('/lobby');
     };
@@ -285,7 +295,7 @@ export default function SessionWaitingScreen() {
                             {userRole === 'host' && status === 'LOBBY' && (
                                 <button
                                     onClick={handleStartGame}
-                                    className="auth-btn start-btn"
+                                    className="auth-btn session-start-btn"
                                     disabled={!isConnected}
                                 >
                                     Spiel Starten

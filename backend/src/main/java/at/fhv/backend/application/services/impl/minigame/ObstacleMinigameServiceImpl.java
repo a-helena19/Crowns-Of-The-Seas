@@ -2,12 +2,15 @@ package at.fhv.backend.application.services.impl.minigame;
 
 import at.fhv.backend.application.services.minigame.ObstacleMinigameService;
 import at.fhv.backend.application.services.travel.TravelPauseService;
+import at.fhv.backend.domain.model.player.ISessionPlayer;
+import at.fhv.backend.domain.model.player.SessionPlayerRepository;
 import at.fhv.backend.domain.model.port.Port;
 import at.fhv.backend.domain.model.port.PortId;
 import at.fhv.backend.domain.model.port.PortRepository;
 import at.fhv.backend.domain.model.ship.PlayerShip;
 import at.fhv.backend.domain.model.ship.PlayerShipRepository;
 import at.fhv.backend.domain.model.travel.Travel;
+import at.fhv.backend.domain.model.travel.TravelRepository;
 import at.fhv.backend.rest.GameSessionWebSocketController;
 import at.fhv.backend.rest.dtos.minigame.request.ObstacleMinigameResultRequest;
 import at.fhv.backend.rest.dtos.websocket.ObstacleMinigameEvent;
@@ -31,13 +34,14 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
     private static final int DEFAULT_TIME_LIMIT_SECONDS = 24;
     private static final int DEFAULT_START_HEALTH = 100;
     private static final int FAILED_CARGO_LOSS_PERCENT = 50;
-    private static final BigDecimal FAILED_REWARD_MODIFIER = new BigDecimal("0.50");
     private static final BigDecimal SUCCESS_REWARD_MODIFIER = BigDecimal.ONE;
 
     private final TravelPauseService travelPauseService;
     private final GameSessionWebSocketController webSocketController;
     private final PlayerShipRepository playerShipRepository;
     private final PortRepository portRepository;
+    private final SessionPlayerRepository sessionPlayerRepository;
+    private final TravelRepository travelRepository;
     private final Random random = new Random();
 
     private final Set<UUID> triggeredTravelIds = ConcurrentHashMap.newKeySet();
@@ -48,11 +52,15 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
     public ObstacleMinigameServiceImpl(TravelPauseService travelPauseService,
                                        GameSessionWebSocketController webSocketController,
                                        PlayerShipRepository playerShipRepository,
-                                       PortRepository portRepository) {
+                                       PortRepository portRepository,
+                                       SessionPlayerRepository sessionPlayerRepository,
+                                       TravelRepository travelRepository) {
         this.travelPauseService = travelPauseService;
         this.webSocketController = webSocketController;
         this.playerShipRepository = playerShipRepository;
         this.portRepository = portRepository;
+        this.sessionPlayerRepository = sessionPlayerRepository;
+        this.travelRepository = travelRepository;
     }
 
     @Override
@@ -61,7 +69,12 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
         if (travelPauseService.isTravelPaused(travelId)) return;
         if (triggeredTravelIds.contains(travelId)) return;
         if (pendingEvents.containsKey(travelId)) return;
-        if (random.nextDouble() >= TRIGGER_CHANCE_PER_TICK) return;
+
+        double miniGameModifier = sessionPlayerRepository
+                .findByUserIdAndSessionId(travel.getPlayerId(), sessionId)
+                .map(ISessionPlayer::getMiniGameRiskModifier)
+                .orElse(1.0);
+        if (random.nextDouble() >= TRIGGER_CHANCE_PER_TICK * miniGameModifier) return;
 
         triggeredTravelIds.add(travelId);
 
@@ -72,7 +85,10 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
         UUID eventId = UUID.randomUUID();
         PendingObstacleEvent event = new PendingObstacleEvent(
                 eventId, travel.getPlayerId(), sessionId, travelId, travel.getPlayerShipId(),
-                DEFAULT_TIME_LIMIT_SECONDS, DEFAULT_START_HEALTH, routeViewType
+                DEFAULT_TIME_LIMIT_SECONDS, DEFAULT_START_HEALTH,
+                travel.getOriginPortId(), originName,
+                travel.getDestinationPortId(), destinationName,
+                routeViewType
         );
         pendingEvents.put(travelId, event);
 
@@ -137,7 +153,8 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
         playerShip.applyWear(conditionDamage);
         playerShipRepository.save(playerShip);
 
-        rewardModifiersByTravelId.put(request.getTravelId(), FAILED_REWARD_MODIFIER);
+        rewardModifiersByTravelId.put(request.getTravelId(), SUCCESS_REWARD_MODIFIER);
+        applyCargoLossToTravel(request.getTravelId(), FAILED_CARGO_LOSS_PERCENT);
         summaryByTravelId.put(request.getTravelId(),
                 new ObstacleSummaryState(true, "FAILED", BigDecimal.ZERO, FAILED_CARGO_LOSS_PERCENT,
                         conditionDamage, request.getFailureReason(), routeViewType));
@@ -145,8 +162,38 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
 
         return new ObstacleMinigameSubmitResult(
                 "OBSTACLE", "FAILED", request.getRemainingHealth(), request.getTimeLeftSeconds(),
-                request.getTimeLimitSeconds(), request.getFailureReason(), routeViewType, FAILED_REWARD_MODIFIER
+                request.getTimeLimitSeconds(), request.getFailureReason(), routeViewType, SUCCESS_REWARD_MODIFIER
         );
+    }
+
+    private void applyCargoLossToTravel(UUID travelId, int cargoLossPercent) {
+        travelRepository.findById(travelId).ifPresent(travel -> {
+            travel.applyCargoLossPercent(cargoLossPercent);
+            travelRepository.save(travel);
+        });
+    }
+
+    @Override
+    public Optional<ObstacleMinigameEvent> getPendingEvent(UUID travelId, UUID playerId, UUID sessionId) {
+        PendingObstacleEvent event = pendingEvents.get(travelId);
+        if (event == null || !event.playerId().equals(playerId) || !event.sessionId().equals(sessionId)) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new ObstacleMinigameEvent(
+                event.eventId().toString(),
+                event.playerId().toString(),
+                event.sessionId().toString(),
+                event.travelId().toString(),
+                event.playerShipId().toString(),
+                event.timeLimitSeconds(),
+                event.startHealth(),
+                event.originPortId().toString(),
+                event.originPortName(),
+                event.destinationPortId().toString(),
+                event.destinationPortName(),
+                event.routeViewType()
+        ));
     }
 
     @Override
@@ -154,8 +201,8 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
         BigDecimal modifier = rewardModifiersByTravelId.remove(travelId);
         if (modifier == null) return totalReward;
 
-        BigDecimal modified = totalReward.multiply(modifier).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal penalty = totalReward.subtract(modified).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal modified = totalReward.multiply(modifier).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal penalty = totalReward.subtract(modified).max(BigDecimal.ZERO).setScale(0, RoundingMode.HALF_UP);
 
         ObstacleSummaryState existing = summaryByTravelId.get(travelId);
         if (existing != null) {
@@ -214,6 +261,10 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
             UUID playerShipId,
             int timeLimitSeconds,
             int startHealth,
+            UUID originPortId,
+            String originPortName,
+            UUID destinationPortId,
+            String destinationPortName,
             String routeViewType
     ) {}
 
