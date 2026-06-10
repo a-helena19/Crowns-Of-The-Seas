@@ -649,7 +649,7 @@ export default function CargoManagementScreen({
                                                     {pilotageMap[selectedEntry.cargoId] ? "✓" : "○"}
                                                 </span>
                                                     <span className="pilotage-label">Lotsendienst</span>
-                                                    <span className="pilotage-cost">600 Taler</span>
+                                                    <span className="pilotage-cost">1.000 Taler</span>
                                                 </button>
                                             </div>
                                             {pilotBlocked && (

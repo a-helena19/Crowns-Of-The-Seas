@@ -136,7 +136,7 @@ public class TravelRestController {
                     .body(Map.of("error", "CARGO_NOT_FOUND", "message", "Frachtangebot nicht gefunden."));
         } catch (InsufficientBalanceException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "INSUFFICIENT_BALANCE", "message", "Nicht genug Taler für den Lotsendienst (600 Taler)."));
+                    .body(Map.of("error", "INSUFFICIENT_BALANCE", "message", "Nicht genug Taler für den Lotsendienst (1.000 Taler)."));
         } catch (InvalidShipStatusTransition e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "SHIP_NOT_READY", "message", "Schiff wird noch beladen. Bitte kurz warten."));
@@ -212,7 +212,7 @@ public class TravelRestController {
                     .body(Map.of("error", "SHIP_NOT_FOUND", "message", "Schiff nicht gefunden."));
         } catch (InsufficientBalanceException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "INSUFFICIENT_BALANCE", "message", "Nicht genug Taler für den Lotsendienst (600 Taler)."));
+                    .body(Map.of("error", "INSUFFICIENT_BALANCE", "message", "Nicht genug Taler für den Lotsendienst (1.000 Taler)."));
         } catch (PilotStrikeActiveException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "PILOT_STRIKE", "message", e.getMessage()));

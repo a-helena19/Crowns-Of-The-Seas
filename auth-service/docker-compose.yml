@@ -1,7 +1,12 @@
+name: crownsoftheseas
+
 services:
   auth-postgres:
     image: postgres:16-alpine
     container_name: crowns-auth-postgres-container
+    profiles:
+      - local-auth
+      - app
     ports:
       - "5433:5432"
     environment:
@@ -15,6 +20,20 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
+  auth-service:
+    image: eateam6-auth-service:latest
+    container_name: eateam6-auth-service-container
+    profiles:
+      - app
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: server
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

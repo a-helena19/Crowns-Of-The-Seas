@@ -1,4 +1,51 @@
-name: crowns-of-the-seas
+name: crownsoftheseas
 
-include:
-  - path: ../docker-compose.yml
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: crowns-postgres-container
+    profiles:
+      - local
+      - app
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: crowns_of_the_seas
+      POSTGRES_USER: crowns
+      POSTGRES_PASSWORD: crowns
+    volumes:
+      - crowns-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crowns -d crowns_of_the_seas"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    image: eateam6-backend:latest
+    container_name: eateam6-backend-container
+    profiles:
+      - app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: server
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    image: eateam6-frontend:latest
+    container_name: eateam6-frontend-container
+    profiles:
+      - app
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  crowns-postgres-data:
