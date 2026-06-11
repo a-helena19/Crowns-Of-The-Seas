@@ -153,3 +153,188 @@
     cursor: pointer;
     user-select: none;
 }
+
+.in-game-chat {
+    position: fixed;
+    left: 18px;
+    bottom: 185px;
+    width: min(320px, calc(100vw - 36px));
+    max-height: 270px;
+    display: flex;
+    flex-direction: column;
+    z-index: 95;
+    background: transparent;
+    border: 1px solid rgba(255, 224, 163, 0.35);
+    border-radius: 12px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+    overflow: hidden;
+}
+
+.in-game-chat-header {
+    appearance: none;
+    border: none;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #f7dd9c;
+    background: linear-gradient(180deg, #3b2618 0%, #2b1a10 100%);
+    border-bottom: 3px solid #6a462a;
+    box-shadow: inset 0 -2px 8px rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+}
+
+.in-game-chat-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.in-game-chat-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #d9534f;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.in-game-chat-chevron {
+    font-size: 11px;
+    line-height: 1;
+}
+
+.in-game-chat-messages {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 8px 10px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(11, 24, 38, 0.25);
+    max-height: 170px;
+    scrollbar-width: thin;
+    scrollbar-color: #6a462a rgba(0, 0, 0, 0.25);
+}
+
+.in-game-chat-messages::-webkit-scrollbar {
+    width: 8px;
+}
+
+.in-game-chat-messages::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 999px;
+}
+
+.in-game-chat-messages::-webkit-scrollbar-thumb {
+    background: #6a462a;
+    border-radius: 999px;
+}
+
+.in-game-chat-messages::-webkit-scrollbar-thumb:hover {
+    background: #8a5d36;
+}
+
+.in-game-chat-empty {
+    margin: auto 0;
+    color: rgba(236, 242, 248, 0.62);
+    font-size: 12px;
+    text-align: center;
+}
+
+.in-game-chat-message {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #eef5fb;
+    font-size: 12px;
+}
+
+.in-game-chat-message.own {
+    background: rgba(81, 173, 255, 0.16);
+}
+
+.in-game-chat-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    color: rgba(247, 221, 156, 0.92);
+    font-size: 11px;
+}
+
+.in-game-chat-text {
+    line-height: 1.35;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+.in-game-chat-form {
+    display: flex;
+    gap: 8px;
+    padding: 8px 10px 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(11, 24, 38, 0.28);
+    flex: 0 0 auto;
+}
+
+.in-game-chat-input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid #6a462a;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #1f140d 0%, #120c08 100%);
+    color: #f4e7cf;
+    font-size: 12px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+.in-game-chat-input::placeholder {
+    color: rgba(212, 186, 140, 0.55);
+}
+
+.in-game-chat-send {
+    border: none;
+    border-radius: 8px;
+    padding: 0 12px;
+    background: linear-gradient(180deg, #6a462a 0%, #4b301c 100%);
+    color: #f6dfb5;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid #8a5d36;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.in-game-chat-send:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .in-game-chat {
+        left: 10px;
+        right: 10px;
+        bottom: 170px;
+        width: auto;
+        max-height: 220px;
+    }
+
+    .in-game-chat-messages {
+        max-height: 120px;
+    }
+}

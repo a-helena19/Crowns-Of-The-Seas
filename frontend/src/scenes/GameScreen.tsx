@@ -30,6 +30,7 @@ import type { TreasureHuntMinigameEventPayload, TreasureHuntMinigameResult } fro
 import { minigameSessionManager } from "../minigame/MinigameSessionManager.ts";
 import EventNotificationDialog from "../components/EventNotificationDialog.tsx";
 import TreasureHuntPromptDialog from "../components/TreasureHuntPromptDialog.tsx";
+import InGameChat from "../components/InGameChat.tsx";
 import ratImage from "../assets/Rat.png";
 import stormDialogImage from "../assets/minigame/storm/DialogPic.png";
 import obstacleDialogImage from "../assets/minigame/obstaclegame/wrack.png";
@@ -1662,6 +1663,13 @@ export default function GameScreen() {
             </div>
             <div className="game">
                 <Game view={view} />
+                {view === "map" && sessionId && playerId && (
+                    <InGameChat
+                        sessionId={sessionId}
+                        currentUserId={playerId}
+                        stompClient={stompClient}
+                    />
+                )}
                 {view === "map" && !isMinigameActive && (
                     <label id={'show-other-ships-checkbox'}>
                         <input
