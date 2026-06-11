@@ -6,6 +6,7 @@ import { useAudioSettings } from '../audio/AudioSettingsContext';
 import { sessionApi } from '../api/sessionApi';
 import type { SessionDTO } from '../types/session';
 import audioEngine from '../audio/AudioEngine';
+import UserEditModal from '../components/UserEditModal';
 import '../style/gameLobby.css';
 
 export default function GameLobby() {
@@ -19,6 +20,15 @@ export default function GameLobby() {
     // Audio-Menü
     const [audioMenuOpen, setAudioMenuOpen] = useState(false);
     const audioMenuRef = useRef<HTMLDivElement | null>(null);
+
+    const [profileModalOpen, setProfileModalOpen] = useState(false);
+
+    useEffect(() => {
+        if (user?.username) {
+            setCreateForm(f => ({ ...f, hostName: user.username }));
+            setJoinForm(f => ({ ...f, playerName: user.username }));
+        }
+    }, [user?.username]);
 
     const [createForm, setCreateForm] = useState({
         hostName: user?.username || '',
@@ -221,6 +231,7 @@ export default function GameLobby() {
     }, [audioMenuOpen]);
 
     return (
+        <>
         <div className="game-lobby-page">
             <div className="lobby-container">
                 <div className="lobby-header">
@@ -233,6 +244,14 @@ export default function GameLobby() {
                                 ⚙ Verwaltung
                             </button>
                         )}
+
+                        <button
+                            className="profile-edit-btn"
+                            onClick={() => { setProfileModalOpen(true); audioEngine.playSfx('buttonClick'); }}
+                            title="Profil bearbeiten"
+                        >
+                            👤 Profil
+                        </button>
 
                         {/* Audio-Menü */}
                         <div className="lobby-audio-wrapper" ref={audioMenuRef}>
@@ -487,5 +506,10 @@ export default function GameLobby() {
                 </div>
             </div>
         </div>
+
+        {profileModalOpen && (
+            <UserEditModal onClose={() => setProfileModalOpen(false)} />
+        )}
+        </>
     );
 }

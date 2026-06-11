@@ -38,6 +38,10 @@ public class JwtService {
                 .compact();
     }
 
+    public UUID extractUserId(String token) {
+        return UUID.fromString(parseToken(token).getSubject());
+    }
+
     private Claims parseToken(String token) {
         return Jwts.parser()
                 .verifyWith(key)
