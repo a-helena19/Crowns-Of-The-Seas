@@ -250,7 +250,7 @@
 
 .in-game-chat-empty {
     margin: auto 0;
-    color: rgba(236, 242, 248, 0.62);
+    color: #000000;
     font-size: 12px;
     text-align: center;
 }
