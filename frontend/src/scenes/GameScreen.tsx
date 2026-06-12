@@ -1663,7 +1663,7 @@ export default function GameScreen() {
             </div>
             <div className="game">
                 <Game view={view} />
-                {view === "map" && sessionId && playerId && (
+                {view === "map" && sessionId && playerId && !isMinigameActive && (
                     <InGameChat
                         sessionId={sessionId}
                         currentUserId={playerId}

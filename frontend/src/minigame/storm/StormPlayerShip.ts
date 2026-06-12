@@ -8,6 +8,8 @@ export class StormPlayerShip {
     private readonly speedPxPerSec = 520;
     private readonly keyA?: Phaser.Input.Keyboard.Key;
     private readonly keyD?: Phaser.Input.Keyboard.Key;
+    private readonly keyLeft?: Phaser.Input.Keyboard.Key;
+    private readonly keyRight?: Phaser.Input.Keyboard.Key;
 
     constructor(scene: Phaser.Scene, textureKey: string) {
         const y = scene.scale.height - 80;
@@ -19,18 +21,16 @@ export class StormPlayerShip {
         this.moveHalfWidth = this.sprite.displayWidth * 0.28;
         this.targetX = this.sprite.x;
 
-        scene.input.on(Phaser.Input.Events.POINTER_MOVE, (pointer: Phaser.Input.Pointer) => {
-            this.targetX = Phaser.Math.Clamp(pointer.x, this.moveHalfWidth, this.boundsWidth - this.moveHalfWidth);
-        });
-
         this.keyA = scene.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.A);
         this.keyD = scene.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+        this.keyLeft = scene.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
+        this.keyRight = scene.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
     }
 
     update(deltaMs: number) {
         const step = this.speedPxPerSec * (deltaMs / 1000);
-        const leftPressed = this.keyA?.isDown === true;
-        const rightPressed = this.keyD?.isDown === true;
+        const leftPressed = this.keyA?.isDown === true || this.keyLeft?.isDown === true;
+        const rightPressed = this.keyD?.isDown === true || this.keyRight?.isDown === true;
 
         if (leftPressed && !rightPressed) {
             this.targetX = Math.max(this.moveHalfWidth, this.targetX - step);
