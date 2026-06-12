@@ -163,11 +163,12 @@
     display: flex;
     flex-direction: column;
     z-index: 95;
-    background: transparent;
-    border: 1px solid rgba(255, 224, 163, 0.35);
+    background: rgba(245, 232, 208, 0.72);
+    border: 1px solid rgba(122, 82, 48, 0.48);
     border-radius: 12px;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
     overflow: hidden;
+    backdrop-filter: blur(6px);
 }
 
 .in-game-chat-header {
@@ -182,10 +183,10 @@
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: #f7dd9c;
-    background: linear-gradient(180deg, #3b2618 0%, #2b1a10 100%);
-    border-bottom: 3px solid #6a462a;
-    box-shadow: inset 0 -2px 8px rgba(0, 0, 0, 0.35);
+    color: #f7eddc;
+    background: linear-gradient(180deg, rgba(91, 58, 33, 0.96) 0%, rgba(67, 43, 25, 0.96) 100%);
+    border-bottom: 3px solid #7a5230;
+    box-shadow: inset 0 -2px 8px rgba(0, 0, 0, 0.24);
     cursor: pointer;
 }
 
@@ -223,7 +224,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    background: rgba(11, 24, 38, 0.25);
+    background: rgba(242, 232, 212, 0.36);
     max-height: 170px;
     scrollbar-width: thin;
     scrollbar-color: #6a462a rgba(0, 0, 0, 0.25);
@@ -260,35 +261,39 @@
     gap: 2px;
     padding: 6px 8px;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.06);
-    color: #eef5fb;
+    background: rgba(88, 60, 36, 0.28);
+    color: #2d1d12;
     font-size: 12px;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .in-game-chat-message.own {
-    background: rgba(81, 173, 255, 0.16);
+    background: rgba(108, 75, 46, 0.34);
 }
 
 .in-game-chat-meta {
     display: flex;
     justify-content: space-between;
     gap: 8px;
-    color: rgba(247, 221, 156, 0.92);
+    color: #1f140d;
     font-size: 11px;
+    font-weight: 700;
 }
 
 .in-game-chat-text {
     line-height: 1.35;
     word-break: break-word;
     white-space: pre-wrap;
+    color: #2d1d12;
+    font-weight: 600;
 }
 
 .in-game-chat-form {
     display: flex;
     gap: 8px;
     padding: 8px 10px 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(11, 24, 38, 0.28);
+    border-top: 1px solid rgba(122, 82, 48, 0.24);
+    background: rgba(245, 232, 208, 0.58);
     flex: 0 0 auto;
 }
 
@@ -298,22 +303,22 @@
     padding: 8px 10px;
     border: 1px solid #6a462a;
     border-radius: 8px;
-    background: linear-gradient(180deg, #1f140d 0%, #120c08 100%);
-    color: #f4e7cf;
+    background: linear-gradient(180deg, rgba(248, 240, 226, 0.95) 0%, rgba(233, 221, 201, 0.95) 100%);
+    color: #2d1d12;
     font-size: 12px;
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55);
 }
 
 .in-game-chat-input::placeholder {
-    color: rgba(212, 186, 140, 0.55);
+    color: rgba(122, 82, 48, 0.55);
 }
 
 .in-game-chat-send {
     border: none;
     border-radius: 8px;
     padding: 0 12px;
-    background: linear-gradient(180deg, #6a462a 0%, #4b301c 100%);
-    color: #f6dfb5;
+    background: linear-gradient(180deg, #7a5230 0%, #5a3a21 100%);
+    color: #f7eddc;
     font-weight: 700;
     cursor: pointer;
     border: 1px solid #8a5d36;
