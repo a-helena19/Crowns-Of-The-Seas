@@ -28,6 +28,7 @@ import { ObstacleRouteViewResolver } from "../minigame/obstacle/ObstacleRouteVie
 import TreasureHuntMinigameOverlay from "../minigame/treasureHunt/TreasureHuntMinigameOverlay.tsx";
 import type { TreasureHuntMinigameEventPayload, TreasureHuntMinigameResult } from "../minigame/treasureHunt/TreasureHuntMinigameTypes.ts";
 import { minigameSessionManager } from "../minigame/MinigameSessionManager.ts";
+import { registerMinigameTester } from "../dev/minigameTester.ts";
 import EventNotificationDialog from "../components/EventNotificationDialog.tsx";
 import TreasureHuntPromptDialog from "../components/TreasureHuntPromptDialog.tsx";
 import InGameChat from "../components/InGameChat.tsx";
@@ -869,6 +870,20 @@ export default function GameScreen() {
         window.addEventListener("smuggle-offer", handler);
         return () => window.removeEventListener("smuggle-offer", handler);
     }, [playerId]);
+
+    // DEV/Präsentation: window.miniGame("Rat"|"Storm"|"Obstacle"|"Treasure")
+    // Setzt nur den aktiven Minigame-State (Anzeige), keine echte Logik/Reise.
+    useEffect(() => {
+        if (!playerId || !sessionId) return;
+        return registerMinigameTester({
+            playerId,
+            sessionId,
+            setRat: setActiveRatMinigame,
+            setStorm: setActiveStormMinigame,
+            setObstacle: setActiveObstacleMinigame,
+            setTreasure: setActiveTreasureHuntMinigame,
+        });
+    }, [playerId, sessionId]);
 
     // Rat minigame event
     useEffect(() => {
