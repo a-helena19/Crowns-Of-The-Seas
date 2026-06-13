@@ -144,7 +144,6 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
     const filterByPort = useCallback((list: SessionCargoDTO[]) =>
         currentPortId ? list.filter(c => c.originPortId === currentPortId) : list, [currentPortId]);
 
-    console.log ("Filtering cargos for port", currentPortId, "player: ", playerId );
     useEffect(() => {
         if (!sessionId || !currentPortId) { setLoading(false); return; }
         fetch(`/api/cargo/${sessionId}/available?portId=${currentPortId}&playerId=${playerId}`, { headers: { Authorization: `Bearer ${token}` } })

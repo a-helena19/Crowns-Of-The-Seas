@@ -239,23 +239,21 @@ export function useGameSessionWebSocket({
                     ? 'http://localhost:8080/ws'
                     : `/ws`;
 
-                console.log('Connecting to WebSocket:', wsUrl);
                 const socket = new SockJS(wsUrl);
                 const client = Stomp.over(socket);
+                client.debug = () => {}; // STOMP-Frame-Logging abschalten
+
 
                 client.connect(
                     {},
                     () => {
-                        console.log('WebSocket connected');
                         setIsConnected(true);
                         stompClientRef.current = client;
                         setStompClient(client);
 
                         client.subscribe(`/topic/session/${sessionId}`, (message) => {
-                            console.log('Received session update:', message.body);
                             try {
                                 const event = JSON.parse(message.body) as SessionUpdateEvent;
-                                console.log('Event type:', event.type);
                                 onSessionUpdateRef.current(event);
                             } catch (error) {
                                 console.error('Error parsing session update:', error);
@@ -263,7 +261,6 @@ export function useGameSessionWebSocket({
                         });
 
                         client.subscribe(`/topic/session/${sessionId}/ports`, (message) => {
-                            console.log('Received ports update:', message.body);
                             try {
                                 const event = JSON.parse(message.body) as PortsUpdateEvent;
                                 window.__latestPorts = event.ports;
@@ -466,9 +463,7 @@ export function useGameSessionWebSocket({
     useEffect(() => {
         return () => {
             if (stompClientRef.current) {
-                stompClientRef.current.disconnect(() => {
-                    console.log('WebSocket disconnected');
-                });
+                stompClientRef.current.disconnect(() => {});
                 stompClientRef.current = null;
                 setStompClient(null);
                 setIsConnected(false);
@@ -487,7 +482,6 @@ export function useGameSessionWebSocket({
         disconnect: () => {
             if (stompClientRef.current) {
                 stompClientRef.current.disconnect(() => {
-                    console.log('WebSocket disconnected');
                     setIsConnected(false);
                     setStompClient(null);
                     connectAttemptedRef.current = false;

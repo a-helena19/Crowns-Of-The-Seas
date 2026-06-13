@@ -122,7 +122,6 @@ class AudioEngine {
         }
 
         if (!def.url) {
-            console.log(`AudioEngine: Track "${trackKey}" hat keine Audio-Datei (url ist null) – übersprungen.`);
             this.currentMusicKey = trackKey;
             return;
         }
@@ -151,7 +150,7 @@ class AudioEngine {
             });
 
             audio.play().catch(err => {
-                console.log(`AudioEngine: Play-Fehler für "${trackKey}":`, err.message);
+                console.warn(`AudioEngine: Fehler beim Abspielen von "${trackKey}":`, err);
             });
 
             this.currentMusic = audio;
