@@ -105,6 +105,7 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('map', '/World_Map3.PNG');
         this.load.image('ship', '/ship.png');
         this.load.image('harbor', '/harborpingred.png');
+        this.load.image('harborGold', '/harborpingyellow.png');
     }
 
     create() {
@@ -126,7 +127,7 @@ export default class MainScene extends Phaser.Scene {
         const shipStartX = latestShip ? (latestShip.x / 100) * this.scale.width : this.scale.width * 0.5;
         const shipStartY = latestShip ? (latestShip.y / 100) * this.scale.height : this.scale.height * 0.5;
         this.ship = this.add.sprite(shipStartX, shipStartY, 'ship')
-            .setScale(0.065).setDepth(5).setVisible(false);
+            .setScale(0.065).setDepth(8).setVisible(false);
         this.shipController = new Ship(this, this.ship);
         this.shipController.setMapWidth(this.scale.width);
 
@@ -601,7 +602,7 @@ export default class MainScene extends Phaser.Scene {
 
         const initialTexture = this.textures.exists(textureKey) ? textureKey : 'ship';
         const sprite = this.add.sprite(spawnX, spawnY, initialTexture)
-            .setScale(0.065).setInteractive().setDepth(5);
+            .setScale(0.065).setInteractive().setDepth(8);
 
         const isOwn = this.isOwnShip(shipData);
         sprite.setAlpha(isOwn ? 1 : MainScene.OTHER_SHIP_ALPHA);
@@ -952,8 +953,8 @@ export default class MainScene extends Phaser.Scene {
                 .setDepth(6);
 
             const hitZone = this.add.zone(px, py, 30, 30)
-                .setInteractive()
-                .setDepth(7);
+                .setInteractive({ useHandCursor: true })
+                .setDepth(9);
 
             hitZone.on('pointerdown', () => {
                 window.dispatchEvent(new CustomEvent('port-clicked', { detail: port }));
@@ -985,6 +986,16 @@ export default class MainScene extends Phaser.Scene {
      * Quelle ist this.luxuryPortIds (per 'glow-luxury-ports'-Event gesetzt).
      */
     private updateLuxuryGlows() {
+        // Pin-Farbe setzen: gold fuer Luxus-Haefen, sonst rot
+        for (let i = 0; i < this.harborSprites.length; i++) {
+            const port = this.harborPortData[i];
+            if (!port) continue;
+            const wantTexture = this.luxuryPortIds.has(port.id) ? 'harborGold' : 'harbor';
+            if (this.harborSprites[i].texture.key !== wantTexture) {
+                this.harborSprites[i].setTexture(wantTexture);
+            }
+        }
+
         // Glows entfernen, die nicht mehr gebraucht werden
         for (const [portId, glow] of this.luxuryGlows.entries()) {
             if (!this.luxuryPortIds.has(portId)) {

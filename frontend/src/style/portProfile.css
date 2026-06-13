@@ -18,7 +18,9 @@
     width: 560px;
     max-width: 92vw;
     max-height: 80vh;
-    overflow-y: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     color: #2b2418;
 }
 
@@ -119,6 +121,11 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    margin: 0 -6px;
+    padding: 2px 6px;
 }
 
 .port-profile-cargo-item {
@@ -197,19 +204,19 @@
 .risk-high   { color: #c05020; }
 .risk-extreme{ color: #c03030; }
 
-.port-profile-panel::-webkit-scrollbar {
+.port-profile-cargo-list::-webkit-scrollbar {
     width: 6px;
 }
 
-.port-profile-panel::-webkit-scrollbar-track {
+.port-profile-cargo-list::-webkit-scrollbar-track {
     background: rgba(120, 90, 40, 0.06);
 }
 
-.port-profile-panel::-webkit-scrollbar-thumb {
+.port-profile-cargo-list::-webkit-scrollbar-thumb {
     background: rgba(120, 90, 40, 0.25);
     border-radius: 3px;
 }
 
-.port-profile-panel::-webkit-scrollbar-thumb:hover {
+.port-profile-cargo-list::-webkit-scrollbar-thumb:hover {
     background: rgba(120, 90, 40, 0.4);
 }
