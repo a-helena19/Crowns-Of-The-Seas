@@ -273,6 +273,11 @@ export function useGameSessionWebSocket({
                             }
                         });
 
+                        client.subscribe(`/topic/session/${sessionId}/cargo`, () => {
+                            // Markt hat sich geaendert -> Karte/Glow neu berechnen lassen
+                            window.dispatchEvent(new CustomEvent('backend-cargo-market'));
+                        });
+
                         client.subscribe(`/topic/session/${sessionId}/tick`, (message) => {
                             try {
                                 const event = JSON.parse(message.body) as TickUpdateEvent;

@@ -127,6 +127,18 @@
     padding: 10px 14px;
 }
 
+/* Luxusfracht-Eintrag: goldenes Leuchten */
+.port-profile-cargo-item--luxury {
+    border-color: #d4af37;
+    border-left: 3px solid #d4af37;
+    background: linear-gradient(90deg, rgba(212, 175, 55, 0.18), #f5efdd 55%);
+    animation: pp-luxury-glow 2.2s ease-in-out infinite;
+}
+@keyframes pp-luxury-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
+    50%      { box-shadow: 0 0 12px 0 rgba(212, 175, 55, 0.45); }
+}
+
 .port-profile-cargo-row {
     display: flex;
     justify-content: space-between;

@@ -89,6 +89,9 @@ export default class MainScene extends Phaser.Scene {
     private onShipPositions!: (e: Event) => void;
     private onTravelResumed!: (e: Event) => void;
     private onBlinkPortPin!: (e: Event) => void;
+    private onGlowLuxuryPorts!: (e: Event) => void;
+    private luxuryPortIds: Set<string> = new Set();
+    private luxuryGlows: Map<string, Phaser.GameObjects.Arc> = new Map();
     private lastSceneWidth: number = 0;
     private lastSceneHeight: number = 0;
     private blockedShipsByMinigame: Map<string, ActiveMinigameSession> = new Map();
@@ -192,6 +195,17 @@ export default class MainScene extends Phaser.Scene {
             }
         };
         window.addEventListener('blink-port-pin', this.onBlinkPortPin);
+
+        this.onGlowLuxuryPorts = (e: Event) => {
+            const { portIds } = (e as CustomEvent<{ portIds: string[] }>).detail;
+            this.luxuryPortIds = new Set(portIds);
+            this.updateLuxuryGlows();
+        };
+        window.addEventListener('glow-luxury-ports', this.onGlowLuxuryPorts);
+        // Falls das Event schon vor dem Szenenstart kam:
+        if (window.__luxuryPortIds) {
+            this.luxuryPortIds = new Set(window.__luxuryPortIds);
+        }
 
         this.blockedShipsByMinigame = minigameSessionManager.getAllBlockedShips();
         this.unsubscribeMinigameEvents = minigameSessionManager.subscribe((event) => {
@@ -688,6 +702,13 @@ export default class MainScene extends Phaser.Scene {
 
         this.cameras.main.setBounds(0, 0, this.scale.width, this.scale.height);
 
+        // Gold-Glows den verschobenen Haefen nachfuehren
+        for (const [portId, glow] of this.luxuryGlows.entries()) {
+            const port = this.harborPortData.find(p => p.id === portId);
+            if (!port) continue;
+            glow.setPosition((port.x / 100) * this.scale.width, (port.y / 100) * this.scale.height);
+        }
+
         const currentTick = window.__latestShipPositionsTick ?? window.__latestTick?.currentTick ?? 0;
         for (const entry of this.shipSprites.values()) {
             const shipData = entry.lastShipData;
@@ -954,6 +975,51 @@ export default class MainScene extends Phaser.Scene {
         if (this.routeData.length > 0) {
             this.renderRoutes();
         }
+
+        // Gold-Leuchten fuer Haefen mit Luxusfracht (neu) positionieren
+        this.updateLuxuryGlows();
+    }
+
+    /**
+     * Laesst alle Haefen, die aktuell eine LUXURY_GOODS-Fracht anbieten, gold pulsieren.
+     * Quelle ist this.luxuryPortIds (per 'glow-luxury-ports'-Event gesetzt).
+     */
+    private updateLuxuryGlows() {
+        // Glows entfernen, die nicht mehr gebraucht werden
+        for (const [portId, glow] of this.luxuryGlows.entries()) {
+            if (!this.luxuryPortIds.has(portId)) {
+                this.tweens.killTweensOf(glow);
+                glow.destroy();
+                this.luxuryGlows.delete(portId);
+            }
+        }
+
+        // Fuer jeden Luxus-Hafen ein Leuchten anlegen (falls noch nicht vorhanden)
+        for (const portId of this.luxuryPortIds) {
+            if (this.luxuryGlows.has(portId)) continue;
+            const port = this.harborPortData.find(p => p.id === portId);
+            if (!port) continue; // Haefen evtl. noch nicht gerendert -> spaeter erneut
+
+            const px = (port.x / 100) * this.scale.width;
+            const py = (port.y / 100) * this.scale.height;
+
+            // Goldener Schein hinter dem Hafen-Pin (Depth 5 < Pin-Depth 6)
+            const glow = this.add.circle(px, py, 16, 0xffd24a, 0.55)
+                .setDepth(5)
+                .setBlendMode(Phaser.BlendModes.ADD);
+
+            this.tweens.add({
+                targets: glow,
+                scale: { from: 0.9, to: 1.7 },
+                alpha: { from: 0.6, to: 0.15 },
+                duration: 900,
+                ease: 'Sine.easeInOut',
+                yoyo: true,
+                repeat: -1,
+            });
+
+            this.luxuryGlows.set(portId, glow);
+        }
     }
 
     update(_time: number, delta: number) {
@@ -971,6 +1037,9 @@ export default class MainScene extends Phaser.Scene {
         window.removeEventListener('travel-resumed', this.onTravelResumed);
         window.removeEventListener('blink-port-pin', this.onBlinkPortPin);
         window.removeEventListener('toggle-other-ships', this.onToggleOtherShips);
+        window.removeEventListener('glow-luxury-ports', this.onGlowLuxuryPorts);
+        this.luxuryGlows.forEach(glow => glow.destroy());
+        this.luxuryGlows.clear();
         this.unsubscribeMinigameEvents?.();
         this.unsubscribeMinigameEvents = null;
         this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this);

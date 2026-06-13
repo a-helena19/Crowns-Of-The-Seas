@@ -6,6 +6,7 @@ interface CargoRouteMapViewProps {
     toPortName: string;
     fromPortId?: string;
     toPortId?: string;
+    isLuxury?: boolean;
 }
 
 
@@ -17,6 +18,7 @@ interface RouteWaypoint {
 export default function CargoRouteMapView({
                                               fromPortName,
                                               toPortName,
+                                              isLuxury = false,
                                           }: CargoRouteMapViewProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [waypoints, setWaypoints] = useState<RouteWaypoint[]>([]);
@@ -84,12 +86,12 @@ export default function CargoRouteMapView({
             ctx.stroke();
             ctx.restore();
 
-            drawPin(ctx, px, py, from.x, from.y, fromPortName, true, W);
-            drawPin(ctx, px, py, to.x, to.y, toPortName, false, W);
+            drawPin(ctx, px, py, from.x, from.y, fromPortName, true, W, isLuxury);
+            drawPin(ctx, px, py, to.x, to.y, toPortName, false, W, false);
         };
 
         if (img.complete) img.onload?.(new Event("load"));
-    }, [waypoints, fromPortName, toPortName]);
+    }, [waypoints, fromPortName, toPortName, isLuxury]);
 
     return (
         <div className="cargo-route-map-wrapper">
@@ -112,10 +114,25 @@ function drawPin(
     label: string,
     isOrigin: boolean,
     canvasW: number,
+    glow: boolean = false,
 ) {
     const cx = px(xPct);
     const cy = py(yPct);
     const r = 5;
+
+    // Goldener Schein fuer Luxusfracht-Hafen
+    if (glow) {
+        const haloR = r + 11;
+        const grad = ctx.createRadialGradient(cx, cy, r, cx, cy, haloR);
+        grad.addColorStop(0, "rgba(255, 210, 74, 0.85)");
+        grad.addColorStop(1, "rgba(255, 210, 74, 0)");
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, haloR, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.restore();
+    }
 
     ctx.save();
     ctx.shadowColor = "rgba(0,0,0,0.5)";
@@ -128,7 +145,7 @@ function drawPin(
 
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = isOrigin ? "#2a6e2a" : "#c02828";
+    ctx.fillStyle = glow ? "#d4af37" : (isOrigin ? "#2a6e2a" : "#c02828");
     ctx.fill();
 
     const fontSize = Math.max(9, Math.round(canvasW / 38));
@@ -147,7 +164,7 @@ function drawPin(
 
     ctx.save();
     ctx.fillStyle = "rgba(245, 235, 200, 0.92)";
-    ctx.strokeStyle = isOrigin ? "#2a6e2a" : "#c02828";
+    ctx.strokeStyle = glow ? "#b8860b" : (isOrigin ? "#2a6e2a" : "#c02828");
     ctx.lineWidth = 1;
     roundRect(ctx, lx, ly, boxW, boxH, 3);
     ctx.fill();

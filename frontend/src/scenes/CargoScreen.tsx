@@ -41,6 +41,7 @@ const TYPE_COLORS: Record<string, string> = {
     GENERAL_GOODS: "#7a9b6a", FOOD: "#c0874a", INDUSTRIAL_GOODS: "#6a7fa0",
     ELECTRONICS: "#6a5fb0", FRAGILE: "#b08060", HAZARDOUS: "#b04040", LUXURY_GOODS: "#a07030",
 };
+// Kanonische Reihenfolge der Kategorien für den Filter
 const CARGO_TYPE_ORDER = [
     "GENERAL_GOODS", "FOOD", "INDUSTRIAL_GOODS", "ELECTRONICS", "FRAGILE", "HAZARDOUS", "LUXURY_GOODS",
 ] as const;
@@ -255,9 +256,12 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
     const startBtnDisabled = !selected || !playerShipId || !currentPortId || shipInTransit || !canAfford || hasNoAffordableOption || starting;
     const selectedDurationTicks = fuelEstimate ? findDuration(SPEED_SETTINGS[speedIndex]) : null;
 
+    // Kategorien, die aktuell in der Liste vorkommen (in kanonischer Reihenfolge)
     const presentTypes = CARGO_TYPE_ORDER.filter(t => cargos.some(c => c.cargoType === t));
+    // Nach gewählter Kategorie gefilterte Frachten
     const visibleCargos = typeFilter === "ALL" ? cargos : cargos.filter(c => c.cargoType === typeFilter);
 
+    // Filter zurücksetzen, falls die gewählte Kategorie nicht mehr verfügbar ist
     useEffect(() => {
         if (typeFilter !== "ALL" && !cargos.some(c => c.cargoType === typeFilter)) {
             setTypeFilter("ALL");
@@ -345,7 +349,7 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
                             return (
                                 <div key={c.id}
                                      onClick={() => { setSelected(c); setFuelError(null); setAcceptError(null); }}
-                                     className={`cs-list-item${selected?.id === c.id ? " cs-list-item--active" : ""}`}>
+                                     className={`cs-list-item${selected?.id === c.id ? " cs-list-item--active" : ""}${c.cargoType === "LUXURY_GOODS" ? " cs-list-item--luxury" : ""}`}>
                                     <div className="cs-item-row1">
                                         <span className="cs-item-name">{c.name}</span>
                                         <span className="cs-item-reward">{formatTalers(c.reward)} T</span>
@@ -514,6 +518,7 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
                                             toPortName={selected.destinationPortName}
                                             fromPortId={selected.originPortId}
                                             toPortId={selected.destinationPortId}
+                                            isLuxury={selected.cargoType === "LUXURY_GOODS"}
                                         />
                                     </div>
                                 </div>

@@ -27,4 +27,5 @@ interface Window {
     __activeObstacleEventId?: string;
     __activeTreasureHuntEventId?: string;
     __showOtherShips?: boolean;
+    __luxuryPortIds?: string[];
 }

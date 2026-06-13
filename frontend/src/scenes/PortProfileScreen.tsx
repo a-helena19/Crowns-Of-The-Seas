@@ -138,10 +138,13 @@ export default function PortProfileScreen({ port, onClose }: Props) {
                 ) : (
                     <div className="port-profile-cargo-list">
                         {cargos.map((c) => (
-                            <div key={c.id} className="port-profile-cargo-item">
+                            <div
+                                key={c.id}
+                                className={`port-profile-cargo-item${c.cargoType === "LUXURY_GOODS" ? " port-profile-cargo-item--luxury" : ""}`}
+                            >
                                 <div className="port-profile-cargo-row">
                                     <span className="port-profile-cargo-name">{c.name}</span>
-	                                    <span className="port-profile-cargo-reward">{formatTalers(c.reward)} T</span>
+                                    <span className="port-profile-cargo-reward">{formatTalers(c.reward)} T</span>
                                 </div>
                                 <div className="port-profile-cargo-sub">
                                     <span

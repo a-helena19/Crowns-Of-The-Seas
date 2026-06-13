@@ -175,6 +175,41 @@ export default function GameScreen() {
         window.dispatchEvent(new CustomEvent('toggle-other-ships', { detail: { visible: showOtherShips } }));
     }, [showOtherShips, view]);
 
+    // Luxus-Frachten: Origin-Haefen mit verfuegbarer LUXURY_GOODS-Fracht ermitteln
+    // und der Karte (Phaser) per Event mitteilen, damit sie gold leuchten.
+    useEffect(() => {
+        if (!sessionId) return;
+        let cancelled = false;
+
+        const refreshLuxuryPorts = () => {
+            fetch(`/api/cargo/${sessionId}/available-all`, {
+                headers: { Authorization: `Bearer ${authToken}` },
+            })
+                .then(res => (res.ok ? res.json() : []))
+                .then((cargos: Array<{ cargoType: string; originPortId: string }>) => {
+                    if (cancelled) return;
+                    const portIds = Array.from(new Set(
+                        cargos
+                            .filter(c => c.cargoType === "LUXURY_GOODS")
+                            .map(c => c.originPortId)
+                    ));
+                    window.__luxuryPortIds = portIds;
+                    window.dispatchEvent(new CustomEvent('glow-luxury-ports', { detail: { portIds } }));
+                })
+                .catch(() => {});
+        };
+
+        refreshLuxuryPorts();
+        // Markt-Updates und (Re-)Render der Haefen erneut auswerten
+        window.addEventListener('backend-cargo-market', refreshLuxuryPorts);
+        window.addEventListener('backend-ports', refreshLuxuryPorts);
+        return () => {
+            cancelled = true;
+            window.removeEventListener('backend-cargo-market', refreshLuxuryPorts);
+            window.removeEventListener('backend-ports', refreshLuxuryPorts);
+        };
+    }, [sessionId, authToken]);
+
     const loadOwnedShips = useCallback(() => {
         if (!playerId || !sessionId) return;
         fetch(`/api/ships/player/${playerId}?sessionId=${sessionId}`, {
@@ -772,13 +807,13 @@ export default function GameScreen() {
                 if (matched) {
                     setRewardToasts(t => {
                         if (t.some(toast => toast.id === data.travelId)) return t;
-	                        return [...t, {
-	                            id: data.travelId,
-	                            shipName: matched.shipName,
-	                            from: matched.from,
-	                            to: matched.to,
-	                            reward: data.netPayout ?? data.totalReward,
-	                        }];
+                        return [...t, {
+                            id: data.travelId,
+                            shipName: matched.shipName,
+                            from: matched.from,
+                            to: matched.to,
+                            reward: data.netPayout ?? data.totalReward,
+                        }];
                     });
                 }
                 return prev;
