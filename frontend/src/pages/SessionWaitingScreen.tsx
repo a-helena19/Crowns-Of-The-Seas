@@ -74,7 +74,6 @@ export default function SessionWaitingScreen() {
 
     const handleSessionUpdate = useCallback(
         (event: SessionUpdateEvent) => {
-            console.log('[SessionWaiting] Update:', event.type, '→', event.status);
 
             setStatus(event.status);
             setPlayers(event.players ?? []);
@@ -170,7 +169,6 @@ export default function SessionWaitingScreen() {
     const handleStartGame = async () => {
         if (!sessionId) return;
         try {
-            console.log('Calling backend to start game with sessionId:', sessionId);
             await sessionApi.startGame(sessionId, {});
             audioEngine.playSfx('buttonClick');
         } catch (error) {

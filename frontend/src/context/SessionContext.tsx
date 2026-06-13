@@ -73,13 +73,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
     const joinSession = useCallback(async (gameCode: string, playerName: string = 'Player'): Promise<Session | null> => {
         try {
-            console.log('SessionContext.joinSession called with:', { gameCode, playerName });
             const response = await sessionApi.joinSession({
                 gameCode,
                 playerName
             });
 
-            console.log('API response:', response);
 
             // Find the host player (isHost: true)
             interface Player {
@@ -104,7 +102,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                 }))
             };
 
-            console.log('Creating session object:', updatedSession);
 
             setSessions(prev => {
                 const existing = prev.find(s => s.gameCode === gameCode);
@@ -156,7 +153,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         async (sessionId: string, userId: string, faction: PlayerFaction) => {
             try {
                 await sessionApi.assignPlayerFaction(sessionId, userId, faction);
-                console.log(`✓ Faction ${faction} assigned to player ${userId}`);
             } catch (error: unknown) {
                 console.error('Error assigning faction:', error);
                 throw error;
@@ -169,7 +165,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         async (sessionId: string, userId: string) => {
             try {
                 await sessionApi.markPlayerReady(sessionId, userId);
-                console.log(`✓ Player ${userId} marked as ready`);
             } catch (error: unknown) {
                 console.error('Error marking player ready:', error);
                 throw error;

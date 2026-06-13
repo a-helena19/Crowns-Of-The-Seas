@@ -24,18 +24,37 @@ export default function InGameChat({ sessionId, currentUserId, stompClient }: In
 
     useEffect(() => {
         let active = true;
-        chatApi.getMessages(sessionId)
-            .then((loadedMessages) => {
-                if (active) {
-                    setMessages(loadedMessages);
-                }
-            })
-            .catch((error) => {
-                console.error('Failed to load chat messages', error);
-            });
+        let retryTimer: ReturnType<typeof setTimeout> | undefined;
+        let attempts = 0;
+
+        const loadMessages = () => {
+            chatApi.getMessages(sessionId)
+                .then((loadedMessages) => {
+                    if (active) {
+                        setMessages(loadedMessages);
+                    }
+                })
+                .catch((error) => {
+                    if (!active) return;
+                    const status = (error as { response?: { status?: number } })?.response?.status;
+                    // 409 = Session ist noch nicht RUNNING (kurzer Race beim Spielstart).
+                    // Kein echter Fehler -> still ein paar Mal erneut versuchen, statt zu loggen.
+                    if (status === 409 && attempts < 5) {
+                        attempts += 1;
+                        retryTimer = setTimeout(loadMessages, 1000);
+                        return;
+                    }
+                    if (status !== 409) {
+                        console.error('Failed to load chat messages', error);
+                    }
+                });
+        };
+
+        loadMessages();
 
         return () => {
             active = false;
+            if (retryTimer) clearTimeout(retryTimer);
         };
     }, [sessionId]);
 
