@@ -130,6 +130,35 @@
 
 .cs-list-empty span { font-size: 10px; opacity: 0.6; }
 
+/* Kategorie-Filter */
+.cs-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 8px 12px 9px;
+    border-bottom: 1px solid rgba(180,140,60,0.25);
+    flex-shrink: 0;
+}
+.cs-filter-chip {
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.3px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: 1px solid rgba(180,140,60,0.45);
+    background: rgb(245, 237, 218);
+    color: #5a3a12;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.cs-filter-chip:hover { background: rgba(200,160,64,0.15); }
+.cs-filter-chip--active {
+    background: #4a2e10;
+    border-color: #8c5a1a;
+    color: #fff;
+}
+
 .cs-list-item {
     background: rgb(245, 237, 218);
     border: 1px solid rgba(180,140,60,0.35);

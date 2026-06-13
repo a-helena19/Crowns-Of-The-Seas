@@ -41,6 +41,9 @@ const TYPE_COLORS: Record<string, string> = {
     GENERAL_GOODS: "#7a9b6a", FOOD: "#c0874a", INDUSTRIAL_GOODS: "#6a7fa0",
     ELECTRONICS: "#6a5fb0", FRAGILE: "#b08060", HAZARDOUS: "#b04040", LUXURY_GOODS: "#a07030",
 };
+const CARGO_TYPE_ORDER = [
+    "GENERAL_GOODS", "FOOD", "INDUSTRIAL_GOODS", "ELECTRONICS", "FRAGILE", "HAZARDOUS", "LUXURY_GOODS",
+] as const;
 const SPEED_SETTINGS = [0.25, 0.4, 0.6, 0.8, 1.0];
 interface AcceptedCargo {
     id: string; from: string; to: string; weight: number;
@@ -68,6 +71,7 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
     const [selected, setSelected] = useState<SessionCargoDTO | null>(null);
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState<"fracht" | "leer">(initialTab);
+    const [typeFilter, setTypeFilter] = useState<string>("ALL");
     const stompRef = useRef<Client | null>(null);
     const [speedIndex, setSpeedIndex] = useState(2);
     const [fuelEstimate, setFuelEstimate] = useState<FuelEstimate | null>(null);
@@ -251,6 +255,15 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
     const startBtnDisabled = !selected || !playerShipId || !currentPortId || shipInTransit || !canAfford || hasNoAffordableOption || starting;
     const selectedDurationTicks = fuelEstimate ? findDuration(SPEED_SETTINGS[speedIndex]) : null;
 
+    const presentTypes = CARGO_TYPE_ORDER.filter(t => cargos.some(c => c.cargoType === t));
+    const visibleCargos = typeFilter === "ALL" ? cargos : cargos.filter(c => c.cargoType === typeFilter);
+
+    useEffect(() => {
+        if (typeFilter !== "ALL" && !cargos.some(c => c.cargoType === typeFilter)) {
+            setTypeFilter("ALL");
+        }
+    }, [cargos, typeFilter]);
+
 
     return (
         <div className="cs-screen">
@@ -282,9 +295,36 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
 
                     <div className="cs-list-panel">
                         <div className="cs-list-header">
-                            <span>Verfügbare Frachten ({cargos.length})</span>
+                            <span>Verfügbare Frachten ({visibleCargos.length})</span>
                             <img src={Briefmarke} alt="" className="cs-list-stamp" />
                         </div>
+
+                        {presentTypes.length > 0 && (
+                            <div className="cs-filter-bar" role="group" aria-label="Nach Kategorie filtern">
+                                <button
+                                    type="button"
+                                    className={`cs-filter-chip${typeFilter === "ALL" ? " cs-filter-chip--active" : ""}`}
+                                    onClick={() => { audioEngine.playSfx("buttonClick"); setTypeFilter("ALL"); }}
+                                >
+                                    Alle ({cargos.length})
+                                </button>
+                                {presentTypes.map(t => {
+                                    const count = cargos.filter(c => c.cargoType === t).length;
+                                    const active = typeFilter === t;
+                                    return (
+                                        <button
+                                            key={t}
+                                            type="button"
+                                            className={`cs-filter-chip${active ? " cs-filter-chip--active" : ""}`}
+                                            style={active ? { background: TYPE_COLORS[t], borderColor: TYPE_COLORS[t], color: "#fff" } : { color: TYPE_COLORS[t] }}
+                                            onClick={() => { audioEngine.playSfx("buttonClick"); setTypeFilter(t); }}
+                                        >
+                                            {TYPE_LABELS[t] ?? t} ({count})
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
 
                         {cargos.length === 0 && (
                             <div className="cs-list-empty">
@@ -293,7 +333,14 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
                             </div>
                         )}
 
-                        {cargos.map(c => {
+                        {cargos.length > 0 && visibleCargos.length === 0 && (
+                            <div className="cs-list-empty">
+                                Keine Frachten in dieser Kategorie.<br />
+                                <span>Wähle „Alle“, um wieder alle Angebote zu sehen.</span>
+                            </div>
+                        )}
+
+                        {visibleCargos.map(c => {
                             const tl = ticksUntilExpiry(c);
                             return (
                                 <div key={c.id}
@@ -301,7 +348,7 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
                                      className={`cs-list-item${selected?.id === c.id ? " cs-list-item--active" : ""}`}>
                                     <div className="cs-item-row1">
                                         <span className="cs-item-name">{c.name}</span>
-	                                        <span className="cs-item-reward">{formatTalers(c.reward)} T</span>
+                                        <span className="cs-item-reward">{formatTalers(c.reward)} T</span>
                                     </div>
                                     <div className="cs-item-row2">
                                     <span className="cs-type-badge" style={{ background: TYPE_COLORS[c.cargoType]+"22", color: TYPE_COLORS[c.cargoType] }}>
