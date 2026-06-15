@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { HELP_CHAPTERS } from "./helpCenterContent";
 import type { HelpBlock, HelpChapter, HelpPage } from "./helpCenterContent";
 import "../style/helpCenter.css";
+import audioEngine from "../audio/AudioEngine.ts";
 
 interface HelpCenterProps {
     open: boolean;
@@ -177,7 +178,7 @@ export default function HelpCenter({ open, onClose }: HelpCenterProps) {
                 style={{ "--chapter-color": chapter.color } as CSSProperties}
                 onClick={(e) => e.stopPropagation()}
             >
-                <button className="help-close" onClick={onClose} aria-label="Schließen" type="button">
+                <button className="help-close" onClick={() => {onClose(); audioEngine.playSfx("buttonClick"); }} aria-label="Schließen" type="button">
                     <span aria-hidden="true">&#10005;</span>
                 </button>
 
@@ -198,7 +199,7 @@ export default function HelpCenter({ open, onClose }: HelpCenterProps) {
                                         type="button"
                                         className={`help-toc-chapter ${isActive ? "is-active" : ""}`}
                                         style={{ "--tab-color": ch.color } as CSSProperties}
-                                        onClick={() => jumpToChapter(i)}
+                                        onClick={() => {jumpToChapter(i); audioEngine.playSfx("buttonClick")}}
                                         aria-expanded={isActive}
                                     >
                                         <span className="help-toc-tab" />
@@ -217,7 +218,10 @@ export default function HelpCenter({ open, onClose }: HelpCenterProps) {
                                                         type="button"
                                                         className={`help-toc-page ${p === active.pageIndex ? "is-active" : ""}`}
                                                         style={{ "--tab-color": ch.color } as CSSProperties}
-                                                        onClick={() => jumpToPage(i, p)}
+                                                        onClick={() => {
+                                                            jumpToPage(i, p);
+                                                            audioEngine.playSfx("buttonClick");
+                                                        }}
                                                     >
                                                         {pg.title}
                                                     </button>
@@ -248,7 +252,7 @@ export default function HelpCenter({ open, onClose }: HelpCenterProps) {
                             <button
                                 type="button"
                                 className="help-nav-btn"
-                                onClick={goPrev}
+                                onClick={() => {goPrev(); audioEngine.playSfx("buttonClick");}}
                                 disabled={current === 0}
                                 aria-label="Vorherige Seite"
                             >
@@ -262,7 +266,7 @@ export default function HelpCenter({ open, onClose }: HelpCenterProps) {
                             <button
                                 type="button"
                                 className="help-nav-btn"
-                                onClick={goNext}
+                                onClick={() => {goNext();  audioEngine.playSfx("buttonClick");}}
                                 disabled={current === total - 1}
                                 aria-label="Nächste Seite"
                             >
