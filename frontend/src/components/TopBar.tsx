@@ -12,6 +12,7 @@ import type { LeaderboardEntry } from '../types/leaderboard';
 import { useAudioSettings } from '../audio/AudioSettingsContext';
 import audioEngine from '../audio/AudioEngine';
 import { useNavigate } from 'react-router-dom';
+import HelpCenter from './HelpCenter';
 
 
 export default function TopBar() {
@@ -28,6 +29,7 @@ export default function TopBar() {
     const [endingToastHiding, setEndingToastHiding] = useState(false);
     const { settings, setMusicEnabled, setSfxEnabled, setMusicVolume, setSfxVolume } = useAudioSettings();
     const [audioMenuOpen, setAudioMenuOpen] = useState(false);
+    const [helpOpen, setHelpOpen] = useState(false);
     const [leaving, setLeaving] = useState(false);
     const audioMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -384,6 +386,22 @@ export default function TopBar() {
                         </div>
                     )}
                 </div>
+                <button
+                    type="button"
+                    className="topbar-panel topbar-audio-btn topbar-help-btn"
+                    onClick={() => { audioEngine.playSfx('buttonClick'); setHelpOpen(true); }}
+                    title="Kapitänshandbuch (Hilfe)"
+                    aria-label="Hilfe-Center öffnen"
+                >
+                    <svg className="topbar-help-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 4.5C4 3.7 4.7 3 5.5 3H11v16.5H5.5c-.8 0-1.5.4-1.5 1V4.5Z"
+                              fill="currentColor" opacity="0.9" />
+                        <path d="M20 4.5C20 3.7 19.3 3 18.5 3H13v16.5h5.5c.8 0 1.5.4 1.5 1V4.5Z"
+                              fill="currentColor" />
+                        <path d="M12 19.5V3" stroke="#3a2913" strokeWidth="0.8" opacity="0.5" />
+                    </svg>
+                </button>
+
                 <div className="topbar-audio-wrapper" ref={audioMenuRef}>
                     <button
                         type="button"
@@ -450,6 +468,13 @@ export default function TopBar() {
 
                             <div className="audio-popover-divider" />
 
+                            <button
+                                className="audio-popover-help"
+                                onClick={() => { audioEngine.playSfx('buttonClick'); setAudioMenuOpen(false); setHelpOpen(true); }}
+                            >
+                                Kapitänshandbuch öffnen
+                            </button>
+
                             <button className="audio-popover-leave" disabled={leaving} onClick={handleLeaveSession}>
                                 {leaving ? 'Verlasse …' : 'Zurück zur Lobby'}
                             </button>
@@ -480,6 +505,8 @@ export default function TopBar() {
                     >✕</button>
                 </div>
             )}
+
+            <HelpCenter open={helpOpen} onClose={() => setHelpOpen(false)} />
 
         </div>
     );
