@@ -27,4 +27,6 @@ interface Window {
     __activeObstacleEventId?: string;
     __activeTreasureHuntEventId?: string;
     __showOtherShips?: boolean;
+    __luxuryPortIds?: string[];
+    miniGame?: (type?: string, routeView?: "VIEW_A" | "VIEW_B") => void;
 }

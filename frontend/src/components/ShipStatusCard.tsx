@@ -84,11 +84,15 @@ export default function ShipStatusCard({
                                        }: ShipStatusCardProps) {
     const visual = resolveVisual(status, pendingEventLabel, pendingEventKind);
     const isEvent = Boolean(pendingEventKind || pendingEventLabel);
+    // Leuchten NUR, wenn eine Spieler-Aktion gebraucht wird:
+    //  - laufende Events / Entscheidungen: manuelles Anlegen, Schmuggel,
+    //    Zoll bestechen/kooperieren, Ratten/Sturm/Passage/Schatzjagd  -> isEvent
+    //  - Reisebereit: Spieler muss die Abfahrt auslösen
+    // NICHT bei reinen Zeit-/Wartezustaenden: beladen, entladen, betanken,
+    // reparieren, im Hafen, unterwegs, Zollkontrolle, blockiert
     const isActionable =
         isEvent ||
-        status === "READY_TO_DEPART" ||
-        status === "LOADING" ||
-        status === "UNLOADING";
+        status === "READY_TO_DEPART";
 
     return (
         <article

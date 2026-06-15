@@ -16,6 +16,7 @@ export class TreasureHuntMinigameManager {
 
         this.game = new Phaser.Game({
             type: Phaser.AUTO,
+            banner: false, // Phaser-Start-Banner in der Konsole ausblenden
             parent,
             width: parent.clientWidth || 960,
             height: parent.clientHeight || 620,
