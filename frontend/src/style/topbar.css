@@ -695,7 +695,7 @@
     background: rgba(139, 46, 31, 0.08);
     border-color: rgba(139, 46, 31, 0.5);
 }
-/* Buch-Button (Hilfe-Center) in der oberen Leiste */
+
 .topbar-help-btn {
     min-width: auto;
     padding-left: 14px;
@@ -707,7 +707,6 @@
     display: block;
 }
 
-/* Eintrag „Kapitänshandbuch öffnen" im Burger-Menü */
 .audio-popover-help {
     width: 100%;
     padding: 8px 0;

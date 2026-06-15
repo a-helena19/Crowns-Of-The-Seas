@@ -1,6 +1,3 @@
-/* Kapitänshandbuch – In-Game Hilfe-Center im Buch-Look.
-   Alle Klassen mit help- als Präfix, damit nichts mit dem restlichen Spiel kollidiert. */
-
 .help-overlay {
     position: fixed;
     inset: 0;
@@ -9,9 +6,9 @@
     align-items: center;
     justify-content: center;
     padding: 24px;
-    background: radial-gradient(circle at 50% 35%, rgba(10, 18, 30, 0.72), rgba(4, 8, 14, 0.88));
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
+    background: radial-gradient(circle at 5% 15%, rgba(10, 18, 30, 0.42), rgba(4, 8, 14, 0.5));
+    backdrop-filter: blur(1px);
+    -webkit-backdrop-filter: blur(1px);
     animation: helpFadeIn 0.25s ease both;
 }
 
@@ -20,22 +17,20 @@
     to { opacity: 1; }
 }
 
-/* Der aufgeschlagene Buch-Körper: Lederband außen, Goldlinie innen. */
 .help-book {
     position: relative;
     display: flex;
-    width: min(1080px, 96vw);
-    height: min(700px, 90vh);
+    width: min(1000px, 96vw);
+    height: min(620px, 92vh);
     color: #2c2013;
     font-family: 'Crimson Pro', Georgia, serif;
     border-radius: 12px;
     padding: 14px;
-    background:
-        linear-gradient(160deg, #3c2a18, #271a0e 60%, #1d130a);
+    background: linear-gradient(160deg, #3c2a18, #271a0e 60%, #1d130a);
     box-shadow:
-        0 26px 60px rgba(0, 0, 0, 0.6),
-        inset 0 0 0 2px rgba(196, 154, 76, 0.55),
-        inset 0 0 0 12px rgba(20, 12, 6, 0.45);
+            0 26px 60px rgba(0, 0, 0, 0.6),
+            inset 0 0 0 2px rgba(196, 154, 76, 0.55),
+            inset 0 0 0 12px rgba(20, 12, 6, 0.45);
     animation: helpBookIn 0.32s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
@@ -44,19 +39,17 @@
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Gemeinsamer Pergament-Look beider Seiten. */
 .help-left,
 .help-right {
     position: relative;
-    background:
-        radial-gradient(120% 120% at 50% 0%, #f6ecd2 0%, #efe1bf 55%, #e6d3a8 100%);
+    background: radial-gradient(120% 120% at 50% 0%, #f6ecd2 0%, #efe1bf 55%, #e6d3a8 100%);
     overflow: hidden;
 }
 
 .help-left {
-    flex: 0 0 33%;
+    flex: 0 0 35%;
     border-radius: 8px 0 0 8px;
-    padding: 22px 18px 18px;
+    padding: 22px 16px 16px;
     display: flex;
     flex-direction: column;
     box-shadow: inset -14px 0 22px -12px rgba(60, 40, 18, 0.45);
@@ -65,24 +58,21 @@
 .help-right {
     flex: 1 1 auto;
     border-radius: 0 8px 8px 0;
-    padding: 30px 34px 18px;
+    padding: 26px 30px 16px;
     display: flex;
     box-shadow: inset 14px 0 22px -12px rgba(60, 40, 18, 0.45);
 }
 
-/* Buchrücken / Falz in der Mitte. */
 .help-spine {
     flex: 0 0 8px;
-    background:
-        linear-gradient(90deg,
-            rgba(60, 40, 18, 0.05),
-            rgba(60, 40, 18, 0.5) 45%,
-            rgba(30, 18, 8, 0.6) 50%,
-            rgba(60, 40, 18, 0.5) 55%,
-            rgba(60, 40, 18, 0.05));
+    background: linear-gradient(90deg,
+    rgba(60, 40, 18, 0.05),
+    rgba(60, 40, 18, 0.5) 45%,
+    rgba(30, 18, 8, 0.6) 50%,
+    rgba(60, 40, 18, 0.5) 55%,
+    rgba(60, 40, 18, 0.05));
 }
 
-/* ---------- Linke Seite: Titel + Kapitelblatt + Kapitelliste ---------- */
 .help-left-head {
     text-align: center;
     padding-bottom: 12px;
@@ -92,7 +82,7 @@
 .help-book-title {
     font-family: 'Cinzel', Georgia, serif;
     font-weight: 700;
-    font-size: 1.5rem;
+    font-size: 1.45rem;
     line-height: 1.05;
     letter-spacing: 0.5px;
     color: #4a3315;
@@ -102,49 +92,36 @@
 
 .help-book-sub {
     margin-top: 4px;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     letter-spacing: 2px;
     text-transform: uppercase;
     color: #8a6d3a;
 }
 
-/* Das farbige „Kapitelblatt" – wechselt mit dem aktiven Kapitel. */
-.help-chapter-banner {
-    margin: 14px 0 12px;
-    padding: 9px 14px;
-    border-radius: 4px;
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    color: #fbf3df;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18), 0 2px 6px rgba(0, 0, 0, 0.25);
-    transition: background 0.3s ease;
-}
-
-.help-chapter-banner-num {
+.help-toc-label {
+    margin: 12px 4px 6px;
     font-family: 'Cinzel', Georgia, serif;
-    font-weight: 700;
-    font-size: 1.1rem;
-    opacity: 0.85;
-    margin-right: 6px;
+    font-size: 0.72rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #8a6d3a;
 }
 
-.help-chapter-banner-title {
-    font-family: 'Cinzel', Georgia, serif;
-    font-weight: 600;
-    font-size: 1.05rem;
-}
-
-.help-chapter-list {
+.help-toc {
     flex: 1 1 auto;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
     padding-right: 4px;
 }
 
-.help-chapter-item {
+.help-toc-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.help-toc-chapter {
     position: relative;
     display: flex;
     align-items: center;
@@ -158,72 +135,109 @@
     cursor: pointer;
     color: #5a4326;
     font-family: inherit;
-    transition: background 0.15s ease, transform 0.12s ease;
+    transition: background 0.15s ease;
 }
 
-/* Farbiger Leder-Reiter am linken Rand jedes Kapitels. */
-.help-chapter-tab {
+.help-toc-tab {
     position: absolute;
     left: 0;
     top: 6px;
     bottom: 6px;
     width: 4px;
     border-radius: 3px;
-    background: var(--tab-color);
+    background: var(--tab-color, #8a6d3a);
     opacity: 0.55;
     transition: opacity 0.15s ease, width 0.15s ease;
 }
 
-.help-chapter-item:hover {
+.help-toc-chapter:hover {
     background: rgba(120, 86, 40, 0.1);
 }
 
-.help-chapter-item:hover .help-chapter-tab {
+.help-toc-chapter:hover .help-toc-tab {
     opacity: 0.85;
 }
 
-.help-chapter-item.is-active {
+.help-toc-chapter.is-active {
     background: rgba(120, 86, 40, 0.16);
 }
 
-.help-chapter-item.is-active .help-chapter-tab {
+.help-toc-chapter.is-active .help-toc-tab {
     opacity: 1;
     width: 6px;
 }
 
-.help-chapter-num {
+.help-toc-num {
     font-family: 'Cinzel', Georgia, serif;
     font-weight: 700;
     font-size: 0.8rem;
-    width: 26px;
-    margin-right: 4px;
+    width: 24px;
+    margin-right: 2px;
     text-align: center;
     color: var(--tab-color);
     flex: 0 0 auto;
 }
 
-.help-chapter-text {
+.help-toc-text {
     display: flex;
     flex-direction: column;
-    line-height: 1.1;
+    line-height: 1.12;
+    min-width: 0;
 }
 
-.help-chapter-name {
-    font-size: 0.98rem;
+.help-toc-name {
+    font-size: 0.96rem;
     font-weight: 600;
     color: #4a3315;
 }
 
-.help-chapter-desc {
-    font-size: 0.74rem;
+.help-toc-desc {
+    font-size: 0.72rem;
     color: #927140;
 }
 
-/* ---------- Rechte Seite: Buchseite ---------- */
+.help-toc-pages {
+    list-style: none;
+    margin: 2px 0 6px;
+    padding: 0 0 0 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.help-toc-page {
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-left: 2px solid rgba(120, 86, 40, 0.25);
+    border-radius: 0 4px 4px 0;
+    padding: 4px 8px 4px 10px;
+    cursor: pointer;
+    color: #6b5230;
+    font-family: inherit;
+    font-size: 0.85rem;
+    line-height: 1.25;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.help-toc-page:hover {
+    background: rgba(120, 86, 40, 0.1);
+    color: #4a3315;
+}
+
+.help-toc-page.is-active {
+    background: rgba(120, 86, 40, 0.14);
+    color: #3a2913;
+    font-weight: 600;
+    border-left-color: var(--tab-color);
+}
+
 .help-page {
     display: flex;
     flex-direction: column;
     width: 100%;
+    min-height: 0;
 }
 
 .help-page-eyebrow {
@@ -237,7 +251,7 @@
 .help-page-title {
     font-family: 'Cinzel', Georgia, serif;
     font-weight: 700;
-    font-size: 1.7rem;
+    font-size: 1.62rem;
     line-height: 1.1;
     margin: 4px 0 6px;
     color: #3a2913;
@@ -256,9 +270,9 @@
 .help-page-body {
     flex: 1 1 auto;
     overflow-y: auto;
-    padding-right: 8px;
-    font-size: 1.02rem;
-    line-height: 1.5;
+    padding-right: 10px;
+    font-size: 1.0rem;
+    line-height: 1.55;
     color: #3a2c1a;
 }
 
@@ -266,8 +280,8 @@
     margin: 0 0 10px;
 }
 
-.help-intro {
-    font-size: 1.12rem;
+.help-lead {
+    font-size: 1.06rem;
     font-style: italic;
     color: #5a4326;
 }
@@ -296,44 +310,25 @@
     opacity: 0.8;
 }
 
-.help-note {
-    margin: 12px 0;
-    padding: 10px 14px;
-    background: rgba(255, 250, 235, 0.7);
-    border-left: 4px solid var(--chapter-color);
-    border-radius: 3px;
-    box-shadow: 0 1px 3px rgba(80, 56, 24, 0.18);
-    display: flex;
-    gap: 10px;
-    align-items: baseline;
+.help-tip {
+    margin: 10px 0 12px;
+    padding: 8px 12px;
+    background: rgba(120, 86, 40, 0.08);
+    border-radius: 5px;
+    font-style: italic;
+    color: #46361f;
 }
 
-.help-note-label {
+.help-tip-label {
     font-family: 'Cinzel', Georgia, serif;
+    font-style: normal;
     font-weight: 700;
-    font-size: 0.72rem;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    flex: 0 0 auto;
-}
-
-/* Bilder / Screenshots */
-.help-figures {
-    margin: 14px 0 4px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.help-figures.is-gallery {
-    flex-direction: row;
-    flex-wrap: wrap;
+    font-size: 0.82rem;
+    letter-spacing: 0.5px;
 }
 
 .help-figure {
-    margin: 0;
-    flex: 1 1 0;
-    min-width: 0;
+    margin: 0 0 12px;
 }
 
 .help-figure img {
@@ -342,19 +337,52 @@
     height: auto;
     border-radius: 4px;
     border: 1px solid rgba(90, 64, 30, 0.4);
-    box-shadow: 0 4px 12px rgba(50, 34, 14, 0.28);
+    box-shadow: 0 3px 9px rgba(50, 34, 14, 0.25);
     background: #1b2a3a;
 }
 
 .help-figure figcaption {
-    margin-top: 5px;
-    font-size: 0.82rem;
+    margin-top: 4px;
+    font-size: 0.76rem;
     font-style: italic;
     color: #8a6d3a;
     text-align: center;
 }
 
-/* Fußzeile zum Blättern */
+.help-figure.is-side {
+    float: right;
+    width: clamp(150px, 30%, 210px);
+    margin: 2px 0 10px 16px;
+}
+
+.help-figure.is-wide {
+    clear: both;
+    width: 100%;
+    max-width: 430px;
+    margin: 4px auto 14px;
+}
+
+.help-figure.is-wide img {
+    max-height: 220px;
+    object-fit: contain;
+    background: #14202c;
+}
+
+.help-gallery {
+    clear: both;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 4px 0 12px;
+}
+
+.help-gallery .help-figure.is-gallery {
+    flex: 1 1 0;
+    min-width: 150px;
+    max-width: 230px;
+    margin: 0;
+}
+
 .help-page-foot {
     flex: 0 0 auto;
     margin-top: 10px;
@@ -398,13 +426,12 @@
 }
 
 .help-page-count {
-    font-size: 0.84rem;
+    font-size: 0.82rem;
     font-style: italic;
     color: #7a5d32;
     text-align: center;
 }
 
-/* Schließen-Knopf wie ein Wachssiegel oben rechts. */
 .help-close {
     position: absolute;
     top: -12px;
@@ -431,7 +458,6 @@
     transform: scale(0.96);
 }
 
-/* Blätter-Animation */
 .help-turn-next {
     animation: helpTurnNext 0.32s ease;
     transform-origin: left center;
@@ -452,27 +478,25 @@
     to { opacity: 1; transform: rotateY(0) translateX(0); }
 }
 
-/* Scrollbars dezent in Pergamentoptik */
 .help-page-body::-webkit-scrollbar,
-.help-chapter-list::-webkit-scrollbar {
+.help-toc::-webkit-scrollbar {
     width: 8px;
 }
 
 .help-page-body::-webkit-scrollbar-thumb,
-.help-chapter-list::-webkit-scrollbar-thumb {
+.help-toc::-webkit-scrollbar-thumb {
     background: rgba(120, 86, 40, 0.4);
     border-radius: 4px;
 }
 
-/* Barrierefreiheit: Tastaturfokus sichtbar */
-.help-chapter-item:focus-visible,
+.help-toc-chapter:focus-visible,
+.help-toc-page:focus-visible,
 .help-nav-btn:focus-visible,
 .help-close:focus-visible {
     outline: 2px solid var(--chapter-color, #c49a4c);
     outline-offset: 2px;
 }
 
-/* Reduzierte Bewegung respektieren */
 @media (prefers-reduced-motion: reduce) {
     .help-overlay,
     .help-book,
@@ -482,11 +506,10 @@
     }
 }
 
-/* Schmale Bildschirme: Seiten untereinander statt nebeneinander */
 @media (max-width: 720px) {
     .help-book {
         flex-direction: column;
-        height: min(86vh, 760px);
+        height: min(88vh, 760px);
         padding: 10px;
     }
     .help-spine {
@@ -495,13 +518,19 @@
     .help-left {
         flex: 0 0 auto;
         border-radius: 8px 8px 0 0;
-        max-height: 38%;
+        max-height: 34%;
     }
     .help-right {
         border-radius: 0 0 8px 8px;
         padding: 18px 18px 12px;
     }
-    .help-figures.is-gallery {
+    .help-figure.is-side {
+        float: none;
+        width: 100%;
+        max-width: 320px;
+        margin: 4px auto 12px;
+    }
+    .help-gallery {
         flex-direction: column;
     }
 }

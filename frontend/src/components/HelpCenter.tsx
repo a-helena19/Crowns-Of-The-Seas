@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { HELP_CHAPTERS } from "./helpCenterContent";
-import type { HelpChapter, HelpPage } from "./helpCenterContent";
+import type { HelpBlock, HelpChapter, HelpPage } from "./helpCenterContent";
 import "../style/helpCenter.css";
 
 interface HelpCenterProps {
@@ -10,28 +10,24 @@ interface HelpCenterProps {
     onClose: () => void;
 }
 
-// Eine Seite des Buches kennt ihr Kapitel – so weiß die linke Seite immer,
-// welches farbige Kapitelblatt sie zeigen muss.
 interface FlatPage {
     chapterIndex: number;
+    pageIndex: number;
     page: HelpPage;
 }
 
-// Alle Seiten aller Kapitel zu einer durchgehenden Liste verketten,
-// damit man wie in einem echten Buch von vorne bis hinten durchblättern kann.
 function buildFlatPages(chapters: HelpChapter[]): FlatPage[] {
     const pages: FlatPage[] = [];
     for (let c = 0; c < chapters.length; c++) {
         const chapter = chapters[c];
         for (let p = 0; p < chapter.pages.length; p++) {
-            pages.push({ chapterIndex: c, page: chapter.pages[p] });
+            pages.push({ chapterIndex: c, pageIndex: p, page: chapter.pages[p] });
         }
     }
     return pages;
 }
 
-// Index der ersten Seite eines Kapitels finden (für die Sprünge per Reiter).
-function firstPageOfChapter(flatPages: FlatPage[], chapterIndex: number): number {
+function firstFlatIndexOfChapter(flatPages: FlatPage[], chapterIndex: number): number {
     for (let i = 0; i < flatPages.length; i++) {
         if (flatPages[i].chapterIndex === chapterIndex) {
             return i;
@@ -40,15 +36,67 @@ function firstPageOfChapter(flatPages: FlatPage[], chapterIndex: number): number
     return 0;
 }
 
+function flatIndexOfPage(flatPages: FlatPage[], chapterIndex: number, pageIndex: number): number {
+    for (let i = 0; i < flatPages.length; i++) {
+        if (flatPages[i].chapterIndex === chapterIndex && flatPages[i].pageIndex === pageIndex) {
+            return i;
+        }
+    }
+    return 0;
+}
+
+function renderBlock(block: HelpBlock, index: number, chapterColor: string) {
+    switch (block.kind) {
+        case "lead":
+            return <p key={index} className="help-lead">{block.text}</p>;
+        case "text":
+            return <p key={index}>{block.text}</p>;
+        case "bullets":
+            return (
+                <ul key={index} className="help-bullets">
+                    {block.items.map((item, i) => <li key={i}>{item}</li>)}
+                </ul>
+            );
+        case "tip":
+            return (
+                <p key={index} className="help-tip">
+                    <span className="help-tip-label" style={{ color: chapterColor }}>Tipp:</span>{" "}
+                    {block.text}
+                </p>
+            );
+        case "image":
+            return (
+                <figure key={index} className={`help-figure ${block.align === "wide" ? "is-wide" : "is-side"}`}>
+                    <img src={block.src} alt={block.caption ?? ""} loading="lazy" />
+                    {block.caption && <figcaption>{block.caption}</figcaption>}
+                </figure>
+            );
+        case "gallery":
+            return (
+                <div key={index} className="help-gallery">
+                    {block.images.map((img, i) => (
+                        <figure key={i} className="help-figure is-gallery">
+                            <img src={img.src} alt={img.caption ?? ""} loading="lazy" />
+                            {img.caption && <figcaption>{img.caption}</figcaption>}
+                        </figure>
+                    ))}
+                </div>
+            );
+        default:
+            return null;
+    }
+}
+
 export default function HelpCenter({ open, onClose }: HelpCenterProps) {
     const flatPages = useMemo(() => buildFlatPages(HELP_CHAPTERS), []);
     const [current, setCurrent] = useState(0);
-    // Richtung der letzten Blätter-Bewegung – nur für die Animation.
     const [turn, setTurn] = useState<"none" | "next" | "prev">("none");
+    const bodyRef = useRef<HTMLDivElement | null>(null);
 
     const total = flatPages.length;
     const active = flatPages[current];
     const chapter = HELP_CHAPTERS[active.chapterIndex];
+    const page = active.page;
 
     const goNext = useCallback(() => {
         setCurrent((c) => {
@@ -71,14 +119,21 @@ export default function HelpCenter({ open, onClose }: HelpCenterProps) {
     }, []);
 
     const jumpToChapter = useCallback((chapterIndex: number) => {
-        const target = firstPageOfChapter(flatPages, chapterIndex);
+        const target = firstFlatIndexOfChapter(flatPages, chapterIndex);
         setCurrent((c) => {
             setTurn(target >= c ? "next" : "prev");
             return target;
         });
     }, [flatPages]);
 
-    // Beim Öffnen immer vorne anfangen.
+    const jumpToPage = useCallback((chapterIndex: number, pageIndex: number) => {
+        const target = flatIndexOfPage(flatPages, chapterIndex, pageIndex);
+        setCurrent((c) => {
+            setTurn(target >= c ? "next" : "prev");
+            return target;
+        });
+    }, [flatPages]);
+
     useEffect(() => {
         if (open) {
             setCurrent(0);
@@ -86,7 +141,12 @@ export default function HelpCenter({ open, onClose }: HelpCenterProps) {
         }
     }, [open]);
 
-    // Tastatur: Esc schließt, Pfeile blättern.
+    useEffect(() => {
+        if (bodyRef.current) {
+            bodyRef.current.scrollTop = 0;
+        }
+    }, [current]);
+
     useEffect(() => {
         if (!open) {
             return;
@@ -108,8 +168,7 @@ export default function HelpCenter({ open, onClose }: HelpCenterProps) {
         return null;
     }
 
-    const page = active.page;
-    const pageNumberInChapter = current - firstPageOfChapter(flatPages, active.chapterIndex) + 1;
+    const pageNumberInChapter = active.pageIndex + 1;
 
     const overlay = (
         <div className="help-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Kapitänshandbuch">
@@ -122,45 +181,58 @@ export default function HelpCenter({ open, onClose }: HelpCenterProps) {
                     <span aria-hidden="true">&#10005;</span>
                 </button>
 
-                {/* Linke Seite: Kapitelblatt + Kapitelliste */}
                 <div className="help-left">
                     <div className="help-left-head">
                         <div className="help-book-title">Kapitäns&shy;handbuch</div>
                         <div className="help-book-sub">Crowns of the Seas</div>
                     </div>
 
-                    <div className="help-chapter-banner" style={{ background: chapter.color }}>
-                        <span className="help-chapter-banner-num">{chapter.numeral}</span>
-                        <span className="help-chapter-banner-title">{chapter.title}</span>
-                    </div>
+                    <div className="help-toc-label">Inhalt</div>
 
-                    <nav className="help-chapter-list" aria-label="Kapitel">
+                    <nav className="help-toc" aria-label="Inhaltsverzeichnis">
                         {HELP_CHAPTERS.map((ch, i) => {
                             const isActive = i === active.chapterIndex;
                             return (
-                                <button
-                                    key={ch.id}
-                                    type="button"
-                                    className={`help-chapter-item ${isActive ? "is-active" : ""}`}
-                                    style={{ "--tab-color": ch.color } as CSSProperties}
-                                    onClick={() => jumpToChapter(i)}
-                                >
-                                    <span className="help-chapter-tab" />
-                                    <span className="help-chapter-num">{ch.numeral}</span>
-                                    <span className="help-chapter-text">
-                                        <span className="help-chapter-name">{ch.title}</span>
-                                        <span className="help-chapter-desc">{ch.subtitle}</span>
-                                    </span>
-                                </button>
+                                <div key={ch.id} className="help-toc-group">
+                                    <button
+                                        type="button"
+                                        className={`help-toc-chapter ${isActive ? "is-active" : ""}`}
+                                        style={{ "--tab-color": ch.color } as CSSProperties}
+                                        onClick={() => jumpToChapter(i)}
+                                        aria-expanded={isActive}
+                                    >
+                                        <span className="help-toc-tab" />
+                                        <span className="help-toc-num">{ch.numeral}</span>
+                                        <span className="help-toc-text">
+                                            <span className="help-toc-name">{ch.title}</span>
+                                            <span className="help-toc-desc">{ch.subtitle}</span>
+                                        </span>
+                                    </button>
+
+                                    {isActive && (
+                                        <ul className="help-toc-pages">
+                                            {ch.pages.map((pg, p) => (
+                                                <li key={pg.id}>
+                                                    <button
+                                                        type="button"
+                                                        className={`help-toc-page ${p === active.pageIndex ? "is-active" : ""}`}
+                                                        style={{ "--tab-color": ch.color } as CSSProperties}
+                                                        onClick={() => jumpToPage(i, p)}
+                                                    >
+                                                        {pg.title}
+                                                    </button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
                             );
                         })}
                     </nav>
                 </div>
 
-                {/* Buchrücken in der Mitte */}
                 <div className="help-spine" aria-hidden="true" />
 
-                {/* Rechte Seite: aktuelle Buchseite */}
                 <div className="help-right">
                     <div key={current} className={`help-page help-turn-${turn}`}>
                         <div className="help-page-eyebrow" style={{ color: chapter.color }}>
@@ -168,39 +240,8 @@ export default function HelpCenter({ open, onClose }: HelpCenterProps) {
                         </div>
                         <h2 className="help-page-title">{page.title}</h2>
 
-                        <div className="help-page-body">
-                            {page.intro && <p className="help-intro">{page.intro}</p>}
-
-                            {page.paragraphs &&
-                                page.paragraphs.map((text, i) => <p key={`p-${i}`}>{text}</p>)}
-
-                            {page.bullets && (
-                                <ul className="help-bullets">
-                                    {page.bullets.map((text, i) => (
-                                        <li key={`b-${i}`}>{text}</li>
-                                    ))}
-                                </ul>
-                            )}
-
-                            {page.note && (
-                                <div className="help-note" style={{ borderColor: chapter.color }}>
-                                    <span className="help-note-label" style={{ color: chapter.color }}>
-                                        Tipp
-                                    </span>
-                                    <span>{page.note}</span>
-                                </div>
-                            )}
-
-                            {page.images && (
-                                <div className={`help-figures ${page.gallery ? "is-gallery" : ""}`}>
-                                    {page.images.map((img, i) => (
-                                        <figure key={`f-${i}`} className="help-figure">
-                                            <img src={img.src} alt={img.caption ?? page.title} loading="lazy" />
-                                            {img.caption && <figcaption>{img.caption}</figcaption>}
-                                        </figure>
-                                    ))}
-                                </div>
-                            )}
+                        <div className="help-page-body" ref={bodyRef}>
+                            {page.blocks.map((block, i) => renderBlock(block, i, chapter.color))}
                         </div>
 
                         <div className="help-page-foot">
