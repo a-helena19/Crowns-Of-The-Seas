@@ -9,8 +9,8 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_DB: crowns_of_the_seas
-      POSTGRES_USER: crowns
-      POSTGRES_PASSWORD: crowns
+      POSTGRES_USER: ${LOCAL_DB_USERNAME}
+      POSTGRES_PASSWORD: ${LOCAL_DB_PASSWORD}
     volumes:
       - crowns-postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -30,8 +30,8 @@ services:
       - "5433:5432"
     environment:
       POSTGRES_DB: auth_service
-      POSTGRES_USER: crowns
-      POSTGRES_PASSWORD: crowns
+      POSTGRES_USER: ${LOCAL_DB_USERNAME}
+      POSTGRES_PASSWORD: ${LOCAL_DB_PASSWORD}
     volumes:
       - crowns-auth-postgres-data:/var/lib/postgresql/data
     healthcheck:
