@@ -15,6 +15,9 @@ categories:
   - Multiplayer
   - Strategiespiel
   - Web Game
+  - Wirtschaftssimulation
+  - Maritime-simulation
+  - Ports-of-Call
 other-links:     
   - text: Template Download
     href: assets/project-template.zip
@@ -157,3 +160,6 @@ Längerfristig denkbar sind weitere Fraktionen und Minispiele, ein optionaler Co
 
 - **Repository:** <!-- TODO: Link zum Repository einfügen -->
 - **Live-Demo / Demonstrator:** <!-- TODO: Link oder QR-Code zum lauffähigen Demonstrator einfügen -->
+
+
+<!--TODO: fehlende Features hinzufügen (Admin-Seite, Help-Center, Tutorial, Leerfahrt, Luxusfrachten, Marktangebote, Schatz minispiel, session wieder beitreten,  ...)-->
