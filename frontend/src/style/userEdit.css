@@ -1,0 +1,385 @@
+/* ── Overlay ── */
+.user-edit-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: ueOverlayIn 0.2s ease;
+}
+
+@keyframes ueOverlayIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ── Modal Panel ── */
+.user-edit-modal {
+    background: #f4ecd2;
+    border: 1px solid rgba(120, 90, 40, 0.35);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+    width: 480px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: ueModalIn 0.22s ease;
+}
+
+@keyframes ueModalIn {
+    from { transform: translateY(-16px); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+}
+
+/* ── Header ── */
+.user-edit-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px 16px;
+    border-bottom: 1px solid rgba(120, 90, 40, 0.35);
+    background: #ede5c8;
+}
+
+.user-edit-header h2 {
+    margin: 0;
+    font-family: var(--font-game);
+    font-size: 14px;
+    font-weight: 600;
+    color: #3a2f1a;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+}
+
+.user-edit-close {
+    background: none;
+    border: none;
+    color: #7a6a4a;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 2px 6px;
+    line-height: 1;
+    transition: color 0.15s;
+    font-family: var(--font-game);
+}
+
+.user-edit-close:hover {
+    color: #3a2f1a;
+}
+
+/* ── Tabs ── */
+.user-edit-tabs {
+    display: flex;
+    border-bottom: 1px solid rgba(120, 90, 40, 0.35);
+    background: #f4ecd2;
+}
+
+.user-edit-tab {
+    flex: 1;
+    padding: 11px 8px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #7a6a4a;
+    font-family: var(--font-game);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.user-edit-tab:hover {
+    color: #3a2f1a;
+}
+
+.user-edit-tab.active {
+    color: #3a2f1a;
+    border-bottom-color: #a37c45;
+}
+
+/* ── Body ── */
+.user-edit-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* ── Form ── */
+.user-edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.user-edit-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.user-edit-form label {
+    font-family: var(--font-game);
+    color: #3a2f1a;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.user-edit-form input {
+    font-family: var(--font-body);
+    font-size: 15px;
+    padding: 10px 14px;
+    background: #fbf5e3;
+    color: #2b2418;
+    border: 1px solid rgba(120, 90, 40, 0.35);
+    border-radius: 0;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.user-edit-form input:focus {
+    border-color: #a37c45;
+    box-shadow: 0 0 0 2px rgba(163, 124, 69, 0.2);
+}
+
+.user-edit-form input::placeholder {
+    color: #b8a888;
+}
+
+.user-edit-form input:disabled {
+    background: #ede5c8;
+    color: #7a6a4a;
+    cursor: default;
+}
+
+/* ── Submit Button ── */
+.user-edit-submit {
+    font-family: var(--font-game);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    padding: 13px 16px;
+    margin-top: 4px;
+
+    background: #533c1d;
+    color: #ffffff;
+    border: 1px solid #2a1408;
+    border-bottom: 3px solid #2a1408;
+    border-radius: 0;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.user-edit-submit:hover:not(:disabled) {
+    background: #6d4f25;
+    transform: translateY(-1px);
+}
+
+.user-edit-submit:active:not(:disabled) {
+    transform: translateY(1px);
+    border-bottom-width: 1px;
+}
+
+.user-edit-submit:disabled {
+    background: #b3a98c;
+    color: #f0e8d0;
+    border-color: #8a8068;
+    cursor: not-allowed;
+}
+
+/* ── Feedback Messages ── */
+.user-edit-success {
+    background: rgba(74, 124, 58, 0.08);
+    border: 1px solid rgba(74, 124, 58, 0.5);
+    color: #4a7c3a;
+    padding: 10px 14px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.user-edit-error {
+    background: rgba(139, 46, 31, 0.08);
+    border: 1px solid rgba(139, 46, 31, 0.4);
+    color: #8b2e1f;
+    padding: 10px 14px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* ── Delete Section ── */
+.user-edit-delete-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.user-edit-delete-warning {
+    background: rgba(139, 46, 31, 0.06);
+    border: 1px solid rgba(139, 46, 31, 0.3);
+    padding: 12px 14px;
+    color: #7a2a1a;
+    font-family: var(--font-body);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.user-edit-delete-btn {
+    font-family: var(--font-game);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    padding: 13px 16px;
+
+    background: transparent;
+    color: #8b2e1f;
+    border: 1px solid rgba(139, 46, 31, 0.5);
+    border-bottom: 3px solid rgba(139, 46, 31, 0.5);
+    border-radius: 0;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.user-edit-delete-btn:hover {
+    background: rgba(139, 46, 31, 0.08);
+    border-color: #8b2e1f;
+    transform: translateY(-1px);
+}
+
+.user-edit-delete-btn:active {
+    transform: translateY(1px);
+    border-bottom-width: 1px;
+}
+
+/* ── Delete Confirmation ── */
+.user-edit-confirm-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    background: rgba(139, 46, 31, 0.05);
+    border: 1px solid rgba(139, 46, 31, 0.3);
+}
+
+.user-edit-confirm-section p {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: #7a2a1a;
+    line-height: 1.5;
+}
+
+.user-edit-confirm-section input {
+    font-family: var(--font-body);
+    font-size: 15px;
+    padding: 10px 14px;
+    background: #fbf5e3;
+    color: #2b2418;
+    border: 1px solid rgba(139, 46, 31, 0.4);
+    border-radius: 0;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.user-edit-confirm-section input:focus {
+    border-color: #8b2e1f;
+    box-shadow: 0 0 0 2px rgba(139, 46, 31, 0.15);
+}
+
+.user-edit-confirm-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.user-edit-confirm-delete {
+    flex: 1;
+    font-family: var(--font-game);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 12px;
+
+    background: #6b1a0f;
+    color: #f5e8e6;
+    border: 1px solid #4a0f08;
+    border-bottom: 3px solid #4a0f08;
+    border-radius: 0;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.user-edit-confirm-delete:hover:not(:disabled) {
+    background: #8b2e1f;
+    transform: translateY(-1px);
+}
+
+.user-edit-confirm-delete:active:not(:disabled) {
+    transform: translateY(1px);
+    border-bottom-width: 1px;
+}
+
+.user-edit-confirm-delete:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.user-edit-cancel-delete {
+    padding: 12px 18px;
+    background: transparent;
+    border: 1px solid rgba(120, 90, 40, 0.35);
+    border-bottom: 3px solid rgba(120, 90, 40, 0.35);
+    color: #7a6a4a;
+    font-family: var(--font-game);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border-radius: 0;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.user-edit-cancel-delete:hover {
+    color: #3a2f1a;
+    border-color: #a37c45;
+    background: rgba(163, 124, 69, 0.08);
+    transform: translateY(-1px);
+}
+
+.user-edit-cancel-delete:active {
+    transform: translateY(1px);
+    border-bottom-width: 1px;
+}
+
+/* ── Profile Button in Lobby Header ── */
+.profile-edit-btn {
+    font-family: var(--font-game);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    background: transparent;
+    color: #7a6a4a;
+    border: 1px solid rgba(120, 90, 40, 0.35);
+    border-radius: 0;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    line-height: 1;
+}
+
+.profile-edit-btn:hover {
+    color: #3a2f1a;
+    border-color: #a37c45;
+    background: rgba(163, 124, 69, 0.08);
+}

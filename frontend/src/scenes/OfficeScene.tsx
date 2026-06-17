@@ -156,7 +156,6 @@ export default function OfficeScene({ onClose }: Props) {
 
     useEffect(() => {
         setRefuelQuote(null);
-        setRepairQuote(null);
         setRefuelAmountPercent(selectedShip ? Math.max(0, 100 - selectedShip.fuel) : 0);
     }, [selectedShip?.id, selectedShip?.fuel]);
 
@@ -207,7 +206,8 @@ export default function OfficeScene({ onClose }: Props) {
     ]);
 
     useEffect(() => {
-        if (!selectedShip || !playerId || !sessionId || selectedShip.status !== "AT_PORT" || alreadyRepaired) {
+        const canFetchRepairQuote = selectedShip?.status === "AT_PORT" || selectedShip?.status === "REFUELING";
+        if (!selectedShip || !playerId || !sessionId || !canFetchRepairQuote || alreadyRepaired) {
             setRepairQuote(null);
             setRepairQuoteLoading(false);
             return;
@@ -453,6 +453,8 @@ export default function OfficeScene({ onClose }: Props) {
                                             : `+${formatPercent(refuelAmountPercent)}% auf ${formatPercent(targetFuelPercent)}%`}
                                         cost={alreadyFull
                                             ? undefined
+                                            : selectedShip.status === "REFUELING"
+                                                ? "Tankvorgang läuft..."
                                             : selectedShip.status === "REPAIRING"
                                                 ? "Nach der Reparatur verfügbar"
                                             : refuelQuoteLoading
@@ -492,8 +494,8 @@ export default function OfficeScene({ onClose }: Props) {
                                         info={alreadyRepaired ? "Schiff ist heil" : `Schäden ${repairNeededPercent.toFixed(0)}%`}
                                         cost={alreadyRepaired
                                             ? undefined
-                                            : selectedShip.status === "REFUELING"
-                                                ? "Nach dem Tanken verfügbar"
+                                            : selectedShip.status === "REPAIRING"
+                                                ? "Reparatur läuft..."
                                             : repairQuoteLoading
                                                 ? "Preis wird berechnet"
                                                 : repairQuote

@@ -6,6 +6,7 @@ import at.fhv.authservice.config.JwtService;
 import at.fhv.authservice.domain.model.user.User;
 import at.fhv.authservice.domain.model.user.UserRepository;
 import at.fhv.authservice.domain.model.user.exception.InvalidCredentialsException;
+import at.fhv.authservice.domain.model.user.exception.UserNotFoundException;
 import at.fhv.authservice.rest.dtos.user.LoginUserDTO;
 import at.fhv.authservice.rest.dtos.user.UserResponseDTO;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,7 +30,7 @@ public class LoginUserServiceImpl implements LoginUserService {
     @Override
     public UserResponseDTO login(LoginUserDTO request) {
         User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(InvalidCredentialsException::new);
+                .orElseThrow(UserNotFoundException::new);
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new InvalidCredentialsException();
