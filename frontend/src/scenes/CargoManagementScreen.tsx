@@ -147,6 +147,8 @@ export default function CargoManagementScreen({
     }
     const completedAtMap = (window as any).__cargoCompletedAt as Record<string, number>;
     const [autoCloseSeconds, setAutoCloseSeconds] = useState(10);
+    const [playerBalance, setPlayerBalance] = useState<number | null>(null);
+    const PILOTAGE_COST = 1000;
 
     const [, setRenderTick] = useState(0);
     useEffect(() => {
@@ -166,6 +168,29 @@ export default function CargoManagementScreen({
     const sessionData = sessionStorage.getItem("currentSession");
     const sessionId = sessionData ? JSON.parse(sessionData).id : null;
     const token = localStorage.getItem("auth_token") ?? "";
+
+    useEffect(() => {
+        if (!playerId || !sessionId) return;
+        const fetchBalance = () => {
+            fetch(`/api/ships/player/${playerId}/balance?sessionId=${sessionId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            })
+                .then(res => res.json())
+                .then(data => setPlayerBalance(Number(data)))
+                .catch(() => setPlayerBalance(null));
+        };
+        fetchBalance();
+        const applyDirect = (e: Event) => {
+            const detail = (e as CustomEvent<{ balance?: number }>).detail;
+            if (detail && typeof detail.balance === "number") setPlayerBalance(detail.balance);
+        };
+        window.addEventListener("player-balance-updated", fetchBalance);
+        window.addEventListener("player-balance-set", applyDirect);
+        return () => {
+            window.removeEventListener("player-balance-updated", fetchBalance);
+            window.removeEventListener("player-balance-set", applyDirect);
+        };
+    }, [playerId, sessionId, token]);
     const completedHistoryStorageKey = getCompletedHistoryStorageKey(sessionId);
     const [completedHistory, setCompletedHistory] = useState<Record<string, CompletedCargoHistoryEntry>>(() => {
         try {
@@ -446,7 +471,7 @@ export default function CargoManagementScreen({
                     if (errData.error === "CARGO_TAKEN") msg = "Fracht wurde bereits vergeben.";
                     else if (errData.error === "CAPACITY_EXCEEDED") msg = "Schiff zu klein für diese Fracht.";
                     else if (errData.error === "INSUFFICIENT_FUEL") msg = errData.message ?? "Nicht genug Treibstoff.";
-                    else if (errData.error === "INSUFFICIENT_BALANCE") msg = errData.message ?? "Nicht genug Taler für den Lotsendienst.";
+                    else if (errData.error === "INSUFFICIENT_BALANCE" || errData.error === "PLAYER_INSUFFICIENT_FUNDS") msg = "Nicht genug Taler für den Lotsendienst (1.000 Taler).";
                     else if (errData.error === "PILOT_STRIKE") msg = errData.message ?? "Lotsenstreik — Lotsendienst nicht verfügbar.";
                     else msg = errData.message ?? msg;
                 } catch { /* noop */ }
@@ -624,6 +649,10 @@ export default function CargoManagementScreen({
                                 )}
                                 {(selectedEntry.loadingDone || getRemainingSeconds(selectedEntry) <= 0) && (() => {
                                     const { strikeAtOrigin, strikeAtDest, pilotBlocked } = getStrikeInfo(selectedEntry);
+                                    const pilotOn = pilotageMap[selectedEntry.cargoId] ?? false;
+                                    const cannotAffordPilot = playerBalance !== null && playerBalance < PILOTAGE_COST;
+                                    // Aktivieren blockieren bei Streik oder zu wenig Guthaben; Deaktivieren bleibt erlaubt.
+                                    const toggleDisabled = pilotBlocked || (cannotAffordPilot && !pilotOn);
                                     const strikeNames = [
                                         strikeAtOrigin?.portName,
                                         strikeAtDest?.portName && strikeAtDest.portName !== strikeAtOrigin?.portName
@@ -635,10 +664,10 @@ export default function CargoManagementScreen({
                                             <div className="pilotage-row">
                                                 <button
                                                     type="button"
-                                                    className={`pilotage-toggle ${pilotageMap[selectedEntry.cargoId] ? "active" : ""}${pilotBlocked ? " disabled" : ""}`}
-                                                    disabled={pilotBlocked}
+                                                    className={`pilotage-toggle ${pilotOn ? "active" : ""}${toggleDisabled ? " disabled" : ""}`}
+                                                    disabled={toggleDisabled}
                                                     onClick={() => {
-                                                        if (pilotBlocked) return;
+                                                        if (toggleDisabled) return;
                                                         setPilotageMap(m => ({
                                                             ...m,
                                                             [selectedEntry.cargoId]: !m[selectedEntry.cargoId],
@@ -646,7 +675,7 @@ export default function CargoManagementScreen({
                                                     }}
                                                 >
                                                 <span className="pilotage-check">
-                                                    {pilotageMap[selectedEntry.cargoId] ? "✓" : "○"}
+                                                    {pilotOn ? "✓" : "○"}
                                                 </span>
                                                     <span className="pilotage-label">Lotsendienst</span>
                                                     <span className="pilotage-cost">1.000 Taler</span>
@@ -655,6 +684,11 @@ export default function CargoManagementScreen({
                                             {pilotBlocked && (
                                                 <div className="pilot-strike-info">
                                                     ⚠ Lotsenstreik in {strikeNames.join(" und ")} — Lotsendienst derzeit nicht verfügbar.
+                                                </div>
+                                            )}
+                                            {!pilotBlocked && cannotAffordPilot && !pilotOn && (
+                                                <div className="pilot-strike-info">
+                                                    ⚠ Nicht genug Taler für den Lotsendienst (1.000 Taler).
                                                 </div>
                                             )}
                                             {errorMap[selectedEntry.cargoId] && (
