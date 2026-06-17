@@ -28,8 +28,10 @@ import { ObstacleRouteViewResolver } from "../minigame/obstacle/ObstacleRouteVie
 import TreasureHuntMinigameOverlay from "../minigame/treasureHunt/TreasureHuntMinigameOverlay.tsx";
 import type { TreasureHuntMinigameEventPayload, TreasureHuntMinigameResult } from "../minigame/treasureHunt/TreasureHuntMinigameTypes.ts";
 import { minigameSessionManager } from "../minigame/MinigameSessionManager.ts";
+import { registerMinigameTester } from "../dev/minigameTester.ts";
 import EventNotificationDialog from "../components/EventNotificationDialog.tsx";
 import TreasureHuntPromptDialog from "../components/TreasureHuntPromptDialog.tsx";
+import InGameChat from "../components/InGameChat.tsx";
 import ratImage from "../assets/Rat.png";
 import stormDialogImage from "../assets/minigame/storm/DialogPic.png";
 import obstacleDialogImage from "../assets/minigame/obstaclegame/wrack.png";
@@ -173,6 +175,41 @@ export default function GameScreen() {
         window.__showOtherShips = showOtherShips;
         window.dispatchEvent(new CustomEvent('toggle-other-ships', { detail: { visible: showOtherShips } }));
     }, [showOtherShips, view]);
+
+    // Luxus-Frachten: Origin-Haefen mit verfuegbarer LUXURY_GOODS-Fracht ermitteln
+    // und der Karte (Phaser) per Event mitteilen, damit sie gold leuchten.
+    useEffect(() => {
+        if (!sessionId) return;
+        let cancelled = false;
+
+        const refreshLuxuryPorts = () => {
+            fetch(`/api/cargo/${sessionId}/available-all`, {
+                headers: { Authorization: `Bearer ${authToken}` },
+            })
+                .then(res => (res.ok ? res.json() : []))
+                .then((cargos: Array<{ cargoType: string; originPortId: string }>) => {
+                    if (cancelled) return;
+                    const portIds = Array.from(new Set(
+                        cargos
+                            .filter(c => c.cargoType === "LUXURY_GOODS")
+                            .map(c => c.originPortId)
+                    ));
+                    window.__luxuryPortIds = portIds;
+                    window.dispatchEvent(new CustomEvent('glow-luxury-ports', { detail: { portIds } }));
+                })
+                .catch(() => {});
+        };
+
+        refreshLuxuryPorts();
+        // Markt-Updates und (Re-)Render der Haefen erneut auswerten
+        window.addEventListener('backend-cargo-market', refreshLuxuryPorts);
+        window.addEventListener('backend-ports', refreshLuxuryPorts);
+        return () => {
+            cancelled = true;
+            window.removeEventListener('backend-cargo-market', refreshLuxuryPorts);
+            window.removeEventListener('backend-ports', refreshLuxuryPorts);
+        };
+    }, [sessionId, authToken]);
 
     const loadOwnedShips = useCallback(() => {
         if (!playerId || !sessionId) return;
@@ -771,13 +808,13 @@ export default function GameScreen() {
                 if (matched) {
                     setRewardToasts(t => {
                         if (t.some(toast => toast.id === data.travelId)) return t;
-	                        return [...t, {
-	                            id: data.travelId,
-	                            shipName: matched.shipName,
-	                            from: matched.from,
-	                            to: matched.to,
-	                            reward: data.netPayout ?? data.totalReward,
-	                        }];
+                        return [...t, {
+                            id: data.travelId,
+                            shipName: matched.shipName,
+                            from: matched.from,
+                            to: matched.to,
+                            reward: data.netPayout ?? data.totalReward,
+                        }];
                     });
                 }
                 return prev;
@@ -833,6 +870,20 @@ export default function GameScreen() {
         window.addEventListener("smuggle-offer", handler);
         return () => window.removeEventListener("smuggle-offer", handler);
     }, [playerId]);
+
+    // DEV/Präsentation: window.miniGame("Rat"|"Storm"|"Obstacle"|"Treasure")
+    // Setzt nur den aktiven Minigame-State (Anzeige), keine echte Logik/Reise.
+    useEffect(() => {
+        if (!playerId || !sessionId) return;
+        return registerMinigameTester({
+            playerId,
+            sessionId,
+            setRat: setActiveRatMinigame,
+            setStorm: setActiveStormMinigame,
+            setObstacle: setActiveObstacleMinigame,
+            setTreasure: setActiveTreasureHuntMinigame,
+        });
+    }, [playerId, sessionId]);
 
     // Rat minigame event
     useEffect(() => {
@@ -1662,6 +1713,13 @@ export default function GameScreen() {
             </div>
             <div className="game">
                 <Game view={view} />
+                {view === "map" && sessionId && playerId && !isMinigameActive && (
+                    <InGameChat
+                        sessionId={sessionId}
+                        currentUserId={playerId}
+                        stompClient={stompClient}
+                    />
+                )}
                 {view === "map" && !isMinigameActive && (
                     <label id={'show-other-ships-checkbox'}>
                         <input

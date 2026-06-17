@@ -2,6 +2,7 @@ package at.fhv.backend.rest;
 
 import at.fhv.backend.application.services.impl.session.GameTickScheduler;
 import at.fhv.backend.application.services.session.GameSessionService;
+import at.fhv.backend.rest.dtos.chat.response.ChatMessageDTO;
 import at.fhv.backend.rest.dtos.websocket.*;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -120,5 +121,9 @@ public class GameSessionWebSocketController {
 
     public void broadcastCustomsInspectionResolved(String sessionId, CustomsInspectionPassEvent event) {
         messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/customs-resolved", event);
+    }
+
+    public void broadcastChatMessage(String sessionId, ChatMessageDTO message) {
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/chat", message);
     }
 }

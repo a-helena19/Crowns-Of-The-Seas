@@ -2,6 +2,7 @@ package at.fhv.backend.application.services.impl.session;
 
 import at.fhv.backend.application.dtos.mapper.session.SessionDTOMapper;
 import at.fhv.backend.application.init.CargoSessionInitializer;
+import at.fhv.backend.application.services.chat.SessionChatService;
 import at.fhv.backend.application.services.session.GameSessionService;
 import at.fhv.backend.domain.model.player.BaseSessionPlayer;
 import at.fhv.backend.domain.model.player.ISessionPlayer;
@@ -40,6 +41,7 @@ public class GameSessionServiceImpl implements GameSessionService {
     private final PortRepository portRepository;
     private final GameTickScheduler gameTickScheduler;
     private final CargoSessionInitializer cargoSessionInitializer;
+    private final SessionChatService sessionChatService;
 
     public GameSessionServiceImpl(GameSessionRepository gameSessionRepository,
                                   SessionDTOMapper sessionDTOMapper,
@@ -47,7 +49,8 @@ public class GameSessionServiceImpl implements GameSessionService {
                                   PortQueryService portQueryService,
                                   PortRepository portRepository,
                                   GameTickScheduler gameTickScheduler,
-                                  CargoSessionInitializer cargoSessionInitializer) {
+                                  CargoSessionInitializer cargoSessionInitializer,
+                                  SessionChatService sessionChatService) {
         this.sessionDTOMapper = sessionDTOMapper;
         this.gameSessionRepository = gameSessionRepository;
         this.webSocketController = webSocketController;
@@ -55,6 +58,7 @@ public class GameSessionServiceImpl implements GameSessionService {
         this.portRepository = portRepository;
         this.gameTickScheduler = gameTickScheduler;
         this.cargoSessionInitializer = cargoSessionInitializer;
+        this.sessionChatService = sessionChatService;
     }
 
     private void broadcastSessionUpdate(GameSession session, String type) {
@@ -191,6 +195,7 @@ public class GameSessionServiceImpl implements GameSessionService {
         // Kein verbundener Spieler mehr übrig → Session beenden und Tick stoppen.
         if (session.getConnectedPlayerCount() == 0) {
             gameTickScheduler.stopForSession(session.getId());
+            sessionChatService.deleteMessagesForSession(session.getId());
             gameSessionRepository.deleteById(session.getId());
             return null;
         }

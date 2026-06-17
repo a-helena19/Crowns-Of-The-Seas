@@ -15,14 +15,12 @@ export default function JoinSessionPage() {
     useEffect(() => {
         // If not authenticated, redirect to login with return URL
         if (!user) {
-            console.log('Not authenticated, redirecting to loginRedirect');
             navigate(`/login?redirect=/join/${code}`);
             return;
         }
 
         // Prevent double execution
         if (hasAttemptedJoin.current) {
-            console.log('Already attempted to join, skipping');
             return;
         }
 
@@ -34,20 +32,16 @@ export default function JoinSessionPage() {
             setError(null);
 
             if (!code) {
-                console.log('No code provided');
                 setError('Kein Session-Code vorhanden.');
                 setLoading(false);
                 return;
             }
 
             try {
-                console.log('Attempting to join session with code:', code, 'as user:', user.username);
                 const session = await joinSession(code, user.username);
 
-                console.log('Join result:', session);
 
                 if (session) {
-                    console.log('Successfully joined, storing data and navigating to /session-waiting');
                     // Store session data
                     sessionStorage.setItem('currentSession', JSON.stringify(session));
                     sessionStorage.setItem('userRole', 'guest');
@@ -61,7 +55,7 @@ export default function JoinSessionPage() {
 
                 const axiosError = error as { response?: { data?: { code?: string; message?: string }; status?: number } };
 
-                console.log('Error details:', {
+                console.warn('Error details:', {
                     status: axiosError.response?.status,
                     code: axiosError.response?.data?.code,
                     message: axiosError.response?.data?.message

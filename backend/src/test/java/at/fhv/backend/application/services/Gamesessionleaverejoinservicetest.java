@@ -2,6 +2,7 @@ package at.fhv.backend.application.services;
 
 import at.fhv.backend.application.dtos.mapper.session.SessionDTOMapperImpl;
 import at.fhv.backend.application.init.CargoSessionInitializer;
+import at.fhv.backend.application.services.chat.SessionChatService;
 import at.fhv.backend.application.services.impl.session.GameSessionServiceImpl;
 import at.fhv.backend.application.services.impl.session.GameTickScheduler;
 import at.fhv.backend.application.services.port.PortQueryService;
@@ -46,6 +47,8 @@ class GameSessionLeaveRejoinServiceTest {
     private GameTickScheduler gameTickScheduler;
     @Mock
     private CargoSessionInitializer cargoSessionInitializer;
+    @Mock
+    private SessionChatService sessionChatService;
 
     private GameSessionServiceImpl service;
 
@@ -53,7 +56,7 @@ class GameSessionLeaveRejoinServiceTest {
     void setUp() {
         service = new GameSessionServiceImpl(gameSessionRepository, new SessionDTOMapperImpl(),
                 webSocketController, portQueryService, portRepository, gameTickScheduler,
-                cargoSessionInitializer);
+                cargoSessionInitializer, sessionChatService);
     }
 
     // Hilfsmethode: laufende Session mit Host + Gast.

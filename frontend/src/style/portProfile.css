@@ -18,7 +18,9 @@
     width: 560px;
     max-width: 92vw;
     max-height: 80vh;
-    overflow-y: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     color: #2b2418;
 }
 
@@ -119,12 +121,29 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    margin: 0 -6px;
+    padding: 2px 6px;
 }
 
 .port-profile-cargo-item {
     background: #f5efdd;
     border: 1px solid #c8a85e;
     padding: 10px 14px;
+}
+
+/* Luxusfracht-Eintrag: goldenes Leuchten */
+.port-profile-cargo-item--luxury {
+    border-color: #d4af37;
+    border-left: 3px solid #d4af37;
+    background: linear-gradient(90deg, rgba(212, 175, 55, 0.18), #f5efdd 55%);
+    animation: pp-luxury-glow 2.2s ease-in-out infinite;
+}
+@keyframes pp-luxury-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
+    50%      { box-shadow: 0 0 12px 0 rgba(212, 175, 55, 0.45); }
 }
 
 .port-profile-cargo-row {
@@ -185,19 +204,19 @@
 .risk-high   { color: #c05020; }
 .risk-extreme{ color: #c03030; }
 
-.port-profile-panel::-webkit-scrollbar {
+.port-profile-cargo-list::-webkit-scrollbar {
     width: 6px;
 }
 
-.port-profile-panel::-webkit-scrollbar-track {
+.port-profile-cargo-list::-webkit-scrollbar-track {
     background: rgba(120, 90, 40, 0.06);
 }
 
-.port-profile-panel::-webkit-scrollbar-thumb {
+.port-profile-cargo-list::-webkit-scrollbar-thumb {
     background: rgba(120, 90, 40, 0.25);
     border-radius: 3px;
 }
 
-.port-profile-panel::-webkit-scrollbar-thumb:hover {
+.port-profile-cargo-list::-webkit-scrollbar-thumb:hover {
     background: rgba(120, 90, 40, 0.4);
 }

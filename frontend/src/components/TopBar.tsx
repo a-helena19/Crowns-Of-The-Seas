@@ -12,6 +12,7 @@ import type { LeaderboardEntry } from '../types/leaderboard';
 import { useAudioSettings } from '../audio/AudioSettingsContext';
 import audioEngine from '../audio/AudioEngine';
 import { useNavigate } from 'react-router-dom';
+import HelpCenter from './HelpCenter';
 
 
 export default function TopBar() {
@@ -28,6 +29,7 @@ export default function TopBar() {
     const [endingToastHiding, setEndingToastHiding] = useState(false);
     const { settings, setMusicEnabled, setSfxEnabled, setMusicVolume, setSfxVolume } = useAudioSettings();
     const [audioMenuOpen, setAudioMenuOpen] = useState(false);
+    const [helpOpen, setHelpOpen] = useState(false);
     const [leaving, setLeaving] = useState(false);
     const audioMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -165,7 +167,6 @@ export default function TopBar() {
         return () => window.removeEventListener('backend-tick', handleTick);
     }, []);
 
-    // Faction des Spielers laden (einmalig beim Mount)
     useEffect(() => {
         if (!playerId || !sessionId) return;
         sessionApi.getPlayerFaction(sessionId, playerId)
@@ -450,6 +451,13 @@ export default function TopBar() {
 
                             <div className="audio-popover-divider" />
 
+                            <button
+                                className="audio-popover-help"
+                                onClick={() => { audioEngine.playSfx('buttonClick'); setAudioMenuOpen(false); setHelpOpen(true); }}
+                            >
+                                Hilfecenter öffnen
+                            </button>
+
                             <button className="audio-popover-leave" disabled={leaving} onClick={handleLeaveSession}>
                                 {leaving ? 'Verlasse …' : 'Zurück zur Lobby'}
                             </button>
@@ -480,6 +488,8 @@ export default function TopBar() {
                     >✕</button>
                 </div>
             )}
+
+            <HelpCenter open={helpOpen} onClose={() => setHelpOpen(false)} />
 
         </div>
     );
