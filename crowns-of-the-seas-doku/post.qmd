@@ -6,7 +6,7 @@ author:
   - name: Elif Akpinar
   - name: Aaron Höfler
   - name: Emanuel Peter
-date: "06/15/2026"
+date: "06/17/2026"
 date-modified: now
 image: "assets/thumbnail.png"
 categories:
@@ -83,7 +83,7 @@ Damit keine Reise Routine wird, hält die Spielwelt **Zufallsereignisse** bereit
 
 So entsteht ständige Spannung: Jede Fahrt kann glatt verlaufen – oder plötzlich Geschick und schnelle Entscheidungen verlangen.
 
-![Eines der Minispiele in Aktion.](assets/screenshot-minigame.png)
+![Ratten Minispiel.](assets/ratten-minispiel.mp4)
 
 ### Ein Spiel, das sich lebendig anfühlt
 
@@ -103,21 +103,7 @@ Diese vielen kleinen Rückmeldungen – sehen, hören, lesen – sorgen dafür, 
 
 Hinter dem Spiel steckt bewusst kein einzelner Block aus „Frontend plus Backend", sondern ein **verteiltes System** aus mehreren eigenständigen Diensten, die über klare Schnittstellen zusammenspielen.
 
-```{mermaid}
-flowchart TB
-    subgraph Client["🖥️ Browser"]
-        Frontend["Spieloberfläche & Weltkarte"]
-    end
-    subgraph Auth["🔐 Auth-Service"]
-        AuthApp["Login & Registrierung"]
-    end
-    subgraph Game["⚙️ Spiel-Server"]
-        GameApp["Spiellogik, Markt, Ereignisse"]
-    end
-    Frontend -- "Login" --> AuthApp
-    Frontend -- "Aktionen" --> GameApp
-    Frontend -- "Echtzeit-Updates" --> GameApp
-```
+![](assets/architecture-overview.png)
 
 Drei Designentscheidungen prägen das Erlebnis – jeweils mit konkretem Nutzen:
 
@@ -138,20 +124,7 @@ Zum Einsatz kommt ein moderner, praxisnaher Technologie-Stack:
 
 Ein gutes Beispiel für die Detailtiefe ist der Lebenszyklus eines einzigen Schiffs: Es befindet sich zu jedem Zeitpunkt in genau einem klar definierten Zustand – und wechselt diesen je nach Spielgeschehen.
 
-```{mermaid}
-stateDiagram-v2
-    [*] --> AnDerBörse
-    AnDerBörse --> ImHafen: Kauf
-    ImHafen --> Beladen: Frachtauftrag
-    Beladen --> Unterwegs: Ablegen
-    Unterwegs --> Treibend: Schaden
-    Treibend --> Unterwegs: Reparatur
-    Unterwegs --> Entladen: Ankunft
-    Entladen --> ImHafen: Abrechnung
-    ImHafen --> Blockiert: Zollkontrolle
-    Blockiert --> ImHafen: freigegeben
-    ImHafen --> AnDerBörse: Verkauf
-```
+![Zustandsdiagramm eines Schiffs.](assets/ship-state-diagram.png)
 
 ## Was bisher erreicht wurde
 
@@ -167,6 +140,8 @@ Crowns of the Seas ist bereits als **lauffähiges Multiplayer-Spiel** spielbar. 
 - Live-Features: Chat, Leaderboard, sichtbare Konkurrenzschiffe, Sound und Animationen
 
 ![Das Leaderboard zeigt jederzeit, wer vorne liegt.](assets/screenshot-leaderboard.png)
+
+![Intro Animation](assets/intro.mp4)
 
 ## Ausblick
 
