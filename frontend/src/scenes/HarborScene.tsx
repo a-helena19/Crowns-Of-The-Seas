@@ -111,7 +111,8 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
     }
 
     function handleBack() {
-        if (view !== "main") setView("main");
+        if (view === "cargo") onClose();
+        else if (view !== "main") setView("main");
         else onClose();
     }
 

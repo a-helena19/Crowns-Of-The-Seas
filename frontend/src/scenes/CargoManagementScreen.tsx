@@ -703,7 +703,9 @@ export default function CargoManagementScreen({
                                             >
                                                 {startingMap[selectedEntry.cargoId]
                                                     ? "Reise wird gestartet …"
-                                                    : "Reise starten"}
+                                                    : pilotOn
+                                                    ? "Reise mit Lotsen starten"
+                                                    : "Reise ohne Lotsen starten"}
                                             </button>
                                         </div>
                                     );
