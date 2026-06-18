@@ -207,3 +207,11 @@ Die geplanten Funktionen sind vollständig umgesetzt. Für die Zukunft sind weit
 ## Links & Ressourcen
 - Repository: (Link folgt)
 - Live-Demo: (Link oder QR-Code folgt)
+- Spielmusik: „Pirate Music" von Alex Nachtmahr (YouTube)
+- Soundeffekte & Hintergrundmusik: Pixabay
+- Fraktions-Charaktere: Generiert mit Gemini
+- Sailor-Charakter: SpriteStudio Gallery
+- Minigame-Bilder: Generiert mit dem ChatGPT Bildgenerator
+- Weltkarte: Basierend auf einer Vorlage von r/MapPorn (Reddit)
+- Übrige Grafiken: Generiert mit Gemini und ChatGPT
+
