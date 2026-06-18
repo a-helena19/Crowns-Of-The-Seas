@@ -93,8 +93,8 @@ export default function PortProfileScreen({ port, onClose }: Props) {
     const info = PORT_INFO[port.name];
 
     return (
-        <div className="port-profile-overlay">
-            <div className="port-profile-panel">
+        <div className="port-profile-overlay" onClick={onClose}>
+            <div className="port-profile-panel" onClick={(e) => e.stopPropagation()}>
                 <button className="port-profile-close" onClick={onClose} type="button">✕</button>
 
                 <div className="port-profile-header">
