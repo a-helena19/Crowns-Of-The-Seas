@@ -61,6 +61,8 @@ Mehrere Bausteine machen das Spiel besonders. Vor allem das echte Mehrspieler-Er
 
 In einer geteilten Welt bewegen sich bis zu vier Reedereien über dieselbe Weltkarte mit neun Häfen, von Hamburg über New York bis Sydney. Jeder Hafen hat ein eigenes Profil mit individuellem Aufbau und eigenen Merkmalen. Die Schiffe der Konkurrenz sind jederzeit auf der Karte sichtbar, sofern man sie nicht bewusst ausblendet. Ein synchronisiertes Zeitmodell mit einem Spieltag pro Tick sorgt dafür, dass alle im selben Rhythmus spielen und der Wettbewerb unmittelbar spürbar bleibt.
 
+![Die Kartenansicht](assets/Mainscreen.png)
+
 #### Wirtschaft mit Tiefe
 
 Geld verdient man, indem man Frachtaufträge annimmt und pünktlich abliefert. Jeder Auftrag hat einen Herkunfts- und einen Zielhafen, und angenommen wird er nur direkt im Herkunftshafen. Wer zuerst dort ist, bekommt den Zuschlag. Auch der Frachttyp entscheidet über die Strategie:
@@ -69,7 +71,7 @@ Geld verdient man, indem man Frachtaufträge annimmt und pünktlich abliefert. J
 - **Zerbrechliche Ware** leidet unter Unwettern unterwegs.
 - **Luxusgüter** bringen die höchsten Belohnungen.
 
-Häfen, in denen gerade Luxusfracht wartet, leuchten auf der Karte golden auf.
+Von Luxusfracht gibt es höchstens zwei Aufträge gleichzeitig. Sie bleiben so lange bestehen, bis jemand sie übernimmt. Budget-Schiffe können sie allerdings nicht transportieren, da ihr Laderaum dafür nicht ausreicht. Häfen, in denen gerade Luxusfracht wartet, leuchten auf der Karte golden auf.
 
 #### Schiffe und Flotte
 
@@ -79,7 +81,9 @@ Für die passende Flotte sorgt die Schiffsbörse mit drei Klassen:
 - **Standard-Schiffe** sind ausgewogen.
 - **Premium-Schiffe** sind teuer, aber leistungsstark.
 
-Schiffe lassen sich jederzeit kaufen und wieder verkaufen, wobei ein gepflegtes Schiff deutlich mehr einbringt. Immer wieder tauchen zeitlich begrenzte Sonderangebote auf, bei denen dieselben Schiffe günstiger zu haben sind. Zwischendurch müssen Schiffe betankt und repariert werden, was beides Zeit und Taler kostet. Wer ein Schiff ohne Ladung an einen anderen Ort bringen möchte, nutzt eine Leerfahrt, also eine ganz normale Reise ohne Fracht.
+<img src="assets/schiffsmarkt.png" alt="Der Schiffsmarkt mit den drei Schiffsklassen" align="center" width="90%">
+
+Schiffe lassen sich jederzeit kaufen und wieder verkaufen, wobei ein gepflegtes Schiff deutlich mehr einbringt. Immer wieder tauchen zeitlich begrenzte Sonderangebote auf, bei denen dieselben Schiffe günstiger zu haben sind. Zwischendurch müssen Schiffe betankt und repariert werden, was beides Zeit und Taler kostet. Beim Betanken lässt sich frei wählen, auf wie viel Prozent der Tank gefüllt wird. Eine Reparatur setzt den Zustand dagegen immer vollständig zurück. Wer ein Schiff ohne Ladung an einen anderen Ort bringen möchte, nutzt eine Leerfahrt, also eine ganz normale Reise ohne Fracht.
 
 #### Sieben Fraktionen
 
@@ -91,7 +95,7 @@ Eine zentrale Rolle spielen die sieben Fraktionen. Schon zu Beginn wählt jede:r
 
 Es gibt keine beste Fraktion. Jede hat bewusste Stärken und Schwächen, und genau das macht die Wahl zu einer strategischen Entscheidung. Auf Fairness wurde dabei besonders geachtet.
 
-![Die Fraktionsauswahl zu Spielbeginn](assets/screenshot-fraktionswahl.png)
+![Die Fraktionsauswahl zu Spielbeginn](assets/fractions2.png)
 
 ### Ereignisse & Minispiele
 
@@ -100,7 +104,7 @@ Eine Seereise verläuft nicht immer ruhig. Während ein Schiff unterwegs ist, k�
 - Beim **Sturm auf See** zieht ein Unwetter auf, und Blitze schlagen ins Wasser. Das Schiff lässt sich nach links und rechts lenken, um Sonnen einzusammeln und den Blitzen auszuweichen. Jeder Treffer kostet Haltbarkeit.
 - Beim **Rattenbefall** schleichen sich Ratten an Bord. Mit der Maus werden sie nacheinander angeklickt, bevor die Zeit abläuft. Andernfalls fressen sie einen Teil der Ladung an.
 - Bei der **gefährlichen Passage** gilt es, ein enges Fahrwasser voller Hindernisse zu durchqueren. Das Schiff lässt sich frei in alle Richtungen steuern. Jede Kollision beschädigt es.
-- Die **Schatzjagd** ist freiwillig. Wer der Spur folgt, steuert durch ein Labyrinth aus Seewegen, sammelt Schätze ein und weicht Piraten aus. Bei Erfolg gibt es eine zusätzliche Belohnung.
+- Die **Schatzjagd** ist freiwillig. Wer der Spur folgt, steuert durch ein Labyrinth aus Seewegen, sammelt Schätze ein und weicht Piraten aus. Bei Erfolg gibt es eine zusätzliche Belohnung. Wenn die Schatzjagd nicht erfolgreich abgeschlossen wird, geht ein Teil der Fracht verloren.
 
 ![Das Ratten-Minispiel](assets/ratten-minispiel.mp4)
 
@@ -108,17 +112,21 @@ Zwei weitere Ereignisse sorgen für zusätzliche Spannung. Beim Lotsenstreik fä
 
 ### Nutzererlebnis
 
-Gerade weil im Hintergrund eine ernsthafte Simulation läuft, ist das Spiel bewusst zugänglich, einladend und reaktiv gestaltet. Hilfe steht immer dort bereit, wo sie gebraucht wird. Schon der Einstieg ist atmosphärisch.
-Eine Startanimation führt in die Welt ein. Auch das Ablegen und der Game-Over-Bildschirm mit Siegerpodest sind animiert.
+Gerade weil im Hintergrund eine ernsthafte Simulation läuft, ist das Spiel bewusst zugänglich, einladend und reaktiv gestaltet. Hilfe steht immer dort bereit, wo sie gebraucht wird. Schon der Einstieg ist atmosphärisch. Eine Startanimation führt in die Welt ein. Auch das Ablegen und der Game-Over-Bildschirm mit Siegerpodest sind animiert.
 
 ![Startanimation von Crowns of the Seas](assets/intro.mp4)
-
 
 Für einen leichten Einstieg sorgt ein geführtes Tutorial in der Lobby, das die wichtigsten Abläufe vor dem ersten Spiel erklärt. Wer später etwas nachschlagen möchte, öffnet jederzeit ein integriertes Help Center, das alle Spielmechaniken in Kapiteln erklärt. So findet auch ohne Vorwissen jede:r ins Spiel.
 
 Visuelle Hinweise nehmen den Spieler:innen das Suchen ab. Eine Schiffskarte leuchtet auf und erhält einen farbigen Rahmen, sobald eine Entscheidung ansteht, und das ganz ohne alarmierendes Gefühl. Häfen mit Luxusfracht leuchten golden. Beim Überfahren von Schiffen und Häfen heben kurze Hinweise die wichtigsten Informationen hervor.
 
 Dazu kommen viele kleine Elemente, die das Spiel lebendig wirken lassen. Ein In-Game-Chat erlaubt die direkte Kommunikation. Ein Leaderboard zeigt jederzeit Vermögen und Platzierung. Nach einem Verbindungsabbruch ist ein sauberes Wiederbeitreten möglich. Musik und Soundeffekte begleiten die Wechsel zwischen Lobby, Spiel und Minispielen.
+
+### Adminseite
+
+Das Spiel lässt sich außerdem über eine geschützte Administrationsseite anpassen, ohne dass in den Code eingegriffen werden muss. Mit einem eigenen Admin-Zugang können dort zum Beispiel die verfügbaren Frachten und Schiffe konfiguriert werden. So lässt sich das Spiel an Betreiber:innen übergeben, die Inhalte und Werte selbst einstellen.
+
+![Die Adminseite](assets/adminseite.png)
 
 ### Lebenszyklus eines Schiffs
 
@@ -137,6 +145,8 @@ Bei der Umsetzung stand im Vordergrund, welche Technologien das Erlebnis am best
 | Datenhaltung | PostgreSQL |
 | Build und Betrieb | Docker, automatisierte CI/CD-Pipeline, Unit- und Integrationstests |
 
+Bewusst wurde auf eine stark in Microservices aufgeteilte Architektur verzichtet. Das Spiel braucht einen gemeinsamen, konsistenten Spielzustand in Echtzeit, und dafür ist ein zusammenhängender Spielserver einfacher umzusetzen und performanter. Viele kleine Dienste hätten zusätzlichen Kommunikations- und Synchronisationsaufwand verursacht, der im Rahmen des Projekts keinen wesentlichen Mehrwert geboten hätte.
+
 Einige Grundsätze prägen die Architektur:
 
 - Die Spiellogik läuft auf dem Server und nicht im Browser. Alle wichtigen Entscheidungen, Marktbewegungen und Zufallsereignisse werden zentral berechnet und geprüft. So sehen alle denselben Spielzustand, und Manipulationen sind praktisch ausgeschlossen.
@@ -145,9 +155,7 @@ Einige Grundsätze prägen die Architektur:
 
 ![Überblick über die Systemarchitektur](assets/architecture-overview.png)
 
-Das Spiel lässt sich außerdem über eine geschützte Administrationsseite anpassen, ohne dass in den Code eingegriffen werden muss. Mit einem eigenen Admin-Zugang können dort zum Beispiel die verfügbaren Frachten und Schiffe konfiguriert werden. So lässt sich das Spiel an Betreiber:innen übergeben, die Inhalte und Werte selbst einstellen.
-
-Die Routen zwischen den Häfen berechnet das Spiel automatisch als kürzesten Seeweg mit dem A-Star-Algorithmus. Die Karte läuft dabei am Rand nahtlos um. Ein Schiff kann also am rechten Kartenrand verschwinden und links wieder auftauchen.
+Die Routen zwischen den Häfen berechnet das Spiel automatisch als kürzesten Seeweg mit dem A-Star-Algorithmus. Dieser schätzt über eine Heuristik, die Luftlinie zum Zielhafen, wie weit das Ziel noch entfernt ist, und untersucht dadurch zuerst die vielversprechendsten Wege. Die Karte läuft dabei am Rand nahtlos um. Ein Schiff kann also am rechten Kartenrand verschwinden und links wieder auftauchen.
 
 ### Fraktionen über das Decorator-Pattern
 
@@ -170,13 +178,22 @@ Besonderer Wert lag auf einem stimmigen Spielerlebnis und darauf, die Spieler:in
 
 ## Herausforderungen & Lerneffekte
 
-Eine erste Herausforderung war die Performance. Anfangs geriet das Spiel oft ins Stocken. Gelöst wurde das durch eine gezielte Optimierung der Datenbank.
+Eine erste Herausforderung war die Performance. Anfangs kam es oft zu Verzögerungen. Bei mehreren gleichzeitigen Sessions wurde das Backend zum Engpass, da pro Tick dieselben Daten redundant aus der Datenbank geladen wurden. So kam es zu über 30 Abfragen pro Tick.
 
-Die anspruchsvollste Aufgabe war die Echtzeit-Konkurrenz. Mehrere Clients müssen jederzeit denselben Spielzustand sehen. Die Logik wird deshalb konsequent auf dem Server berechnet, und Änderungen werden aktiv an die Clients geschickt. Dieser Ansatz hat sich bewährt und sorgt zugleich für Fairness und Reaktivität.
+Folgende Optimierungen haben das gelöst:
 
-Eine weitere Herausforderung war es, die geschicklichkeitsbasierten Minispiele sauber in den ruhigen Wirtschaftsfluss einzubetten. Die Reise pausiert, das Minispiel übernimmt, danach geht es nahtlos weiter. Auch das saubere Wiederbeitreten nach einem Verbindungsabbruch erforderte sorgfältige Überlegung, damit niemand Fortschritt verliert.
+- **TickContext**: Alle Daten einmal am Tick-Anfang laden und an alle Methoden weitergeben.
+- **Statisches Caching**: Unveränderliche Daten wie Häfen und Schiffsvorlagen einmalig in den Speicher laden.
+- **Eine Transaktion pro Tick** statt einzelner Transaktionen pro Lese- oder Schreibvorgang.
+- **Batch-Saves**: Geänderte Entities gesammelt am Tick-Ende speichern statt einzeln.
 
-Drei Erkenntnisse bleiben besonders hängen. Fairness und ein leichter Einstieg sind keine netten Extras. Sie entscheiden darüber, ob sich alle eingeladen fühlen mitzuspielen, und sollten bei neuen Features immer mitgedacht werden. Eine durchdachte Architektur zahlt sich aus, denn das Decorator-Pattern hat das Hinzufügen neuer Fraktionen deutlich vereinfacht. Und gerade eine nüchterne Simulation lebt von gutem Feedback. Erst die vielen visuellen und akustischen Hinweise machen das Spiel zugänglich und lebendig.
+Das Ergebnis war die Reduktion von über 30 auf etwa sechs Datenbankabfragen pro Tick.
+
+Die anspruchsvollste Aufgabe war die Echtzeit-Konkurrenz. Mehrere Clients müssen jederzeit denselben Spielzustand sehen. Die Logik wird daher vollständig auf dem Server berechnet, und Änderungen werden aktiv an die Clients übertragen. Dieser Ansatz hat sich bewährt und sorgt zugleich für Fairness und Reaktivität.
+
+Außerdem stellte die Darstellung auf der Karte eine Herausforderung dar. Die exakte Positionierung von Schiffen und Häfen in Phaser erforderte einigen Aufwand. Zusätzlich war die Wahl der passenden Architektur schwierig, da die Aufgabenstellung bewusst offen gehalten war und der geeignete Ansatz selbst entwickelt werden musste.
+
+Drei Erkenntnisse bleiben besonders hängen. Fairness und ein leichter Einstieg sind keine zusätzlichen Features, sondern entscheidend dafür, ob sich alle eingeladen fühlen mitzuspielen. Sie sollten daher bei neuen Features stets mitgedacht werden. Eine durchdachte Architektur zahlt sich aus, da das Decorator-Pattern das Hinzufügen neuer Fraktionen deutlich vereinfacht hat. Und gerade eine nüchterne Simulation lebt von gutem Feedback. Erst visuelle und akustische Rückmeldungen machen das Spiel zugänglich und lebendig.
 
 ## Ausblick
 
@@ -186,7 +203,7 @@ Die geplanten Funktionen sind vollständig umgesetzt. Für die Zukunft sind weit
 - Ein optionaler Computergegner für das Spiel allein oder zum Üben.
 - Weitere Fraktionen und Minispiele für noch mehr Abwechslung.
 
-## Links & Ressourcen
 
+## Links & Ressourcen
 - Repository: (Link folgt)
 - Live-Demo: (Link oder QR-Code folgt)
