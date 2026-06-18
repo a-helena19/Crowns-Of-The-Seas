@@ -14,6 +14,7 @@ import at.fhv.backend.application.services.travel.TravelArrivalService;
 import at.fhv.backend.application.services.travel.TravelPauseService;
 import at.fhv.backend.application.services.travel.UnloadingStartService;
 import at.fhv.backend.domain.model.cargo.CargoStatus;
+import at.fhv.backend.domain.model.cargo.CargoType;
 import at.fhv.backend.domain.model.cargo.SessionCargo;
 import at.fhv.backend.domain.model.cargo.SessionCargoRepository;
 import at.fhv.backend.domain.model.session.GameSession;
@@ -38,9 +39,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -74,6 +77,8 @@ public class GameTickProcessor {
     private final PilotStrikeService pilotStrikeService;
 
     private static final int MAX_ACTIVE_CARGOS_PER_PORT = 7;
+    // Luxusfracht-Limits: höchstens 1 verfügbare Luxusfracht pro Hafen und höchstens 2 Häfen gleichzeitig.
+    private static final int MAX_LUXURY_PORTS = 2;
 
     // --- Static data caches (loaded once, never change during runtime) ---
     private volatile List<PortResponseDTO> cachedPorts;
@@ -395,6 +400,15 @@ public class GameTickProcessor {
             byPort.computeIfAbsent(sc.getOriginPortId(), k -> new ArrayList<>()).add(sc);
         }
 
+        // Häfen, die aktuell eine verfügbare Luxusfracht anbieten (zählt gegen die Limits).
+        Set<UUID> luxuryPorts = new HashSet<>();
+        for (SessionCargo sc : all) {
+            if (sc.getCargoType() == CargoType.LUXURY_GOODS
+                    && sc.getCargoStatus() == CargoStatus.AVAILABLE) {
+                luxuryPorts.add(sc.getOriginPortId());
+            }
+        }
+
         for (Map.Entry<UUID, List<SessionCargo>> entry : byPort.entrySet()) {
             UUID portId = entry.getKey();
             List<SessionCargo> portCargos = entry.getValue();
@@ -411,8 +425,9 @@ public class GameTickProcessor {
             }
 
             if (!hasPermanent && activeCount < MAX_ACTIVE_CARGOS_PER_PORT) {
+                // Permanente Basis-Fracht ist nie Luxus (allowLuxury=false).
                 SessionCargo newPermanent = cargoSessionInitializer.createNewCargo(
-                        ctx.getSessionId(), portId, ctx.getCurrentTick(), rng, true);
+                        ctx.getSessionId(), portId, ctx.getCurrentTick(), rng, true, false);
                 if (newPermanent != null) {
                     sessionCargoRepository.save(newPermanent);
                     activeCount++;
@@ -427,10 +442,15 @@ public class GameTickProcessor {
                 if (rng.nextDouble() >= spawnChance) {
                     break;
                 }
+                // Luxus nur, wenn dieser Hafen noch keine Luxusfracht hat und das Map-Limit nicht erreicht ist.
+                boolean allowLuxury = !luxuryPorts.contains(portId) && luxuryPorts.size() < MAX_LUXURY_PORTS;
                 SessionCargo newCargo = cargoSessionInitializer.createNewCargo(
-                        ctx.getSessionId(), portId, ctx.getCurrentTick(), rng, false);
+                        ctx.getSessionId(), portId, ctx.getCurrentTick(), rng, false, allowLuxury);
                 if (newCargo == null) break;
                 sessionCargoRepository.save(newCargo);
+                if (newCargo.getCargoType() == CargoType.LUXURY_GOODS) {
+                    luxuryPorts.add(portId);
+                }
                 activeCount++;
                 changed = true;
                 System.out.println("[CargoSpawn] New cargo " + newCargo.getId()
