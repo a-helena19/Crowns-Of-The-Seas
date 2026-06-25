@@ -700,6 +700,7 @@ export default function CargoManagementScreen({
                                                 className="game-btn danger"
                                                 onClick={() => handleDepartButton(selectedEntry)}
                                                 disabled={startingMap[selectedEntry.cargoId]}
+                                                data-tutorial="start-travel"
                                             >
                                                 {startingMap[selectedEntry.cargoId]
                                                     ? "Reise wird gestartet …"

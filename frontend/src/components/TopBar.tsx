@@ -489,7 +489,7 @@ export default function TopBar() {
                 </div>
             )}
 
-            <HelpCenter open={helpOpen} onClose={() => setHelpOpen(false)} />
+            <HelpCenter open={helpOpen} onClose={() => setHelpOpen(false)} showTutorialRestart />
 
         </div>
     );

@@ -342,7 +342,7 @@ export default function ShipBrokerScene({ onClose }: Props) {
 
     return (
         <div className="sm-screen">
-            <BackButton onClick={onClose} />
+            <BackButton onClick={onClose} tutorialTarget="close-ship-market" />
 
             <h1 className="sm-title">Schiffsmarkt</h1>
 
@@ -495,6 +495,7 @@ function ClassShipCard({
                         className="sm-buy-btn"
                         onClick={onBuy}
                         disabled={!canAfford || buying || outOfStock}
+                        data-tutorial="buy-ship"
                     >
                         {buying ? "…"
                             : outOfStock ? "Ausverkauft"

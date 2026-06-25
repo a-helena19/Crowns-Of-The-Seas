@@ -101,6 +101,7 @@ export default function ShipStatusCard({
             onClick={onClick}
             role={onClick ? "button" : undefined}
             tabIndex={onClick ? 0 : undefined}
+            data-tutorial="ship-card"
             onKeyDown={onClick ? (e) => {
                 if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();

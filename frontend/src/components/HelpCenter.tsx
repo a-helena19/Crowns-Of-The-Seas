@@ -5,10 +5,12 @@ import { HELP_CHAPTERS } from "./helpCenterContent";
 import type { HelpBlock, HelpChapter, HelpPage } from "./helpCenterContent";
 import "../style/helpCenter.css";
 import audioEngine from "../audio/AudioEngine.ts";
+import { requestTutorialRestart } from "./InteractiveTutorial";
 
 interface HelpCenterProps {
     open: boolean;
     onClose: () => void;
+    showTutorialRestart?: boolean;
 }
 
 interface FlatPage {
@@ -88,7 +90,7 @@ function renderBlock(block: HelpBlock, index: number, chapterColor: string) {
     }
 }
 
-export default function HelpCenter({ open, onClose }: HelpCenterProps) {
+export default function HelpCenter({ open, onClose, showTutorialRestart = false }: HelpCenterProps) {
     const flatPages = useMemo(() => buildFlatPages(HELP_CHAPTERS), []);
     const [current, setCurrent] = useState(0);
     const [turn, setTurn] = useState<"none" | "next" | "prev">("none");
@@ -187,6 +189,20 @@ export default function HelpCenter({ open, onClose }: HelpCenterProps) {
                         <div className="help-book-title">Kapitäns&shy;handbuch</div>
                         <div className="help-book-sub">Crowns of the Seas</div>
                     </div>
+
+                    {showTutorialRestart && (
+                        <button
+                            type="button"
+                            className="help-tutorial-restart"
+                            onClick={() => {
+                                audioEngine.playSfx("buttonClick");
+                                onClose();
+                                requestTutorialRestart();
+                            }}
+                        >
+                            Tutorial erneut starten
+                        </button>
+                    )}
 
                     <div className="help-toc-label">Inhalt</div>
 

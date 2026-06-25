@@ -32,6 +32,7 @@ import { registerMinigameTester } from "../dev/minigameTester.ts";
 import EventNotificationDialog from "../components/EventNotificationDialog.tsx";
 import TreasureHuntPromptDialog from "../components/TreasureHuntPromptDialog.tsx";
 import InGameChat from "../components/InGameChat.tsx";
+import InteractiveTutorial from "../components/InteractiveTutorial.tsx";
 import ratImage from "../assets/Rat.png";
 import stormDialogImage from "../assets/minigame/storm/DialogPic.png";
 import obstacleDialogImage from "../assets/minigame/obstaclegame/wrack.png";
@@ -2092,6 +2093,8 @@ export default function GameScreen() {
                     onDismiss={handleCustomsDismiss}
                 />
             )}
+
+            <InteractiveTutorial playerId={playerId} />
 
         </div>
     );
