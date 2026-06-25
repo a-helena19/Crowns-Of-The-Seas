@@ -7,6 +7,7 @@ import { sessionApi } from '../api/sessionApi';
 import type { SessionDTO } from '../types/session';
 import audioEngine from '../audio/AudioEngine';
 import UserEditModal from '../components/UserEditModal';
+import HelpCenter from '../components/HelpCenter';
 import '../style/gameLobby.css';
 
 export default function GameLobby() {
@@ -22,6 +23,7 @@ export default function GameLobby() {
     const audioMenuRef = useRef<HTMLDivElement | null>(null);
 
     const [profileModalOpen, setProfileModalOpen] = useState(false);
+    const [helpOpen, setHelpOpen] = useState(false);
 
     useEffect(() => {
         if (user?.username) {
@@ -251,6 +253,14 @@ export default function GameLobby() {
                             title="Profil bearbeiten"
                         >
                             👤 Profil
+                        </button>
+
+                        <button
+                            className="profile-edit-btn lobby-help-btn"
+                            onClick={() => { setHelpOpen(true); audioEngine.playSfx('buttonClick'); }}
+                            title="Hilfecenter öffnen"
+                        >
+                            ❓ Hilfe
                         </button>
 
                         {/* Audio-Menü */}
@@ -510,6 +520,8 @@ export default function GameLobby() {
         {profileModalOpen && (
             <UserEditModal onClose={() => setProfileModalOpen(false)} />
         )}
+
+        <HelpCenter open={helpOpen} onClose={() => setHelpOpen(false)} />
         </>
     );
 }
