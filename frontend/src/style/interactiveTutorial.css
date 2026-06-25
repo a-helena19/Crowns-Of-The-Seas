@@ -1,0 +1,150 @@
+.tutorial-backdrop,
+.tutorial-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    font-family: var(--font-body);
+}
+
+.tutorial-backdrop {
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(7, 12, 20, 0.62);
+}
+
+.tutorial-prompt,
+.tutorial-card {
+    width: min(420px, calc(100vw - 32px));
+    background: #f8efd4;
+    border: 2px solid rgba(83, 54, 22, 0.65);
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.36), inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+    color: #2f2416;
+}
+
+.tutorial-prompt {
+    padding: 26px;
+}
+
+.tutorial-kicker,
+.tutorial-progress {
+    font-family: var(--font-game);
+    font-size: 11px;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: #91682b;
+}
+
+.tutorial-prompt h2,
+.tutorial-card h2 {
+    margin: 8px 0 10px;
+    font-family: var(--font-game);
+    font-size: 22px;
+    letter-spacing: 1px;
+    color: #362715;
+}
+
+.tutorial-prompt p,
+.tutorial-card p {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.55;
+    color: #59462e;
+}
+
+.tutorial-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.tutorial-btn {
+    min-height: 38px;
+    padding: 9px 14px;
+    border: 1px solid rgba(83, 54, 22, 0.55);
+    font-family: var(--font-game);
+    font-size: 11px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
+.tutorial-btn.primary {
+    background: #7b5426;
+    color: #fff4d7;
+}
+
+.tutorial-btn.secondary {
+    background: transparent;
+    color: #5b4324;
+}
+
+.tutorial-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.tutorial-btn:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.tutorial-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.tutorial-dim {
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 6, 13, 0.5);
+}
+
+.tutorial-spotlight {
+    position: fixed;
+    z-index: 5001;
+    pointer-events: none;
+    border: 3px solid #f5cf6b;
+    box-shadow: 0 0 0 9999px rgba(2, 6, 13, 0.54), 0 0 24px rgba(245, 207, 107, 0.85);
+    animation: tutorialPulse 1.4s ease-in-out infinite;
+}
+
+.tutorial-card {
+    position: fixed;
+    z-index: 5002;
+    padding: 20px;
+}
+
+@keyframes tutorialPulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.015);
+    }
+}
+
+@media (max-width: 620px) {
+    .tutorial-card {
+        left: 16px !important;
+        right: 16px;
+        bottom: 16px;
+        top: auto !important;
+        width: auto;
+        transform: none !important;
+    }
+
+    .tutorial-actions {
+        flex-direction: column-reverse;
+    }
+
+    .tutorial-btn {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tutorial-spotlight {
+        animation: none;
+    }
+}

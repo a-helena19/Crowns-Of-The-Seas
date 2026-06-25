@@ -32,6 +32,7 @@ export default function QuickNavSidebar({
                     className="quick-nav-btn"
                     onClick={item.onClick}
                     aria-label={item.ariaLabel}
+                    data-tutorial={item.key === "shipmarket" ? "open-ship-market" : item.key}
                 >
                     <span
                         className={`quick-nav-btn-sprite ${item.spriteClass}`}
