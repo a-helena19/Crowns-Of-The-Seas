@@ -251,13 +251,13 @@ export default function TopBar() {
     return (
         <div className="topbar-container" style={{ height: TOP_BAR_HEIGHT }}>
             <div className="topbar-left">
-                <div className="topbar-panel">
+                <div className="topbar-panel" data-tutorial="hud-balance">
                     <img src={moneyIcon} alt="" className="topbar-icon" />
                     <span className="topbar-value">
                         {balance !== null ? balance.toLocaleString('de') : '...'} T
                     </span>
                 </div>
-                <div className="topbar-panel">
+                <div className="topbar-panel" data-tutorial="hud-ships">
                     <img src={shipIcon} alt="" className="topbar-icon" />
                     <span className="topbar-value">
                         {shipCount !== null ? `${shipCount} Schiffe` : '...'}
@@ -269,7 +269,7 @@ export default function TopBar() {
                 <div className={`topbar-panel ${
                     endingLevel === 'critical' ? 'ending-critical' :
                         endingLevel === 'warning' ? 'ending-warning' : ''
-                }`}>
+                }`} data-tutorial="hud-day">
                     <img src={timeIcon} alt="" className="topbar-icon" />
                     <span className="topbar-value">
                         {endingLevel !== 'none' && ticksRemaining !== null ? (
@@ -290,7 +290,7 @@ export default function TopBar() {
 
             <div className="topbar-right">
                 {homePortName && (
-                    <div className="topbar-panel topbar-homeport">
+                    <div className="topbar-panel topbar-homeport" data-tutorial="hud-homeport">
                         <span className="topbar-homeport-icon">⚓</span>
                         <span className="topbar-value">{homePortName}</span>
                     </div>
@@ -305,6 +305,7 @@ export default function TopBar() {
                             aria-expanded={factionPanelOpen}
                             aria-haspopup="dialog"
                             title={`Fraktion: ${factionData.name}`}
+                            data-tutorial="hud-faction"
                         >
                             <div className="topbar-faction-icon">
                                 <img
@@ -358,6 +359,7 @@ export default function TopBar() {
                         aria-expanded={lbOpen}
                         aria-haspopup="dialog"
                         title="Rangliste"
+                        data-tutorial="hud-leaderboard"
                     >
                         <span className="topbar-value">Rangliste ▾</span>
                     </button>
@@ -393,6 +395,7 @@ export default function TopBar() {
                         aria-expanded={audioMenuOpen}
                         aria-haspopup="dialog"
                         title="Einstellungen"
+                        data-tutorial="hud-menu"
                     >
                         <span className="topbar-value topbar-hamburger">☰</span>
                     </button>

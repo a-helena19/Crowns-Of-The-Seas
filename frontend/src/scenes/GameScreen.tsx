@@ -32,7 +32,7 @@ import { registerMinigameTester } from "../dev/minigameTester.ts";
 import EventNotificationDialog from "../components/EventNotificationDialog.tsx";
 import TreasureHuntPromptDialog from "../components/TreasureHuntPromptDialog.tsx";
 import InGameChat from "../components/InGameChat.tsx";
-import InteractiveTutorial from "../components/InteractiveTutorial.tsx";
+import InteractiveTutorial, { hasSeenTutorial, requestTutorialPrompt } from "../components/InteractiveTutorial.tsx";
 import ratImage from "../assets/Rat.png";
 import stormDialogImage from "../assets/minigame/storm/DialogPic.png";
 import obstacleDialogImage from "../assets/minigame/obstaclegame/wrack.png";
@@ -157,6 +157,7 @@ export default function GameScreen() {
     const [leftNotice, setLeftNotice] = useState<{ text: string; kind: 'left' | 'rejoined' } | null>(null);
     const [ownedShips, setOwnedShips] = useState<OwnedShipSummary[]>([]);
     const ownedShipsRef = useRef<OwnedShipSummary[]>([]);
+    const [luxuryPortIds, setLuxuryPortIds] = useState<string[]>([]);
     const [focusShipIdForCargoManagement, setFocusShipIdForCargoManagement] = useState<string | null>(null);
     const [openCargoForShipId, setOpenCargoForShipId] = useState<string | null>(null);
     const [showOtherShips, setShowOtherShips] = useState<boolean>(window.__showOtherShips !== false);
@@ -195,6 +196,7 @@ export default function GameScreen() {
                             .filter(c => c.cargoType === "LUXURY_GOODS")
                             .map(c => c.originPortId)
                     ));
+                    setLuxuryPortIds(portIds);
                     window.__luxuryPortIds = portIds;
                     window.dispatchEvent(new CustomEvent('glow-luxury-ports', { detail: { portIds } }));
                 })
@@ -1647,6 +1649,48 @@ export default function GameScreen() {
     const isMinigameActive = Boolean(
         showArrivalDocking || activeRatMinigame || activeStormMinigame || activeObstacleMinigame || activeTreasureHuntMinigame
     );
+    const hasAtPortShip = ownedShips.some(ship => ship.status === "AT_PORT");
+    const isOnPlayfield = view === "map";
+    const shouldExplainService = ownedShips.some(ship =>
+        ship.status === "AT_PORT" && (ship.fuel < 85 || ship.condition < 95)
+    );
+    const serviceTutorialSeen = hasSeenTutorial(playerId, "service");
+    const shouldExplainLuxuryFreight = luxuryPortIds.length > 0;
+    const luxuryTutorialSeen = hasSeenTutorial(playerId, "luxuryFreight");
+    const shouldExplainPostTravel = assignedCargos.some(entry =>
+        entry.phase === "unloading" || entry.phase === "completed"
+    );
+
+    useEffect(() => {
+        if (!isOnPlayfield || !hasAtPortShip || isMinigameActive) return;
+        if (shouldExplainService && !serviceTutorialSeen) return;
+        const id = window.setTimeout(() => requestTutorialPrompt("emptyVoyage"), 900);
+        return () => window.clearTimeout(id);
+    }, [hasAtPortShip, isMinigameActive, isOnPlayfield, serviceTutorialSeen, shouldExplainService]);
+
+    useEffect(() => {
+        if (!shouldExplainPostTravel || isMinigameActive) return;
+        const id = window.setTimeout(() => requestTutorialPrompt("postTravel"), 900);
+        return () => window.clearTimeout(id);
+    }, [shouldExplainPostTravel, isMinigameActive]);
+
+    useEffect(() => {
+        if (!isOnPlayfield || !shouldExplainService || isMinigameActive) return;
+        const id = window.setTimeout(() => requestTutorialPrompt("service"), 900);
+        return () => window.clearTimeout(id);
+    }, [shouldExplainService, isMinigameActive, isOnPlayfield]);
+
+    useEffect(() => {
+        if (!isOnPlayfield || !shouldExplainLuxuryFreight || isMinigameActive || luxuryTutorialSeen) return;
+
+        const timeoutId = window.setTimeout(() => requestTutorialPrompt("luxuryFreight"), 900);
+        const intervalId = window.setInterval(() => requestTutorialPrompt("luxuryFreight"), 2200);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+            window.clearInterval(intervalId);
+        };
+    }, [isOnPlayfield, shouldExplainLuxuryFreight, isMinigameActive, luxuryTutorialSeen]);
 
     const pendingEventsByShipId: Record<string, PendingShipEvent> = {};
     if (ratEventOffer) {

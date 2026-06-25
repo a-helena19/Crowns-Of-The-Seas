@@ -386,6 +386,7 @@ export default function OfficeScene({ onClose }: Props) {
                                 key={ship.id}
                                 className={`office-ship-card ${selectedShipId === ship.id ? "selected" : ""}`}
                                 onClick={() => setSelectedShipId(ship.id)}
+                                data-tutorial={ships[0]?.id === ship.id ? "office-ship-card" : undefined}
                             >
                                 <img src={ship.iconUrl} alt={ship.name} />
                                 <div>
@@ -448,6 +449,7 @@ export default function OfficeScene({ onClose }: Props) {
                                 <div className="office-actions">
                                     <ActionCard
                                         title="Betanken"
+                                        tutorialTarget="office-refuel-card"
                                         info={alreadyFull
                                             ? "Tank ist voll"
                                             : `+${formatPercent(refuelAmountPercent)}% auf ${formatPercent(targetFuelPercent)}%`}
@@ -491,6 +493,7 @@ export default function OfficeScene({ onClose }: Props) {
                                     </ActionCard>
                                     <ActionCard
                                         title="Reparieren"
+                                        tutorialTarget="office-repair-card"
                                         info={alreadyRepaired ? "Schiff ist heil" : `Schäden ${repairNeededPercent.toFixed(0)}%`}
                                         cost={alreadyRepaired
                                             ? undefined
@@ -558,6 +561,7 @@ function OfficeStat({ label, value }: { label: string; value: string }) {
 
 function ActionCard({
                         title,
+                        tutorialTarget,
                         info,
                         cost,
                         disabled,
@@ -566,6 +570,7 @@ function ActionCard({
                         children,
                     }: {
     title: string;
+    tutorialTarget?: string;
     info: string;
     cost?: string;
     disabled: boolean;
@@ -574,7 +579,7 @@ function ActionCard({
     children?: React.ReactNode;
 }) {
     return (
-        <div className="office-action-card">
+        <div className="office-action-card" data-tutorial={tutorialTarget}>
             <h3>{title}</h3>
             <span>{info}</span>
             {children}

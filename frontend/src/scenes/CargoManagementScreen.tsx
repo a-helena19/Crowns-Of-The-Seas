@@ -666,6 +666,7 @@ export default function CargoManagementScreen({
                                                     type="button"
                                                     className={`pilotage-toggle ${pilotOn ? "active" : ""}${toggleDisabled ? " disabled" : ""}`}
                                                     disabled={toggleDisabled}
+                                                    data-tutorial="pilotage-toggle"
                                                     onClick={() => {
                                                         if (toggleDisabled) return;
                                                         setPilotageMap(m => ({
@@ -807,7 +808,7 @@ export default function CargoManagementScreen({
                         })()}
 
                         {selectedEntry.phase === "unloading" && (
-                            <div className="loading-panel">
+                            <div className="loading-panel" data-tutorial="unloading-progress">
                                 <div className="loading-title">
                                     Schiff wird entladen
                                     <span className="loading-dots">
@@ -907,7 +908,7 @@ export default function CargoManagementScreen({
                                 && regressTotal === 0;
 
                             return (
-                                <div className="cm-reward-panel">
+                                <div className="cm-reward-panel" data-tutorial="travel-summary">
                                     <div className="cm-reward-header">
                                         {isPerfect
                                             ? <IconCheck />

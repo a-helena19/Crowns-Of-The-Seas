@@ -443,7 +443,7 @@ function ClassShipCard({
     const lowStock = !outOfStock && ship.availableStock <= 3;
 
     return (
-        <div className={`sm-card${deal ? " sm-card--deal" : ""}`}>
+        <div className={`sm-card${deal ? " sm-card--deal" : ""}`} data-tutorial="ship-card-purchase">
             <span className="sm-pin" />
             <div className="sm-card-img-wrap">
                 {deal && <div className="sm-deal-ribbon">−{deal.discountPercent}% Angebot</div>}

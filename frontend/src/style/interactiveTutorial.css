@@ -131,6 +131,7 @@
         bottom: 16px;
         top: auto !important;
         width: auto;
+        transform: none !important;
     }
 
     .tutorial-actions {
