@@ -122,6 +122,19 @@ export class ObstacleMinigameScene extends Phaser.Scene {
         const w = this.scale.width;
         const h = this.scale.height;
         const isViewA = this.config.routeViewType === "VIEW_A";
+        const titleStyle = {
+            color: "#ffffff",
+            stroke: "#4a140f",
+            strokeThickness: 5,
+            shadow: {
+                offsetX: 2,
+                offsetY: 2,
+                color: "#000000",
+                blur: 2,
+                fill: true,
+                stroke: false,
+            },
+        };
         this.cameras.main.setBackgroundColor(isViewA ? "#0b4f71" : "#06364d");
         this.add.image(w / 2, h / 2, "obstacle-water-bg")
             .setDisplaySize(w, h)
@@ -140,10 +153,10 @@ export class ObstacleMinigameScene extends Phaser.Scene {
         }
 
         if (isViewA) {
-            this.add.text(w / 2, 14, "Felsenpassage", { fontSize: "28px", color: "#f7e0a1" })
+            this.add.text(w / 2, 14, "Felsenpassage", { fontSize: "28px", ...titleStyle })
                 .setOrigin(0.5, 0).setDepth(10);
         } else {
-            this.add.text(w / 2, 14, "Eisfeld", { fontSize: "28px", color: "#e7fbff" })
+            this.add.text(w / 2, 14, "Eisfeld", { fontSize: "28px", ...titleStyle })
                 .setOrigin(0.5, 0).setDepth(10);
         }
     }
@@ -184,11 +197,35 @@ export class ObstacleMinigameScene extends Phaser.Scene {
     }
 
     private buildHud() {
-        this.timeText = this.add.text(16, 18, "", { fontSize: "21px", color: "#ffffff" }).setDepth(10);
-        this.healthText = this.add.text(16, 48, "", { fontSize: "21px", color: "#ffffff" }).setDepth(10);
+        const hudStyle = {
+            color: "#ffffff",
+            stroke: "#4a140f",
+            strokeThickness: 5,
+            shadow: {
+                offsetX: 2,
+                offsetY: 2,
+                color: "#000000",
+                blur: 2,
+                fill: true,
+                stroke: false,
+            },
+        };
+
+        this.timeText = this.add.text(16, 18, "", { fontSize: "21px", ...hudStyle }).setDepth(10);
+        this.healthText = this.add.text(16, 48, "", { fontSize: "21px", ...hudStyle }).setDepth(10);
         this.add.text(16, this.scale.height - 18, "WASD/Pfeile: Schiff steuern", {
             fontSize: "14px",
-            color: "#dceefa",
+            color: "#ffffff",
+            stroke: "#4a140f",
+            strokeThickness: 4,
+            shadow: {
+                offsetX: 2,
+                offsetY: 2,
+                color: "#000000",
+                blur: 2,
+                fill: true,
+                stroke: false,
+            },
             backgroundColor: "#00000088",
             padding: { x: 8, y: 4 },
         }).setOrigin(0, 1).setDepth(10);
