@@ -37,6 +37,15 @@ function AppRoutes() {
                     <Route path="/lobby" element={
                         <ProtectedRoute><GameLobby /></ProtectedRoute>
                     } />
+                    <Route path="/lobby/create" element={
+                        <ProtectedRoute><GameLobby /></ProtectedRoute>
+                    } />
+                    <Route path="/lobby/join" element={
+                        <ProtectedRoute><GameLobby /></ProtectedRoute>
+                    } />
+                    <Route path="/lobby/continue" element={
+                        <ProtectedRoute><GameLobby /></ProtectedRoute>
+                    } />
                     <Route path="/session-waiting" element={
                         <ProtectedRoute><SessionWaitingScreen /></ProtectedRoute>
                     } />

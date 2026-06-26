@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSessionContext } from '../context/useSessionContext';
 import { useAudioSettings } from '../audio/AudioSettingsContext';
@@ -16,7 +16,7 @@ export default function GameLobby() {
     const { createSession, joinSession } = useSessionContext();
     const { settings, setMusicEnabled, setSfxEnabled, setMusicVolume, setSfxVolume } = useAudioSettings();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'create' | 'join'>('create');
+    const location = useLocation();
     const [error, setError] = useState('');
 
     // Audio-Menü
@@ -49,6 +49,12 @@ export default function GameLobby() {
     // Aktive Sessions des Spielers (zum Wiederbeitreten)
     const [activeSessions, setActiveSessions] = useState<SessionDTO[]>([]);
     const [rejoiningId, setRejoiningId] = useState<string | null>(null);
+    const runningSessions = activeSessions.filter(session => session.status === 'RUNNING');
+    const activeAction =
+        location.pathname.endsWith('/continue') ? 'continue'
+            : location.pathname.endsWith('/join') ? 'join'
+                : location.pathname.endsWith('/create') ? 'create'
+                    : 'overview';
 
     const loadActiveSessions = useCallback(async () => {
         try {
@@ -359,181 +365,213 @@ export default function GameLobby() {
                     </div>
                 </div>
 
-                <div className="lobby-content lobby-content-split">
-                    <div className="form-section">
-                        <div className="tabs">
+                <div className={`lobby-actions-panel ${activeAction === 'overview' ? 'is-overview' : 'is-subpage'}`}>
+                    {activeAction === 'overview' && (
+                        <div className="lobby-action-stack">
                             <button
-                                className={`tab-btn ${activeTab === 'create' ? 'active' : ''}`}
+                                type="button"
+                                className={`lobby-action-btn ${runningSessions.length === 0 ? 'is-disabled' : ''}`}
                                 onClick={() => {
+                                    if (runningSessions.length === 0) return;
                                     audioEngine.playSfx('buttonClick');
-                                    setActiveTab('create');
+                                    navigate('/lobby/continue');
                                     setError('');
                                 }}
+                                disabled={runningSessions.length === 0}
                             >
-                                Neue Session
+                                <span className="lobby-action-title">Spiel fortsetzen</span>
+                                <span className="lobby-action-subtitle">
+                                    {runningSessions.length > 0 ? `${runningSessions.length} laufende Session${runningSessions.length === 1 ? '' : 's'}` : 'Keine laufende Session verfügbar'}
+                                </span>
                             </button>
+
                             <button
-                                className={`tab-btn ${activeTab === 'join' ? 'active' : ''}`}
+                                type="button"
+                                className="lobby-action-btn"
                                 onClick={() => {
                                     audioEngine.playSfx('buttonClick');
-                                    setActiveTab('join');
+                                    navigate('/lobby/create');
                                     setError('');
                                 }}
                             >
-                                Mit Code Beitreten
+                                <span className="lobby-action-title">Spiel erstellen</span>
+                                <span className="lobby-action-subtitle">Ein neues Spiel hosten und starten</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                className="lobby-action-btn"
+                                onClick={() => {
+                                    audioEngine.playSfx('buttonClick');
+                                    navigate('/lobby/join');
+                                    setError('');
+                                }}
+                            >
+                                <span className="lobby-action-title">Spiel beitreten</span>
+                                <span className="lobby-action-subtitle">Mit einem Code einer Session beitreten</span>
                             </button>
                         </div>
+                    )}
 
-                        {error && <div className="error-message">{error}</div>}
+                    {error && <div className="error-message">{error}</div>}
 
-                        {activeTab === 'create' && (
-                            <form onSubmit={handleCreateSession} className="lobby-form">
-                                <div className="form-group">
-                                    <label htmlFor="hostName">Dein Name:</label>
-                                    <input
-                                        id="hostName"
-                                        type="text"
-                                        value={createForm.hostName}
-                                        onChange={(e) => setCreateForm({ ...createForm, hostName: e.target.value })}
-                                        placeholder="z.B. Kapitän Jack"
-                                        required
-                                    />
-                                </div>
+                    {activeAction === 'continue' && (
+                        <div className="lobby-detail-panel">
+                            <section className="active-sessions-section">
+                                <h2 className="active-sessions-title">Laufende Sessions</h2>
+                                {runningSessions.length === 0 ? (
+                                    <p className="active-sessions-empty">
+                                        Du hast aktuell keine laufende Session. Erstelle ein neues Spiel oder trete einer Session bei.
+                                    </p>
+                                ) : (
+                                    <ul className="active-sessions-list">
+                                        {runningSessions.map(s => {
+                                            const me = s.players.find(p => p.userId === user?.id);
+                                            const connectedCount = s.players.filter(p => !p.disconnected).length;
+                                            const isRejoining = rejoiningId === s.id;
 
-                                <div className="form-group">
-                                    <label htmlFor="maxPlayers">Max. Spieler:</label>
-                                    <select
-                                        id="maxPlayers"
-                                        value={createForm.maxPlayers}
-                                        onChange={(e) => setCreateForm({ ...createForm, maxPlayers: parseInt(e.target.value) })}
-                                    >
-                                        <option value={2}>2 Spieler</option>
-                                        <option value={3}>3 Spieler</option>
-                                        <option value={4}>4 Spieler</option>
-                                    </select>
-                                </div>
+                                            return (
+                                                <li key={s.id} className="active-session-card">
+                                                    <div className="active-session-head">
+                                                        <span className="active-session-code">{s.gameCode}</span>
+                                                        <span className="active-session-status status-running">Läuft</span>
+                                                    </div>
 
-                                <div className="form-group">
-                                    <label htmlFor="tickRate">Tickrate (Spieltempo):</label>
-                                    <select
-                                        id="tickRate"
-                                        value={createForm.tickRateSeconds}
-                                        onChange={(e) => setCreateForm({ ...createForm, tickRateSeconds: parseInt(e.target.value) })}
-                                    >
-                                        <option value={3}>3 Sekunden</option>
-                                        <option value={10}>10 Sekunden</option>
-                                    </select>
-                                </div>
+                                                    <div className="active-session-meta">
+                                                        <span>👥 {connectedCount}/{s.maxPlayers} aktiv</span>
+                                                        <span>📅 Tag {s.currentTick}/{s.totalTicks}</span>
+                                                        {me?.disconnected && (
+                                                            <span className="active-session-left-tag">verlassen</span>
+                                                        )}
+                                                    </div>
 
-                                <div className="form-group">
-                                    <label htmlFor="duration">Spieldauer:</label>
-                                    <select
-                                        id="duration"
-                                        value={createForm.duration}
-                                        onChange={(e) => setCreateForm({ ...createForm, duration: e.target.value })}
-                                    >
-                                        <option value="20s">20 Sekunden (Test)</option>
-                                        <option value="1m">1 Minute (Test)</option>
-                                        <option value="1h">1 Stunde</option>
-                                        <option value="2h">2 Stunden</option>
-                                        <option value="3h">3 Stunden</option>
-                                        <option value="4h">4 Stunden</option>
-                                    </select>
-                                </div>
+                                                    <button
+                                                        type="button"
+                                                        className="active-session-rejoin-btn"
+                                                        onClick={() => handleRejoin(s)}
+                                                        disabled={isRejoining || !!rejoiningId}
+                                                    >
+                                                        {isRejoining ? 'Trete bei …' : 'Spiel fortsetzen'}
+                                                    </button>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                )}
+                            </section>
+                        </div>
+                    )}
 
-                                <button type="submit" className="submit-btn">
-                                    Session erstellen
-                                </button>
-                            </form>
-                        )}
+                    {activeAction === 'create' && (
+                        <div className="lobby-detail-panel">
+                            <section className="lobby-form-card">
+                                <h2>Spiel erstellen</h2>
+                                <form onSubmit={handleCreateSession} className="lobby-form">
+                                    <div className="form-group">
+                                        <label htmlFor="hostName">Dein Name:</label>
+                                        <input
+                                            id="hostName"
+                                            type="text"
+                                            value={createForm.hostName}
+                                            onChange={(e) => setCreateForm({ ...createForm, hostName: e.target.value })}
+                                            placeholder="z.B. Kapitän Jack"
+                                            required
+                                        />
+                                    </div>
 
-                        {activeTab === 'join' && (
-                            <form onSubmit={handleJoinSession} className="lobby-form">
-                                <div className="form-group">
-                                    <label htmlFor="playerName">Dein Name:</label>
-                                    <input
-                                        id="playerName"
-                                        type="text"
-                                        value={joinForm.playerName}
-                                        onChange={(e) => setJoinForm({ ...joinForm, playerName: e.target.value })}
-                                        placeholder="z.B. Kapitän Jack"
-                                        required
-                                    />
-                                </div>
+                                    <div className="form-group">
+                                        <label htmlFor="maxPlayers">Max. Spieler:</label>
+                                        <select
+                                            id="maxPlayers"
+                                            value={createForm.maxPlayers}
+                                            onChange={(e) => setCreateForm({ ...createForm, maxPlayers: parseInt(e.target.value) })}
+                                        >
+                                            <option value={2}>2 Spieler</option>
+                                            <option value={3}>3 Spieler</option>
+                                            <option value={4}>4 Spieler</option>
+                                        </select>
+                                    </div>
 
-                                <div className="form-group">
-                                    <label htmlFor="gameCode">Spielcode:</label>
-                                    <input
-                                        id="gameCode"
-                                        type="text"
-                                        value={joinForm.gameCode}
-                                        onChange={(e) => setJoinForm({ ...joinForm, gameCode: e.target.value.toUpperCase() })}
-                                        placeholder="z.B. ABC123"
-                                        maxLength={6}
-                                        required
-                                    />
-                                </div>
+                                    <div className="form-group">
+                                        <label htmlFor="tickRate">Tickrate (Spieltempo):</label>
+                                        <select
+                                            id="tickRate"
+                                            value={createForm.tickRateSeconds}
+                                            onChange={(e) => setCreateForm({ ...createForm, tickRateSeconds: parseInt(e.target.value) })}
+                                        >
+                                            <option value={3}>3 Sekunden</option>
+                                            <option value={10}>10 Sekunden</option>
+                                        </select>
+                                    </div>
 
-                                <button type="submit" className="submit-btn">
-                                    Beitreten
-                                </button>
-                            </form>
-                        )}
-                    </div>
+                                    <div className="form-group">
+                                        <label htmlFor="duration">Spieldauer:</label>
+                                        <select
+                                            id="duration"
+                                            value={createForm.duration}
+                                            onChange={(e) => setCreateForm({ ...createForm, duration: e.target.value })}
+                                        >
+                                            <option value="20s">20 Sekunden (Test)</option>
+                                            <option value="1m">1 Minute (Test)</option>
+                                            <option value="1h">1 Stunde</option>
+                                            <option value="2h">2 Stunden</option>
+                                            <option value="3h">3 Stunden</option>
+                                            <option value="4h">4 Stunden</option>
+                                        </select>
+                                    </div>
 
-                    <aside className="active-sessions-section">
-                        <h2 className="active-sessions-title">Deine aktiven Spiele</h2>
+                                    <button type="submit" className="submit-btn">
+                                        Session erstellen
+                                    </button>
+                                </form>
+                            </section>
+                        </div>
+                    )}
 
-                        {activeSessions.length === 0 ? (
-                            <p className="active-sessions-empty">
-                                Du hast aktuell keine aktiven Sessions. Erstelle eine neue Session
-                                oder tritt mit einem Code bei.
-                            </p>
-                        ) : (
-                            <ul className="active-sessions-list">
-                                {activeSessions.map(s => {
-                                    const me = s.players.find(p => p.userId === user?.id);
-                                    const connectedCount = s.players.filter(p => !p.disconnected).length;
-                                    const statusLabel =
-                                        s.status === 'RUNNING' ? 'Läuft'
-                                            : s.status === 'FACTION_SELECTION' ? 'Fraktionswahl'
-                                                : s.status === 'LOBBY' ? 'Lobby'
-                                                    : s.status;
-                                    const isRejoining = rejoiningId === s.id;
+                    {activeAction === 'join' && (
+                        <div className="lobby-detail-panel">
+                            <section className="lobby-form-card">
+                                <h2>Spiel beitreten</h2>
+                                <form onSubmit={handleJoinSession} className="lobby-form">
+                                    <div className="form-group">
+                                        <label htmlFor="playerName">Dein Name:</label>
+                                        <input
+                                            id="playerName"
+                                            type="text"
+                                            value={joinForm.playerName}
+                                            onChange={(e) => setJoinForm({ ...joinForm, playerName: e.target.value })}
+                                            placeholder="z.B. Kapitän Jack"
+                                            required
+                                        />
+                                    </div>
 
-                                    return (
-                                        <li key={s.id} className="active-session-card">
-                                            <div className="active-session-head">
-                                                <span className="active-session-code">{s.gameCode}</span>
-                                                <span className={`active-session-status status-${s.status.toLowerCase()}`}>
-                                                    {statusLabel}
-                                                </span>
-                                            </div>
+                                    <div className="form-group">
+                                        <label htmlFor="gameCode">Spielcode:</label>
+                                        <input
+                                            id="gameCode"
+                                            type="text"
+                                            value={joinForm.gameCode}
+                                            onChange={(e) => setJoinForm({ ...joinForm, gameCode: e.target.value.toUpperCase() })}
+                                            placeholder="z.B. ABC123"
+                                            maxLength={6}
+                                            required
+                                        />
+                                    </div>
 
-                                            <div className="active-session-meta">
-                                                <span>👥 {connectedCount}/{s.maxPlayers} aktiv</span>
-                                                <span>📅 Tag {s.currentTick}/{s.totalTicks}</span>
-                                                {me?.disconnected && (
-                                                    <span className="active-session-left-tag">verlassen</span>
-                                                )}
-                                            </div>
+                                    <button type="submit" className="submit-btn">
+                                        Beitreten
+                                    </button>
+                                </form>
+                            </section>
+                        </div>
+                    )}
 
-                                            <button
-                                                type="button"
-                                                className="active-session-rejoin-btn"
-                                                onClick={() => handleRejoin(s)}
-                                                disabled={isRejoining || !!rejoiningId}
-                                            >
-                                                {isRejoining ? 'Trete bei …'
-                                                    : s.status === 'RUNNING' ? 'Spiel fortsetzen'
-                                                        : 'Zur Session'}
-                                            </button>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
-                    </aside>
+                    {activeAction !== 'overview' && (
+                        <button type="button" className="lobby-back-btn" onClick={() => navigate('/lobby')}>
+                            <span className="lobby-back-icon">←</span>
+                            <span>Zur Übersicht</span>
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

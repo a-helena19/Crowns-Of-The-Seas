@@ -355,7 +355,7 @@ const TUTORIAL_CHAPTERS: Record<TutorialChapterId, TutorialChapter> = {
             },
             {
                 id: "luxury-requirement",
-                title: "Welche Schiffe koennen sie annehmen?",
+                title: "Welche Schiffe können sie annehmen?",
                 body: "Luxusgüter sind gross und wertvoll. Budget-Schiffe reichen dafür nicht aus. Du brauchst mindestens ein Schiff ab der Klasse Standard.",
                 nextLabel: "Weiter",
             },
