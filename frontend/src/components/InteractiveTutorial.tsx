@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import audioEngine from "../audio/AudioEngine";
 import "../style/interactiveTutorial.css";
@@ -14,6 +15,7 @@ export type TutorialChapterId =
 interface TutorialStep {
     id: string;
     target?: string;
+    targetSelector?: string;
     title: string;
     body: string;
     nextLabel?: string;
@@ -37,6 +39,16 @@ interface TutorialChapter {
 
 interface InteractiveTutorialProps {
     playerId: string | null;
+}
+
+interface TutorialPromptNotice {
+    title: string;
+    body: string;
+}
+
+interface TutorialViewportSize {
+    width: number;
+    height: number;
 }
 
 const STORAGE_PREFIX = "crowns_tutorial_seen_v2";
@@ -141,7 +153,7 @@ const TUTORIAL_CHAPTERS: Record<TutorialChapterId, TutorialChapter> = {
             },
             {
                 id: "ship-card",
-                target: "ship-card",
+                targetSelector: '.ship-status-card[data-ship-status="AT_PORT"]',
                 title: "Schiff auswählen",
                 body: "Deine Schiffe findest du unten. Klicke dein Schiff an, um am aktuellen Hafen Fracht auszuwählen.",
                 waitBody: "Sobald dein gekauftes Schiff unten erscheint, kannst du es hier auswählen.",
@@ -207,21 +219,20 @@ const TUTORIAL_CHAPTERS: Record<TutorialChapterId, TutorialChapter> = {
         promptBody: "Wir zeigen dir einmal, wie du ein Schiff ohne Fracht zu einem anderen Hafen schicken könntest. Gestartet wird dabei nichts automatisch.",
         steps: [
             {
-                id: "select-ship",
-                target: "ship-card",
-                title: "Schiff auswählen",
-                body: "Leerfahrten startest du ebenfalls über ein Schiff im Hafen. Wähle unten ein verfügbares Schiff aus.",
-                waitBody: "Sobald ein Schiff im Hafen bereitsteht, kannst du es für eine Leerfahrt auswählen.",
+                id: "select-port-ship",
+                targetSelector: '[data-tutorial="ship-card"][data-ship-status="AT_PORT"]',
+                title: "Schiff im Hafen auswählen",
+                body: "Wähle unten ein Schiff aus, das gerade im Hafen steht. Dadurch öffnet sich die Frachtbörse direkt für dieses Schiff.",
+                waitBody: "Für eine Leerfahrt brauchst du ein Schiff, das aktuell im Hafen steht.",
                 nextLabel: "Schiff auswählen",
             },
             {
                 id: "open-empty-voyage",
-                target: "open-empty-voyage",
+                target: "switch-empty-voyage-tab",
                 title: "Leerfahrt öffnen",
-                body: "Hier findest du die Leerfahrt. Sie ist nützlich, wenn ein Schiff ohne Fracht an einen anderen Hafen gebracht werden soll.",
-                waitBody: "Öffne zuerst das Hafenmenü des Schiffes. Dann erscheint der Button für die Leerfahrt.",
+                body: "Wechsle hier von der Frachtbörse in den Bereich Leerfahrt. Dort planst du eine Fahrt ohne Fracht.",
+                waitBody: "Sobald die Frachtbörse geöffnet ist, markieren wir hier den Wechsel zur Leerfahrt.",
                 nextLabel: "Leerfahrt öffnen",
-                fallbackTarget: "ship-card",
             },
             {
                 id: "choose-port",
@@ -376,6 +387,11 @@ function findTarget(selectorName: string): HTMLElement | null {
     return enabled ?? document.querySelector<HTMLElement>(`[data-tutorial="${selectorName}"]`);
 }
 
+function findTargetBySelector(selector: string): HTMLElement | null {
+    const enabled = document.querySelector<HTMLElement>(`${selector}:not(:disabled)`);
+    return enabled ?? document.querySelector<HTMLElement>(selector);
+}
+
 function findVirtualTargetRect(selectorName: string): DOMRect | null {
     if (selectorName !== "luxury-port-marker") return null;
     const luxuryPortId = window.__luxuryPortIds?.[0];
@@ -391,6 +407,14 @@ function findVirtualTargetRect(selectorName: string): DOMRect | null {
     return new DOMRect(centerX - size / 2, centerY - size / 2, size, size);
 }
 
+function hasOwnedShipAvailable(): boolean {
+    return document.querySelector('[data-tutorial="ship-card"]') !== null;
+}
+
+function hasAtPortShipAvailable(): boolean {
+    return document.querySelector('[data-tutorial="ship-card"][data-ship-status="AT_PORT"]') !== null;
+}
+
 export function requestTutorialRestart() {
     requestTutorialPrompt("firstJourney", true);
 }
@@ -399,30 +423,69 @@ export function requestTutorialPrompt(chapterId: TutorialChapterId, force = fals
     window.dispatchEvent(new CustomEvent(RESTART_EVENT, { detail: { chapterId, force } }));
 }
 
+function getTutorialViewportSize(): TutorialViewportSize {
+    const fullscreenRoot = document.fullscreenElement as HTMLElement | null;
+    if (fullscreenRoot) {
+        const rect = fullscreenRoot.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+            return {
+                width: rect.width,
+                height: rect.height,
+            };
+        }
+    }
+
+    return {
+        width: window.innerWidth,
+        height: window.innerHeight,
+    };
+}
+
 export default function InteractiveTutorial({ playerId }: InteractiveTutorialProps) {
     const [mode, setMode] = useState<TutorialMode>("closed");
     const [chapterId, setChapterId] = useState<TutorialChapterId>("firstJourney");
     const [stepIndex, setStepIndex] = useState(0);
     const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
     const [targetAvailable, setTargetAvailable] = useState(false);
+    const [manualReplay, setManualReplay] = useState(false);
+    const [promptNotice, setPromptNotice] = useState<TutorialPromptNotice | null>(null);
+    const [viewportSize, setViewportSize] = useState<TutorialViewportSize>(() => getTutorialViewportSize());
     const modeRef = useRef<TutorialMode>("closed");
     const lastTargetAvailableRef = useRef(false);
     const lastScrolledStepRef = useRef<string | null>(null);
+    const frozenHighlightStepRef = useRef<string | null>(null);
     const chapter = TUTORIAL_CHAPTERS[chapterId];
     const key = useMemo(() => storageKey(playerId, chapterId), [playerId, chapterId]);
+    const portalTarget = document.fullscreenElement ?? document.body;
 
     useEffect(() => {
         modeRef.current = mode;
     }, [mode]);
 
+    useEffect(() => {
+        const updateViewportSize = () => {
+            setViewportSize(getTutorialViewportSize());
+        };
+
+        updateViewportSize();
+        window.addEventListener("resize", updateViewportSize);
+        document.addEventListener("fullscreenchange", updateViewportSize);
+        return () => {
+            window.removeEventListener("resize", updateViewportSize);
+            document.removeEventListener("fullscreenchange", updateViewportSize);
+        };
+    }, []);
+
     const closeAndRemember = useCallback(() => {
         localStorage.setItem(key, "true");
+        setPromptNotice(null);
         modeRef.current = "closed";
         setMode("closed");
     }, [key]);
 
     const startTour = useCallback(() => {
         localStorage.setItem(key, "true");
+        setPromptNotice(null);
         setStepIndex(0);
         modeRef.current = "tour";
         setMode("tour");
@@ -432,6 +495,8 @@ export default function InteractiveTutorial({ playerId }: InteractiveTutorialPro
         if (hasSeenTutorial(playerId, "firstJourney")) return;
         const id = window.setTimeout(() => {
             setChapterId("firstJourney");
+            setManualReplay(false);
+            setPromptNotice(null);
             modeRef.current = "prompt";
             setMode("prompt");
         }, 650);
@@ -441,13 +506,26 @@ export default function InteractiveTutorial({ playerId }: InteractiveTutorialPro
     useEffect(() => {
         const restart = (event: Event) => {
             const detail = (event as CustomEvent<{ chapterId?: TutorialChapterId; force?: boolean }>).detail;
-            const nextChapterId = detail?.chapterId ?? "firstJourney";
+            let nextChapterId = detail?.chapterId ?? "firstJourney";
             if (!TUTORIAL_CHAPTERS[nextChapterId]) return;
             if (modeRef.current !== "closed" && !detail?.force) return;
             if (nextChapterId !== "firstJourney" && !hasSeenTutorial(playerId, "firstJourney")) return;
             if (!detail?.force && hasSeenTutorial(playerId, nextChapterId)) return;
+            if (nextChapterId === "emptyVoyage" && !hasOwnedShipAvailable()) {
+                nextChapterId = "firstJourney";
+            }
+            const shouldBlockEmptyVoyage =
+                nextChapterId === "emptyVoyage"
+                && hasOwnedShipAvailable()
+                && !hasAtPortShipAvailable();
+
             setChapterId(nextChapterId);
             setStepIndex(0);
+            setManualReplay(Boolean(detail?.force) && nextChapterId !== "firstJourney");
+            setPromptNotice(shouldBlockEmptyVoyage ? {
+                title: "Leerfahrt aktuell nicht möglich",
+                body: "Momentan kann dieses Tutorial nicht gestartet werden, weil gerade kein Schiff bereits im Hafen steht.",
+            } : null);
             modeRef.current = "prompt";
             setMode("prompt");
         };
@@ -455,28 +533,42 @@ export default function InteractiveTutorial({ playerId }: InteractiveTutorialPro
         return () => window.removeEventListener(RESTART_EVENT, restart);
     }, [playerId]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (mode !== "tour") return;
         const step = chapter.steps[stepIndex];
         lastTargetAvailableRef.current = false;
         lastScrolledStepRef.current = null;
+        frozenHighlightStepRef.current = null;
+        setTargetRect(null);
         const updateTarget = () => {
             if (!step.target) {
-                setTargetAvailable(true);
-                setTargetRect(null);
-                return;
+                if (!step.targetSelector) {
+                    setTargetAvailable(true);
+                    setTargetRect(null);
+                    return;
+                }
             }
-            const target = findTarget(step.target);
+            const target = step.targetSelector
+                ? findTargetBySelector(step.targetSelector)
+                : (step.target ? findTarget(step.target) : null);
             const fallback = step.fallbackTarget ? findTarget(step.fallbackTarget) : null;
-            const virtualRect = findVirtualTargetRect(step.target);
+            const virtualRect = step.target ? findVirtualTargetRect(step.target) : null;
             const disabled = Boolean((target as HTMLButtonElement | null)?.disabled);
             const nextTargetAvailable = Boolean(virtualRect || (target && (step.allowDisabled || !disabled)));
             setTargetAvailable(nextTargetAvailable);
             const spotlightTarget = target ?? fallback;
             const nextRect = virtualRect ?? spotlightTarget?.getBoundingClientRect() ?? null;
             setTargetRect(currentRect => {
-                if (step.freezeHighlight && currentRect && nextTargetAvailable) {
+                if (
+                    step.freezeHighlight
+                    && currentRect
+                    && nextTargetAvailable
+                    && frozenHighlightStepRef.current === step.id
+                ) {
                     return currentRect;
+                }
+                if (step.freezeHighlight && nextRect && nextTargetAvailable) {
+                    frozenHighlightStepRef.current = step.id;
                 }
                 return nextRect;
             });
@@ -518,31 +610,104 @@ export default function InteractiveTutorial({ playerId }: InteractiveTutorialPro
         closeAndRemember();
     };
 
+    const runAfterPointerSequence = (action: () => void) => {
+        window.setTimeout(action, 0);
+    };
+
+    const consumePointerEvent = (event: ReactMouseEvent | ReactPointerEvent) => {
+        event.stopPropagation();
+    };
+
+    const stopPointerEvent = (event: ReactMouseEvent | ReactPointerEvent) => {
+        event.stopPropagation();
+    };
+
     const prompt = (
-        <div className="tutorial-backdrop" role="dialog" aria-modal="true" aria-label="Tutorial starten">
-            <div className="tutorial-prompt">
+        <div
+            className="tutorial-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Tutorial starten"
+            onMouseDown={consumePointerEvent}
+            onMouseUp={consumePointerEvent}
+            onClick={consumePointerEvent}
+            onPointerDown={consumePointerEvent}
+            onPointerUp={consumePointerEvent}
+        >
+            <div
+                className="tutorial-prompt"
+                onMouseDown={stopPointerEvent}
+                onMouseUp={stopPointerEvent}
+                onClick={stopPointerEvent}
+                onPointerDown={stopPointerEvent}
+                onPointerUp={stopPointerEvent}
+            >
                 <div className="tutorial-kicker">{chapter.kicker}</div>
-                <h2>{chapter.promptTitle}</h2>
-                <p>{chapter.promptBody}</p>
+                <h2>{promptNotice?.title ?? chapter.promptTitle}</h2>
+                <p>{promptNotice?.body ?? chapter.promptBody}</p>
                 <div className="tutorial-actions">
-                    <button type="button" className="tutorial-btn secondary" onClick={() => { audioEngine.playSfx("buttonClick"); closeAndRemember(); }}>
-                        Nein, überspringen
-                    </button>
-                    <button type="button" className="tutorial-btn primary" onClick={() => { audioEngine.playSfx("buttonClick"); startTour(); }}>
-                        Ja, Tutorial starten
-                    </button>
+                    {promptNotice ? (
+                        <button
+                            type="button"
+                            className="tutorial-btn primary"
+                            onMouseDown={stopPointerEvent}
+                            onMouseUp={stopPointerEvent}
+                            onPointerDown={stopPointerEvent}
+                            onPointerUp={stopPointerEvent}
+                            onClick={(event) => {
+                                stopPointerEvent(event);
+                                audioEngine.playSfx("buttonClick");
+                                runAfterPointerSequence(closeAndRemember);
+                            }}
+                        >
+                            Verstanden
+                        </button>
+                    ) : (
+                        <>
+                            <button
+                                type="button"
+                                className="tutorial-btn secondary"
+                                onMouseDown={stopPointerEvent}
+                                onMouseUp={stopPointerEvent}
+                                onPointerDown={stopPointerEvent}
+                                onPointerUp={stopPointerEvent}
+                                onClick={(event) => {
+                                    stopPointerEvent(event);
+                                    audioEngine.playSfx("buttonClick");
+                                    runAfterPointerSequence(closeAndRemember);
+                                }}
+                            >
+                                Nein, überspringen
+                            </button>
+                            <button
+                                type="button"
+                                className="tutorial-btn primary"
+                                onMouseDown={stopPointerEvent}
+                                onMouseUp={stopPointerEvent}
+                                onPointerDown={stopPointerEvent}
+                                onPointerUp={stopPointerEvent}
+                                onClick={(event) => {
+                                    stopPointerEvent(event);
+                                    audioEngine.playSfx("buttonClick");
+                                    runAfterPointerSequence(startTour);
+                                }}
+                            >
+                                Ja, Tutorial starten
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
         </div>
     );
 
     if (mode === "prompt") {
-        return createPortal(prompt, document.body);
+        return createPortal(prompt, portalTarget);
     }
 
     const step = chapter.steps[stepIndex];
     const isLast = stepIndex === chapter.steps.length - 1;
-    const cardWidth = Math.min(420, window.innerWidth - 32);
+    const cardWidth = Math.min(420, viewportSize.width - 32);
     const rectStyle = targetRect
         ? {
             left: targetRect.left - 8,
@@ -556,13 +721,13 @@ export default function InteractiveTutorial({ playerId }: InteractiveTutorialPro
             left: Math.min(
                 Math.max(
                     18,
-                    targetRect.left + targetRect.width / 2 > window.innerWidth / 2
+                    targetRect.left + targetRect.width / 2 > viewportSize.width / 2
                         ? targetRect.right - cardWidth
                         : targetRect.left
                 ),
-                window.innerWidth - cardWidth - 18
+                viewportSize.width - cardWidth - 18
             ),
-            top: targetRect.bottom + 18 < window.innerHeight - 280
+            top: targetRect.bottom + 18 < viewportSize.height - 280
                 ? targetRect.bottom + 18
                 : Math.max(18, targetRect.top - 250),
         }
@@ -573,8 +738,10 @@ export default function InteractiveTutorial({ playerId }: InteractiveTutorialPro
         };
 
     const goNext = () => {
-        const target = step.target ? findTarget(step.target) : null;
-        if (step.target && targetAvailable && target && step.clickTarget !== false) {
+        const target = step.targetSelector
+            ? findTargetBySelector(step.targetSelector)
+            : (step.target ? findTarget(step.target) : null);
+        if ((step.target || step.targetSelector) && targetAvailable && target && step.clickTarget !== false) {
             audioEngine.playSfx("buttonClick");
             const clickTarget = step.clickSelector
                 ? target.querySelector<HTMLElement>(step.clickSelector) ?? target
@@ -585,13 +752,31 @@ export default function InteractiveTutorial({ playerId }: InteractiveTutorialPro
             closeAndRemember();
             return;
         }
+        setTargetRect(null);
+        frozenHighlightStepRef.current = null;
         setStepIndex(i => i + 1);
     };
 
     const tour = (
-        <div className="tutorial-layer" aria-live="polite">
+        <div
+            className="tutorial-layer"
+            aria-live="polite"
+            onMouseDown={consumePointerEvent}
+            onMouseUp={consumePointerEvent}
+            onClick={consumePointerEvent}
+            onPointerDown={consumePointerEvent}
+            onPointerUp={consumePointerEvent}
+        >
             {targetRect && <div className="tutorial-spotlight" style={rectStyle} />}
-            <div className="tutorial-card" style={cardStyle}>
+            <div
+                className="tutorial-card"
+                style={cardStyle}
+                onMouseDown={stopPointerEvent}
+                onMouseUp={stopPointerEvent}
+                onClick={stopPointerEvent}
+                onPointerDown={stopPointerEvent}
+                onPointerUp={stopPointerEvent}
+            >
                 <div className="tutorial-progress">Schritt {stepIndex + 1} von {chapter.steps.length}</div>
                 <h2>{step.title}</h2>
                 <p>{targetAvailable ? step.body : (step.waitBody ?? step.body)}</p>
@@ -600,7 +785,12 @@ export default function InteractiveTutorial({ playerId }: InteractiveTutorialPro
                         <button type="button" className="tutorial-btn secondary" onClick={finish}>
                             Tutorial beenden
                         </button>
-                        <button type="button" className="tutorial-btn primary" onClick={goNext} disabled={!targetAvailable && !isLast}>
+                        <button
+                            type="button"
+                            className="tutorial-btn primary"
+                            onClick={goNext}
+                            disabled={!manualReplay && !targetAvailable && !isLast}
+                        >
                             {isLast ? "Abschließen" : step.nextLabel ?? "Weiter"}
                         </button>
                     </div>
@@ -609,5 +799,5 @@ export default function InteractiveTutorial({ playerId }: InteractiveTutorialPro
         </div>
     );
 
-    return createPortal(tour, document.body);
+    return createPortal(tour, portalTarget);
 }

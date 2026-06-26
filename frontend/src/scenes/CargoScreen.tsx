@@ -277,7 +277,7 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
                         type="button"
                         className="cs-switch-btn"
                         onClick={() => { audioEngine.playSfx("buttonClick"); setTab(tab === "leer" ? "fracht" : "leer"); }}
-                        data-tutorial={tab === "fracht" ? "open-empty-voyage" : undefined}
+                        data-tutorial={tab === "fracht" ? "switch-empty-voyage-tab" : undefined}
                     >
                         {tab === "leer" ? "← Zur Frachtbörse" : "Zur Leerfahrt →"}
                     </button>

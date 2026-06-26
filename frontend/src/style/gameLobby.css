@@ -704,6 +704,27 @@
     transition: all 0.15s ease;
 }
 
+.lobby-menu-fullscreen {
+    width: 100%;
+    padding: 8px 0;
+    margin-bottom: 8px;
+    background: rgba(38, 72, 104, 0.08);
+    border: 1px solid rgba(38, 72, 104, 0.35);
+    color: #264868;
+    font-family: var(--font-game);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.lobby-menu-fullscreen:hover {
+    background: rgba(38, 72, 104, 0.14);
+    border-color: rgba(38, 72, 104, 0.55);
+}
+
 .lobby-menu-logout:hover {
     background: rgba(139, 46, 31, 0.08);
     border-color: rgba(139, 46, 31, 0.5);

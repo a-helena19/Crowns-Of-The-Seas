@@ -8,6 +8,7 @@ import type { SessionDTO } from '../types/session';
 import audioEngine from '../audio/AudioEngine';
 import UserEditModal from '../components/UserEditModal';
 import HelpCenter from '../components/HelpCenter';
+import { useFullscreen } from '../context/FullscreenContext';
 import '../style/gameLobby.css';
 
 export default function GameLobby() {
@@ -21,6 +22,7 @@ export default function GameLobby() {
     // Audio-Menü
     const [audioMenuOpen, setAudioMenuOpen] = useState(false);
     const audioMenuRef = useRef<HTMLDivElement | null>(null);
+    const { isSupported: fullscreenSupported, isFullscreen, confirmExitFullscreen, requestRecommendedFullscreen } = useFullscreen();
 
     const [profileModalOpen, setProfileModalOpen] = useState(false);
     const [helpOpen, setHelpOpen] = useState(false);
@@ -327,6 +329,25 @@ export default function GameLobby() {
                                     </div>
 
                                     <div className="lobby-menu-divider" />
+
+                                    {fullscreenSupported && (
+                                        <button
+                                            type="button"
+                                            className="lobby-menu-fullscreen"
+                                            onClick={() => {
+                                                audioEngine.playSfx('buttonClick');
+                                                const action = isFullscreen
+                                                    ? confirmExitFullscreen()
+                                                    : requestRecommendedFullscreen();
+
+                                                void action.then(() => {
+                                                    setAudioMenuOpen(false);
+                                                });
+                                            }}
+                                        >
+                                            {isFullscreen ? 'Vollbild beenden' : 'Vollbild öffnen'}
+                                        </button>
+                                    )}
 
                                     <button className="lobby-menu-logout" onClick={handleLogout}>
                                         Ausloggen

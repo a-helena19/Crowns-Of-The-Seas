@@ -162,7 +162,6 @@ export default function GameScreen() {
     const [openCargoForShipId, setOpenCargoForShipId] = useState<string | null>(null);
     const [showOtherShips, setShowOtherShips] = useState<boolean>(window.__showOtherShips !== false);
     const minigameFallbackRequests = useRef<Set<string>>(new Set());
-
     const authToken = localStorage.getItem("auth_token") ?? "";
     const [nowMs, setNowMs] = useState(Date.now());
 
@@ -1649,8 +1648,10 @@ export default function GameScreen() {
     const isMinigameActive = Boolean(
         showArrivalDocking || activeRatMinigame || activeStormMinigame || activeObstacleMinigame || activeTreasureHuntMinigame
     );
+    const hasOwnedShip = ownedShips.length > 0;
     const hasAtPortShip = ownedShips.some(ship => ship.status === "AT_PORT");
     const isOnPlayfield = view === "map";
+    const firstJourneyTutorialSeen = hasSeenTutorial(playerId, "firstJourney");
     const shouldExplainService = ownedShips.some(ship =>
         ship.status === "AT_PORT" && (ship.fuel < 85 || ship.condition < 95)
     );
@@ -1662,11 +1663,18 @@ export default function GameScreen() {
     );
 
     useEffect(() => {
-        if (!isOnPlayfield || !hasAtPortShip || isMinigameActive) return;
+        if (!isOnPlayfield || hasOwnedShip || isMinigameActive || firstJourneyTutorialSeen) return;
+        const id = window.setTimeout(() => requestTutorialPrompt("firstJourney"), 900);
+        return () => window.clearTimeout(id);
+    }, [firstJourneyTutorialSeen, hasOwnedShip, isMinigameActive, isOnPlayfield]);
+
+    useEffect(() => {
+        if (!isOnPlayfield || !hasOwnedShip || !hasAtPortShip || isMinigameActive) return;
+        if (!firstJourneyTutorialSeen) return;
         if (shouldExplainService && !serviceTutorialSeen) return;
         const id = window.setTimeout(() => requestTutorialPrompt("emptyVoyage"), 900);
         return () => window.clearTimeout(id);
-    }, [hasAtPortShip, isMinigameActive, isOnPlayfield, serviceTutorialSeen, shouldExplainService]);
+    }, [firstJourneyTutorialSeen, hasAtPortShip, hasOwnedShip, isMinigameActive, isOnPlayfield, serviceTutorialSeen, shouldExplainService]);
 
     useEffect(() => {
         if (!shouldExplainPostTravel || isMinigameActive) return;
