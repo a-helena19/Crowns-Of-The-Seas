@@ -530,7 +530,7 @@ export default function CargoManagementScreen({
     return (
         <div className="scene">
             <img src={background} className="background" alt="" />
-            {!showDeparture && (
+            {!showDeparture && !showDockingGame && (
                 <BackButton onClick={onClose} />
             )}
 
