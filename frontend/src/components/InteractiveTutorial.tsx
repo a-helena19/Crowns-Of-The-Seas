@@ -39,6 +39,7 @@ interface TutorialChapter {
 
 interface InteractiveTutorialProps {
     playerId: string | null;
+    sessionId: string | null;
 }
 
 interface TutorialPromptNotice {
@@ -53,14 +54,15 @@ interface TutorialViewportSize {
 
 const STORAGE_PREFIX = "crowns_tutorial_seen_v2";
 const LEGACY_FIRST_JOURNEY_STORAGE_PREFIX = "crowns_tutorial_seen_v1";
+const DISABLED_STORAGE_PREFIX = "crowns_tutorial_disabled_session_v1";
 const RESTART_EVENT = "crowns:start-tutorial";
 
 const TUTORIAL_CHAPTERS: Record<TutorialChapterId, TutorialChapter> = {
     firstJourney: {
         id: "firstJourney",
         kicker: "Erste Fahrt",
-        promptTitle: "Möchtest du ein kurzes Tutorial?",
-        promptBody: "Wir zeigen dir zuerst kurz das Spielfeld und danach die wichtigsten Schritte: Schiff kaufen, auswählen, Fracht laden und die erste Reise starten.",
+        promptTitle: "Möchten Sie eine Einführung ins Spiel haben?",
+        promptBody: "Wenn ja, zeigen wir dir direkt die wichtigsten Schritte: Schiff kaufen, auswählen, Fracht laden und die erste Reise starten.",
         steps: [
             {
                 id: "hud-balance",
@@ -377,6 +379,18 @@ function legacyFirstJourneyStorageKey(playerId: string | null): string {
     return `${LEGACY_FIRST_JOURNEY_STORAGE_PREFIX}:${playerId ?? "guest"}`;
 }
 
+function tutorialDisabledKey(sessionId: string | null): string {
+    return `${DISABLED_STORAGE_PREFIX}:${sessionId ?? "guest"}`;
+}
+
+function isTutorialDisabled(sessionId: string | null): boolean {
+    return sessionStorage.getItem(tutorialDisabledKey(sessionId)) === "true";
+}
+
+export function areTutorialPromptsDisabled(sessionId: string | null): boolean {
+    return isTutorialDisabled(sessionId);
+}
+
 export function hasSeenTutorial(playerId: string | null, chapterId: TutorialChapterId): boolean {
     return localStorage.getItem(storageKey(playerId, chapterId)) === "true"
         || (chapterId === "firstJourney" && localStorage.getItem(legacyFirstJourneyStorageKey(playerId)) === "true");
@@ -441,7 +455,7 @@ function getTutorialViewportSize(): TutorialViewportSize {
     };
 }
 
-export default function InteractiveTutorial({ playerId }: InteractiveTutorialProps) {
+export default function InteractiveTutorial({ playerId, sessionId }: InteractiveTutorialProps) {
     const [mode, setMode] = useState<TutorialMode>("closed");
     const [chapterId, setChapterId] = useState<TutorialChapterId>("firstJourney");
     const [stepIndex, setStepIndex] = useState(0);
@@ -491,8 +505,14 @@ export default function InteractiveTutorial({ playerId }: InteractiveTutorialPro
         setMode("tour");
     }, [key]);
 
+    const closePrompt = useCallback(() => {
+        setPromptNotice(null);
+        modeRef.current = "closed";
+        setMode("closed");
+    }, []);
+
     useEffect(() => {
-        if (hasSeenTutorial(playerId, "firstJourney")) return;
+        if (isTutorialDisabled(sessionId)) return;
         const id = window.setTimeout(() => {
             setChapterId("firstJourney");
             setManualReplay(false);
@@ -501,13 +521,14 @@ export default function InteractiveTutorial({ playerId }: InteractiveTutorialPro
             setMode("prompt");
         }, 650);
         return () => window.clearTimeout(id);
-    }, [playerId]);
+    }, [sessionId]);
 
     useEffect(() => {
         const restart = (event: Event) => {
             const detail = (event as CustomEvent<{ chapterId?: TutorialChapterId; force?: boolean }>).detail;
             let nextChapterId = detail?.chapterId ?? "firstJourney";
             if (!TUTORIAL_CHAPTERS[nextChapterId]) return;
+            if (isTutorialDisabled(sessionId) && !detail?.force) return;
             if (modeRef.current !== "closed" && !detail?.force) return;
             if (nextChapterId !== "firstJourney" && !hasSeenTutorial(playerId, "firstJourney")) return;
             if (!detail?.force && hasSeenTutorial(playerId, nextChapterId)) return;
@@ -531,7 +552,7 @@ export default function InteractiveTutorial({ playerId }: InteractiveTutorialPro
         };
         window.addEventListener(RESTART_EVENT, restart);
         return () => window.removeEventListener(RESTART_EVENT, restart);
-    }, [playerId]);
+    }, [playerId, sessionId]);
 
     useLayoutEffect(() => {
         if (mode !== "tour") return;
@@ -607,7 +628,7 @@ export default function InteractiveTutorial({ playerId }: InteractiveTutorialPro
 
     const finish = () => {
         audioEngine.playSfx("buttonClick");
-        closeAndRemember();
+        closePrompt();
     };
 
     const runAfterPointerSequence = (action: () => void) => {
@@ -657,7 +678,7 @@ export default function InteractiveTutorial({ playerId }: InteractiveTutorialPro
                             onClick={(event) => {
                                 stopPointerEvent(event);
                                 audioEngine.playSfx("buttonClick");
-                                runAfterPointerSequence(closeAndRemember);
+                                runAfterPointerSequence(closePrompt);
                             }}
                         >
                             Verstanden
@@ -674,10 +695,13 @@ export default function InteractiveTutorial({ playerId }: InteractiveTutorialPro
                                 onClick={(event) => {
                                     stopPointerEvent(event);
                                     audioEngine.playSfx("buttonClick");
-                                    runAfterPointerSequence(closeAndRemember);
+                                    runAfterPointerSequence(() => {
+                                        sessionStorage.setItem(tutorialDisabledKey(sessionId), "true");
+                                        closePrompt();
+                                    });
                                 }}
                             >
-                                Nein, überspringen
+                                Nein, keine Einführung
                             </button>
                             <button
                                 type="button"
@@ -692,7 +716,7 @@ export default function InteractiveTutorial({ playerId }: InteractiveTutorialPro
                                     runAfterPointerSequence(startTour);
                                 }}
                             >
-                                Ja, Tutorial starten
+                                Ja, Einführung starten
                             </button>
                         </>
                     )}

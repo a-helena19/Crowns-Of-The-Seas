@@ -196,7 +196,14 @@
     text-align: left;
     cursor: pointer;
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+
+    opacity: 0;
+    animation: panelReveal 0.6s ease-out both;
 }
+
+.lobby-action-btn:nth-child(1) { animation-delay: 1.4s; }
+.lobby-action-btn:nth-child(2) { animation-delay: 1.55s; }
+.lobby-action-btn:nth-child(3) { animation-delay: 1.7s; }
 
 .lobby-action-btn:hover:not(:disabled) {
     transform: translateY(-1px);
@@ -211,13 +218,23 @@
 }
 
 .lobby-action-btn.is-disabled {
-    opacity: 0.55;
+    opacity: 0.42;
+    background: linear-gradient(180deg, #e8e0cf 0%, #d9cfb7 100%);
+    border-color: rgba(120, 90, 40, 0.18);
+    color: rgba(58, 47, 26, 0.55);
+    filter: grayscale(1) saturate(0.35) brightness(0.96);
+    box-shadow: none;
 }
 
 .lobby-action-btn:disabled {
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
+    opacity: 0.42;
+    background: linear-gradient(180deg, #e8e0cf 0%, #d9cfb7 100%);
+    border-color: rgba(120, 90, 40, 0.18);
+    color: rgba(58, 47, 26, 0.55);
+    filter: grayscale(1) saturate(0.35) brightness(0.96);
 }
 
 .lobby-action-title {

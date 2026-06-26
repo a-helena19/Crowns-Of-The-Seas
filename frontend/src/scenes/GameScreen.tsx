@@ -32,7 +32,11 @@ import { registerMinigameTester } from "../dev/minigameTester.ts";
 import EventNotificationDialog from "../components/EventNotificationDialog.tsx";
 import TreasureHuntPromptDialog from "../components/TreasureHuntPromptDialog.tsx";
 import InGameChat from "../components/InGameChat.tsx";
-import InteractiveTutorial, { hasSeenTutorial, requestTutorialPrompt } from "../components/InteractiveTutorial.tsx";
+import InteractiveTutorial, {
+    areTutorialPromptsDisabled,
+    hasSeenTutorial,
+    requestTutorialPrompt,
+} from "../components/InteractiveTutorial.tsx";
 import ratImage from "../assets/Rat.png";
 import stormDialogImage from "../assets/minigame/storm/DialogPic.png";
 import obstacleDialogImage from "../assets/minigame/obstaclegame/wrack.png";
@@ -1661,35 +1665,36 @@ export default function GameScreen() {
     const shouldExplainPostTravel = assignedCargos.some(entry =>
         entry.phase === "unloading" || entry.phase === "completed"
     );
+    const tutorialPromptsDisabled = areTutorialPromptsDisabled(sessionId);
 
     useEffect(() => {
-        if (!isOnPlayfield || hasOwnedShip || isMinigameActive || firstJourneyTutorialSeen) return;
+        if (tutorialPromptsDisabled || !isOnPlayfield || hasOwnedShip || isMinigameActive || firstJourneyTutorialSeen) return;
         const id = window.setTimeout(() => requestTutorialPrompt("firstJourney"), 900);
         return () => window.clearTimeout(id);
-    }, [firstJourneyTutorialSeen, hasOwnedShip, isMinigameActive, isOnPlayfield]);
+    }, [firstJourneyTutorialSeen, hasOwnedShip, isMinigameActive, isOnPlayfield, tutorialPromptsDisabled]);
 
     useEffect(() => {
-        if (!isOnPlayfield || !hasOwnedShip || !hasAtPortShip || isMinigameActive) return;
+        if (tutorialPromptsDisabled || !isOnPlayfield || !hasOwnedShip || !hasAtPortShip || isMinigameActive) return;
         if (!firstJourneyTutorialSeen) return;
         if (shouldExplainService && !serviceTutorialSeen) return;
         const id = window.setTimeout(() => requestTutorialPrompt("emptyVoyage"), 900);
         return () => window.clearTimeout(id);
-    }, [firstJourneyTutorialSeen, hasAtPortShip, hasOwnedShip, isMinigameActive, isOnPlayfield, serviceTutorialSeen, shouldExplainService]);
+    }, [firstJourneyTutorialSeen, hasAtPortShip, hasOwnedShip, isMinigameActive, isOnPlayfield, serviceTutorialSeen, shouldExplainService, tutorialPromptsDisabled]);
 
     useEffect(() => {
-        if (!shouldExplainPostTravel || isMinigameActive) return;
+        if (tutorialPromptsDisabled || !shouldExplainPostTravel || isMinigameActive) return;
         const id = window.setTimeout(() => requestTutorialPrompt("postTravel"), 900);
         return () => window.clearTimeout(id);
-    }, [shouldExplainPostTravel, isMinigameActive]);
+    }, [shouldExplainPostTravel, isMinigameActive, tutorialPromptsDisabled]);
 
     useEffect(() => {
-        if (!isOnPlayfield || !shouldExplainService || isMinigameActive) return;
+        if (tutorialPromptsDisabled || !isOnPlayfield || !shouldExplainService || isMinigameActive) return;
         const id = window.setTimeout(() => requestTutorialPrompt("service"), 900);
         return () => window.clearTimeout(id);
-    }, [shouldExplainService, isMinigameActive, isOnPlayfield]);
+    }, [shouldExplainService, isMinigameActive, isOnPlayfield, tutorialPromptsDisabled]);
 
     useEffect(() => {
-        if (!isOnPlayfield || !shouldExplainLuxuryFreight || isMinigameActive || luxuryTutorialSeen) return;
+        if (tutorialPromptsDisabled || !isOnPlayfield || !shouldExplainLuxuryFreight || isMinigameActive || luxuryTutorialSeen) return;
 
         const timeoutId = window.setTimeout(() => requestTutorialPrompt("luxuryFreight"), 900);
         const intervalId = window.setInterval(() => requestTutorialPrompt("luxuryFreight"), 2200);
@@ -1698,7 +1703,7 @@ export default function GameScreen() {
             window.clearTimeout(timeoutId);
             window.clearInterval(intervalId);
         };
-    }, [isOnPlayfield, shouldExplainLuxuryFreight, isMinigameActive, luxuryTutorialSeen]);
+    }, [isOnPlayfield, shouldExplainLuxuryFreight, isMinigameActive, luxuryTutorialSeen, tutorialPromptsDisabled]);
 
     const pendingEventsByShipId: Record<string, PendingShipEvent> = {};
     if (ratEventOffer) {
@@ -2146,7 +2151,7 @@ export default function GameScreen() {
                 />
             )}
 
-            <InteractiveTutorial playerId={playerId} />
+            <InteractiveTutorial playerId={playerId} sessionId={sessionId} />
 
         </div>
     );
