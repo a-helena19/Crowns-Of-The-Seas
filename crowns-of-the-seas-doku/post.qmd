@@ -22,6 +22,11 @@ other-links:
   - text: Template Download
     href: assets/project-template.zip
     icon: file-zip
+  - text: Live-Demo
+    href: http://10.0.40.186
+  - text: QR-Code
+    href: assets/qr-code.png
+    icon: qr-code
 resources:
   - assets/project-template.zip
 ---
@@ -206,7 +211,9 @@ Die geplanten Funktionen sind vollständig umgesetzt. Für die Zukunft sind weit
 
 ## Links & Ressourcen
 - Repository: (Link folgt)
-- Live-Demo: (Link oder QR-Code folgt)
+- Live-Demo: [Link](http://10.0.40.186)
+
+  ![](assets/qr-code.png){width=160px}
 - Spielmusik: [„Pirate Music" von Alex Nachtmahr](https://youtu.be/bKlQZ8rSqGg?si=rsRPDT_2_Au0beWe) (YouTube)
 - Soundeffekte & Hintergrundmusik: [Pixabay](https://pixabay.com)
 - Fraktions-Charaktere: Generiert mit [Gemini](https://gemini.google.com)
