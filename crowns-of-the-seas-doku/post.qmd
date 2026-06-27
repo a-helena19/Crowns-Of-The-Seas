@@ -2,11 +2,11 @@
 title: "Crowns of the Seas – Strategie auf hoher See"
 description: "Bis zu vier Reedereien, eine geteilte Weltkarte, ein gnadenloser Frachtmarkt: Crowns of the Seas bringt den Klassiker Ports of Call als modernes Multiplayer-Browserspiel zurück."
 author:
-  - name: Helena Aldaloul
   - name: Elif Akpinar
+  - name: Helena Aldaloul
   - name: Aaron Höfler
   - name: Emanuel Peter
-date: "06/17/2026"
+date: "06/27/2026"
 date-modified: now
 image: "assets/thumbnail.png"
 categories:
@@ -207,11 +207,11 @@ Die geplanten Funktionen sind vollständig umgesetzt. Für die Zukunft sind weit
 ## Links & Ressourcen
 - Repository: (Link folgt)
 - Live-Demo: (Link oder QR-Code folgt)
-- Spielmusik: „Pirate Music" von Alex Nachtmahr (YouTube)
-- Soundeffekte & Hintergrundmusik: Pixabay
-- Fraktions-Charaktere: Generiert mit Gemini
-- Sailor-Charakter: SpriteStudio Gallery
-- Minigame-Bilder: Generiert mit dem ChatGPT Bildgenerator
-- Weltkarte: Basierend auf einer Vorlage von r/MapPorn (Reddit)
+- Spielmusik: [„Pirate Music" von Alex Nachtmahr](https://youtu.be/bKlQZ8rSqGg?si=rsRPDT_2_Au0beWe) (YouTube)
+- Soundeffekte & Hintergrundmusik: [Pixabay](https://pixabay.com)
+- Fraktions-Charaktere: Generiert mit [Gemini](https://gemini.google.com)
+- Sailor-Charakter: [SpriteStudio Gallery](https://spritestudio.dev/gallery)
+- Minigame-Bilder: Generiert mit dem [ChatGPT Bildgenerator](https://chatgpt.com)
+- Weltkarte: Basierend auf einer [Vorlage von r/MapPorn](https://www.reddit.com/r/MapPorn/comments/q7h8hi/corrected_map_of_the_world_in_the_style_of_super/) (Reddit)
 - Übrige Grafiken: Generiert mit Gemini und ChatGPT
 
