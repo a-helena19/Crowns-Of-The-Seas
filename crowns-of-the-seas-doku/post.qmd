@@ -1,6 +1,6 @@
 ---
 title: "Crowns of the Seas – Strategie auf hoher See"
-description: "Bis zu vier Reedereien, eine geteilte Weltkarte, ein gnadenloser Frachtmarkt: Crowns of the Seas bringt den Klassiker Ports of Call als modernes Multiplayer-Browserspiel zurück."
+description: "Crowns of the Seas ist ein webbasiertes Multiplayer-Strategiespiel, in dem bis zu vier Reedereien auf einer geteilten Weltkarte Fracht handeln und um das größte Vermögen konkurrieren."
 author:
   - name: Elif Akpinar
   - name: Helena Aldaloul
@@ -31,24 +31,32 @@ resources:
   - assets/project-template.zip
 ---
 
-![Titelbild von Crowns of the Seas](assets/thumbnail.png)
+![Titelbild von Crowns of the Seas](assets/thumbnail.png){ width="90%" }
 
 ## Überblick
 
 Die Weltmeere sind hart umkämpft. Wer am Ende gekrönt wird, herrscht nicht nur über die See, sondern beweist auch wirtschaftliches Geschick.
 
-Crowns of the Seas ist ein webbasiertes Strategiespiel, in dem bis zu vier Reedereien gleichzeitig in einer geteilten Spielwelt gegeneinander antreten. Entstanden ist es in der Lehrveranstaltung Enterprise Applications. Es greift die Idee des Klassikers Ports of Call neu auf, als modernes Echtzeit-Multiplayer-Erlebnis für den Browser. Im Mittelpunkt steht eine lebendige Wirtschaftssimulation aus Handel, Logistik, Risiko und direkter Konkurrenz. Das Ergebnis ist ein lauffähiges Mehrspieler-Spiel mit vollständiger Kernschleife. Man kauft Schiffe, nimmt Aufträge an, transportiert Fracht über neun Häfen und versucht, am Ende das größte Vermögen zu besitzen.
+Crowns of the Seas ist ein webbasiertes Strategiespiel, in dem bis zu vier Reedereien gleichzeitig in einer geteilten Spielwelt gegeneinander antreten. Das Spiel ist in der Lehrveranstaltung Enterprise Applications entstanden.
+Es greift die Idee des Klassikers Ports of Call als modernes Echtzeit-Multiplayer-Erlebnis für den Browser neu auf.
+Im Mittelpunkt steht eine lebendige Wirtschaftssimulation aus Handel, Logistik, Risiko und direkter Konkurrenz.
+Das Ergebnis ist ein lauffähiges Mehrspieler-Spiel mit vollständiger Kernschleife, das im Browser gespielt werden kann.
+Man kauft Schiffe, nimmt Aufträge an, transportiert Fracht über neun Häfen und versucht, am Ende das größte Vermögen zu besitzen.
 
 ## Ziele
 
-Klassische Wirtschaftssimulationen sind oft Einzelspieler-Erlebnisse. Gespielt wird gegen den Computer, in einer abgeschotteten Welt. Crowns of the Seas verfolgt ein anderes Ziel, nämlich gemeinsamen Wettbewerb in Echtzeit. Interessant ist das Spiel vor allem für Menschen, die Aufbau- und Wirtschaftsstrategie mögen und dabei gegen echte Gegner:innen antreten wollen. Für ein Informatik-Publikum ist es zugleich ein anschauliches Beispiel dafür, wie sich ein mehrspielerfähiges Echtzeit-Erlebnis im Browser umsetzen lässt.
+Klassische Wirtschaftssimulationen sind oft Einzelspiel-Erlebnisse.
+Gespielt wird gegen den Computer, in einer abgeschotteten Welt ohne echte Konkurrenz.
+Crowns of the Seas verfolgt ein anderes Ziel, nämlich einen gemeinsamen Wettbewerb in Echtzeit.
+Das Spiel richtet sich hauptsächlich an Menschen, die Aufbau- und Wirtschaftsstrategien mögen und dabei gegen echte Gegner:innen antreten wollen.
+Für ein Informatik-Publikum ist es zugleich ein anschauliches Beispiel dafür, wie sich ein mehrspielerfähiges Echtzeit-Erlebnis im Browser umsetzen lässt.
 
 Im Vordergrund standen folgende Ziele:
 
-- Mehrere Spieler:innen sollen in einer geteilten Session wirklich aufeinandertreffen, mit gleichem Markt, gleichen Häfen und gleichen Ereignissen.
-- Das Spielfeld soll fair sein, sodass alle unter exakt denselben Bedingungen antreten und niemand einen unfairen Vorteil hat.
+- Mehrere Spieler:innen sollen in einer geteilten Session aufeinandertreffen, mit gleichem Markt, gleichen Häfen und gleichen Ereignissen.
+- Das Spielfeld soll fair sein, sodass alle unter exakt den gleichen Bedingungen antreten und niemand einen unfairen Vorteil hat.
 - Die Wirtschaft soll sich glaubwürdig und spannend anfühlen, ohne dass vorher ein Handbuch gelesen werden muss.
-- Das Spiel soll lebendig wirken, mit Minispielen, Sound, Animationen und direkter Kommunikation zwischen den Spieler:innen.
+- Das Spiel soll durch die Umsetzung von Minispielen, Sound, Animationen und direkter Kommunikation zwischen den Spieler:innen lebendig wirken.
 - Das System soll erweiterbar bleiben, damit neue Fraktionen, Ereignisse oder Märkte später leicht ergänzt werden können.
 - Das Spiel soll möglichst zugänglich sein, sodass es unabhängig von Erfahrung, Vorkenntnissen oder Hardware gespielt werden kann.
 
@@ -56,27 +64,50 @@ Das Projekt entstand innerhalb eines Semesters in einem Team aus vier Personen u
 
 ## Vorgehensweise & Architektur
 
-Im Kern der Herangehensweise steht das Spielerlebnis selbst. Es geht um eine geteilte Welt in Echtzeit, hinter der eine ernsthafte, aber zugängliche Wirtschaftssimulation läuft.
+Im Kern der Herangehensweise steht das Spielerlebnis selbst. Es geht um eine geteilte Welt in Echtzeit, hinter der eine zugängliche Wirtschaftssimulation läuft.
 
 ### Spielprinzip & Besonderheiten
 
-Mehrere Bausteine machen das Spiel besonders. Vor allem das echte Mehrspieler-Erlebnis, die sieben Fraktionen und die Minispiele heben es von einer gewöhnlichen Wirtschaftssimulation ab.
+Mehrere Bausteine machen das Spiel besonders. Dazu gehören vor allem das echte Multiplayer-Erlebnis, die sieben Fraktionen und die Minispiele.
 
 #### Geteilte Welt in Echtzeit
 
-In einer geteilten Welt bewegen sich bis zu vier Reedereien über dieselbe Weltkarte mit neun Häfen, von Hamburg über New York bis Sydney. Jeder Hafen hat ein eigenes Profil mit individuellem Aufbau und eigenen Merkmalen. Die Schiffe der Konkurrenz sind jederzeit auf der Karte sichtbar, sofern man sie nicht bewusst ausblendet. Ein synchronisiertes Zeitmodell mit einem Spieltag pro Tick sorgt dafür, dass alle im selben Rhythmus spielen und der Wettbewerb unmittelbar spürbar bleibt.
+In einer geteilten Welt bewegen sich bis zu vier Reedereien über dieselbe Weltkarte mit neun Häfen, von Hamburg über New York bis Sydney.
+Jeder Hafen hat ein eigenes Profil mit individuellem Aufbau und eigenen Merkmalen.
+Die Schiffe der Konkurrenz sind jederzeit auf der Karte sichtbar, sofern man sie nicht bewusst ausblendet.
+Ein synchronisiertes Zeitmodell mit einem Spieltag pro Tick sorgt dafür, dass alle im selben Rhythmus spielen und der Wettbewerb unmittelbar spürbar bleibt.
 
-![Die Kartenansicht](assets/Mainscreen.png)
+![Die Kartenansicht](assets/Mainscreen.png){ width="90%" }
 
-#### Wirtschaft mit Tiefe
+#### Frachtbörse
 
-Geld verdient man, indem man Frachtaufträge annimmt und pünktlich abliefert. Jeder Auftrag hat einen Herkunfts- und einen Zielhafen, und angenommen wird er nur direkt im Herkunftshafen. Wer zuerst dort ist, bekommt den Zuschlag. Auch der Frachttyp entscheidet über die Strategie:
+Geld verdient man, indem man Frachtaufträge annimmt und pünktlich abliefert.
+Jeder Auftrag hat einen Herkunfts- und einen Zielhafen. Angenommen wird er nur im Herkunftshafen.
+Wer zuerst die Fracht annimmt, bekommt sie auch. Zudem entscheidet der Frachttyp über die Strategie:
 
 - **Verderbliche Ware** wie Lebensmittel muss schnell ankommen, sonst drohen hohe Abzüge durch den Regress.
 - **Zerbrechliche Ware** leidet unter Unwettern unterwegs.
 - **Luxusgüter** bringen die höchsten Belohnungen.
 
-Von Luxusfracht gibt es höchstens zwei Aufträge gleichzeitig. Sie bleiben so lange bestehen, bis jemand sie übernimmt. Budget-Schiffe können sie allerdings nicht transportieren, da ihr Laderaum dafür nicht ausreicht. Häfen, in denen gerade Luxusfracht wartet, leuchten auf der Karte golden auf.
+Von Luxusfracht gibt es höchstens zwei Aufträge gleichzeitig.
+Sie bleiben so lange bestehen, bis jemand sie übernimmt.
+Budget-Schiffe können sie allerdings nicht transportieren, da ihr Laderaum dafür nicht ausreicht.
+Häfen, in denen gerade Luxusfracht wartet, leuchten auf der Karte golden auf.
+
+Die Frachtbörse bündelt alle Aufträge eines Hafens und stellt sie übersichtlich dar.
+Dort wird entschieden, welche Fracht mit welcher Geschwindigkeit angenommen wird.
+Es gibt fünf Geschwindigkeitsstufen, die beeinflussen, wie viel Treibstoff verbraucht wird und wie lange eine Reise dauert.
+
+![Die Frachtbörse mit den verfügbaren Aufträgen](assets/screenshot-frachtboerse.png)
+
+#### Leerfahrt
+
+Eine Leerfahrt bringt keinen Gewinn, ist aber geeignet, wenn man beispielsweise zu einem Hafen mit Luxusfrachten kommen möchte.
+Es wird keine Fracht transportiert, weswegen es auch keine Belohnung gibt.
+Treibstoff und Zustand werden dennoch verbraucht, weswegen eine Leerfahrt zu einem kleinen Verlust führt.
+
+![Eine Leerfahrt ohne Fracht zu einem anderen Hafen](assets/leerfahrt1.png)
+
 
 #### Schiffe und Flotte
 
@@ -86,62 +117,128 @@ Für die passende Flotte sorgt die Schiffsbörse mit drei Klassen:
 - **Standard-Schiffe** sind ausgewogen.
 - **Premium-Schiffe** sind teuer, aber leistungsstark.
 
-<img src="assets/schiffsmarkt.png" alt="Der Schiffsmarkt mit den drei Schiffsklassen" align="center" width="90%">
+Immer wieder tauchen zeitlich begrenzte Sonderangebote auf, bei denen Schiffe günstiger zu kaufen sind.
 
-Schiffe lassen sich jederzeit kaufen und wieder verkaufen, wobei ein gepflegtes Schiff deutlich mehr einbringt. Immer wieder tauchen zeitlich begrenzte Sonderangebote auf, bei denen dieselben Schiffe günstiger zu haben sind. Zwischendurch müssen Schiffe betankt und repariert werden, was beides Zeit und Taler kostet. Beim Betanken lässt sich frei wählen, auf wie viel Prozent der Tank gefüllt wird. Eine Reparatur setzt den Zustand dagegen immer vollständig zurück. Wer ein Schiff ohne Ladung an einen anderen Ort bringen möchte, nutzt eine Leerfahrt, also eine ganz normale Reise ohne Fracht.
+![Der Schiffsmarkt mit den drei Schiffsklassen](assets/schiffsmarkt.png){ width="85%"}
+
+Die eigene Flotte wird im Büro verwaltet. Dort sieht man alle eigenen Schiffe und ihre aktuellen Aufgaben im Überblick.
+
+
+![Das Büro, von hier aus wird die eigene Flotte verwaltet](assets/buero.png){ width="90%"}
+
+Zwischendurch müssen Schiffe betankt und repariert werden, was beides Zeit und Taler kostet und im Büro erledigt wird.
+Beim Betanken lässt sich frei wählen, auf wie viel Prozent der Tank gefüllt wird.
+Eine Reparatur setzt den Zustand dagegen immer vollständig zurück.
+Schiffe lassen sich jederzeit kaufen und wieder verkaufen, wobei ein gepflegtes Schiff deutlich mehr einbringt.
+
 
 #### Sieben Fraktionen
 
-Eine zentrale Rolle spielen die sieben Fraktionen. Schon zu Beginn wählt jede:r eine davon und legt damit die eigene Spielweise fest. Einige Beispiele:
+Eine zentrale Rolle spielen die sieben Fraktionen.
+Schon zu Beginn wählt jede:r eine davon und legt damit die eigene Spielweise fest. Einige Beispiele:
 
 - **Ingenieure** reparieren günstiger, brauchen dafür beim Be- und Entladen länger.
 - **Händler** erhalten mehr und bessere Marktangebote, bekommen dafür aber seltener ein Schmuggelangebot.
 - **Schmuggler** werden seltener vom Zoll erwischt, müssen aber mit mehr Ereignissen rechnen.
 
-Es gibt keine beste Fraktion. Jede hat bewusste Stärken und Schwächen, und genau das macht die Wahl zu einer strategischen Entscheidung. Auf Fairness wurde dabei besonders geachtet.
+Es gibt keine beste Fraktion. Jede hat bewusste Stärken und Schwächen, was die Fraktionswahl zu einer strategischen Entscheidung macht.
+Auf Fairness wurde dabei besonders geachtet.
+Die Wahl gilt für das ganze Spiel, denn nach dem Spielstart lässt sich die Fraktion nicht mehr wechseln.
 
 ![Die Fraktionsauswahl zu Spielbeginn](assets/fractions2.png)
 
 ### Ereignisse & Minispiele
 
-Eine Seereise verläuft nicht immer ruhig. Während ein Schiff unterwegs ist, können Ereignisse auftreten. Dann pausiert die Reise, und es gilt, ein kleines Minispiel zu meistern. Wer besteht, fährt ohne Schaden weiter. Wer scheitert, verliert einen Teil der Fracht, nimmt Schaden oder bekommt einen Teil der Belohnung abgezogen. Diese Minispiele geben jeder Fahrt ihre eigene Spannung.
+Eine Seereise verläuft nicht immer ruhig.
+Während ein Schiff unterwegs ist, können verschiedenste Ereignisse auftreten.
+Wenn es dazu kommt, wird die Reise pausiert und es gilt, ein kleines Minispiel zu meistern.
+Wer besteht, fährt ohne Schaden weiter. Wer jedoch scheitert, verliert einen Teil der Fracht, nimmt Schaden oder bekommt einen Teil der Belohnung abgezogen.
+Diese Minispiele geben jeder Fahrt ihre eigene Spannung:
 
-- Beim **Sturm auf See** zieht ein Unwetter auf, und Blitze schlagen ins Wasser. Das Schiff lässt sich nach links und rechts lenken, um Sonnen einzusammeln und den Blitzen auszuweichen. Jeder Treffer kostet Haltbarkeit.
-- Beim **Rattenbefall** schleichen sich Ratten an Bord. Mit der Maus werden sie nacheinander angeklickt, bevor die Zeit abläuft. Andernfalls fressen sie einen Teil der Ladung an.
-- Bei der **gefährlichen Passage** gilt es, ein enges Fahrwasser voller Hindernisse zu durchqueren. Das Schiff lässt sich frei in alle Richtungen steuern. Jede Kollision beschädigt es.
+- Der **Sturm auf See** lässt ein Unwetter aufziehen und Blitze schlagen ins Wasser. Das Schiff lässt sich nach links und rechts lenken, um Sonnen einzusammeln und den Blitzen auszuweichen. Jeder Treffer kostet Haltbarkeit.
+- Der **Rattenbefall** bringt Ratten an Bord. Mit der Maus werden sie nacheinander angeklickt, bevor die Zeit abläuft. Andernfalls fressen sie einen Teil der Ladung an.
+- Die **gefährliche Passage** führt durch ein enges Fahrwasser voller Hindernisse. Das Schiff lässt sich frei in alle Richtungen steuern. Jede Kollision beschädigt es.
 - Die **Schatzjagd** ist freiwillig. Wer der Spur folgt, steuert durch ein Labyrinth aus Seewegen, sammelt Schätze ein und weicht Piraten aus. Bei Erfolg gibt es eine zusätzliche Belohnung. Wenn die Schatzjagd nicht erfolgreich abgeschlossen wird, geht ein Teil der Fracht verloren.
 
 ![Das Ratten-Minispiel](assets/ratten-minispiel.mp4)
 
-Zwei weitere Ereignisse sorgen für zusätzliche Spannung. Beim Lotsenstreik fällt der automatische Lotsendienst aus, sodass das Steuern beim An- und Ablegen selbst übernommen werden muss. Und wer beim Auslaufen ein Schmuggelangebot annimmt, kann gegen eine zusätzliche Belohnung illegale Ware mitnehmen, riskiert im Zielhafen aber eine Zollkontrolle. Wird sie entdeckt, bleibt die Wahl zwischen einer Strafe und dem Versuch, den Zoll zu bestechen.
+Zwei weitere Ereignisse sorgen für zusätzliche Spannung.
+Beim Lotsenstreik fällt der automatische Lotsendienst aus, sodass das Steuern beim An- und Ablegen selbst übernommen werden muss.
 
-### Nutzererlebnis
+![Beim Lotsenstreik wird das Ablegen von Hand gesteuert](assets/ablegen.png)
 
-Gerade weil im Hintergrund eine ernsthafte Simulation läuft, ist das Spiel bewusst zugänglich, einladend und reaktiv gestaltet. Hilfe steht immer dort bereit, wo sie gebraucht wird. Schon der Einstieg ist atmosphärisch. Eine Startanimation führt in die Welt ein. Auch das Ablegen und der Game-Over-Bildschirm mit Siegerpodest sind animiert.
+Wer beim Auslaufen ein Schmuggelangebot annimmt, kann gegen eine zusätzliche Belohnung illegale Ware mitnehmen, riskiert im Zielhafen aber eine Zollkontrolle. Wird sie entdeckt, bleibt die Wahl zwischen einer Strafe und dem Versuch, den Zoll zu bestechen.
+
+### Nutzer:innenerlebnis
+
+Da im Hintergrund eine echte Simulation läuft, ist das Spiel bewusst zugänglich, einladend und reaktiv gestaltet.
+Es steht immer Hilfe bereit, wo sie gebraucht wird.
+
+Bereits der Einstieg sorgt für eine einladende Atmosphäre.
+Eine Startanimation führt in die Welt ein. Auch das Ablegen und der Game-Over-Bildschirm mit Siegespodest sind animiert.
 
 ![Startanimation von Crowns of the Seas](assets/intro.mp4)
 
-Für einen leichten Einstieg sorgt ein geführtes Tutorial in der Lobby, das die wichtigsten Abläufe vor dem ersten Spiel erklärt. Wer später etwas nachschlagen möchte, öffnet jederzeit ein integriertes Help Center, das alle Spielmechaniken in Kapiteln erklärt. So findet auch ohne Vorwissen jede:r ins Spiel.
+#### Tutorial & Help-Center
+Für einen leichten Einstieg sorgt ein geführtes Tutorial in der Lobby, das die wichtigsten Abläufe vor dem ersten Spiel erklärt.
+Wenn Spielende später etwas nachschlagen möchten, können sie jederzeit ein integriertes Help Center öffnen, das alle Spielmechaniken in Kapiteln erklärt.
+Tutorials können hier auch jederzeit erneut gestartet werden. Wenn man spezifischere Tutorials braucht, gibt es auch eigene Tutorials zu Reise, Leerfahrt, Reiseabschluss, Wartung und Luxusfrachten.
+Dadurch müssen Spielende nicht immer das gesamte Tutorial abschließen. Ein Tutorial kann jederzeit beendet werden.
+Dadurch findet sich jede:r auch ohne Vorwissen im Spiel zurecht und die Spielregeln bleiben transparent.
 
-Visuelle Hinweise nehmen den Spieler:innen das Suchen ab. Eine Schiffskarte leuchtet auf und erhält einen farbigen Rahmen, sobald eine Entscheidung ansteht, und das ganz ohne alarmierendes Gefühl. Häfen mit Luxusfracht leuchten golden. Beim Überfahren von Schiffen und Häfen heben kurze Hinweise die wichtigsten Informationen hervor.
+![Das Tutorial in der Lobby](assets/tutorial.mp4)
 
-Dazu kommen viele kleine Elemente, die das Spiel lebendig wirken lassen. Ein In-Game-Chat erlaubt die direkte Kommunikation. Ein Leaderboard zeigt jederzeit Vermögen und Platzierung. Nach einem Verbindungsabbruch ist ein sauberes Wiederbeitreten möglich. Musik und Soundeffekte begleiten die Wechsel zwischen Lobby, Spiel und Minispielen.
+![Das Help Center erklärt alle Spielmechaniken in Kapiteln](assets/help-center.png){ width="90%" }
+
+Visuelle Hinweise nehmen den Spieler:innen das Suchen ab.
+Eine Schiffskarte leuchtet auf und erhält einen farbigen Rahmen, sobald eine Entscheidung ansteht. Dabei wurde darauf geachtet, dass dies kein alarmierendes Gefühl erzeugt.
+Häfen mit Luxusfracht leuchten golden. Hält man die Maus über einen Button oder einen Hafen, werden die wichtigsten Informationen kurz eingeblendet.
+
+Dazu kommen viele kleine Elemente, die das Nutzer:innenerlebnis nochmals verbessern:
+
+- Ein In-Game-Chat erlaubt die direkte Kommunikation zwischen Spielenden einer Lobby.
+- Ein Leaderboard zeigt jederzeit Vermögen und Platzierung.
+- Nach einem Verbindungsabbruch ist ein sauberes Wiederbeitreten möglich.
+- Musik und Soundeffekte begleiten die Wechsel zwischen Lobby, Spiel und Minispielen.
+- Das Spiel lässt sich im Vollbild spielen, was die Weltkarte und die Minispiele noch besser zur Geltung bringt.
+
+### Spielende und Platzierung
+
+Am Ende einer Session gibt es eine Abrechnung. Da es sich um ein Wirtschaftsspiel handelt, geht es hier um das höchste Vermögen.
+Ein animierter Game-Over-Bildschirm zeigt das Siegespodest und die Platzierung aller Reedereien.
+
+![Der animierte Game-Over-Bildschirm mit Siegespodest und Leaderboard](assets/spielende.mp4)
+
+Die Platzierung im Leaderboard folgt einem klaren Prinzip. Gezählt wird das gesamte Vermögen einer Reederei.
+Es setzt sich aus den Talern auf dem Konto und dem Wert aller eigenen Schiffe zusammen.
+Der Wert eines Schiffs richtet sich nach seinem Grundpreis sowie nach Zustand und Tankfüllung.
+
+Eine wichtige Regel betrifft laufende Reisen. Die Belohnung für eine Fracht wird erst gutgeschrieben, wenn das Schiff im Zielhafen angekommen ist.
+Eine Reise, die gerade noch unterwegs ist, erhöht das Vermögen somit nicht.
 
 ### Adminseite
 
-Das Spiel lässt sich außerdem über eine geschützte Administrationsseite anpassen, ohne dass in den Code eingegriffen werden muss. Mit einem eigenen Admin-Zugang können dort zum Beispiel die verfügbaren Frachten und Schiffe konfiguriert werden. So lässt sich das Spiel an Betreiber:innen übergeben, die Inhalte und Werte selbst einstellen.
+Das Spiel lässt sich außerdem über eine geschützte Administrationsseite anpassen, ohne dass in den Code eingegriffen werden muss.
+Mit einem eigenen Admin-Zugang können dort zum Beispiel die verfügbaren Frachten und Schiffe konfiguriert werden.
+So kann das Spiel an Betreiber:innen übergeben werden, die Inhalte und Werte selbst einstellen können.
+
+Die ersten Daten sind im Code hinterlegt und stehen direkt beim Start bereit.
+Danach kann der Admin sie jederzeit bearbeiten, löschen oder neu anlegen.
 
 ![Die Adminseite](assets/adminseite.png)
 
 ### Lebenszyklus eines Schiffs
 
-Wie viel Detail in der Simulation steckt, zeigt der Lebenszyklus eines einzelnen Schiffs. Es befindet sich zu jedem Zeitpunkt in genau einem klar definierten Zustand. Diesen wechselt es je nach Spielgeschehen, etwa vom Hafen über die Reise bis zum Anlegen.
+Wie viel Detail in der Simulation steckt, zeigt der Lebenszyklus eines einzelnen Schiffs.
+Es befindet sich zu jedem Zeitpunkt in genau einem klar definierten Zustand.
+Dieser Zustand wechselt je nach Spielgeschehen, etwa vom Hafen über die Reise bis zum Anlegen.
 
-![Zustandsdiagramm eines Schiffs](assets/ship-state-diagram.png)
+![Zustandsdiagramm eines Schiffs](assets/ship-state-diagram.png){ width="70%" }
 
 ## Umsetzung
 
-Bei der Umsetzung stand im Vordergrund, welche Technologien das Erlebnis am besten unterstützen. Die gesamte Spiellogik läuft serverseitig und wird über WebSocket an alle Clients verteilt. So bleibt die geteilte Welt in Echtzeit zusammen.
+Bei der Umsetzung stand die Entscheidung im Vordergrund, welche Technologien das Erlebnis am besten unterstützen.
+Die gesamte Spiellogik läuft serverseitig und wird über WebSocket an alle Clients verteilt. So bleibt die geteilte Welt in Echtzeit zusammen.
 
 | Bereich | Technologien |
 |---|---|
@@ -150,25 +247,37 @@ Bei der Umsetzung stand im Vordergrund, welche Technologien das Erlebnis am best
 | Datenhaltung | PostgreSQL |
 | Build und Betrieb | Docker, automatisierte CI/CD-Pipeline, Unit- und Integrationstests |
 
-Bewusst wurde auf eine stark in Microservices aufgeteilte Architektur verzichtet. Das Spiel braucht einen gemeinsamen, konsistenten Spielzustand in Echtzeit, und dafür ist ein zusammenhängender Spielserver einfacher umzusetzen und performanter. Viele kleine Dienste hätten zusätzlichen Kommunikations- und Synchronisationsaufwand verursacht, der im Rahmen des Projekts keinen wesentlichen Mehrwert geboten hätte.
+Bewusst wurde auf eine stark in Microservices aufgeteilte Architektur verzichtet.
+Das Spiel braucht einen gemeinsamen, konsistenten Spielzustand in Echtzeit und dafür ist ein zusammenhängender Spielserver einfacher sowie performanter umzusetzen.
+Viele kleine Prozesse hätten zusätzlichen Kommunikations- und Synchronisationsaufwand verursacht, der im Rahmen des Projekts keinen wesentlichen Mehrwert geboten hätte und bei einem zeitkritischen Spiel nachteilig wäre.
 
 Einige Grundsätze prägen die Architektur:
 
 - Die Spiellogik läuft auf dem Server und nicht im Browser. Alle wichtigen Entscheidungen, Marktbewegungen und Zufallsereignisse werden zentral berechnet und geprüft. So sehen alle denselben Spielzustand, und Manipulationen sind praktisch ausgeschlossen.
 - Statt ständig nachzuladen, erhalten die Clients Schiffspositionen, Marktänderungen und Ereignisse aktiv zugeschickt. Dadurch wirkt die geteilte Welt unmittelbar und flüssig.
 - Die Anmeldung ist ein eigener Service und von der Spiellogik getrennt. Das erhöht die Sicherheit und hält das System übersichtlich.
+- Die Architektur selbst ist in Schichten unterteilt, damit Packages besser getestet werden und die Teamarbeit erleichtert wird.
 
-![Überblick über die Systemarchitektur](assets/architecture-overview.png)
+Zudem wurde das Verhalten mit Unit- und Integrationstests überprüft, wodurch einige Fehler entdeckt werden konnten.
 
-Die Routen zwischen den Häfen berechnet das Spiel automatisch als kürzesten Seeweg mit dem A-Star-Algorithmus. Dieser schätzt über eine Heuristik, die Luftlinie zum Zielhafen, wie weit das Ziel noch entfernt ist, und untersucht dadurch zuerst die vielversprechendsten Wege. Die Karte läuft dabei am Rand nahtlos um. Ein Schiff kann also am rechten Kartenrand verschwinden und links wieder auftauchen.
+![Überblick über die Systemarchitektur](assets/architecture-overview.png){ width="80%" }
+
+Die Routen zwischen den Häfen berechnet das Spiel automatisch als kürzesten Seeweg mit dem A-Star-Algorithmus.
+Dieser schätzt über eine Heuristik, die Luftlinie zum Zielhafen, wie weit das Ziel noch entfernt ist und untersucht dadurch zuerst die vielversprechendsten Wege.
+Die Karte läuft dabei am Rand nahtlos um. Ein Schiff kann also am rechten Kartenrand verschwinden und links wieder auftauchen.
 
 ### Fraktionen über das Decorator-Pattern
 
-Damit sich die sieben Spielstile sauber und fair umsetzen lassen, beruht das Fraktionssystem auf dem Decorator-Pattern. Es gibt ein neutrales Grundverhalten einer Reederei. Jede Fraktion ist ein Dekorierer, der dieses Grundverhalten umhüllt und nur die für sie wichtigen Werte anpasst. Die Ingenieure senken zum Beispiel die Reparaturkosten und verlängern zugleich die Ladezeit. Dieser Ansatz sorgt für gute Skalierbarkeit, eine klare Trennung der Zuständigkeiten und einfache Kombinierbarkeit. Eine neue Fraktion bedeutet damit schlicht einen neuen Dekorierer, ohne dass bestehender Code angefasst werden muss.
+Damit sich die sieben Spielstile sauber und fair umsetzen lassen, beruht das Fraktionssystem auf dem Decorator-Pattern.
+Es gibt ein neutrales Grundverhalten einer Reederei. Jede Fraktion ist ein Dekorierer, der dieses Grundverhalten umhüllt und nur die für sie wichtigen Werte anpasst.
+Die Ingenieure senken zum Beispiel die Reparaturkosten und verlängern zugleich die Ladezeit.
+Dieser Ansatz sorgt für gute Skalierbarkeit, eine klare Trennung der Zuständigkeiten und einfache Kombinierbarkeit.
+Eine neue Fraktion bedeutet damit einen neuen Dekorierer, ohne dass bestehender Code angefasst werden muss.
+
 
 ## Ergebnisse & Evaluation
 
-Crowns of the Seas ist als vollständiges Multiplayer-Spiel spielbar. Die gesamte Kernschleife funktioniert, vom Frachtmarkt über den Schiffshandel bis zur Reise mit Abrechnung im Zielhafen.
+Crowns of the Seas ist als vollständiges Multiplayer-Spiel spielbar. Die gesamte Kernschleife, vom Frachtmarkt über den Schiffshandel bis zur Reise mit Abrechnung im Zielhafen, wurde erfolgreich abgeschlossen.
 
 Über die geplante Grundversion hinaus sind viele Besonderheiten entstanden, die das Spiel ausmachen:
 
@@ -177,43 +286,55 @@ Crowns of the Seas ist als vollständiges Multiplayer-Spiel spielbar. Die gesamt
 - der Schmuggel mit Zollkontrolle und Bestechung
 - die Startanimation und der animierte Game-Over-Bildschirm
 - das Help Center und das Tutorial für einen leichten Einstieg
+- die Möglichkeit, im Vollbild-Modus zu spielen
 - die Administrationsseite zur freien Konfiguration von Frachten und Schiffen
 
-Besonderer Wert lag auf einem stimmigen Spielerlebnis und darauf, die Spieler:innen wirklich in die Welt einzubeziehen. Genauso wichtig war ein leichter Einstieg, der das Spiel für möglichst viele Menschen zugänglich macht. Auch die Fraktionen wurden bewusst fair gestaltet. So entsteht strategische Vielfalt, ohne dass jemand benachteiligt wird.
+Besonderer Wert lag auf einem stimmigen Spielerlebnis und darauf, die Spieler:innen in die Welt einzubeziehen.
+Genauso wichtig war ein leichter Einstieg, der das Spiel für möglichst viele Menschen zugänglich macht.
+Auch die Fraktionen wurden bewusst fair gestaltet. So entsteht strategische Vielfalt, ohne dass jemand benachteiligt wird.
 
 ## Herausforderungen & Lerneffekte
 
-Eine erste Herausforderung war die Performance. Anfangs kam es oft zu Verzögerungen. Bei mehreren gleichzeitigen Sessions wurde das Backend zum Engpass, da pro Tick dieselben Daten redundant aus der Datenbank geladen wurden. So kam es zu über 30 Abfragen pro Tick.
+Eine erste Herausforderung war die Performance, da es anfangs oft zu Verzögerungen kam.
+Bei mehreren gleichzeitigen Sessions wurde das Backend zum Engpass, da pro Tick dieselben Daten redundant aus der Datenbank geladen wurden. So kam es zu über 30 Abfragen pro Tick.
 
 Folgende Optimierungen haben das gelöst:
 
-- **TickContext**: Alle Daten einmal am Tick-Anfang laden und an alle Methoden weitergeben.
-- **Statisches Caching**: Unveränderliche Daten wie Häfen und Schiffsvorlagen einmalig in den Speicher laden.
-- **Eine Transaktion pro Tick** statt einzelner Transaktionen pro Lese- oder Schreibvorgang.
-- **Batch-Saves**: Geänderte Entities gesammelt am Tick-Ende speichern statt einzeln.
+- **TickContext:** Alle Daten einmal am Tick-Anfang laden und an alle Methoden weitergeben.
+- **Statisches Caching:** Unveränderliche Daten wie Häfen und Schiffsvorlagen einmalig in den Speicher laden.
+- **Transaktion pro Tick:** Alle Lese- und Schreibvorgänge in einer Transaktion bündeln statt in einzelnen.
+- **Batch-Saves:** Geänderte Entities gesammelt am Tick-Ende speichern statt einzeln.
 
 Das Ergebnis war die Reduktion von über 30 auf etwa sechs Datenbankabfragen pro Tick.
 
-Die anspruchsvollste Aufgabe war die Echtzeit-Konkurrenz. Mehrere Clients müssen jederzeit denselben Spielzustand sehen. Die Logik wird daher vollständig auf dem Server berechnet, und Änderungen werden aktiv an die Clients übertragen. Dieser Ansatz hat sich bewährt und sorgt zugleich für Fairness und Reaktivität.
+Die anspruchsvollste Aufgabe war die Echtzeit-Konkurrenz. Mehrere Clients müssen jederzeit denselben Spielzustand sehen.
+Die Logik wird daher vollständig auf dem Server berechnet und Änderungen werden aktiv an die Clients übertragen.
+Dieser Ansatz hat sich bewährt und sorgt zugleich für Fairness sowie Reaktivität.
 
-Außerdem stellte die Darstellung auf der Karte eine Herausforderung dar. Die exakte Positionierung von Schiffen und Häfen in Phaser erforderte einigen Aufwand. Zusätzlich war die Wahl der passenden Architektur schwierig, da die Aufgabenstellung bewusst offen gehalten war und der geeignete Ansatz selbst entwickelt werden musste.
+Außerdem stellte die Darstellung auf der Karte eine Herausforderung dar.
+Die exakte Positionierung von Schiffen und Häfen in Phaser erforderte einigen Aufwand.
+Zusätzlich war die Wahl der passenden Architektur schwierig, da die Aufgabenstellung bewusst offen gehalten war und der geeignete Ansatz selbst entwickelt werden musste.
 
-Drei Erkenntnisse bleiben besonders hängen. Fairness und ein leichter Einstieg sind keine zusätzlichen Features, sondern entscheidend dafür, ob sich alle eingeladen fühlen mitzuspielen. Sie sollten daher bei neuen Features stets mitgedacht werden. Eine durchdachte Architektur zahlt sich aus, da das Decorator-Pattern das Hinzufügen neuer Fraktionen deutlich vereinfacht hat. Und gerade eine nüchterne Simulation lebt von gutem Feedback. Erst visuelle und akustische Rückmeldungen machen das Spiel zugänglich und lebendig.
+Drei Erkenntnisse bleiben besonders hängen.
+Fairness und ein leichter Einstieg sind keine zusätzlichen Features, sondern entscheidend dafür, ob sich alle eingeladen fühlen mitzuspielen.
+Sie sollten daher bei neuen Features stets mitgedacht werden.
+Eine durchdachte Architektur zahlt sich aus, da das Decorator-Pattern das Hinzufügen neuer Fraktionen deutlich vereinfacht hat.
+Und gerade eine nüchterne Simulation lebt von gutem Feedback. Erst visuelle und akustische Rückmeldungen machen das Spiel zugänglich und lebendig.
 
 ## Ausblick
 
-Die geplanten Funktionen sind vollständig umgesetzt. Für die Zukunft sind weitere Ausbaustufen denkbar:
+Die geplanten Funktionen sind vollständig umgesetzt. Für die Zukunft sind weitere Ausbaumöglichkeiten denkbar:
 
-- Kredite und Hypotheken, die den wirtschaftlichen Wettbewerb noch einmal verschärfen würden.
-- Ein optionaler Computergegner für das Spiel allein oder zum Üben.
-- Weitere Fraktionen und Minispiele für noch mehr Abwechslung.
+- Kredite und Hypotheken, die den wirtschaftlichen Wettbewerb noch einmal verschärfen würden
+- ein optionaler Computergegner für das Spiel allein oder zum Üben
+- weitere Fraktionen und Minispiele für noch mehr Abwechslung
 
 
 ## Links & Ressourcen
 - Repository: (Link folgt)
 - Live-Demo: [Link](http://10.0.40.186)
 
-  ![](assets/qr-code.png){width=160px}
+  ![QR-Code zur Live-Demo](assets/qr-code.png){width=160px}
 - Spielmusik: [„Pirate Music" von Alex Nachtmahr](https://youtu.be/bKlQZ8rSqGg?si=rsRPDT_2_Au0beWe) (YouTube)
 - Soundeffekte & Hintergrundmusik: [Pixabay](https://pixabay.com)
 - Fraktions-Charaktere: Generiert mit [Gemini](https://gemini.google.com)
@@ -221,4 +342,3 @@ Die geplanten Funktionen sind vollständig umgesetzt. Für die Zukunft sind weit
 - Minigame-Bilder: Generiert mit dem [ChatGPT Bildgenerator](https://chatgpt.com)
 - Weltkarte: Basierend auf einer [Vorlage von r/MapPorn](https://www.reddit.com/r/MapPorn/comments/q7h8hi/corrected_map_of_the_world_in_the_style_of_super/) (Reddit)
 - Übrige Grafiken: Generiert mit Gemini und ChatGPT
-
