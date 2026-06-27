@@ -44,6 +44,14 @@ import GameOverScreen from "../components/GameOverScreen";
 import audioEngine from '../audio/AudioEngine';
 
 export const TOP_BAR_HEIGHT = '9vh';
+const TRANSIENT_SHIP_STATUSES = new Set([
+    "LOADING",
+    "UNLOADING",
+    "REFUELING",
+    "REPAIRING",
+    "CUSTOMS_CHECK",
+    "BLOCKED",
+]);
 
 interface CustomsInspectionPayload {
     inspectionId: string;
@@ -99,6 +107,7 @@ export default function GameScreen() {
     const [overlayReturnView, setOverlayReturnView] = useState<"map" | "marketplace">("map");
     const viewRef = useRef(view);
     const [selectedPort, setSelectedPort] = useState<{ id: string; name: string; x: number; y: number } | null>(null);
+    const loadOwnedShipsRequestIdRef = useRef(0);
 
     const sessionData = sessionStorage.getItem('currentSession');
     const sessionId = sessionData ? JSON.parse(sessionData).id : null;
@@ -219,11 +228,13 @@ export default function GameScreen() {
 
     const loadOwnedShips = useCallback(() => {
         if (!playerId || !sessionId) return;
+        const requestId = ++loadOwnedShipsRequestIdRef.current;
         fetch(`/api/ships/player/${playerId}?sessionId=${sessionId}`, {
             headers: { Authorization: `Bearer ${authToken}` },
         })
             .then(res => (res.ok ? res.json() : []))
             .then((ships: any[]) => {
+                if (requestId !== loadOwnedShipsRequestIdRef.current) return;
                 setOwnedShips(
                     ships.map((ship) => ({
                         id: ship.id,
@@ -243,6 +254,18 @@ export default function GameScreen() {
     useEffect(() => {
         loadOwnedShips();
     }, [loadOwnedShips]);
+
+    useEffect(() => {
+        if (!ownedShips.some(ship => TRANSIENT_SHIP_STATUSES.has(ship.status))) {
+            return;
+        }
+
+        const interval = window.setInterval(() => {
+            loadOwnedShips();
+        }, 5000);
+
+        return () => window.clearInterval(interval);
+    }, [ownedShips, loadOwnedShips]);
 
     useEffect(() => {
         ownedShipsRef.current = ownedShips;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import GameButton from "../components/GameButton";
 import officeBackground from "../assets/office-background.png";
 import "../style/shipclass.css";
@@ -58,9 +58,19 @@ interface Props {
     onClose: () => void;
 }
 
+const TRANSIENT_SHIP_STATUSES = new Set([
+    "LOADING",
+    "UNLOADING",
+    "REFUELING",
+    "REPAIRING",
+    "CUSTOMS_CHECK",
+    "BLOCKED",
+]);
+
 export default function OfficeScene({ onClose }: Props) {
     const [ships, setShips] = useState<PlayerShip[]>([]);
     const shipsRef = useRef<PlayerShip[]>([]);
+    const loadRequestIdRef = useRef(0);
     const [selectedShipId, setSelectedShipId] = useState<string | null>(null);
     const [balance, setBalance] = useState<number | null>(null);
     const [sellQuote, setSellQuote] = useState<SellQuote | null>(null);
@@ -105,9 +115,46 @@ export default function OfficeScene({ onClose }: Props) {
         setError(msg);
     }
 
+    const loadOfficeData = useCallback(() => {
+        if (!playerId || !sessionId) return;
+        const requestId = ++loadRequestIdRef.current;
+        setLoading(true);
+        setError(null);
+        Promise.all([
+            fetch(`/api/ships/player/${playerId}?sessionId=${sessionId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            }).then(res => {
+                if (!res.ok) throw new Error();
+                return res.json();
+            }),
+            fetch(`/api/ships/player/${playerId}/balance?sessionId=${sessionId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            }).then(res => res.json()),
+        ])
+            .then(([shipData, balanceData]: [PlayerShip[], unknown]) => {
+                if (requestId !== loadRequestIdRef.current) return;
+                setShips(shipData);
+                setBalance(Number(balanceData));
+                setSelectedShipId(prev => {
+                    if (prev && shipData.some(ship => ship.id === prev)) return prev;
+                    return shipData[0]?.id ?? null;
+                });
+            })
+            .catch(() => {
+                if (requestId === loadRequestIdRef.current) {
+                    showError("Büro konnte die Flotte nicht laden.");
+                }
+            })
+            .finally(() => {
+                if (requestId === loadRequestIdRef.current) {
+                    setLoading(false);
+                }
+            });
+    }, [playerId, sessionId, token]);
+
     useEffect(() => {
         loadOfficeData();
-    }, [playerId, sessionId, token]);
+    }, [loadOfficeData]);
 
     useEffect(() => {
         shipsRef.current = ships;
@@ -245,32 +292,17 @@ export default function OfficeScene({ onClose }: Props) {
         alreadyRepaired,
     ]);
 
-    function loadOfficeData() {
-        if (!playerId || !sessionId) return;
-        setLoading(true);
-        setError(null);
-        Promise.all([
-            fetch(`/api/ships/player/${playerId}?sessionId=${sessionId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            }).then(res => {
-                if (!res.ok) throw new Error();
-                return res.json();
-            }),
-            fetch(`/api/ships/player/${playerId}/balance?sessionId=${sessionId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            }).then(res => res.json()),
-        ])
-            .then(([shipData, balanceData]: [PlayerShip[], unknown]) => {
-                setShips(shipData);
-                setBalance(Number(balanceData));
-                setSelectedShipId(prev => {
-                    if (prev && shipData.some(ship => ship.id === prev)) return prev;
-                    return shipData[0]?.id ?? null;
-                });
-            })
-            .catch(() => showError("Büro konnte die Flotte nicht laden."))
-            .finally(() => setLoading(false));
-    }
+    useEffect(() => {
+        if (!ships.some(ship => TRANSIENT_SHIP_STATUSES.has(ship.status))) {
+            return;
+        }
+
+        const interval = window.setInterval(() => {
+            loadOfficeData();
+        }, 5000);
+
+        return () => window.clearInterval(interval);
+    }, [ships, loadOfficeData]);
 
     function showToast(message: string) {
         setToast(message);
@@ -645,10 +677,10 @@ function TickProgressBar({ completionTick, label }: { completionTick: number; la
             const tick = (e as CustomEvent).detail?.currentTick;
             if (tick != null) setCurrentTick(tick);
         }
-        window.addEventListener("backend-tick-update", onTick);
+        window.addEventListener("backend-tick", onTick);
         window.addEventListener("backend-ship-positions", onShipPos);
         return () => {
-            window.removeEventListener("backend-tick-update", onTick);
+            window.removeEventListener("backend-tick", onTick);
             window.removeEventListener("backend-ship-positions", onShipPos);
         };
     }, []);
