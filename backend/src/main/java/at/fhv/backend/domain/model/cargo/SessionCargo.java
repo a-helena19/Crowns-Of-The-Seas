@@ -61,7 +61,8 @@ public class SessionCargo {
             int lifetimeTicks,
             boolean permanent
     ) {
-        int expiresAtTick = permanent ? -1 : spawnTick + lifetimeTicks;
+        // Luxusfracht läuft nie zeitlich ab — sie bleibt im Hafen, bis sie jemand annimmt.
+        int expiresAtTick = (permanent || cargoType == CargoType.LUXURY_GOODS) ? -1 : spawnTick + lifetimeTicks;
         return new SessionCargo(
                 UUID.randomUUID(),
                 cargoId,

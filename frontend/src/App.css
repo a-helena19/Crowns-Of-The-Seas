@@ -61,6 +61,116 @@ html, body, #root {
     pointer-events: auto;
 }
 
+.fullscreen-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(24, 16, 10, 0.72);
+    backdrop-filter: blur(3px);
+}
+
+.fullscreen-dialog {
+    width: min(460px, 100%);
+    padding: 26px 24px 22px;
+    background: linear-gradient(165deg, #f7eed2 0%, #f1e2b6 100%);
+    border: 3px solid #6a462a;
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.38);
+    color: #2e2116;
+    font-family: "Crimson Pro", Georgia, serif;
+}
+
+.fullscreen-dialog-kicker {
+    margin-bottom: 6px;
+    color: #8b6a32;
+    font-family: "Cinzel", Georgia, serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+}
+
+.fullscreen-dialog h2 {
+    margin: 0 0 10px;
+    font-family: "Cinzel", Georgia, serif;
+    font-size: 28px;
+    line-height: 1.1;
+}
+
+.fullscreen-dialog p {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.45;
+}
+
+.fullscreen-dialog-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.fullscreen-dialog-btn {
+    width: 100%;
+    min-height: 50px;
+    padding: 11px 14px;
+    border: 2px solid transparent;
+    font-family: "Cinzel", Georgia, serif;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.15;
+    text-align: center;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 0.15s ease, filter 0.15s ease, background 0.15s ease;
+}
+
+.fullscreen-dialog-btn:hover {
+    filter: brightness(1.06);
+}
+
+.fullscreen-dialog-btn:active {
+    transform: translateY(1px);
+}
+
+.fullscreen-dialog-btn.primary {
+    background: #7a5230;
+    border-color: #57361f;
+    color: #fff5de;
+}
+
+.fullscreen-dialog-btn.secondary {
+    background: transparent;
+    border-color: rgba(87, 54, 31, 0.45);
+    color: #5a3a24;
+}
+
+@media (max-width: 640px) {
+    .fullscreen-dialog {
+        padding: 22px 18px 18px;
+    }
+
+    .fullscreen-dialog h2 {
+        font-size: 24px;
+    }
+
+    .fullscreen-dialog p {
+        font-size: 16px;
+    }
+
+    .fullscreen-dialog-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .fullscreen-dialog-btn {
+        width: 100%;
+    }
+}
+
 
 
 .bottom {

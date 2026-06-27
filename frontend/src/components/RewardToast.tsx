@@ -43,7 +43,7 @@ export default function RewardToast({ shipName, from, to, reward, onDismiss }: R
             <div className="reward-toast-content">
                 <div className="reward-toast-ship">{shipName}</div>
                 <div className="reward-toast-route">{from} → {to}</div>
-	                <div className="reward-toast-amount">+{formatTalers(reward)} T</div>
+                <div className="reward-toast-amount">{reward >= 0 ? "+" : ""}{formatTalers(reward)} T</div>
             </div>
             <button className="reward-toast-close" onClick={dismiss}>✕</button>
         </div>

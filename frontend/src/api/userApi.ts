@@ -56,3 +56,57 @@ export async function loginUser(username: string, password: string): Promise<Use
 
     return data;
 }
+
+export async function changeUsername(newUsername: string, currentPassword: string, token: string): Promise<UserResponse> {
+    const response = await fetch(`${API_BASE}/users/me/username`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ newUsername, currentPassword }),
+    });
+
+    if (!response.ok) {
+        const error: ApiError = await response.json();
+        throw error;
+    }
+
+    const data: UserResponse = await response.json();
+    if (data.token) {
+        localStorage.setItem('auth_token', data.token);
+    }
+    return data;
+}
+
+export async function changePassword(currentPassword: string, newPassword: string, token: string): Promise<void> {
+    const response = await fetch(`${API_BASE}/users/me/password`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+    });
+
+    if (!response.ok) {
+        const error: ApiError = await response.json();
+        throw error;
+    }
+}
+
+export async function deleteAccount(currentPassword: string, token: string): Promise<void> {
+    const response = await fetch(`${API_BASE}/users/me`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ currentPassword }),
+    });
+
+    if (!response.ok) {
+        const error: ApiError = await response.json();
+        throw error;
+    }
+}

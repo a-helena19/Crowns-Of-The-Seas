@@ -43,6 +43,7 @@ public class GlobalExceptionHandler {
         return switch (errorCode) {
             case USERNAME_ALREADY_EXISTS -> HttpStatus.CONFLICT;
             case INVALID_CREDENTIALS -> HttpStatus.UNAUTHORIZED;
+            case USER_NOT_FOUND -> HttpStatus.NOT_FOUND;
         };
     }
 }

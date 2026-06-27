@@ -197,6 +197,7 @@ export const HELP_CHAPTERS: HelpChapter[] = [
                     { kind: "text", text: "Der Frachttyp verrät dir, wie empfindlich eine Ladung ist: Verderbliche Ware wie Lebensmittel muss schnell ankommen, sonst verliert sie an Wert. Zerbrechliche Ware leidet unter Unwettern unterwegs. Luxusgüter bringen die höchsten Belohnungen." },
                     { kind: "image", src: mapMumbaiGold, caption: "Goldene Markierung: hier wartet Luxusfracht", align: "side" },
                     { kind: "text", text: "Häfen, in denen gerade Luxusaufträge auf einen Transporteur warten, leuchten auf der Karte golden auf." },
+                    { kind: "text", text: "Luxusgüter sind besonders umfangreich: Nur Schiffe ab der Klasse Standard verfügen über genügend Ladekapazität. Budget-Schiffe können sie nicht annehmen." },
                 ],
             },
             {

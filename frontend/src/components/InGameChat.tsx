@@ -133,6 +133,7 @@ export default function InGameChat({ sessionId, currentUserId, stompClient }: In
                 onClick={() => setIsOpen((current) => !current)}
                 aria-expanded={isOpen}
                 aria-controls="session-chat-messages"
+                data-tutorial="hud-chat"
             >
                 <span className="in-game-chat-title">
                     <span>Session Chat</span>

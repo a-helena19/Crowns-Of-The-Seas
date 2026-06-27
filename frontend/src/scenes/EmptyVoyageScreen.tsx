@@ -189,6 +189,7 @@ export default function EmptyVoyageScreen({ currentPortId, playerShipId, onVoyag
                             className={`ev-port-card${active ? " ev-port-card--active" : ""}`}
                             onClick={() => { audioEngine.playSfx("buttonClick"); setSelected(p); setError(null); }}
                             disabled={!playerShipId || !currentPortId || shipInTransit}
+                            data-tutorial={ports[0]?.id === p.id ? "empty-voyage-port" : undefined}
                         >
                             <div className="ev-port-img-wrap">
                                 {img
@@ -202,7 +203,7 @@ export default function EmptyVoyageScreen({ currentPortId, playerShipId, onVoyag
             </div>
 
             {selected && playerShipId && currentPortId && !shipInTransit && (
-                <div className="ev-speed-section">
+                <div className="ev-speed-section" data-tutorial="empty-voyage-speed">
                     <div className="ev-speed-title">Reisegeschwindigkeit</div>
 
                     {estimateLoading && !fuelEstimate && <div className="ev-hint">Berechne Treibstoffverbrauch…</div>}
@@ -265,7 +266,7 @@ export default function EmptyVoyageScreen({ currentPortId, playerShipId, onVoyag
 
             {error && <div className="ev-error">{error}</div>}
 
-            <button type="button" className="ev-start-btn" onClick={handleStart} disabled={startDisabled}>
+            <button type="button" className="ev-start-btn" onClick={handleStart} disabled={startDisabled} data-tutorial="prepare-empty-voyage">
                 Leerfahrt vorbereiten
             </button>
         </div>
