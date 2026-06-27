@@ -13,6 +13,7 @@ import { useAudioSettings } from '../audio/AudioSettingsContext';
 import audioEngine from '../audio/AudioEngine';
 import { useNavigate } from 'react-router-dom';
 import HelpCenter from './HelpCenter';
+import { useFullscreen } from '../context/FullscreenContext';
 
 
 export default function TopBar() {
@@ -32,6 +33,7 @@ export default function TopBar() {
     const [helpOpen, setHelpOpen] = useState(false);
     const [leaving, setLeaving] = useState(false);
     const audioMenuRef = useRef<HTMLDivElement | null>(null);
+    const { isSupported: fullscreenSupported, isFullscreen, confirmExitFullscreen, requestRecommendedFullscreen } = useFullscreen();
 
     const factionWrapperRef = useRef<HTMLDivElement | null>(null);
 
@@ -460,6 +462,27 @@ export default function TopBar() {
                             >
                                 Hilfecenter öffnen
                             </button>
+
+                            {fullscreenSupported && (
+                                <button
+                                    type="button"
+                                    className="audio-popover-fullscreen-exit"
+                                    onClick={() => {
+                                        audioEngine.playSfx('buttonClick');
+                                        const action = isFullscreen
+                                            ? confirmExitFullscreen()
+                                            : requestRecommendedFullscreen();
+
+                                        void action.then((changedState) => {
+                                            if (changedState || !isFullscreen) {
+                                                setAudioMenuOpen(false);
+                                            }
+                                        });
+                                    }}
+                                >
+                                    {isFullscreen ? 'Vollbild beenden' : 'Vollbild öffnen'}
+                                </button>
+                            )}
 
                             <button className="audio-popover-leave" disabled={leaving} onClick={handleLeaveSession}>
                                 {leaving ? 'Verlasse …' : 'Zurück zur Lobby'}

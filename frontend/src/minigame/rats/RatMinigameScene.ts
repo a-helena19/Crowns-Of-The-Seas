@@ -39,6 +39,19 @@ export class RatMinigameScene extends Phaser.Scene {
 
     create() {
         audioEngine.crossfadeTo('rats', 300);
+        const hudStyle = {
+            color: "#ffffff",
+            stroke: "#4a140f",
+            strokeThickness: 5,
+            shadow: {
+                offsetX: 2,
+                offsetY: 2,
+                color: "#000000",
+                blur: 2,
+                fill: true,
+                stroke: false,
+            },
+        };
 
         this.add.image(0, 0, "rat-minigame-bg")
             .setOrigin(0, 0)
@@ -58,11 +71,11 @@ export class RatMinigameScene extends Phaser.Scene {
             this.swordCursor?.destroy();
         });
 
-        this.add.text(16, 14, "Ratten an Deck", { fontSize: "30px", color: "#f4e8c1" });
+        this.add.text(16, 14, "Ratten an Deck", { fontSize: "30px", ...hudStyle });
 
-        this.timeText = this.add.text(16, 56, "Zeit: --", { fontSize: "22px", color: "#ffffff" });
-        this.hitsText = this.add.text(16, 86, "Treffer: 0", { fontSize: "22px", color: "#ffffff" });
-        this.requiredText = this.add.text(16, 116, `Ziel: ${this.config.requiredHits}`, { fontSize: "22px", color: "#ffffff" });
+        this.timeText = this.add.text(16, 56, "Zeit: --", { fontSize: "22px", ...hudStyle });
+        this.hitsText = this.add.text(16, 86, "Treffer: 0", { fontSize: "22px", ...hudStyle });
+        this.requiredText = this.add.text(16, 116, `Ziel: ${this.config.requiredHits}`, { fontSize: "22px", ...hudStyle });
 
         this.spawner = new RatSpawner(this);
         audioEngine.playSfx('ratSqueak');

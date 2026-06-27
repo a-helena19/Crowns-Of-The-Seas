@@ -181,6 +181,7 @@ export default function HelpCenter({ open, onClose, showTutorialRestart = false 
     }
 
     const pageNumberInChapter = active.pageIndex + 1;
+    const portalTarget = document.fullscreenElement ?? document.body;
 
     const overlay = (
         <div className="help-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Kapitänshandbuch">
@@ -322,5 +323,5 @@ export default function HelpCenter({ open, onClose, showTutorialRestart = false 
         </div>
     );
 
-    return createPortal(overlay, document.body);
+    return createPortal(overlay, portalTarget);
 }
