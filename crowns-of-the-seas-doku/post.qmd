@@ -16,7 +16,7 @@ categories:
   - Strategiespiel
   - Web Game
   - Wirtschaftssimulation
-  - Maritime-simulation
+  - Maritime Simulation
   - Ports-of-Call
 other-links:
   - text: Template Download
@@ -37,10 +37,9 @@ resources:
 
 Die Weltmeere sind hart umkämpft. Wer am Ende gekrönt wird, herrscht nicht nur über die See, sondern beweist auch wirtschaftliches Geschick.
 
-Crowns of the Seas ist ein webbasiertes Strategiespiel, in dem bis zu vier Reedereien gleichzeitig in einer geteilten Spielwelt gegeneinander antreten. Das Spiel ist in der Lehrveranstaltung Enterprise Applications entstanden.
-Es greift die Idee des Klassikers Ports of Call als modernes Echtzeit-Multiplayer-Erlebnis für den Browser neu auf.
-Im Mittelpunkt steht eine lebendige Wirtschaftssimulation aus Handel, Logistik, Risiko und direkter Konkurrenz.
-Das Ergebnis ist ein lauffähiges Mehrspieler-Spiel mit vollständiger Kernschleife, das im Browser gespielt werden kann.
+Crowns of the Seas ist in der Lehrveranstaltung Enterprise Applications entstanden und greift die Idee des Klassikers Ports of Call als Echtzeit-Multiplayer-Erlebnis für den Browser neu auf.
+Im Mittelpunkt steht eine zugängliche Wirtschaftssimulation aus Handel, Logistik, Risiko und direkter Konkurrenz.
+Das Ergebnis ist ein lauffähiges Mehrspieler-Spiel mit vollständiger Kernschleife.
 Man kauft Schiffe, nimmt Aufträge an, transportiert Fracht über neun Häfen und versucht, am Ende das größte Vermögen zu besitzen.
 
 ## Ziele
@@ -74,6 +73,10 @@ Mehrere Bausteine machen das Spiel besonders. Dazu gehören vor allem das echte 
 
 In einer geteilten Welt bewegen sich bis zu vier Reedereien über dieselbe Weltkarte mit neun Häfen, von Hamburg über New York bis Sydney.
 Jeder Hafen hat ein eigenes Profil mit individuellem Aufbau und eigenen Merkmalen.
+Es lässt sich über die Karte öffnen und zeigt die wichtigsten Informationen zum Hafen auf einen Blick.
+
+![Das Hafenprofil eines einzelnen Hafens](assets/hafenprofil.png){ width="85%" }
+
 Die Schiffe der Konkurrenz sind jederzeit auf der Karte sichtbar, sofern man sie nicht bewusst ausblendet.
 Ein synchronisiertes Zeitmodell mit einem Spieltag pro Tick sorgt dafür, dass alle im selben Rhythmus spielen und der Wettbewerb unmittelbar spürbar bleibt.
 
@@ -103,7 +106,7 @@ Es gibt fünf Geschwindigkeitsstufen, die beeinflussen, wie viel Treibstoff verb
 #### Leerfahrt
 
 Eine Leerfahrt bringt keinen Gewinn, ist aber geeignet, wenn man beispielsweise zu einem Hafen mit Luxusfrachten kommen möchte.
-Es wird keine Fracht transportiert, weswegen es auch keine Belohnung gibt.
+Es wird keine Fracht transportiert, daher gibt es auch keine Belohnung.
 Treibstoff und Zustand werden dennoch verbraucht, weswegen eine Leerfahrt zu einem kleinen Verlust führt.
 
 ![Eine Leerfahrt ohne Fracht zu einem anderen Hafen](assets/leerfahrt1.png)
@@ -124,7 +127,7 @@ Immer wieder tauchen zeitlich begrenzte Sonderangebote auf, bei denen Schiffe g�
 Die eigene Flotte wird im Büro verwaltet. Dort sieht man alle eigenen Schiffe und ihre aktuellen Aufgaben im Überblick.
 
 
-![Das Büro, von hier aus wird die eigene Flotte verwaltet](assets/buero.png){ width="90%"}
+![Das Büro zur Verwaltung der eigenen Flotte](assets/buero.png){ width="90%"}
 
 Zwischendurch müssen Schiffe betankt und repariert werden, was beides Zeit und Taler kostet und im Büro erledigt wird.
 Beim Betanken lässt sich frei wählen, auf wie viel Prozent der Tank gefüllt wird.
@@ -147,6 +150,30 @@ Die Wahl gilt für das ganze Spiel, denn nach dem Spielstart lässt sich die Fra
 
 ![Die Fraktionsauswahl zu Spielbeginn](assets/fractions2.png)
 
+### Session und Lobby
+
+Vor dem Spiel wird in der Lobby eine Session erstellt. Wer eine Session erstellt, wird zum Host und legt die Rahmenbedingungen fest:
+
+- **Name:** der eigene Anzeigename in der Session.
+- **Maximale Anzahl an Spieler:innen:** wie viele Reedereien gleichzeitig teilnehmen können.
+- **Tickrate (Spieltempo):** wie schnell die Spielzeit vergeht. Eine langsamere Tickrate gibt mehr Zeit pro Entscheidung und macht das Spiel auch für Menschen mit Beeinträchtigungen oder langsamerer Wahrnehmung zugänglicher.
+- **Spieldauer:** wie lange eine Session insgesamt läuft.
+
+![Das Erstellen einer neuen Session in der Lobby](assets/session-erstellen.png){ width="70%" }
+
+Einer bestehenden Session lässt sich auf zwei Wegen beitreten: über einen Beitrittscode oder über einen geteilten Link.
+
+Der Host behält seine Rolle für die gesamte Session. Diese Rolle ist bewusst angelegt, damit host-gebundene Funktionen in zukünftigen Erweiterungen einen eindeutigen Host vorfinden.
+Es muss daher zu jedem Zeitpunkt ein Host existieren. Verlässt der Host die Session, wird die nächste verbliebene Person automatisch zum neuen Host.
+
+Eine Session lässt sich jederzeit verlassen, ohne dass das eigene Vermögen verloren geht, solange noch andere Spieler:innen in der Session sind.
+Der eigene Spielstand bleibt erhalten. Verlässt die letzte Person die Session, wird sie beendet.
+
+Solange eine Session aktiv ist, ist ein Wiederbeitritt jederzeit aus der Lobby möglich.
+Beim Wiederbeitritt erhält man sein vorheriges Vermögen zurück. Die Spielzeit läuft währenddessen im Hintergrund weiter, sodass die Session für die übrigen Spieler:innen ununterbrochen fortläuft.
+
+![Die Lobby mit den aktuell aktiven Sessions](assets/aktive-sessions.png){ width="80%" }
+
 ### Ereignisse & Minispiele
 
 Eine Seereise verläuft nicht immer ruhig.
@@ -165,11 +192,11 @@ Diese Minispiele geben jeder Fahrt ihre eigene Spannung:
 Zwei weitere Ereignisse sorgen für zusätzliche Spannung.
 Beim Lotsenstreik fällt der automatische Lotsendienst aus, sodass das Steuern beim An- und Ablegen selbst übernommen werden muss.
 
-![Beim Lotsenstreik wird das Ablegen von Hand gesteuert](assets/ablegen.png)
+![Manuelles Ablegen beim Lotsenstreik](assets/ablegen.png)
 
 Wer beim Auslaufen ein Schmuggelangebot annimmt, kann gegen eine zusätzliche Belohnung illegale Ware mitnehmen, riskiert im Zielhafen aber eine Zollkontrolle. Wird sie entdeckt, bleibt die Wahl zwischen einer Strafe und dem Versuch, den Zoll zu bestechen.
 
-### Nutzer:innenerlebnis
+### Nutzungserlebnis
 
 Da im Hintergrund eine echte Simulation läuft, ist das Spiel bewusst zugänglich, einladend und reaktiv gestaltet.
 Es steht immer Hilfe bereit, wo sie gebraucht wird.
@@ -181,26 +208,26 @@ Eine Startanimation führt in die Welt ein. Auch das Ablegen und der Game-Over-B
 
 #### Tutorial & Help-Center
 Für einen leichten Einstieg sorgt ein geführtes Tutorial in der Lobby, das die wichtigsten Abläufe vor dem ersten Spiel erklärt.
-Wenn Spielende später etwas nachschlagen möchten, können sie jederzeit ein integriertes Help Center öffnen, das alle Spielmechaniken in Kapiteln erklärt.
+Wenn Spieler:innen später etwas nachschlagen möchten, können sie jederzeit ein integriertes Help Center öffnen, das alle Spielmechaniken in Kapiteln erklärt.
 Tutorials können hier auch jederzeit erneut gestartet werden. Wenn man spezifischere Tutorials braucht, gibt es auch eigene Tutorials zu Reise, Leerfahrt, Reiseabschluss, Wartung und Luxusfrachten.
-Dadurch müssen Spielende nicht immer das gesamte Tutorial abschließen. Ein Tutorial kann jederzeit beendet werden.
+Dadurch müssen Spieler:innen nicht immer das gesamte Tutorial abschließen. Ein Tutorial kann jederzeit beendet werden.
 Dadurch findet sich jede:r auch ohne Vorwissen im Spiel zurecht und die Spielregeln bleiben transparent.
 
 ![Das Tutorial in der Lobby](assets/tutorial.mp4)
 
-![Das Help Center erklärt alle Spielmechaniken in Kapiteln](assets/help-center.png){ width="90%" }
+![Das Help Center mit allen Spielmechaniken in Kapiteln](assets/help-center.png){ width="90%" }
 
 Visuelle Hinweise nehmen den Spieler:innen das Suchen ab.
 Eine Schiffskarte leuchtet auf und erhält einen farbigen Rahmen, sobald eine Entscheidung ansteht. Dabei wurde darauf geachtet, dass dies kein alarmierendes Gefühl erzeugt.
 Häfen mit Luxusfracht leuchten golden. Hält man die Maus über einen Button oder einen Hafen, werden die wichtigsten Informationen kurz eingeblendet.
 
-Dazu kommen viele kleine Elemente, die das Nutzer:innenerlebnis nochmals verbessern:
+Dazu kommen viele kleine Elemente, die das Nutzungserlebnis nochmals verbessern:
 
-- Ein In-Game-Chat erlaubt die direkte Kommunikation zwischen Spielenden einer Lobby.
+- Ein In-Game-Chat erlaubt die direkte Kommunikation zwischen Spieler:innen einer Lobby.
 - Ein Leaderboard zeigt jederzeit Vermögen und Platzierung.
-- Nach einem Verbindungsabbruch ist ein sauberes Wiederbeitreten möglich.
-- Musik und Soundeffekte begleiten die Wechsel zwischen Lobby, Spiel und Minispielen.
-- Das Spiel lässt sich im Vollbild spielen, was die Weltkarte und die Minispiele noch besser zur Geltung bringt.
+- Auch nach einem unbeabsichtigten Verbindungsabbruch ist ein sauberer Reconnect möglich.
+- Musik und Soundeffekte begleiten die Wechsel zwischen Lobby, Spiel und Minispielen. Lautstärke und Stummschaltung lassen sich getrennt für Musik und Effekte einstellen.
+- Das Spiel lässt sich jederzeit in den Vollbild-Modus schalten, was Weltkarte und Minispiele besser zur Geltung bringt und Ablenkungen außerhalb des Spiels ausblendet.
 
 ### Spielende und Platzierung
 
@@ -213,8 +240,11 @@ Die Platzierung im Leaderboard folgt einem klaren Prinzip. Gezählt wird das ges
 Es setzt sich aus den Talern auf dem Konto und dem Wert aller eigenen Schiffe zusammen.
 Der Wert eines Schiffs richtet sich nach seinem Grundpreis sowie nach Zustand und Tankfüllung.
 
-Eine wichtige Regel betrifft laufende Reisen. Die Belohnung für eine Fracht wird erst gutgeschrieben, wenn das Schiff im Zielhafen angekommen ist.
-Eine Reise, die gerade noch unterwegs ist, erhöht das Vermögen somit nicht.
+Eine wichtige Regel betrifft laufende Reisen. Gewinn wie auch Verlust einer Fracht werden erst verrechnet, wenn das Schiff im Zielhafen angekommen ist.
+Eine Reise, die zum Spielende noch unterwegs ist, fließt somit weder als Gewinn noch als Verlust in das Vermögen ein. Das hält die Abrechnung für alle fair.
+
+Das Spielende kündigt sich rechtzeitig an. Sind nur noch zehn Prozent der Spielzeit übrig, erscheint eine erste Warnung, bei den letzten fünf Prozent eine zweite, deutlichere.
+So kann jede:r die verbleibende Zeit einschätzen und letzte Reisen planen.
 
 ### Adminseite
 
@@ -262,8 +292,8 @@ Zudem wurde das Verhalten mit Unit- und Integrationstests überprüft, wodurch e
 
 ![Überblick über die Systemarchitektur](assets/architecture-overview.png){ width="80%" }
 
-Die Routen zwischen den Häfen berechnet das Spiel automatisch als kürzesten Seeweg mit dem A-Star-Algorithmus.
-Dieser schätzt über eine Heuristik, die Luftlinie zum Zielhafen, wie weit das Ziel noch entfernt ist und untersucht dadurch zuerst die vielversprechendsten Wege.
+Die Routen zwischen den Häfen berechnet das Spiel automatisch als kürzesten Seeweg mit dem A*-Algorithmus.
+Über eine Heuristik, die Luftlinie zum Zielhafen, schätzt der Algorithmus die verbleibende Distanz und untersucht zuerst die vielversprechendsten Wege.
 Die Karte läuft dabei am Rand nahtlos um. Ein Schiff kann also am rechten Kartenrand verschwinden und links wieder auftauchen.
 
 ### Fraktionen über das Decorator-Pattern
@@ -274,6 +304,34 @@ Die Ingenieure senken zum Beispiel die Reparaturkosten und verlängern zugleich 
 Dieser Ansatz sorgt für gute Skalierbarkeit, eine klare Trennung der Zuständigkeiten und einfache Kombinierbarkeit.
 Eine neue Fraktion bedeutet damit einen neuen Dekorierer, ohne dass bestehender Code angefasst werden muss.
 
+Konkret sieht ein solcher Dekorierer am Beispiel der Ingenieure so aus:
+
+```java
+public class EngineerDecorator extends SessionPlayerDecorator {
+
+    public EngineerDecorator(ISessionPlayer wrappedPlayer) {
+        super(wrappedPlayer);
+    }
+
+    @Override
+    public double getRepairCostModifier() {
+        return 0.75;   // Reparatur günstiger
+    }
+
+    @Override
+    public double getLoadingTimeModifier() {
+        return 1.20;   // dafür längere Ladezeit
+    }
+
+    @Override
+    public double getUnloadingTimeModifier() {
+        return 1.20;   // und längere Entladezeit
+    }
+}
+```
+
+Jede Fraktion überschreibt nur die für sie relevanten Modifikatoren.
+Das neutrale Grundverhalten liefert jeweils den Wert `1.0`, sodass ein nicht überschriebener Modifikator den Standard unverändert lässt.
 
 ## Ergebnisse & Evaluation
 
