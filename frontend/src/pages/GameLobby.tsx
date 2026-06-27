@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSessionContext } from '../context/useSessionContext';
@@ -49,7 +49,26 @@ export default function GameLobby() {
     // Aktive Sessions des Spielers (zum Wiederbeitreten)
     const [activeSessions, setActiveSessions] = useState<SessionDTO[]>([]);
     const [rejoiningId, setRejoiningId] = useState<string | null>(null);
-    const runningSessions = activeSessions.filter(session => session.status === 'RUNNING');
+    const cachedSession = useMemo(() => {
+        try {
+            const raw = sessionStorage.getItem('currentSession');
+            return raw ? JSON.parse(raw) as SessionDTO : null;
+        } catch {
+            return null;
+        }
+    }, []);
+    const runningSessions = useMemo(() => {
+        const map = new Map<string, SessionDTO>();
+        for (const session of activeSessions) {
+            if (session.status === 'RUNNING') {
+                map.set(session.id, session);
+            }
+        }
+        if (cachedSession?.status === 'RUNNING') {
+            map.set(cachedSession.id, cachedSession);
+        }
+        return Array.from(map.values());
+    }, [activeSessions, cachedSession]);
     const activeAction =
         location.pathname.endsWith('/continue') ? 'continue'
             : location.pathname.endsWith('/join') ? 'join'
