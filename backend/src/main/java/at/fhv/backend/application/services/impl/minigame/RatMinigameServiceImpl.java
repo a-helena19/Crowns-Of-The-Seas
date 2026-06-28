@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class RatMinigameServiceImpl implements RatMinigameService {
-    private static final double TRIGGER_CHANCE_PER_TICK = 0.06;
+    private static final double TRIGGER_CHANCE_PER_TICK = 0.03;
     private static final int DEFAULT_TIME_LIMIT_SECONDS = 12;
     private static final int DEFAULT_REQUIRED_HITS = 8;
     private static final BigDecimal FAILED_REWARD_MODIFIER = new BigDecimal("0.70");

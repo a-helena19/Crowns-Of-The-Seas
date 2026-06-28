@@ -19,6 +19,8 @@ public class CargoSessionInitializer {
     private static final int MAX_CARGOS_PER_PORT = 6;
     private static final int GENERAL_FILL_TARGET = 4;
     private static final int PERMANENT_PER_PORT = 1;
+    // Beim Session-Start höchstens 2 Häfen mit je einer Luxusfracht.
+    private static final int MAX_LUXURY_PORTS_AT_INIT = 2;
 
     private static final int CARGO_VISIBILITY_DELAY = 3;
 
@@ -44,6 +46,18 @@ public class CargoSessionInitializer {
         Random rng = new Random();
         List<SessionCargo> offers = new ArrayList<>();
 
+        // Reihenfolge mischen, damit das Luxus-Limit nicht immer dieselben Häfen bevorzugt.
+        List<Port> luxuryOrder = new ArrayList<>(ports);
+        Collections.shuffle(luxuryOrder, rng);
+        Set<UUID> luxuryPortsAtInit = new HashSet<>();
+        for (Port p : luxuryOrder) {
+            if (luxuryPortsAtInit.size() >= MAX_LUXURY_PORTS_AT_INIT) break;
+            // Niedrige Wahrscheinlichkeit pro Hafen, zusätzlich global gedeckelt.
+            if (rng.nextInt(5) == 0) {
+                luxuryPortsAtInit.add(p.getId().getValue());
+            }
+        }
+
         for (Port origin : ports) {
             List<Port> destinations = new ArrayList<>(ports);
             destinations.remove(origin);
@@ -56,15 +70,17 @@ public class CargoSessionInitializer {
             portOffers.addAll(pickOffers(byType, CargoType.GENERAL_GOODS, 1, origin, destinations, sessionId, rng, false));
             portOffers.addAll(pickOffers(byType, CargoType.FOOD,          1, origin, destinations, sessionId, rng, false));
 
+            // Luxus früh hinzufügen, damit die seltene Auswahl nicht durch die Hafen-Obergrenze abgeschnitten wird.
+            if (luxuryPortsAtInit.contains(origin.getId().getValue())) {
+                portOffers.addAll(pickOffers(byType, CargoType.LUXURY_GOODS, 1, origin, destinations, sessionId, rng, false));
+            }
+
             portOffers.addAll(pickOffers(byType, CargoType.INDUSTRIAL_GOODS, rng.nextBoolean() ? 1 : 0, origin, destinations, sessionId, rng, false));
             portOffers.addAll(pickOffers(byType, CargoType.FRAGILE,          rng.nextBoolean() ? 1 : 0, origin, destinations, sessionId, rng, false));
             portOffers.addAll(pickOffers(byType, CargoType.ELECTRONICS,      rng.nextBoolean() ? 1 : 0, origin, destinations, sessionId, rng, false));
 
             if (rng.nextInt(4) == 0) {
                 portOffers.addAll(pickOffers(byType, CargoType.HAZARDOUS, 1, origin, destinations, sessionId, rng, false));
-            }
-            if (rng.nextInt(6) == 0) {
-                portOffers.addAll(pickOffers(byType, CargoType.LUXURY_GOODS, 1, origin, destinations, sessionId, rng, false));
             }
 
             while (portOffers.size() < GENERAL_FILL_TARGET) {
@@ -79,7 +95,7 @@ public class CargoSessionInitializer {
         offers.forEach(sessionCargoRepository::save);
     }
 
-    public SessionCargo createNewCargo(UUID sessionId, UUID originPortId, int currentTick, Random rng, boolean permanent) {
+    public SessionCargo createNewCargo(UUID sessionId, UUID originPortId, int currentTick, Random rng, boolean permanent, boolean allowLuxury) {
         List<Cargo> templates = cargoRepository.findAll();
         List<Port> ports = portRepository.findAll();
         if (templates.isEmpty() || ports.size() < 2) return null;
@@ -90,6 +106,10 @@ public class CargoSessionInitializer {
         }
 
         CargoType type = pickRandomCargoType(rng);
+        // Permanente Basis-Fracht darf nie Luxus sein; sonst nur, wenn Hafen-/Map-Limit es zulässt.
+        if (type == CargoType.LUXURY_GOODS && (permanent || !allowLuxury)) {
+            type = nonLuxuryType(rng);
+        }
         List<Cargo> pool = byType.getOrDefault(type, Collections.emptyList());
         if (pool.isEmpty()) {
             pool = byType.getOrDefault(CargoType.GENERAL_GOODS, Collections.emptyList());
@@ -131,11 +151,20 @@ public class CargoSessionInitializer {
         double roll = rng.nextDouble();
         if (roll < 0.30) return CargoType.GENERAL_GOODS;
         if (roll < 0.55) return CargoType.FOOD;
-        if (roll < 0.70) return CargoType.INDUSTRIAL_GOODS;
-        if (roll < 0.80) return CargoType.FRAGILE;
-        if (roll < 0.88) return CargoType.ELECTRONICS;
-        if (roll < 0.94) return CargoType.HAZARDOUS;
+        if (roll < 0.72) return CargoType.INDUSTRIAL_GOODS;
+        if (roll < 0.84) return CargoType.FRAGILE;
+        if (roll < 0.93) return CargoType.ELECTRONICS;
+        if (roll < 0.98) return CargoType.HAZARDOUS;
         return CargoType.LUXURY_GOODS;
+    }
+
+    // Ersatztyp, wenn Luxus nicht erlaubt ist (Hafen-/Map-Limit erreicht oder permanente Fracht).
+    private CargoType nonLuxuryType(Random rng) {
+        CargoType t;
+        do {
+            t = pickRandomCargoType(rng);
+        } while (t == CargoType.LUXURY_GOODS);
+        return t;
     }
 
     private List<SessionCargo> pickOffers(Map<CargoType, List<Cargo>> byType,

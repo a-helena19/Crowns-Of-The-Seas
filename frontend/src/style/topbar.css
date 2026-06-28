@@ -695,3 +695,56 @@
     background: rgba(139, 46, 31, 0.08);
     border-color: rgba(139, 46, 31, 0.5);
 }
+
+.topbar-help-btn {
+    min-width: auto;
+    padding-left: 14px;
+    padding-right: 14px;
+    color: #f3e4c3;
+}
+
+.topbar-help-icon {
+    display: block;
+}
+
+.audio-popover-help {
+    width: 100%;
+    padding: 8px 0;
+    margin-bottom: 8px;
+    background: transparent;
+    border: 1px solid rgba(184, 134, 11, 0.45);
+    color: #8a6d2f;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.audio-popover-help:hover {
+    background: rgba(184, 134, 11, 0.1);
+    border-color: rgba(184, 134, 11, 0.65);
+}
+
+.audio-popover-fullscreen-exit {
+    width: 100%;
+    padding: 8px 0;
+    margin-bottom: 8px;
+    background: rgba(38, 72, 104, 0.08);
+    border: 1px solid rgba(38, 72, 104, 0.35);
+    color: #264868;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.audio-popover-fullscreen-exit:hover {
+    background: rgba(38, 72, 104, 0.14);
+    border-color: rgba(38, 72, 104, 0.55);
+}

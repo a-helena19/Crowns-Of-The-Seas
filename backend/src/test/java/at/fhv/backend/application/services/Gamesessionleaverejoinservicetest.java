@@ -2,6 +2,7 @@ package at.fhv.backend.application.services;
 
 import at.fhv.backend.application.dtos.mapper.session.SessionDTOMapperImpl;
 import at.fhv.backend.application.init.CargoSessionInitializer;
+import at.fhv.backend.application.services.chat.SessionChatService;
 import at.fhv.backend.application.services.impl.session.GameSessionServiceImpl;
 import at.fhv.backend.application.services.impl.session.GameTickScheduler;
 import at.fhv.backend.application.services.port.PortQueryService;
@@ -46,6 +47,8 @@ class GameSessionLeaveRejoinServiceTest {
     private GameTickScheduler gameTickScheduler;
     @Mock
     private CargoSessionInitializer cargoSessionInitializer;
+    @Mock
+    private SessionChatService sessionChatService;
 
     private GameSessionServiceImpl service;
 
@@ -53,7 +56,7 @@ class GameSessionLeaveRejoinServiceTest {
     void setUp() {
         service = new GameSessionServiceImpl(gameSessionRepository, new SessionDTOMapperImpl(),
                 webSocketController, portQueryService, portRepository, gameTickScheduler,
-                cargoSessionInitializer);
+                cargoSessionInitializer, sessionChatService);
     }
 
     // Hilfsmethode: laufende Session mit Host + Gast.
@@ -72,7 +75,58 @@ class GameSessionLeaveRejoinServiceTest {
         when(gameSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
+    // Hilfsmethode: Session im Warteraum (LOBBY) mit Host + Gast.
+    private GameSession buildLobbySession(UUID hostId, UUID guestId) {
+        GameSession session = new GameSession(hostId, 4, 5, 100, Duration.ofMinutes(30));
+        session.addPlayer(new BaseSessionPlayer(hostId, session.getId(), "Host", true));
+        session.addPlayer(new BaseSessionPlayer(guestId, session.getId(), "Guest", false));
+        return session;
+    }
+
     // ── leaveSession ──
+
+    @Test
+    void givenLobbySession_whenGuestLeaves_thenPlayerIsRemovedFromList() {
+        UUID hostId = UUID.randomUUID();
+        UUID guestId = UUID.randomUUID();
+        GameSession session = buildLobbySession(hostId, guestId);
+        mockLockAndSave(session);
+
+        service.leaveSession(session.getId(), guestId);
+
+        assertThat(session.isPlayerInSession(guestId)).isFalse();
+        assertThat(session.getPlayers()).hasSize(1);
+    }
+
+    @Test
+    void givenLobbySession_whenHostLeaves_thenHostIsRemovedAndGuestBecomesHost() {
+        UUID hostId = UUID.randomUUID();
+        UUID guestId = UUID.randomUUID();
+        GameSession session = buildLobbySession(hostId, guestId);
+        mockLockAndSave(session);
+
+        service.leaveSession(session.getId(), hostId);
+
+        assertThat(session.isPlayerInSession(hostId)).isFalse();
+        assertThat(session.getHostUserId()).isEqualTo(guestId);
+        ISessionPlayer guest = session.getPlayers().stream()
+                .filter(p -> p.getUserId().equals(guestId)).findFirst().orElseThrow();
+        assertThat(guest.isHost()).isTrue();
+    }
+
+    @Test
+    void givenLobbySession_whenLastPlayerLeaves_thenSessionIsDeleted() {
+        UUID hostId = UUID.randomUUID();
+        GameSession session = new GameSession(hostId, 4, 5, 100, Duration.ofMinutes(30));
+        session.addPlayer(new BaseSessionPlayer(hostId, session.getId(), "Host", true));
+        when(gameSessionRepository.findByIdWithLock(session.getId()))
+                .thenReturn(Optional.of(session));
+
+        SessionDTO result = service.leaveSession(session.getId(), hostId);
+
+        assertThat(result).isNull();
+        verify(gameSessionRepository).deleteById(session.getId());
+    }
 
     @Test
     void givenRunningSession_whenGuestLeaves_thenPlayerLeftIsBroadcast() {

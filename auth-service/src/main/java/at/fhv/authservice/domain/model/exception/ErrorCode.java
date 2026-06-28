@@ -2,5 +2,6 @@ package at.fhv.authservice.domain.model.exception;
 
 public enum ErrorCode {
     USERNAME_ALREADY_EXISTS,
-    INVALID_CREDENTIALS
+    INVALID_CREDENTIALS,
+    USER_NOT_FOUND
 }

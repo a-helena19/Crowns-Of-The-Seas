@@ -93,8 +93,8 @@ export default function PortProfileScreen({ port, onClose }: Props) {
     const info = PORT_INFO[port.name];
 
     return (
-        <div className="port-profile-overlay">
-            <div className="port-profile-panel">
+        <div className="port-profile-overlay" onClick={onClose}>
+            <div className="port-profile-panel" onClick={(e) => e.stopPropagation()}>
                 <button className="port-profile-close" onClick={onClose} type="button">✕</button>
 
                 <div className="port-profile-header">
@@ -138,10 +138,13 @@ export default function PortProfileScreen({ port, onClose }: Props) {
                 ) : (
                     <div className="port-profile-cargo-list">
                         {cargos.map((c) => (
-                            <div key={c.id} className="port-profile-cargo-item">
+                            <div
+                                key={c.id}
+                                className={`port-profile-cargo-item${c.cargoType === "LUXURY_GOODS" ? " port-profile-cargo-item--luxury" : ""}`}
+                            >
                                 <div className="port-profile-cargo-row">
                                     <span className="port-profile-cargo-name">{c.name}</span>
-	                                    <span className="port-profile-cargo-reward">{formatTalers(c.reward)} T</span>
+                                    <span className="port-profile-cargo-reward">{formatTalers(c.reward)} T</span>
                                 </div>
                                 <div className="port-profile-cargo-sub">
                                     <span

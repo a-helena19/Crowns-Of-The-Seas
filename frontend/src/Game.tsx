@@ -17,6 +17,7 @@ export default function Game({view}: {view: "map" | "marketplace" | "harbor" | "
 
         const config: Phaser.Types.Core.GameConfig = {
             type: Phaser.AUTO,
+            banner: false, // Phaser-Start-Banner in der Konsole ausblenden
             parent,
 
             scale: {

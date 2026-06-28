@@ -17,6 +17,7 @@ export class StormMinigameManager {
 
         this.game = new Phaser.Game({
             type: Phaser.AUTO,
+            banner: false, // Phaser-Start-Banner in der Konsole ausblenden
             parent,
             width: parent.clientWidth || 900,
             height: parent.clientHeight || 600,
@@ -31,4 +32,3 @@ export class StormMinigameManager {
         this.game = null;
     }
 }
-

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import GameButton from "../components/GameButton";
 import officeBackground from "../assets/office-background.png";
 import "../style/shipclass.css";
@@ -58,9 +58,19 @@ interface Props {
     onClose: () => void;
 }
 
+const TRANSIENT_SHIP_STATUSES = new Set([
+    "LOADING",
+    "UNLOADING",
+    "REFUELING",
+    "REPAIRING",
+    "CUSTOMS_CHECK",
+    "BLOCKED",
+]);
+
 export default function OfficeScene({ onClose }: Props) {
     const [ships, setShips] = useState<PlayerShip[]>([]);
     const shipsRef = useRef<PlayerShip[]>([]);
+    const loadRequestIdRef = useRef(0);
     const [selectedShipId, setSelectedShipId] = useState<string | null>(null);
     const [balance, setBalance] = useState<number | null>(null);
     const [sellQuote, setSellQuote] = useState<SellQuote | null>(null);
@@ -105,9 +115,46 @@ export default function OfficeScene({ onClose }: Props) {
         setError(msg);
     }
 
+    const loadOfficeData = useCallback(() => {
+        if (!playerId || !sessionId) return;
+        const requestId = ++loadRequestIdRef.current;
+        setLoading(true);
+        setError(null);
+        Promise.all([
+            fetch(`/api/ships/player/${playerId}?sessionId=${sessionId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            }).then(res => {
+                if (!res.ok) throw new Error();
+                return res.json();
+            }),
+            fetch(`/api/ships/player/${playerId}/balance?sessionId=${sessionId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            }).then(res => res.json()),
+        ])
+            .then(([shipData, balanceData]: [PlayerShip[], unknown]) => {
+                if (requestId !== loadRequestIdRef.current) return;
+                setShips(shipData);
+                setBalance(Number(balanceData));
+                setSelectedShipId(prev => {
+                    if (prev && shipData.some(ship => ship.id === prev)) return prev;
+                    return shipData[0]?.id ?? null;
+                });
+            })
+            .catch(() => {
+                if (requestId === loadRequestIdRef.current) {
+                    showError("Büro konnte die Flotte nicht laden.");
+                }
+            })
+            .finally(() => {
+                if (requestId === loadRequestIdRef.current) {
+                    setLoading(false);
+                }
+            });
+    }, [playerId, sessionId, token]);
+
     useEffect(() => {
         loadOfficeData();
-    }, [playerId, sessionId, token]);
+    }, [loadOfficeData]);
 
     useEffect(() => {
         shipsRef.current = ships;
@@ -156,7 +203,6 @@ export default function OfficeScene({ onClose }: Props) {
 
     useEffect(() => {
         setRefuelQuote(null);
-        setRepairQuote(null);
         setRefuelAmountPercent(selectedShip ? Math.max(0, 100 - selectedShip.fuel) : 0);
     }, [selectedShip?.id, selectedShip?.fuel]);
 
@@ -207,7 +253,8 @@ export default function OfficeScene({ onClose }: Props) {
     ]);
 
     useEffect(() => {
-        if (!selectedShip || !playerId || !sessionId || selectedShip.status !== "AT_PORT" || alreadyRepaired) {
+        const canFetchRepairQuote = selectedShip?.status === "AT_PORT" || selectedShip?.status === "REFUELING";
+        if (!selectedShip || !playerId || !sessionId || !canFetchRepairQuote || alreadyRepaired) {
             setRepairQuote(null);
             setRepairQuoteLoading(false);
             return;
@@ -245,32 +292,17 @@ export default function OfficeScene({ onClose }: Props) {
         alreadyRepaired,
     ]);
 
-    function loadOfficeData() {
-        if (!playerId || !sessionId) return;
-        setLoading(true);
-        setError(null);
-        Promise.all([
-            fetch(`/api/ships/player/${playerId}?sessionId=${sessionId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            }).then(res => {
-                if (!res.ok) throw new Error();
-                return res.json();
-            }),
-            fetch(`/api/ships/player/${playerId}/balance?sessionId=${sessionId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            }).then(res => res.json()),
-        ])
-            .then(([shipData, balanceData]: [PlayerShip[], unknown]) => {
-                setShips(shipData);
-                setBalance(Number(balanceData));
-                setSelectedShipId(prev => {
-                    if (prev && shipData.some(ship => ship.id === prev)) return prev;
-                    return shipData[0]?.id ?? null;
-                });
-            })
-            .catch(() => showError("Büro konnte die Flotte nicht laden."))
-            .finally(() => setLoading(false));
-    }
+    useEffect(() => {
+        if (!ships.some(ship => TRANSIENT_SHIP_STATUSES.has(ship.status))) {
+            return;
+        }
+
+        const interval = window.setInterval(() => {
+            loadOfficeData();
+        }, 5000);
+
+        return () => window.clearInterval(interval);
+    }, [ships, loadOfficeData]);
 
     function showToast(message: string) {
         setToast(message);
@@ -386,6 +418,7 @@ export default function OfficeScene({ onClose }: Props) {
                                 key={ship.id}
                                 className={`office-ship-card ${selectedShipId === ship.id ? "selected" : ""}`}
                                 onClick={() => setSelectedShipId(ship.id)}
+                                data-tutorial={ships[0]?.id === ship.id ? "office-ship-card" : undefined}
                             >
                                 <img src={ship.iconUrl} alt={ship.name} />
                                 <div>
@@ -448,11 +481,14 @@ export default function OfficeScene({ onClose }: Props) {
                                 <div className="office-actions">
                                     <ActionCard
                                         title="Betanken"
+                                        tutorialTarget="office-refuel-card"
                                         info={alreadyFull
                                             ? "Tank ist voll"
                                             : `+${formatPercent(refuelAmountPercent)}% auf ${formatPercent(targetFuelPercent)}%`}
                                         cost={alreadyFull
                                             ? undefined
+                                            : selectedShip.status === "REFUELING"
+                                                ? "Tankvorgang läuft..."
                                             : selectedShip.status === "REPAIRING"
                                                 ? "Nach der Reparatur verfügbar"
                                             : refuelQuoteLoading
@@ -489,11 +525,12 @@ export default function OfficeScene({ onClose }: Props) {
                                     </ActionCard>
                                     <ActionCard
                                         title="Reparieren"
+                                        tutorialTarget="office-repair-card"
                                         info={alreadyRepaired ? "Schiff ist heil" : `Schäden ${repairNeededPercent.toFixed(0)}%`}
                                         cost={alreadyRepaired
                                             ? undefined
-                                            : selectedShip.status === "REFUELING"
-                                                ? "Nach dem Tanken verfügbar"
+                                            : selectedShip.status === "REPAIRING"
+                                                ? "Reparatur läuft..."
                                             : repairQuoteLoading
                                                 ? "Preis wird berechnet"
                                                 : repairQuote
@@ -556,6 +593,7 @@ function OfficeStat({ label, value }: { label: string; value: string }) {
 
 function ActionCard({
                         title,
+                        tutorialTarget,
                         info,
                         cost,
                         disabled,
@@ -564,6 +602,7 @@ function ActionCard({
                         children,
                     }: {
     title: string;
+    tutorialTarget?: string;
     info: string;
     cost?: string;
     disabled: boolean;
@@ -572,7 +611,7 @@ function ActionCard({
     children?: React.ReactNode;
 }) {
     return (
-        <div className="office-action-card">
+        <div className="office-action-card" data-tutorial={tutorialTarget}>
             <h3>{title}</h3>
             <span>{info}</span>
             {children}
@@ -638,10 +677,10 @@ function TickProgressBar({ completionTick, label }: { completionTick: number; la
             const tick = (e as CustomEvent).detail?.currentTick;
             if (tick != null) setCurrentTick(tick);
         }
-        window.addEventListener("backend-tick-update", onTick);
+        window.addEventListener("backend-tick", onTick);
         window.addEventListener("backend-ship-positions", onShipPos);
         return () => {
-            window.removeEventListener("backend-tick-update", onTick);
+            window.removeEventListener("backend-tick", onTick);
             window.removeEventListener("backend-ship-positions", onShipPos);
         };
     }, []);

@@ -47,7 +47,6 @@ export const SessionLobby: React.FC<SessionLobbyProps> = ({ currentUserId, onGam
             const durationStr = `PT${totalSeconds}S`;
             const totalTicks = Math.round(totalSeconds / createForm.tickRateSeconds);
 
-            console.log('Creating session with duration:', durationStr);
 
             await createSession({
                 hostName: createForm.hostName,

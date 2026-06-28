@@ -153,3 +153,193 @@
     cursor: pointer;
     user-select: none;
 }
+
+.in-game-chat {
+    position: fixed;
+    left: 18px;
+    bottom: 185px;
+    width: min(320px, calc(100vw - 36px));
+    max-height: 270px;
+    display: flex;
+    flex-direction: column;
+    z-index: 95;
+    background: rgba(245, 232, 208, 0.72);
+    border: 1px solid rgba(122, 82, 48, 0.48);
+    border-radius: 12px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+    overflow: hidden;
+    backdrop-filter: blur(6px);
+}
+
+.in-game-chat-header {
+    appearance: none;
+    border: none;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #f7eddc;
+    background: linear-gradient(180deg, rgba(91, 58, 33, 0.96) 0%, rgba(67, 43, 25, 0.96) 100%);
+    border-bottom: 3px solid #7a5230;
+    box-shadow: inset 0 -2px 8px rgba(0, 0, 0, 0.24);
+    cursor: pointer;
+}
+
+.in-game-chat-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.in-game-chat-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #d9534f;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.in-game-chat-chevron {
+    font-size: 11px;
+    line-height: 1;
+}
+
+.in-game-chat-messages {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 8px 10px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(242, 232, 212, 0.36);
+    max-height: 170px;
+    scrollbar-width: thin;
+    scrollbar-color: #6a462a rgba(0, 0, 0, 0.25);
+}
+
+.in-game-chat-messages::-webkit-scrollbar {
+    width: 8px;
+}
+
+.in-game-chat-messages::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 999px;
+}
+
+.in-game-chat-messages::-webkit-scrollbar-thumb {
+    background: #6a462a;
+    border-radius: 999px;
+}
+
+.in-game-chat-messages::-webkit-scrollbar-thumb:hover {
+    background: #8a5d36;
+}
+
+.in-game-chat-empty {
+    margin: auto 0;
+    color: #000000;
+    font-size: 12px;
+    text-align: center;
+}
+
+.in-game-chat-message {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgba(88, 60, 36, 0.28);
+    color: #2d1d12;
+    font-size: 12px;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.in-game-chat-message.own {
+    background: rgba(108, 75, 46, 0.34);
+}
+
+.in-game-chat-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    color: #1f140d;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.in-game-chat-text {
+    line-height: 1.35;
+    word-break: break-word;
+    white-space: pre-wrap;
+    color: #2d1d12;
+    font-weight: 600;
+}
+
+.in-game-chat-form {
+    display: flex;
+    gap: 8px;
+    padding: 8px 10px 10px;
+    border-top: 1px solid rgba(122, 82, 48, 0.24);
+    background: rgba(245, 232, 208, 0.58);
+    flex: 0 0 auto;
+}
+
+.in-game-chat-input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid #6a462a;
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(248, 240, 226, 0.95) 0%, rgba(233, 221, 201, 0.95) 100%);
+    color: #2d1d12;
+    font-size: 12px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+.in-game-chat-input::placeholder {
+    color: rgba(122, 82, 48, 0.55);
+}
+
+.in-game-chat-send {
+    border: none;
+    border-radius: 8px;
+    padding: 0 12px;
+    background: linear-gradient(180deg, #7a5230 0%, #5a3a21 100%);
+    color: #f7eddc;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid #8a5d36;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.in-game-chat-send:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .in-game-chat {
+        left: 10px;
+        right: 10px;
+        bottom: 170px;
+        width: auto;
+        max-height: 220px;
+    }
+
+    .in-game-chat-messages {
+        max-height: 120px;
+    }
+}

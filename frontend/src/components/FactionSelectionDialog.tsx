@@ -131,7 +131,6 @@ export default function FactionSelectionDialog({
                             (availablePorts.length > 0
                                 ? availablePorts[Math.floor(Math.random() * availablePorts.length)].id
                                 : null);
-                        console.log("Available:  ", availablePorts);
                         if (portToSubmit) {
                             setCurrentlySelectedPortId(portToSubmit);
 

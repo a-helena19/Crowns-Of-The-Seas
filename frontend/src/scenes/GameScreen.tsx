@@ -28,8 +28,15 @@ import { ObstacleRouteViewResolver } from "../minigame/obstacle/ObstacleRouteVie
 import TreasureHuntMinigameOverlay from "../minigame/treasureHunt/TreasureHuntMinigameOverlay.tsx";
 import type { TreasureHuntMinigameEventPayload, TreasureHuntMinigameResult } from "../minigame/treasureHunt/TreasureHuntMinigameTypes.ts";
 import { minigameSessionManager } from "../minigame/MinigameSessionManager.ts";
+import { registerMinigameTester } from "../dev/minigameTester.ts";
 import EventNotificationDialog from "../components/EventNotificationDialog.tsx";
 import TreasureHuntPromptDialog from "../components/TreasureHuntPromptDialog.tsx";
+import InGameChat from "../components/InGameChat.tsx";
+import InteractiveTutorial, {
+    areTutorialPromptsDisabled,
+    hasSeenTutorial,
+    requestTutorialPrompt,
+} from "../components/InteractiveTutorial.tsx";
 import ratImage from "../assets/Rat.png";
 import stormDialogImage from "../assets/minigame/storm/DialogPic.png";
 import obstacleDialogImage from "../assets/minigame/obstaclegame/wrack.png";
@@ -37,6 +44,14 @@ import GameOverScreen from "../components/GameOverScreen";
 import audioEngine from '../audio/AudioEngine';
 
 export const TOP_BAR_HEIGHT = '9vh';
+const TRANSIENT_SHIP_STATUSES = new Set([
+    "LOADING",
+    "UNLOADING",
+    "REFUELING",
+    "REPAIRING",
+    "CUSTOMS_CHECK",
+    "BLOCKED",
+]);
 
 interface CustomsInspectionPayload {
     inspectionId: string;
@@ -92,6 +107,7 @@ export default function GameScreen() {
     const [overlayReturnView, setOverlayReturnView] = useState<"map" | "marketplace">("map");
     const viewRef = useRef(view);
     const [selectedPort, setSelectedPort] = useState<{ id: string; name: string; x: number; y: number } | null>(null);
+    const loadOwnedShipsRequestIdRef = useRef(0);
 
     const sessionData = sessionStorage.getItem('currentSession');
     const sessionId = sessionData ? JSON.parse(sessionData).id : null;
@@ -154,11 +170,11 @@ export default function GameScreen() {
     const [leftNotice, setLeftNotice] = useState<{ text: string; kind: 'left' | 'rejoined' } | null>(null);
     const [ownedShips, setOwnedShips] = useState<OwnedShipSummary[]>([]);
     const ownedShipsRef = useRef<OwnedShipSummary[]>([]);
+    const [luxuryPortIds, setLuxuryPortIds] = useState<string[]>([]);
     const [focusShipIdForCargoManagement, setFocusShipIdForCargoManagement] = useState<string | null>(null);
     const [openCargoForShipId, setOpenCargoForShipId] = useState<string | null>(null);
     const [showOtherShips, setShowOtherShips] = useState<boolean>(window.__showOtherShips !== false);
     const minigameFallbackRequests = useRef<Set<string>>(new Set());
-
     const authToken = localStorage.getItem("auth_token") ?? "";
     const [nowMs, setNowMs] = useState(Date.now());
 
@@ -174,13 +190,51 @@ export default function GameScreen() {
         window.dispatchEvent(new CustomEvent('toggle-other-ships', { detail: { visible: showOtherShips } }));
     }, [showOtherShips, view]);
 
+    // Luxus-Frachten: Origin-Haefen mit verfuegbarer LUXURY_GOODS-Fracht ermitteln
+    // und der Karte (Phaser) per Event mitteilen, damit sie gold leuchten.
+    useEffect(() => {
+        if (!sessionId) return;
+        let cancelled = false;
+
+        const refreshLuxuryPorts = () => {
+            fetch(`/api/cargo/${sessionId}/available-all`, {
+                headers: { Authorization: `Bearer ${authToken}` },
+            })
+                .then(res => (res.ok ? res.json() : []))
+                .then((cargos: Array<{ cargoType: string; originPortId: string }>) => {
+                    if (cancelled) return;
+                    const portIds = Array.from(new Set(
+                        cargos
+                            .filter(c => c.cargoType === "LUXURY_GOODS")
+                            .map(c => c.originPortId)
+                    ));
+                    setLuxuryPortIds(portIds);
+                    window.__luxuryPortIds = portIds;
+                    window.dispatchEvent(new CustomEvent('glow-luxury-ports', { detail: { portIds } }));
+                })
+                .catch(() => {});
+        };
+
+        refreshLuxuryPorts();
+        // Markt-Updates und (Re-)Render der Haefen erneut auswerten
+        window.addEventListener('backend-cargo-market', refreshLuxuryPorts);
+        window.addEventListener('backend-ports', refreshLuxuryPorts);
+        return () => {
+            cancelled = true;
+            window.removeEventListener('backend-cargo-market', refreshLuxuryPorts);
+            window.removeEventListener('backend-ports', refreshLuxuryPorts);
+        };
+    }, [sessionId, authToken]);
+
     const loadOwnedShips = useCallback(() => {
         if (!playerId || !sessionId) return;
+        const requestId = ++loadOwnedShipsRequestIdRef.current;
         fetch(`/api/ships/player/${playerId}?sessionId=${sessionId}`, {
             headers: { Authorization: `Bearer ${authToken}` },
         })
             .then(res => (res.ok ? res.json() : []))
             .then((ships: any[]) => {
+                if (requestId !== loadOwnedShipsRequestIdRef.current) return;
                 setOwnedShips(
                     ships.map((ship) => ({
                         id: ship.id,
@@ -200,6 +254,18 @@ export default function GameScreen() {
     useEffect(() => {
         loadOwnedShips();
     }, [loadOwnedShips]);
+
+    useEffect(() => {
+        if (!ownedShips.some(ship => TRANSIENT_SHIP_STATUSES.has(ship.status))) {
+            return;
+        }
+
+        const interval = window.setInterval(() => {
+            loadOwnedShips();
+        }, 5000);
+
+        return () => window.clearInterval(interval);
+    }, [ownedShips, loadOwnedShips]);
 
     useEffect(() => {
         ownedShipsRef.current = ownedShips;
@@ -771,13 +837,13 @@ export default function GameScreen() {
                 if (matched) {
                     setRewardToasts(t => {
                         if (t.some(toast => toast.id === data.travelId)) return t;
-	                        return [...t, {
-	                            id: data.travelId,
-	                            shipName: matched.shipName,
-	                            from: matched.from,
-	                            to: matched.to,
-	                            reward: data.netPayout ?? data.totalReward,
-	                        }];
+                        return [...t, {
+                            id: data.travelId,
+                            shipName: matched.shipName,
+                            from: matched.from,
+                            to: matched.to,
+                            reward: data.netPayout ?? data.totalReward,
+                        }];
                     });
                 }
                 return prev;
@@ -833,6 +899,20 @@ export default function GameScreen() {
         window.addEventListener("smuggle-offer", handler);
         return () => window.removeEventListener("smuggle-offer", handler);
     }, [playerId]);
+
+    // DEV/Präsentation: window.miniGame("Rat"|"Storm"|"Obstacle"|"Treasure")
+    // Setzt nur den aktiven Minigame-State (Anzeige), keine echte Logik/Reise.
+    useEffect(() => {
+        if (!playerId || !sessionId) return;
+        return registerMinigameTester({
+            playerId,
+            sessionId,
+            setRat: setActiveRatMinigame,
+            setStorm: setActiveStormMinigame,
+            setObstacle: setActiveObstacleMinigame,
+            setTreasure: setActiveTreasureHuntMinigame,
+        });
+    }, [playerId, sessionId]);
 
     // Rat minigame event
     useEffect(() => {
@@ -1595,6 +1675,58 @@ export default function GameScreen() {
     const isMinigameActive = Boolean(
         showArrivalDocking || activeRatMinigame || activeStormMinigame || activeObstacleMinigame || activeTreasureHuntMinigame
     );
+    const hasOwnedShip = ownedShips.length > 0;
+    const hasAtPortShip = ownedShips.some(ship => ship.status === "AT_PORT");
+    const isOnPlayfield = view === "map";
+    const firstJourneyTutorialSeen = hasSeenTutorial(playerId, "firstJourney");
+    const shouldExplainService = ownedShips.some(ship =>
+        ship.status === "AT_PORT" && (ship.fuel < 85 || ship.condition < 95)
+    );
+    const serviceTutorialSeen = hasSeenTutorial(playerId, "service");
+    const shouldExplainLuxuryFreight = luxuryPortIds.length > 0;
+    const luxuryTutorialSeen = hasSeenTutorial(playerId, "luxuryFreight");
+    const shouldExplainPostTravel = assignedCargos.some(entry =>
+        entry.phase === "unloading" || entry.phase === "completed"
+    );
+    const tutorialPromptsDisabled = areTutorialPromptsDisabled(sessionId);
+
+    useEffect(() => {
+        if (tutorialPromptsDisabled || !isOnPlayfield || hasOwnedShip || isMinigameActive || firstJourneyTutorialSeen) return;
+        const id = window.setTimeout(() => requestTutorialPrompt("firstJourney"), 900);
+        return () => window.clearTimeout(id);
+    }, [firstJourneyTutorialSeen, hasOwnedShip, isMinigameActive, isOnPlayfield, tutorialPromptsDisabled]);
+
+    useEffect(() => {
+        if (tutorialPromptsDisabled || !isOnPlayfield || !hasOwnedShip || !hasAtPortShip || isMinigameActive) return;
+        if (!firstJourneyTutorialSeen) return;
+        if (shouldExplainService && !serviceTutorialSeen) return;
+        const id = window.setTimeout(() => requestTutorialPrompt("emptyVoyage"), 900);
+        return () => window.clearTimeout(id);
+    }, [firstJourneyTutorialSeen, hasAtPortShip, hasOwnedShip, isMinigameActive, isOnPlayfield, serviceTutorialSeen, shouldExplainService, tutorialPromptsDisabled]);
+
+    useEffect(() => {
+        if (tutorialPromptsDisabled || !shouldExplainPostTravel || isMinigameActive) return;
+        const id = window.setTimeout(() => requestTutorialPrompt("postTravel"), 900);
+        return () => window.clearTimeout(id);
+    }, [shouldExplainPostTravel, isMinigameActive, tutorialPromptsDisabled]);
+
+    useEffect(() => {
+        if (tutorialPromptsDisabled || !isOnPlayfield || !shouldExplainService || isMinigameActive) return;
+        const id = window.setTimeout(() => requestTutorialPrompt("service"), 900);
+        return () => window.clearTimeout(id);
+    }, [shouldExplainService, isMinigameActive, isOnPlayfield, tutorialPromptsDisabled]);
+
+    useEffect(() => {
+        if (tutorialPromptsDisabled || !isOnPlayfield || !shouldExplainLuxuryFreight || isMinigameActive || luxuryTutorialSeen) return;
+
+        const timeoutId = window.setTimeout(() => requestTutorialPrompt("luxuryFreight"), 900);
+        const intervalId = window.setInterval(() => requestTutorialPrompt("luxuryFreight"), 2200);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+            window.clearInterval(intervalId);
+        };
+    }, [isOnPlayfield, shouldExplainLuxuryFreight, isMinigameActive, luxuryTutorialSeen, tutorialPromptsDisabled]);
 
     const pendingEventsByShipId: Record<string, PendingShipEvent> = {};
     if (ratEventOffer) {
@@ -1662,6 +1794,13 @@ export default function GameScreen() {
             </div>
             <div className="game">
                 <Game view={view} />
+                {view === "map" && sessionId && playerId && !isMinigameActive && (
+                    <InGameChat
+                        sessionId={sessionId}
+                        currentUserId={playerId}
+                        stompClient={stompClient}
+                    />
+                )}
                 {view === "map" && !isMinigameActive && (
                     <label id={'show-other-ships-checkbox'}>
                         <input
@@ -2034,6 +2173,8 @@ export default function GameScreen() {
                     onDismiss={handleCustomsDismiss}
                 />
             )}
+
+            <InteractiveTutorial playerId={playerId} sessionId={sessionId} />
 
         </div>
     );

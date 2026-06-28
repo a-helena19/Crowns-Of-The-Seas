@@ -65,6 +65,7 @@ export default function DockingMiniGame({ mode, shipIconUrl, portName, onSuccess
 
         const config: Phaser.Types.Core.GameConfig = {
             type: Phaser.AUTO,
+            banner: false, // Phaser-Start-Banner in der Konsole ausblenden
             parent: container,
             width,
             height,

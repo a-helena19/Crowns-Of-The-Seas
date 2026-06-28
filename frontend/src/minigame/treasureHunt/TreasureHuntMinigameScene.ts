@@ -223,12 +223,36 @@ export class TreasureHuntMinigameScene extends Phaser.Scene {
     }
 
     private buildHud() {
-        this.add.text(16, 14, "Schatzjagd", { fontSize: "28px", color: "#f4e8c1", fontStyle: "bold" });
-        this.timeText = this.add.text(16, 48, "", { fontSize: "20px", color: "#ffffff" });
-        this.progressText = this.add.text(16, 76, "", { fontSize: "20px", color: "#ffffff" });
+        const hudStyle = {
+            color: "#ffffff",
+            stroke: "#4a140f",
+            strokeThickness: 5,
+            shadow: {
+                offsetX: 2,
+                offsetY: 2,
+                color: "#000000",
+                blur: 2,
+                fill: true,
+                stroke: false,
+            },
+        };
+
+        this.add.text(16, 14, "Schatzjagd", { fontSize: "28px", fontStyle: "bold", ...hudStyle });
+        this.timeText = this.add.text(16, 48, "", { fontSize: "20px", ...hudStyle });
+        this.progressText = this.add.text(16, 76, "", { fontSize: "20px", ...hudStyle });
         this.add.text(16, this.scale.height - 16, "Steuerung: WASD oder Pfeiltasten", {
             fontSize: "14px",
-            color: "#d9ebff",
+            color: "#ffffff",
+            stroke: "#4a140f",
+            strokeThickness: 4,
+            shadow: {
+                offsetX: 2,
+                offsetY: 2,
+                color: "#000000",
+                blur: 2,
+                fill: true,
+                stroke: false,
+            },
             backgroundColor: "#00000080",
             padding: { x: 7, y: 4 },
         }).setOrigin(0, 1);

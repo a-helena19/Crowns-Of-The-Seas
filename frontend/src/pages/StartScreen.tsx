@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import audioEngine from '../audio/AudioEngine';
+import { useFullscreen } from '../context/FullscreenContext';
 import '../style/startScreen.css';
 
 export default function StartScreen() {
     const navigate = useNavigate();
     const [leaving, setLeaving] = useState(false);
+    const { requestRecommendedFullscreen } = useFullscreen();
 
-    const handleEnter = () => {
+    const handleEnter = async () => {
         if (leaving) return;
         setLeaving(true);
+        await requestRecommendedFullscreen();
         audioEngine.markInteracted();
         audioEngine.playMusic('lobby');
 

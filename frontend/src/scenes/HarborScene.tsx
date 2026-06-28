@@ -111,7 +111,8 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
     }
 
     function handleBack() {
-        if (view !== "main") setView("main");
+        if (view === "cargo") onClose();
+        else if (view !== "main") setView("main");
         else onClose();
     }
 
@@ -151,7 +152,7 @@ export default function HarborScene({ onClose, onCargoAssigned, openCargoForShip
             ?? "";
 
         const entry: AssignedCargoEntry = {
-            cargoId: `empty-${crypto.randomUUID()}`,
+            cargoId: `empty-${typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); })}`,
             shipId: selectedShip.id,
             shipName: selectedShip.name,
             shipIconUrl: selectedShip.iconUrl,

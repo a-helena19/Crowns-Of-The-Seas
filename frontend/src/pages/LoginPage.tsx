@@ -34,7 +34,10 @@ export default function LoginPage() {
             }
         } catch (err) {
             const apiError = err as ApiError;
-            if (apiError.errorCode === 'INVALID_CREDENTIALS') {
+            if (apiError.errorCode === 'USER_NOT_FOUND') {
+                audioEngine.playSfx('error');
+                setError('Dieser Benutzer existiert nicht.');
+            } else if (apiError.errorCode === 'INVALID_CREDENTIALS') {
                 audioEngine.playSfx('error');
                 setError('Falscher Benutzername oder Passwort.');
             } else {
