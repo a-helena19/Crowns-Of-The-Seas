@@ -104,6 +104,16 @@ stages:
         displayName: 'Deploy with Docker Compose'
         steps:
           - script: |
+              cat > .env <<EOF
+              LOCAL_DB_USERNAME=$LOCAL_DB_USERNAME
+              LOCAL_DB_PASSWORD=$LOCAL_DB_PASSWORD
+              JWT_SECRET=$JWT_SECRET
+              EOF
               docker-compose down
               docker-compose --profile app up -d
+              rm -f .env
+            env:
+              LOCAL_DB_USERNAME: $(LOCAL_DB_USERNAME)
+              LOCAL_DB_PASSWORD: $(LOCAL_DB_PASSWORD)
+              JWT_SECRET: $(JWT_SECRET)
             displayName: 'Deploy with Docker Compose'

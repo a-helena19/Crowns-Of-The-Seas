@@ -49,6 +49,15 @@ apiClient.interceptors.response.use(
     }
 );
 
+const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+
+function safeId(id: string): string {
+    if (!ID_PATTERN.test(id)) {
+        throw new Error("Ungültige ID");
+    }
+    return encodeURIComponent(id);
+}
+
 export const sessionApi = {
 
     async createSession(request: CreateSessionRequest): Promise<SessionDTO> {
@@ -65,17 +74,17 @@ export const sessionApi = {
     },
 
     async startGame(sessionId: string, request: StartGameRequest): Promise<SessionDTO> {
-        const response = await apiClient.post<SessionDTO>(`/${sessionId}/start`, request);
+        const response = await apiClient.post<SessionDTO>(`/${safeId(sessionId)}/start`, request);
         return response.data;
     },
 
     async getSession(sessionId: string): Promise<SessionDTO> {
-        const response = await apiClient.get<SessionDTO>(`/${sessionId}`);
+        const response = await apiClient.get<SessionDTO>(`/${safeId(sessionId)}`);
         return response.data;
     },
 
     async changeTickRate(sessionId: string, tickRateSeconds: number, hostUserId: string): Promise<SessionDTO> {
-        const response = await apiClient.patch<SessionDTO>(`/${sessionId}/tickrate`, {
+        const response = await apiClient.patch<SessionDTO>(`/${safeId(sessionId)}/tickrate`, {
             hostUserId,
             tickRateSeconds
         });
@@ -83,12 +92,12 @@ export const sessionApi = {
     },
 
     async leaveSession(sessionId: string): Promise<SessionDTO> {
-        const response = await apiClient.post<SessionDTO>(`/${sessionId}/leave`, {});
+        const response = await apiClient.post<SessionDTO>(`/${safeId(sessionId)}/leave`, {});
         return response.data;
     },
 
     async rejoinSession(sessionId: string): Promise<SessionDTO> {
-        const response = await apiClient.post<SessionDTO>(`/${sessionId}/rejoin`, {});
+        const response = await apiClient.post<SessionDTO>(`/${safeId(sessionId)}/rejoin`, {});
         return response.data;
     },
 
@@ -103,7 +112,7 @@ export const sessionApi = {
         faction: string
     ): Promise<void> {
         await apiClient.post(
-            `/${sessionId}/players/${userId}/faction`,
+            `/${safeId(sessionId)}/players/${userId}/faction`,
             { faction }
         );
     },
@@ -113,7 +122,7 @@ export const sessionApi = {
         userId: string
     ): Promise<PlayerFactionResponse> {
         const response = await apiClient.get<PlayerFactionResponse>(
-            `/${sessionId}/players/${userId}/faction`
+            `/${safeId(sessionId)}/players/${userId}/faction`
         );
         return response.data;
     },
@@ -124,7 +133,7 @@ export const sessionApi = {
         portId: string
     ): Promise<void> {
         await apiClient.post(
-            `/${sessionId}/players/${userId}/home-port`,
+            `/${safeId(sessionId)}/players/${userId}/home-port`,
             { portId }
         );
     },
@@ -134,7 +143,7 @@ export const sessionApi = {
         userId: string
     ): Promise<{ homePortId?: string }> {
         const response = await apiClient.get<{ homePortId?: string }>(
-            `/${sessionId}/players/${userId}/home-port`
+            `/${safeId(sessionId)}/players/${userId}/home-port`
         );
         return response.data;
     },
@@ -144,14 +153,14 @@ export const sessionApi = {
         userId: string
     ): Promise<void> {
         await apiClient.post(
-            `/${sessionId}/players/${userId}/ready`,
+            `/${safeId(sessionId)}/players/${userId}/ready`,
             {}
         );
     },
 
     async getReadyStatus(sessionId: string): Promise<ReadyStatusResponse> {
         const response = await apiClient.get<ReadyStatusResponse>(
-            `/${sessionId}/ready-status`
+            `/${safeId(sessionId)}/ready-status`
         );
         return response.data;
     }

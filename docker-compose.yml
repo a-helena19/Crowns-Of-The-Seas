@@ -9,12 +9,12 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_DB: crowns_of_the_seas
-      POSTGRES_USER: crowns
-      POSTGRES_PASSWORD: crowns
+      POSTGRES_USER: ${LOCAL_DB_USERNAME}
+      POSTGRES_PASSWORD: ${LOCAL_DB_PASSWORD}
     volumes:
       - crowns-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U crowns -d crowns_of_the_seas"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d crowns_of_the_seas"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,12 +30,12 @@ services:
       - "5433:5432"
     environment:
       POSTGRES_DB: auth_service
-      POSTGRES_USER: crowns
-      POSTGRES_PASSWORD: crowns
+      POSTGRES_USER: ${LOCAL_DB_USERNAME}
+      POSTGRES_PASSWORD: ${LOCAL_DB_PASSWORD}
     volumes:
       - crowns-auth-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U crowns -d auth_service"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d auth_service"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -50,6 +50,9 @@ services:
       - "8081:8081"
     environment:
       SPRING_PROFILES_ACTIVE: server
+      SPRING_DATASOURCE_USERNAME: ${LOCAL_DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${LOCAL_DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       auth-postgres:
         condition: service_healthy
@@ -64,6 +67,9 @@ services:
       - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: server
+      SPRING_DATASOURCE_USERNAME: ${LOCAL_DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${LOCAL_DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
