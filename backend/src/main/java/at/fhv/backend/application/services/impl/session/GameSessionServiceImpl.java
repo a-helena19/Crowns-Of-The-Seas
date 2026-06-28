@@ -186,11 +186,22 @@ public class GameSessionServiceImpl implements GameSessionService {
 
         boolean wasHost = session.getHostUserId().equals(userId);
 
-        // Spieler als "getrennt" markieren – funktioniert auch in einer laufenden
-        // Session. Der Spieler bleibt mit allen Daten (Fraktion, Heimathafen,
-        // Kontostand) erhalten, ebenso seine Schiffe & Cargos, damit er später
-        // wieder beitreten kann.
-        session.leave(userId);
+        boolean inLobby = session.getStatus() == SessionStatus.LOBBY
+                || session.getStatus() == SessionStatus.FACTION_SELECTION;
+
+        if (inLobby) {
+            // Im Warteraum (Lobby/Fraktionsauswahl) wird der Spieler vollständig
+            // aus der Session entfernt, sodass er nicht mehr in der Spielerliste
+            // der übrigen Teilnehmer auftaucht. Ein Wiederbeitritt ist hier nicht
+            // nötig – der Spieler kann jederzeit erneut über den Game-Code beitreten.
+            session.removePlayer(userId);
+        } else {
+            // In einer laufenden Partie wird der Spieler nur als "getrennt"
+            // markiert. Er bleibt mit allen Daten (Fraktion, Heimathafen,
+            // Kontostand) erhalten, ebenso seine Schiffe & Cargos, damit er
+            // später wieder beitreten kann.
+            session.leave(userId);
+        }
 
         // Kein verbundener Spieler mehr übrig → Session beenden und Tick stoppen.
         if (session.getConnectedPlayerCount() == 0) {

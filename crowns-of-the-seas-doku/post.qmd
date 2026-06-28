@@ -31,7 +31,7 @@ resources:
   - assets/project-template.zip
 ---
 
-![Titelbild von Crowns of the Seas](assets/thumbnail.png){ width="90%" }
+![Titelbild von Crowns of the Seas](assets/thumbnail.png){ width="98%" }
 
 ## Überblick
 
@@ -75,12 +75,12 @@ In einer geteilten Welt bewegen sich bis zu vier Reedereien über dieselbe Weltk
 Jeder Hafen hat ein eigenes Profil mit individuellem Aufbau und eigenen Merkmalen.
 Es lässt sich über die Karte öffnen und zeigt die wichtigsten Informationen zum Hafen auf einen Blick.
 
-![Das Hafenprofil eines einzelnen Hafens](assets/hafenprofil.png){ width="85%" }
+![Das Hafenprofil eines einzelnen Hafens](assets/hafenprofil.png){ width="98%" }
 
 Die Schiffe der Konkurrenz sind jederzeit auf der Karte sichtbar, sofern man sie nicht bewusst ausblendet.
 Ein synchronisiertes Zeitmodell mit einem Spieltag pro Tick sorgt dafür, dass alle im selben Rhythmus spielen und der Wettbewerb unmittelbar spürbar bleibt.
 
-![Die Kartenansicht](assets/Mainscreen.png){ width="90%" }
+![Die Kartenansicht](assets/screenshot-weltkarte.png){ width="98%" }
 
 #### Frachtbörse
 
@@ -101,7 +101,7 @@ Die Frachtbörse bündelt alle Aufträge eines Hafens und stellt sie übersichtl
 Dort wird entschieden, welche Fracht mit welcher Geschwindigkeit angenommen wird.
 Es gibt fünf Geschwindigkeitsstufen, die beeinflussen, wie viel Treibstoff verbraucht wird und wie lange eine Reise dauert.
 
-![Die Frachtbörse mit den verfügbaren Aufträgen](assets/screenshot-frachtboerse.png)
+![Die Frachtbörse mit den verfügbaren Aufträgen](assets/screenshot-frachtboerse.png){ width="98%" }
 
 #### Leerfahrt
 
@@ -109,7 +109,7 @@ Eine Leerfahrt bringt keinen Gewinn, ist aber geeignet, wenn man beispielsweise 
 Es wird keine Fracht transportiert, daher gibt es auch keine Belohnung.
 Treibstoff und Zustand werden dennoch verbraucht, weswegen eine Leerfahrt zu einem kleinen Verlust führt.
 
-![Eine Leerfahrt ohne Fracht zu einem anderen Hafen](assets/leerfahrt1.png)
+![Eine Leerfahrt ohne Fracht zu einem anderen Hafen](assets/leerfahrt1.png){ width="98%" }
 
 
 #### Schiffe und Flotte
@@ -122,12 +122,12 @@ Für die passende Flotte sorgt die Schiffsbörse mit drei Klassen:
 
 Immer wieder tauchen zeitlich begrenzte Sonderangebote auf, bei denen Schiffe günstiger zu kaufen sind.
 
-![Der Schiffsmarkt mit den drei Schiffsklassen](assets/schiffsmarkt.png){ width="85%"}
+![Der Schiffsmarkt mit den drei Schiffsklassen](assets/schiffsmarkt.png){ width="98%"}
 
 Die eigene Flotte wird im Büro verwaltet. Dort sieht man alle eigenen Schiffe und ihre aktuellen Aufgaben im Überblick.
 
 
-![Das Büro zur Verwaltung der eigenen Flotte](assets/buero.png){ width="90%"}
+![Das Büro zur Verwaltung der eigenen Flotte](assets/buero.png){ width="98%"}
 
 Zwischendurch müssen Schiffe betankt und repariert werden, was beides Zeit und Taler kostet und im Büro erledigt wird.
 Beim Betanken lässt sich frei wählen, auf wie viel Prozent der Tank gefüllt wird.
@@ -148,7 +148,7 @@ Es gibt keine beste Fraktion. Jede hat bewusste Stärken und Schwächen, was die
 Auf Fairness wurde dabei besonders geachtet.
 Die Wahl gilt für das ganze Spiel, denn nach dem Spielstart lässt sich die Fraktion nicht mehr wechseln.
 
-![Die Fraktionsauswahl zu Spielbeginn](assets/fractions2.png)
+![Die Fraktionsauswahl zu Spielbeginn](assets/fractions2.png){ width="98%" }
 
 ### Session und Lobby
 
@@ -159,9 +159,16 @@ Vor dem Spiel wird in der Lobby eine Session erstellt. Wer eine Session erstellt
 - **Tickrate (Spieltempo):** wie schnell die Spielzeit vergeht. Eine langsamere Tickrate gibt mehr Zeit pro Entscheidung und macht das Spiel auch für Menschen mit Beeinträchtigungen oder langsamerer Wahrnehmung zugänglicher.
 - **Spieldauer:** wie lange eine Session insgesamt läuft.
 
-![Das Erstellen einer neuen Session in der Lobby](assets/session-erstellen.png){ width="70%" }
+![Das Erstellen einer neuen Session in der Lobby](assets/session-erstellen.png){ width="98%" }
 
 Einer bestehenden Session lässt sich auf zwei Wegen beitreten: über einen Beitrittscode oder über einen geteilten Link.
+
+Nach dem Erstellen findet man sich zunächst in einem Warteraum wieder. Dort stehen der Beitrittscode und der Join-Link bereit, über die weitere Spieler:innen der Session beitreten können.
+Zu Beginn ist der Host allein im Warteraum, bis nach und nach weitere Personen dazukommen.
+
+![Der Warteraum einer Session](assets/session-waitingroom.png){ width="98%" }
+
+Verlässt jemand den Warteraum, wird die Person vollständig aus der Liste und der Session entfernt, sodass ihr Platz sofort wieder frei wird.
 
 Der Host behält seine Rolle für die gesamte Session. Diese Rolle ist bewusst angelegt, damit host-gebundene Funktionen in zukünftigen Erweiterungen einen eindeutigen Host vorfinden.
 Es muss daher zu jedem Zeitpunkt ein Host existieren. Verlässt der Host die Session, wird die nächste verbliebene Person automatisch zum neuen Host.
@@ -171,8 +178,9 @@ Der eigene Spielstand bleibt erhalten. Verlässt die letzte Person die Session, 
 
 Solange eine Session aktiv ist, ist ein Wiederbeitritt jederzeit aus der Lobby möglich.
 Beim Wiederbeitritt erhält man sein vorheriges Vermögen zurück. Die Spielzeit läuft währenddessen im Hintergrund weiter, sodass die Session für die übrigen Spieler:innen ununterbrochen fortläuft.
+Anders als im Warteraum, wo ein frei werdender Platz sofort wieder vergeben wird, bleibt der Platz während eines laufenden Spiels für einen Wiederbeitritt reserviert.
 
-![Die Lobby mit den aktuell aktiven Sessions](assets/aktive-sessions.png){ width="80%" }
+![Die Lobby mit den aktuell aktiven Sessions](assets/aktive-sessions.png){ width="98%" }
 
 ### Ereignisse & Minispiele
 
@@ -187,12 +195,12 @@ Diese Minispiele geben jeder Fahrt ihre eigene Spannung:
 - Die **gefährliche Passage** führt durch ein enges Fahrwasser voller Hindernisse. Das Schiff lässt sich frei in alle Richtungen steuern. Jede Kollision beschädigt es.
 - Die **Schatzjagd** ist freiwillig. Wer der Spur folgt, steuert durch ein Labyrinth aus Seewegen, sammelt Schätze ein und weicht Piraten aus. Bei Erfolg gibt es eine zusätzliche Belohnung. Wenn die Schatzjagd nicht erfolgreich abgeschlossen wird, geht ein Teil der Fracht verloren.
 
-![Das Ratten-Minispiel](assets/ratten-minispiel.mp4)
+![Das Ratten-Minispiel](assets/ratten-minispiel.mp4){ width="98%" }
 
 Zwei weitere Ereignisse sorgen für zusätzliche Spannung.
 Beim Lotsenstreik fällt der automatische Lotsendienst aus, sodass das Steuern beim An- und Ablegen selbst übernommen werden muss.
 
-![Manuelles Ablegen beim Lotsenstreik](assets/ablegen.png)
+![Manuelles Ablegen beim Lotsenstreik](assets/ablegen.png){ width="98%" }
 
 Wer beim Auslaufen ein Schmuggelangebot annimmt, kann gegen eine zusätzliche Belohnung illegale Ware mitnehmen, riskiert im Zielhafen aber eine Zollkontrolle. Wird sie entdeckt, bleibt die Wahl zwischen einer Strafe und dem Versuch, den Zoll zu bestechen.
 
@@ -204,7 +212,7 @@ Es steht immer Hilfe bereit, wo sie gebraucht wird.
 Bereits der Einstieg sorgt für eine einladende Atmosphäre.
 Eine Startanimation führt in die Welt ein. Auch das Ablegen und der Game-Over-Bildschirm mit Siegespodest sind animiert.
 
-![Startanimation von Crowns of the Seas](assets/intro.mp4)
+![Startanimation von Crowns of the Seas](assets/intro.mp4){ width="98%" }
 
 #### Tutorial & Help-Center
 Für einen leichten Einstieg sorgt ein geführtes Tutorial in der Lobby, das die wichtigsten Abläufe vor dem ersten Spiel erklärt.
@@ -213,9 +221,9 @@ Tutorials können hier auch jederzeit erneut gestartet werden. Wenn man spezifis
 Dadurch müssen Spieler:innen nicht immer das gesamte Tutorial abschließen. Ein Tutorial kann jederzeit beendet werden.
 Dadurch findet sich jede:r auch ohne Vorwissen im Spiel zurecht und die Spielregeln bleiben transparent.
 
-![Das Tutorial in der Lobby](assets/tutorial.mp4)
+![Das Tutorial in der Lobby](assets/tutorial.mp4){ width="98%" }
 
-![Das Help Center mit allen Spielmechaniken in Kapiteln](assets/help-center.png){ width="90%" }
+![Das Help Center mit allen Spielmechaniken in Kapiteln](assets/help-center.png){ width="98%" }
 
 Visuelle Hinweise nehmen den Spieler:innen das Suchen ab.
 Eine Schiffskarte leuchtet auf und erhält einen farbigen Rahmen, sobald eine Entscheidung ansteht. Dabei wurde darauf geachtet, dass dies kein alarmierendes Gefühl erzeugt.
@@ -234,7 +242,7 @@ Dazu kommen viele kleine Elemente, die das Nutzungserlebnis nochmals verbessern:
 Am Ende einer Session gibt es eine Abrechnung. Da es sich um ein Wirtschaftsspiel handelt, geht es hier um das höchste Vermögen.
 Ein animierter Game-Over-Bildschirm zeigt das Siegespodest und die Platzierung aller Reedereien.
 
-![Der animierte Game-Over-Bildschirm mit Siegespodest und Leaderboard](assets/spielende.mp4)
+![Der animierte Game-Over-Bildschirm mit Siegespodest und Leaderboard](assets/spielende.mp4){ width="98%" }
 
 Die Platzierung im Leaderboard folgt einem klaren Prinzip. Gezählt wird das gesamte Vermögen einer Reederei.
 Es setzt sich aus den Talern auf dem Konto und dem Wert aller eigenen Schiffe zusammen.
@@ -255,7 +263,7 @@ So kann das Spiel an Betreiber:innen übergeben werden, die Inhalte und Werte se
 Die ersten Daten sind im Code hinterlegt und stehen direkt beim Start bereit.
 Danach kann der Admin sie jederzeit bearbeiten, löschen oder neu anlegen.
 
-![Die Adminseite](assets/adminseite.png)
+![Die Adminseite](assets/adminseite.png){ width="98%" }
 
 ### Lebenszyklus eines Schiffs
 
@@ -263,7 +271,7 @@ Wie viel Detail in der Simulation steckt, zeigt der Lebenszyklus eines einzelnen
 Es befindet sich zu jedem Zeitpunkt in genau einem klar definierten Zustand.
 Dieser Zustand wechselt je nach Spielgeschehen, etwa vom Hafen über die Reise bis zum Anlegen.
 
-![Zustandsdiagramm eines Schiffs](assets/ship-state-diagram.png){ width="70%" }
+![Zustandsdiagramm eines Schiffs](assets/ship-state-diagram.png){ width="98%" }
 
 ## Umsetzung
 
