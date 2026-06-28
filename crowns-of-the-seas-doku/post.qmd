@@ -19,9 +19,9 @@ categories:
   - Maritime Simulation
   - Ports-of-Call
 other-links:
-  - text: Template Download
-    href: assets/project-template.zip
-    icon: file-zip
+  - text: Repository
+    href: https://github.com/a-helena19/Crowns-Of-The-Seas
+    icon: github
   - text: Live-Demo
     href: http://10.0.40.186
   - text: QR-Code
@@ -397,7 +397,7 @@ Die geplanten Funktionen sind vollständig umgesetzt. Für die Zukunft sind weit
 
 
 ## Links & Ressourcen
-- Repository: (Link folgt)
+- Repository: [github.com/a-helena19/Crowns-Of-The-Seas](https://github.com/a-helena19/Crowns-Of-The-Seas)
 - Live-Demo: [Link](http://10.0.40.186)
 
   ![QR-Code zur Live-Demo](assets/qr-code.png){width=160px}
