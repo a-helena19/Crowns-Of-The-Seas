@@ -19,6 +19,9 @@ categories:
   - Maritime Simulation
   - Ports-of-Call
 other-links:
+  - text: Crowns Of The Seas Download
+    href: assets/crowns-of-the-seas.zip
+    icon: file-zip
   - text: Repository
     href: https://github.com/a-helena19/Crowns-Of-The-Seas
     icon: github
@@ -396,6 +399,7 @@ Die geplanten Funktionen sind vollständig umgesetzt. Für die Zukunft sind weit
 
 
 ## Links & Ressourcen
+- Download: [Crowns of the Seas (ZIP)](assets/crowns-of-the-seas.zip)
 - Repository: [github.com/a-helena19/Crowns-Of-The-Seas](https://github.com/a-helena19/Crowns-Of-The-Seas)
 - Live-Demo: [Link](http://10.0.40.186)
 
