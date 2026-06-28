@@ -61,7 +61,7 @@ Im Vordergrund standen folgende Ziele:
 
 Das Projekt entstand innerhalb eines Semesters in einem Team aus vier Personen und sollte am Ende als lauffähiger Demonstrator im Browser spielbar sein.
 
-## Vorgehensweise & Architektur
+## Spielkonzept & Funktionen
 
 Im Kern der Herangehensweise steht das Spielerlebnis selbst. Es geht um eine geteilte Welt in Echtzeit, hinter der eine zugängliche Wirtschaftssimulation läuft.
 
@@ -73,7 +73,7 @@ Mehrere Bausteine machen das Spiel besonders. Dazu gehören vor allem das echte 
 
 In einer geteilten Welt bewegen sich bis zu vier Reedereien über dieselbe Weltkarte mit neun Häfen, von Hamburg über New York bis Sydney.
 Jeder Hafen hat ein eigenes Profil mit individuellem Aufbau und eigenen Merkmalen.
-Es lässt sich über die Karte öffnen und zeigt die wichtigsten Informationen zum Hafen auf einen Blick.
+Das Profil lässt sich über die Karte öffnen und zeigt die wichtigsten Informationen zum Hafen auf einen Blick.
 
 ![Das Hafenprofil eines einzelnen Hafens](assets/hafenprofil.png){ width="98%" }
 
@@ -107,7 +107,7 @@ Es gibt fünf Geschwindigkeitsstufen, die beeinflussen, wie viel Treibstoff verb
 
 Eine Leerfahrt bringt keinen Gewinn, ist aber geeignet, wenn man beispielsweise zu einem Hafen mit Luxusfrachten kommen möchte.
 Es wird keine Fracht transportiert, daher gibt es auch keine Belohnung.
-Treibstoff und Zustand werden dennoch verbraucht, weswegen eine Leerfahrt zu einem kleinen Verlust führt.
+Treibstoff wird dennoch verbraucht und der Zustand verschlechtert sich, weswegen eine Leerfahrt zu einem kleinen Verlust führt.
 
 ![Eine Leerfahrt ohne Fracht zu einem anderen Hafen](assets/leerfahrt1.png){ width="98%" }
 
@@ -129,7 +129,7 @@ Die eigene Flotte wird im Büro verwaltet. Dort sieht man alle eigenen Schiffe u
 
 ![Das Büro zur Verwaltung der eigenen Flotte](assets/buero.png){ width="98%"}
 
-Zwischendurch müssen Schiffe betankt und repariert werden, was beides Zeit und Taler kostet und im Büro erledigt wird.
+Zwischendurch müssen Schiffe betankt und repariert werden. Beides kostet Zeit und Taler und wird im Büro erledigt.
 Beim Betanken lässt sich frei wählen, auf wie viel Prozent der Tank gefüllt wird.
 Eine Reparatur setzt den Zustand dagegen immer vollständig zurück.
 Schiffe lassen sich jederzeit kaufen und wieder verkaufen, wobei ein gepflegtes Schiff deutlich mehr einbringt.
@@ -163,7 +163,7 @@ Vor dem Spiel wird in der Lobby eine Session erstellt. Wer eine Session erstellt
 
 Einer bestehenden Session lässt sich auf zwei Wegen beitreten: über einen Beitrittscode oder über einen geteilten Link.
 
-Nach dem Erstellen findet man sich zunächst in einem Warteraum wieder. Dort stehen der Beitrittscode und der Join-Link bereit, über die weitere Spieler:innen der Session beitreten können.
+Nach dem Erstellen findet man sich zunächst in einem Warteraum wieder. Dort stehen der Beitrittscode und der Beitrittslink bereit, über die weitere Spieler:innen der Session beitreten können.
 Zu Beginn ist der Host allein im Warteraum, bis nach und nach weitere Personen dazukommen.
 
 ![Der Warteraum einer Session](assets/session-waitingroom.png){ width="98%" }
@@ -214,12 +214,11 @@ Eine Startanimation führt in die Welt ein. Auch das Ablegen und der Game-Over-B
 
 ![Startanimation von Crowns of the Seas](assets/intro.mp4){ width="98%" }
 
-#### Tutorial & Help-Center
-Für einen leichten Einstieg sorgt ein geführtes Tutorial in der Lobby, das die wichtigsten Abläufe vor dem ersten Spiel erklärt.
-Wenn Spieler:innen später etwas nachschlagen möchten, können sie jederzeit ein integriertes Help Center öffnen, das alle Spielmechaniken in Kapiteln erklärt.
-Tutorials können hier auch jederzeit erneut gestartet werden. Wenn man spezifischere Tutorials braucht, gibt es auch eigene Tutorials zu Reise, Leerfahrt, Reiseabschluss, Wartung und Luxusfrachten.
-Dadurch müssen Spieler:innen nicht immer das gesamte Tutorial abschließen. Ein Tutorial kann jederzeit beendet werden.
-Dadurch findet sich jede:r auch ohne Vorwissen im Spiel zurecht und die Spielregeln bleiben transparent.
+#### Tutorial & Help Center
+Für einen leichten Einstieg sorgt ein geführtes Tutorial in der Lobby, das die wichtigsten Abläufe vor dem ersten Spiel zeigt.
+Wer später etwas nachschlagen möchte, kann jederzeit das integrierte Help Center öffnen, in dem alle Spielmechaniken nach Kapiteln gegliedert sind.
+Neben dem Gesamttutorial gibt es kürzere Einzeltutorials zu Reise, Leerfahrt, Reiseabschluss, Wartung und Luxusfrachten, die sich gezielt und jederzeit erneut starten lassen.
+Ein Tutorial lässt sich außerdem jederzeit beenden. So findet sich jede:r auch ohne Vorwissen im Spiel zurecht, und die Spielregeln bleiben transparent.
 
 ![Das Tutorial in der Lobby](assets/tutorial.mp4){ width="98%" }
 
