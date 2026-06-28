@@ -5,11 +5,13 @@ export default function GameButton({
                                        children,
                                        variant,
                                        disabled,
+                                       tutorialTarget,
                                    }: {
     onClick: () => void;
     children: React.ReactNode;
     variant?: "danger";
     disabled?: boolean;
+    tutorialTarget?: string;
 }) {
     function handleClick() {
         audioEngine.playSfx('buttonClick');
@@ -21,6 +23,7 @@ export default function GameButton({
             className={`game-btn${variant ? ` ${variant}` : ""}`}
             onClick={handleClick}
             disabled={disabled}
+            data-tutorial={tutorialTarget}
         >
             {children}
         </button>

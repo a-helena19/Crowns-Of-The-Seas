@@ -277,6 +277,7 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
                         type="button"
                         className="cs-switch-btn"
                         onClick={() => { audioEngine.playSfx("buttonClick"); setTab(tab === "leer" ? "fracht" : "leer"); }}
+                        data-tutorial={tab === "fracht" ? "switch-empty-voyage-tab" : undefined}
                     >
                         {tab === "leer" ? "← Zur Frachtbörse" : "Zur Leerfahrt →"}
                     </button>
@@ -348,6 +349,7 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
                             return (
                                 <div key={c.id}
                                      onClick={() => { setSelected(c); setFuelError(null); setAcceptError(null); }}
+                                     data-tutorial="cargo-offer"
                                      className={`cs-list-item${selected?.id === c.id ? " cs-list-item--active" : ""}${c.cargoType === "LUXURY_GOODS" ? " cs-list-item--luxury" : ""}`}>
                                     <div className="cs-item-row1">
                                         <span className="cs-item-name">{c.name}</span>
@@ -451,7 +453,7 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
                                     <div className="cs-hint">Dieses Schiff ist aktuell unterwegs. Werte sind erst wieder im Hafen verfügbar.</div>
                                 )}
                                 {playerShipId && currentPortId && !shipInTransit && (
-                                    <div className="cs-speed-section">
+                                    <div className="cs-speed-section" data-tutorial="speed-settings">
                                         <div className="cs-speed-title">REISEGESCHWINDIGKEIT</div>
                                         {estimateLoading && !fuelEstimate && <div className="cs-hint">Berechne Treibstoffverbrauch…</div>}
                                         {fuelEstimate && (
@@ -507,7 +509,7 @@ export default function CargoScreen({ onCargoAccepted, onEmptyVoyageStarted, cur
                                             {fuelError && <div className="cs-error">{fuelError}</div>}
                                             {acceptError && <div className="cs-error">{acceptError}</div>}
                                         </div>
-                                        <button type="button" className="cs-accept-btn" onClick={handleAcceptCargo} disabled={startBtnDisabled}>
+                                        <button type="button" className="cs-accept-btn" onClick={handleAcceptCargo} disabled={startBtnDisabled} data-tutorial="accept-cargo">
                                             Reise Starten
                                         </button>
                                     </div>

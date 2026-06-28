@@ -3,16 +3,17 @@ import backIcon from '../assets/goback.png';
 
 interface Props {
     onClick: () => void;
+    tutorialTarget?: string;
 }
 
-export default function BackButton({ onClick }: Props) {
+export default function BackButton({ onClick, tutorialTarget }: Props) {
     function handleClick() {
         audioEngine.playSfx('buttonClick');
         onClick();
     }
 
     return (
-        <div className="back-icon-btn" onClick={handleClick}>
+        <div className="back-icon-btn" onClick={handleClick} data-tutorial={tutorialTarget}>
             <img src={backIcon} alt="Zurück" />
         </div>
     );

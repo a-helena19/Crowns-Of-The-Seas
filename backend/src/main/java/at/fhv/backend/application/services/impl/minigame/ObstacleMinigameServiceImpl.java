@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
-    private static final double TRIGGER_CHANCE_PER_TICK = 0.04;
+    private static final double TRIGGER_CHANCE_PER_TICK = 0.03;
     private static final int DEFAULT_TIME_LIMIT_SECONDS = 24;
     private static final int DEFAULT_START_HEALTH = 100;
     private static final int FAILED_CARGO_LOSS_PERCENT = 50;

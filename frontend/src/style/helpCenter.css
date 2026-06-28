@@ -98,6 +98,59 @@
     color: #8a6d3a;
 }
 
+.help-tutorial-restart {
+    width: 100%;
+    margin: 18px 0 10px;
+    padding: 10px 12px;
+    border: 1px solid rgba(126, 82, 34, 0.45);
+    background: rgba(177, 119, 47, 0.12);
+    color: #5d3d1d;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.help-tutorial-restart:hover {
+    background: rgba(177, 119, 47, 0.2);
+    border-color: rgba(126, 82, 34, 0.7);
+    transform: translateY(-1px);
+}
+
+.help-tutorial-restart-group {
+    margin: 18px 0 10px;
+}
+
+.help-tutorial-restart-group .help-tutorial-restart {
+    margin: 0 0 8px;
+}
+
+.help-tutorial-chapters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.help-tutorial-chip {
+    padding: 6px 8px;
+    border: 1px solid rgba(126, 82, 34, 0.32);
+    background: rgba(255, 244, 213, 0.42);
+    color: #6a4822;
+    font-family: 'Cinzel', Georgia, serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.help-tutorial-chip:hover {
+    background: rgba(177, 119, 47, 0.16);
+}
+
 .help-toc-label {
     margin: 12px 4px 6px;
     font-family: 'Cinzel', Georgia, serif;

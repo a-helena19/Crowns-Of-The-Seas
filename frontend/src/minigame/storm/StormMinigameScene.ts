@@ -49,14 +49,27 @@ export class StormMinigameScene extends Phaser.Scene {
 
     create() {
         audioEngine.crossfadeTo('storm', 300);
+        const hudStyle = {
+            color: "#ffffff",
+            stroke: "#4a140f",
+            strokeThickness: 5,
+            shadow: {
+                offsetX: 2,
+                offsetY: 2,
+                color: "#000000",
+                blur: 2,
+                fill: true,
+                stroke: false,
+            },
+        };
         this.cameras.main.setBackgroundColor("#1a2433");
         this.add.image(this.scale.width * 0.5, this.scale.height * 0.5, "storm-bg")
             .setDisplaySize(this.scale.width, this.scale.height);
-        this.add.text(16, 12, "Sturm auf See", { fontSize: "30px", color: "#f4e8c1" });
+        this.add.text(16, 12, "Sturm auf See", { fontSize: "30px", ...hudStyle });
 
-        this.timeText = this.add.text(16, 54, "", { fontSize: "22px", color: "#ffffff" });
-        this.healthText = this.add.text(16, 84, "", { fontSize: "22px", color: "#ffffff" });
-        this.sunsText = this.add.text(16, 114, "", { fontSize: "22px", color: "#ffffff" });
+        this.timeText = this.add.text(16, 54, "", { fontSize: "22px", ...hudStyle });
+        this.healthText = this.add.text(16, 84, "", { fontSize: "22px", ...hudStyle });
+        this.sunsText = this.add.text(16, 114, "", { fontSize: "22px", ...hudStyle });
         this.updateHud();
 
         this.player = new StormPlayerShip(this, "storm-player-ship");

@@ -5,10 +5,13 @@ import { HELP_CHAPTERS } from "./helpCenterContent";
 import type { HelpBlock, HelpChapter, HelpPage } from "./helpCenterContent";
 import "../style/helpCenter.css";
 import audioEngine from "../audio/AudioEngine.ts";
+import { requestTutorialPrompt, requestTutorialRestart } from "./InteractiveTutorial";
+import type { TutorialChapterId } from "./InteractiveTutorial";
 
 interface HelpCenterProps {
     open: boolean;
     onClose: () => void;
+    showTutorialRestart?: boolean;
 }
 
 interface FlatPage {
@@ -16,6 +19,14 @@ interface FlatPage {
     pageIndex: number;
     page: HelpPage;
 }
+
+const TUTORIAL_RESTART_OPTIONS: Array<{ id: TutorialChapterId; label: string }> = [
+    { id: "firstJourney", label: "Erste Reise" },
+    { id: "emptyVoyage", label: "Leerfahrt" },
+    { id: "postTravel", label: "Nach der Reise" },
+    { id: "service", label: "Wartung" },
+    { id: "luxuryFreight", label: "Luxusfracht" },
+];
 
 function buildFlatPages(chapters: HelpChapter[]): FlatPage[] {
     const pages: FlatPage[] = [];
@@ -88,7 +99,7 @@ function renderBlock(block: HelpBlock, index: number, chapterColor: string) {
     }
 }
 
-export default function HelpCenter({ open, onClose }: HelpCenterProps) {
+export default function HelpCenter({ open, onClose, showTutorialRestart = false }: HelpCenterProps) {
     const flatPages = useMemo(() => buildFlatPages(HELP_CHAPTERS), []);
     const [current, setCurrent] = useState(0);
     const [turn, setTurn] = useState<"none" | "next" | "prev">("none");
@@ -170,6 +181,7 @@ export default function HelpCenter({ open, onClose }: HelpCenterProps) {
     }
 
     const pageNumberInChapter = active.pageIndex + 1;
+    const portalTarget = document.fullscreenElement ?? document.body;
 
     const overlay = (
         <div className="help-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Kapitänshandbuch">
@@ -187,6 +199,38 @@ export default function HelpCenter({ open, onClose }: HelpCenterProps) {
                         <div className="help-book-title">Kapitäns&shy;handbuch</div>
                         <div className="help-book-sub">Crowns of the Seas</div>
                     </div>
+
+                    {showTutorialRestart && (
+                        <div className="help-tutorial-restart-group">
+                            <button
+                                type="button"
+                                className="help-tutorial-restart"
+                                onClick={() => {
+                                    audioEngine.playSfx("buttonClick");
+                                    onClose();
+                                    requestTutorialRestart();
+                                }}
+                            >
+                                Tutorial erneut starten
+                            </button>
+                            <div className="help-tutorial-chapters" aria-label="Tutorial-Kapitel erneut starten">
+                                {TUTORIAL_RESTART_OPTIONS.map(option => (
+                                    <button
+                                        key={option.id}
+                                        type="button"
+                                        className="help-tutorial-chip"
+                                        onClick={() => {
+                                            audioEngine.playSfx("buttonClick");
+                                            onClose();
+                                            requestTutorialPrompt(option.id, true);
+                                        }}
+                                    >
+                                        {option.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     <div className="help-toc-label">Inhalt</div>
 
@@ -279,5 +323,5 @@ export default function HelpCenter({ open, onClose }: HelpCenterProps) {
         </div>
     );
 
-    return createPortal(overlay, document.body);
+    return createPortal(overlay, portalTarget);
 }

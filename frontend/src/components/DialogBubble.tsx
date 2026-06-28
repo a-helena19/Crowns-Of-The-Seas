@@ -27,7 +27,7 @@ export default function DialogBubble({
                 <GameButton onClick={onOpenCargo ?? (() => {})}>
                     Frachtbörse öffnen
                 </GameButton>
-                <GameButton onClick={onOpenEmptyVoyage ?? (() => {})}>
+                <GameButton onClick={onOpenEmptyVoyage ?? (() => {})} tutorialTarget="open-empty-voyage">
                     Leerfahrt
                 </GameButton>
             </div>

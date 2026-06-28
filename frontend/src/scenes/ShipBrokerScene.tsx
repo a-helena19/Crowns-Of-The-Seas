@@ -342,7 +342,7 @@ export default function ShipBrokerScene({ onClose }: Props) {
 
     return (
         <div className="sm-screen">
-            <BackButton onClick={onClose} />
+            <BackButton onClick={onClose} tutorialTarget="close-ship-market" />
 
             <h1 className="sm-title">Schiffsmarkt</h1>
 
@@ -443,7 +443,7 @@ function ClassShipCard({
     const lowStock = !outOfStock && ship.availableStock <= 3;
 
     return (
-        <div className={`sm-card${deal ? " sm-card--deal" : ""}`}>
+        <div className={`sm-card${deal ? " sm-card--deal" : ""}`} data-tutorial="ship-card-purchase">
             <span className="sm-pin" />
             <div className="sm-card-img-wrap">
                 {deal && <div className="sm-deal-ribbon">−{deal.discountPercent}% Angebot</div>}
@@ -495,6 +495,7 @@ function ClassShipCard({
                         className="sm-buy-btn"
                         onClick={onBuy}
                         disabled={!canAfford || buying || outOfStock}
+                        data-tutorial="buy-ship"
                     >
                         {buying ? "…"
                             : outOfStock ? "Ausverkauft"

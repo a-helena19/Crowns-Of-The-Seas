@@ -122,6 +122,9 @@ public class StartEmptyVoyageServiceImpl implements StartEmptyVoyageService {
                 throw new PilotStrikeActiveException(
                         "Lotsenstreik am Ankunftshafen — Lotsendienst nicht verfügbar.", destinationPortId);
             }
+            // Pay-on-book: wirft InsufficientBalanceException bei zu geringem Guthaben.
+            player.subtractBalance(PILOTAGE_COST);
+            sessionPlayerRepository.save(player);
         }
 
         double distance = portDistanceForCargoService.distanceBetween(originPortId, destinationPortId);
@@ -164,11 +167,6 @@ public class StartEmptyVoyageServiceImpl implements StartEmptyVoyageService {
 
         if (request.isMiniGameFailedDeparture()) {
             dockingPenaltyService.applyDepartureFailurePenalty(saved.getTravelId(), playerId, sessionId);
-        }
-
-        if (request.isPilotageService()) {
-            player.subtractBalance(PILOTAGE_COST);
-            sessionPlayerRepository.save(player);
         }
 
         regressService.recordConditionAtStart(saved.getTravelId(), playerShip.getCondition());

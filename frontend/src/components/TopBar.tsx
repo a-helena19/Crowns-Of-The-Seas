@@ -13,6 +13,7 @@ import { useAudioSettings } from '../audio/AudioSettingsContext';
 import audioEngine from '../audio/AudioEngine';
 import { useNavigate } from 'react-router-dom';
 import HelpCenter from './HelpCenter';
+import { useFullscreen } from '../context/FullscreenContext';
 
 
 export default function TopBar() {
@@ -32,6 +33,7 @@ export default function TopBar() {
     const [helpOpen, setHelpOpen] = useState(false);
     const [leaving, setLeaving] = useState(false);
     const audioMenuRef = useRef<HTMLDivElement | null>(null);
+    const { isSupported: fullscreenSupported, isFullscreen, confirmExitFullscreen, requestRecommendedFullscreen } = useFullscreen();
 
     const factionWrapperRef = useRef<HTMLDivElement | null>(null);
 
@@ -251,13 +253,13 @@ export default function TopBar() {
     return (
         <div className="topbar-container" style={{ height: TOP_BAR_HEIGHT }}>
             <div className="topbar-left">
-                <div className="topbar-panel">
+                <div className="topbar-panel" data-tutorial="hud-balance">
                     <img src={moneyIcon} alt="" className="topbar-icon" />
                     <span className="topbar-value">
                         {balance !== null ? balance.toLocaleString('de') : '...'} T
                     </span>
                 </div>
-                <div className="topbar-panel">
+                <div className="topbar-panel" data-tutorial="hud-ships">
                     <img src={shipIcon} alt="" className="topbar-icon" />
                     <span className="topbar-value">
                         {shipCount !== null ? `${shipCount} Schiffe` : '...'}
@@ -269,7 +271,7 @@ export default function TopBar() {
                 <div className={`topbar-panel ${
                     endingLevel === 'critical' ? 'ending-critical' :
                         endingLevel === 'warning' ? 'ending-warning' : ''
-                }`}>
+                }`} data-tutorial="hud-day">
                     <img src={timeIcon} alt="" className="topbar-icon" />
                     <span className="topbar-value">
                         {endingLevel !== 'none' && ticksRemaining !== null ? (
@@ -290,7 +292,7 @@ export default function TopBar() {
 
             <div className="topbar-right">
                 {homePortName && (
-                    <div className="topbar-panel topbar-homeport">
+                    <div className="topbar-panel topbar-homeport" data-tutorial="hud-homeport">
                         <span className="topbar-homeport-icon">⚓</span>
                         <span className="topbar-value">{homePortName}</span>
                     </div>
@@ -305,6 +307,7 @@ export default function TopBar() {
                             aria-expanded={factionPanelOpen}
                             aria-haspopup="dialog"
                             title={`Fraktion: ${factionData.name}`}
+                            data-tutorial="hud-faction"
                         >
                             <div className="topbar-faction-icon">
                                 <img
@@ -358,6 +361,7 @@ export default function TopBar() {
                         aria-expanded={lbOpen}
                         aria-haspopup="dialog"
                         title="Rangliste"
+                        data-tutorial="hud-leaderboard"
                     >
                         <span className="topbar-value">Rangliste ▾</span>
                     </button>
@@ -393,6 +397,7 @@ export default function TopBar() {
                         aria-expanded={audioMenuOpen}
                         aria-haspopup="dialog"
                         title="Einstellungen"
+                        data-tutorial="hud-menu"
                     >
                         <span className="topbar-value topbar-hamburger">☰</span>
                     </button>
@@ -458,6 +463,27 @@ export default function TopBar() {
                                 Hilfecenter öffnen
                             </button>
 
+                            {fullscreenSupported && (
+                                <button
+                                    type="button"
+                                    className="audio-popover-fullscreen-exit"
+                                    onClick={() => {
+                                        audioEngine.playSfx('buttonClick');
+                                        const action = isFullscreen
+                                            ? confirmExitFullscreen()
+                                            : requestRecommendedFullscreen();
+
+                                        void action.then((changedState) => {
+                                            if (changedState || !isFullscreen) {
+                                                setAudioMenuOpen(false);
+                                            }
+                                        });
+                                    }}
+                                >
+                                    {isFullscreen ? 'Vollbild beenden' : 'Vollbild öffnen'}
+                                </button>
+                            )}
+
                             <button className="audio-popover-leave" disabled={leaving} onClick={handleLeaveSession}>
                                 {leaving ? 'Verlasse …' : 'Zurück zur Lobby'}
                             </button>
@@ -489,7 +515,7 @@ export default function TopBar() {
                 </div>
             )}
 
-            <HelpCenter open={helpOpen} onClose={() => setHelpOpen(false)} />
+            <HelpCenter open={helpOpen} onClose={() => setHelpOpen(false)} showTutorialRestart />
 
         </div>
     );

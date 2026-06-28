@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class StormMinigameServiceImpl implements StormMinigameService {
-    private static final double TRIGGER_CHANCE_PER_TICK = 0.04;
+    private static final double TRIGGER_CHANCE_PER_TICK = 0.03;
     private static final int DEFAULT_TIME_LIMIT_SECONDS = 20;
     private static final int DEFAULT_REQUIRED_SUNS = 8;
     private static final int DEFAULT_START_HEALTH = 100;

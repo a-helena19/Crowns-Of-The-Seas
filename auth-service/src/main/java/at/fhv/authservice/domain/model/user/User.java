@@ -46,4 +46,12 @@ public class User {
     public boolean isAdmin() {
         return "ADMIN".equals(role);
     }
+
+    public User withUsername(String newUsername) {
+        return new User(this.id, newUsername, this.passwordHash, this.role);
+    }
+
+    public User withPassword(String newPasswordHash) {
+        return new User(this.id, this.username, newPasswordHash, this.role);
+    }
 }

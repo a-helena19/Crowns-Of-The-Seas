@@ -160,6 +160,9 @@ public class StartTravelServiceImpl implements StartTravelService {
                 throw new PilotStrikeActiveException(
                         "Lotsenstreik am Ankunftshafen — Lotsendienst nicht verfügbar.", destinationPortId);
             }
+
+            player.subtractBalance(PILOTAGE_COST);
+            sessionPlayerRepository.save(player);
         }
 
         Integer loadingCompletedAtTick = playerShip.getLoadingCompletedAtTick();
@@ -232,11 +235,6 @@ public class StartTravelServiceImpl implements StartTravelService {
             System.out.println("[StartTravel] Smuggle offer pending for travel " + saved.getTravelId()
                     + " — ship stays at port, travel stays PLANNED");
             return travelResponseMapper.toResponse(saved);
-        }
-
-        if (request.isPilotageService()) {
-            player.subtractBalance(PILOTAGE_COST);
-            sessionPlayerRepository.save(player);
         }
 
         regressService.recordConditionAtStart(saved.getTravelId(), playerShip.getCondition());
