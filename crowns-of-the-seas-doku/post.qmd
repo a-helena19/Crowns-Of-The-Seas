@@ -163,7 +163,7 @@ Vor dem Spiel wird in der Lobby eine Session erstellt. Wer eine Session erstellt
 
 Einer bestehenden Session lässt sich auf zwei Wegen beitreten: über einen Beitrittscode oder über einen geteilten Link.
 
-Nach dem Erstellen findet man sich zunächst in einem Warteraum wieder. Dort stehen der Beitrittscode und der Join-Link bereit, über die weitere Spieler:innen der Session beitreten können.
+Nach dem Erstellen findet man sich zunächst in einem Warteraum wieder. Dort stehen der Beitrittscode und der Beitrittslink bereit, über die weitere Spieler:innen der Session beitreten können.
 Zu Beginn ist der Host allein im Warteraum, bis nach und nach weitere Personen dazukommen.
 
 ![Der Warteraum einer Session](assets/session-waitingroom.png){ width="98%" }
@@ -214,7 +214,7 @@ Eine Startanimation führt in die Welt ein. Auch das Ablegen und der Game-Over-B
 
 ![Startanimation von Crowns of the Seas](assets/intro.mp4){ width="98%" }
 
-#### Tutorial & Help-Center
+#### Tutorial & Help Center
 Für einen leichten Einstieg sorgt ein geführtes Tutorial in der Lobby, das die wichtigsten Abläufe vor dem ersten Spiel erklärt.
 Wenn Spieler:innen später etwas nachschlagen möchten, können sie jederzeit ein integriertes Help Center öffnen, das alle Spielmechaniken in Kapiteln erklärt.
 Tutorials können hier auch jederzeit erneut gestartet werden. Wenn man spezifischere Tutorials braucht, gibt es auch eigene Tutorials zu Reise, Leerfahrt, Reiseabschluss, Wartung und Luxusfrachten.
