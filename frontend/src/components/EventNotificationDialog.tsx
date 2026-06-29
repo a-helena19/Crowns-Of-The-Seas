@@ -54,7 +54,7 @@ export default function EventNotificationDialog({
                 </div>
 
                 <div className="event-notification-section">
-                    <div className="event-notification-label fail">Bei Misserfolg</div>
+                    <div className="event-notification-label fail">Bei Misserfolg oder Ablehnen</div>
                     <p>{failText}</p>
                 </div>
 

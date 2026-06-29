@@ -92,7 +92,7 @@ public class ObstacleMinigameServiceImpl implements ObstacleMinigameService {
         );
         pendingEvents.put(travelId, event);
 
-        travelPauseService.pauseTravel(travelId, sessionId, travel.getPlayerId(), travel.getPlayerShipId(), "OBSTACLE");
+        travelPauseService.pauseTravel(travelId, sessionId, travel.getPlayerId(), travel.getPlayerShipId(), "OBSTACLE", eventId.toString());
 
         ObstacleMinigameEvent socketEvent = new ObstacleMinigameEvent(
                 eventId.toString(),

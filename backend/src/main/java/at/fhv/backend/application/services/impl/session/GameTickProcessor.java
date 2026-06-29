@@ -507,7 +507,8 @@ public class GameTickProcessor {
                             playerShip.getId(), playerShip.getPlayerId(), playerName,
                             iconUrl, dest.x(), dest.y(), "AWAITING_DOCKING", null,
                             null, null, null, null, null,
-                            travel.getDestinationPortId()
+                            travel.getDestinationPortId(), false, null, null,
+                            travel.getTravelId().toString()
                     ));
                     continue;
                 }
@@ -524,11 +525,21 @@ public class GameTickProcessor {
                     double x = origin.x() + (dest.x() - origin.x()) * progress;
                     double y = origin.y() + (dest.y() - origin.y()) * progress;
 
+                    String blockingReason = null;
+                    String blockingEventId = null;
+                    if (isPaused) {
+                        var blocking = travelPauseService.getBlockingEvent(travel.getTravelId()).orElse(null);
+                        if (blocking != null) {
+                            blockingReason = blocking.reason();
+                            blockingEventId = blocking.eventId();
+                        }
+                    }
+
                     positions.add(new ShipPositionsUpdateEvent.ShipPosition(
                             playerShip.getId(), playerShip.getPlayerId(), playerName,
                             iconUrl, x, y, "EN_ROUTE", travel.getArrivalTick(),
                             origin.x(), origin.y(), dest.x(), dest.y(), travel.getStartTick(), null,
-                            isPaused
+                            isPaused, blockingReason, blockingEventId, travel.getTravelId().toString()
                     ));
                 }
             } else if (playerShip.getCurrentPortId() != null) {

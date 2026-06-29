@@ -52,6 +52,9 @@ export interface ShipPosition {
     destY: number | null;
     startTick: number | null;
     paused?: boolean;
+    blockingReason?: string | null;
+    blockingEventId?: string | null;
+    travelId?: string | null;
 }
 
 interface ShipPositionsUpdateEvent {

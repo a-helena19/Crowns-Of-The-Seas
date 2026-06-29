@@ -27,14 +27,25 @@ public record ShipPositionsUpdateEvent(
             Double destY,
             Integer startTick,
             UUID currentPortId,
-            boolean paused
+            boolean paused,
+            String blockingReason,
+            String blockingEventId,
+            String travelId
     ) {
         public ShipPosition(UUID playerShipId, UUID playerId, String playerName, String iconUrl,
                             double x, double y, String status, Integer arrivalTick,
                             Double originX, Double originY, Double destX, Double destY,
                             Integer startTick, UUID currentPortId) {
             this(playerShipId, playerId, playerName, iconUrl, x, y, status, arrivalTick,
-                    originX, originY, destX, destY, startTick, currentPortId, false);
+                    originX, originY, destX, destY, startTick, currentPortId, false, null, null, null);
+        }
+
+        public ShipPosition(UUID playerShipId, UUID playerId, String playerName, String iconUrl,
+                            double x, double y, String status, Integer arrivalTick,
+                            Double originX, Double originY, Double destX, Double destY,
+                            Integer startTick, UUID currentPortId, boolean paused) {
+            this(playerShipId, playerId, playerName, iconUrl, x, y, status, arrivalTick,
+                    originX, originY, destX, destY, startTick, currentPortId, paused, null, null, null);
         }
     }
 }

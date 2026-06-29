@@ -74,7 +74,7 @@ public class StormMinigameServiceImpl implements StormMinigameService {
                 DEFAULT_TIME_LIMIT_SECONDS, DEFAULT_REQUIRED_SUNS, DEFAULT_START_HEALTH
         );
         pendingEvents.put(travelId, event);
-        travelPauseService.pauseTravel(travelId, sessionId, travel.getPlayerId(), travel.getPlayerShipId(), "STORM");
+        travelPauseService.pauseTravel(travelId, sessionId, travel.getPlayerId(), travel.getPlayerShipId(), "STORM", eventId.toString());
 
         StormMinigameEvent socketEvent = new StormMinigameEvent(
                 eventId.toString(),

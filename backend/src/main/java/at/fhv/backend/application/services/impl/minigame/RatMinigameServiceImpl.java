@@ -74,7 +74,7 @@ public class RatMinigameServiceImpl implements RatMinigameService {
         );
         pendingEvents.put(travelId, event);
 
-        travelPauseService.pauseTravel(travelId, sessionId, travel.getPlayerId(), travel.getPlayerShipId(), "RATS");
+        travelPauseService.pauseTravel(travelId, sessionId, travel.getPlayerId(), travel.getPlayerShipId(), "RATS", eventId.toString());
 
         RatMinigameEvent socketEvent = new RatMinigameEvent(
                 eventId.toString(),
