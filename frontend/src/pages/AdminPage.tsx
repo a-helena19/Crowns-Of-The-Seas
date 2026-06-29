@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminApi, type AdminShip, type AdminCargo } from "../api/adminApi";
@@ -27,6 +27,7 @@ const EMPTY_CARGO: AdminCargo = {
 export default function AdminPage() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const pageRef = useRef<HTMLDivElement>(null);
     const [tab, setTab] = useState<"ships" | "cargos">("ships");
 
     // Ships
@@ -77,6 +78,7 @@ export default function AdminPage() {
     function handleEditShip(ship: AdminShip) {
         setEditShip(ship);
         setShipForm({ ...ship });
+        pageRef.current?.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     function handleNewShip() {
@@ -120,6 +122,7 @@ export default function AdminPage() {
     function handleEditCargo(cargo: AdminCargo) {
         setEditCargo(cargo);
         setCargoForm({ ...cargo });
+        pageRef.current?.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     function handleNewCargo() {
@@ -185,7 +188,7 @@ export default function AdminPage() {
     // ── Render ──
 
     return (
-        <div className="admin-page">
+        <div className="admin-page" ref={pageRef}>
             <div className="admin-header">
                 <h1 className="admin-title">⚙ Verwaltung</h1>
                 <BackButton onClick={() => navigate("/lobby")} />

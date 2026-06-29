@@ -1,9 +1,35 @@
 .admin-page {
-    min-height: 100vh;
+    height: 100vh;
+    max-height: 100vh;
+    overflow-y: auto;
+    box-sizing: border-box;
     background: linear-gradient(160deg, #f4ecd2 0%, #f9f3df 50%, #ebe2c2 100%);
     padding: 24px 32px 24px 100px;
     font-family: Georgia, "Palatino Linotype", serif;
     color: #2b2418;
+    /* Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: #8b5a2b rgba(120, 90, 40, 0.12);
+}
+
+/* WebKit (Chrome, Edge, Safari) */
+.admin-page::-webkit-scrollbar {
+    width: 12px;
+}
+
+.admin-page::-webkit-scrollbar-track {
+    background: rgba(120, 90, 40, 0.12);
+    border-left: 1px solid rgba(120, 90, 40, 0.25);
+}
+
+.admin-page::-webkit-scrollbar-thumb {
+    background: #8b5a2b;
+    border: 2px solid #ebe2c2;
+    border-radius: 6px;
+}
+
+.admin-page::-webkit-scrollbar-thumb:hover {
+    background: #5a3a0a;
 }
 
 .admin-header {

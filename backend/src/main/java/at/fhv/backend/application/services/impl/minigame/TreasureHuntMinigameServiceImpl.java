@@ -81,7 +81,7 @@ public class TreasureHuntMinigameServiceImpl implements TreasureHuntMinigameServ
                 DEFAULT_PIRATE_COUNT
         );
         pendingEvents.put(travelId, event);
-        travelPauseService.pauseTravel(travelId, sessionId, travel.getPlayerId(), travel.getPlayerShipId(), "TREASURE_HUNT");
+        travelPauseService.pauseTravel(travelId, sessionId, travel.getPlayerId(), travel.getPlayerShipId(), "TREASURE_HUNT", eventId.toString());
 
         TreasureHuntMinigameEvent socketEvent = new TreasureHuntMinigameEvent(
                 eventId.toString(),

@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,6 +28,7 @@ public class TravelPauseServiceImpl implements TravelPauseService {
 
     private final Set<UUID> pausedTravelIds = ConcurrentHashMap.newKeySet();
     private final Map<UUID, Integer> pausedAtTickMap = new ConcurrentHashMap<>();
+    private final Map<UUID, BlockingEvent> blockingEventByTravelId = new ConcurrentHashMap<>();
 
     public TravelPauseServiceImpl(TravelRepository travelRepository,
                                   GameSessionRepository gameSessionRepository,
@@ -40,7 +42,13 @@ public class TravelPauseServiceImpl implements TravelPauseService {
 
     @Override
     public void pauseTravel(UUID travelId, UUID sessionId, UUID playerId, UUID playerShipId, String reason) {
+        pauseTravel(travelId, sessionId, playerId, playerShipId, reason, null);
+    }
+
+    @Override
+    public void pauseTravel(UUID travelId, UUID sessionId, UUID playerId, UUID playerShipId, String reason, String eventId) {
         pausedTravelIds.add(travelId);
+        blockingEventByTravelId.put(travelId, new BlockingEvent(reason, eventId));
 
         GameSession session = gameSessionRepository.findById(sessionId).orElse(null);
         int currentTick = session != null ? session.getCurrentTick() : 0;
@@ -48,6 +56,7 @@ public class TravelPauseServiceImpl implements TravelPauseService {
 
         System.out.println("[TravelPause] Travel " + travelId
                 + " PAUSED — reason: " + reason
+                + " — eventId: " + eventId
                 + " — player: " + playerId
                 + " — tick: " + currentTick);
     }
@@ -60,6 +69,7 @@ public class TravelPauseServiceImpl implements TravelPauseService {
         }
 
         Integer pausedAtTick = pausedAtTickMap.remove(travelId);
+        blockingEventByTravelId.remove(travelId);
 
         GameSession session = gameSessionRepository.findById(sessionId).orElse(null);
         if (session == null) {
@@ -96,6 +106,11 @@ public class TravelPauseServiceImpl implements TravelPauseService {
     @Override
     public Integer getPausedAtTick(UUID travelId) {
         return pausedAtTickMap.get(travelId);
+    }
+
+    @Override
+    public Optional<BlockingEvent> getBlockingEvent(UUID travelId) {
+        return Optional.ofNullable(blockingEventByTravelId.get(travelId));
     }
 
     private TravelResumedEvent buildResumeEvent(UUID travelId, UUID playerId, UUID playerShipId, String reason,

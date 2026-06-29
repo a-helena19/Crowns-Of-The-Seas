@@ -170,11 +170,13 @@ export default function GameScreen() {
     const [leftNotice, setLeftNotice] = useState<{ text: string; kind: 'left' | 'rejoined' } | null>(null);
     const [ownedShips, setOwnedShips] = useState<OwnedShipSummary[]>([]);
     const ownedShipsRef = useRef<OwnedShipSummary[]>([]);
+    const didRehydrateOrdersRef = useRef(false);
     const [luxuryPortIds, setLuxuryPortIds] = useState<string[]>([]);
     const [focusShipIdForCargoManagement, setFocusShipIdForCargoManagement] = useState<string | null>(null);
     const [openCargoForShipId, setOpenCargoForShipId] = useState<string | null>(null);
     const [showOtherShips, setShowOtherShips] = useState<boolean>(window.__showOtherShips !== false);
     const minigameFallbackRequests = useRef<Set<string>>(new Set());
+    const minigameReconcileInFlight = useRef<Set<string>>(new Set());
     const authToken = localStorage.getItem("auth_token") ?? "";
     const [nowMs, setNowMs] = useState(Date.now());
 
@@ -270,6 +272,68 @@ export default function GameScreen() {
     useEffect(() => {
         ownedShipsRef.current = ownedShips;
     }, [ownedShips]);
+
+    // Rejoin-Wiederherstellung: assignedCargos lebt nur im Frontend-State und ist nach
+    // einem erneuten Beitritt leer. Wir laden die laufenden Reisen (IN_PROGRESS) vom
+    // Backend nach, damit die Auftragsliste auch nach Verlassen/Beitreten gefüllt ist.
+    // Die Phase wird bewusst auf "en_route" gesetzt; der Schiffs-Broadcast korrigiert sie
+    // beim nächsten Tick auf unloading/awaiting_docking/customs_check/blocked.
+    useEffect(() => {
+        if (didRehydrateOrdersRef.current) return;
+        if (!playerId || !sessionId || !authToken) return;
+        if (ownedShips.length === 0) return;
+        didRehydrateOrdersRef.current = true;
+
+        interface ActiveTravelDTO {
+            travelId: string;
+            playerShipId: string;
+            originPortId?: string;
+            destinationPortId?: string;
+            speedSetting?: number;
+            pilotageServiceBooked?: boolean;
+            pilotageStrikeRevoked?: boolean;
+        }
+
+        fetch(`/api/travels/active/${playerId}`, {
+            headers: { Authorization: `Bearer ${authToken}` },
+        })
+            .then(res => (res.ok ? res.json() : []))
+            .then((travels: ActiveTravelDTO[]) => {
+                if (!Array.isArray(travels) || travels.length === 0) return;
+                setAssignedCargos(prev => {
+                    const knownTravelIds = new Set(prev.map(e => e.travelId).filter(Boolean));
+                    const recovered: AssignedCargoEntry[] = [];
+                    for (const t of travels) {
+                        if (!t.travelId || knownTravelIds.has(t.travelId)) continue;
+                        const ship = ownedShipsRef.current.find(s => s.id === t.playerShipId);
+                        recovered.push({
+                            cargoId: `rejoin-${t.travelId}`,
+                            shipId: t.playerShipId,
+                            shipName: ship?.name ?? "Schiff",
+                            shipIconUrl: ship?.iconUrl
+                                ?? window.__latestShips?.find(s => s.playerShipId === t.playerShipId)?.iconUrl,
+                            from: window.__latestPorts?.find(p => p.id === t.originPortId)?.name ?? "",
+                            to: window.__latestPorts?.find(p => p.id === t.destinationPortId)?.name ?? "",
+                            weight: 0,
+                            maxCargoCapacity: 0,
+                            originPortId: t.originPortId,
+                            destinationPortId: t.destinationPortId ?? "",
+                            speedSetting: t.speedSetting ?? 1,
+                            loadingDurationSeconds: 0,
+                            loadingStartedAt: Date.now(),
+                            loadingDone: true,
+                            phase: "en_route",
+                            travelId: t.travelId,
+                            pilotageUsed: t.pilotageServiceBooked,
+                            pilotageStrikeRevoked: t.pilotageStrikeRevoked,
+                        });
+                    }
+                    if (recovered.length === 0) return prev;
+                    return [...prev, ...recovered];
+                });
+            })
+            .catch(() => { /* nicht-fatal */ });
+    }, [playerId, sessionId, authToken, ownedShips]);
 
     function handleCargoAssigned(entry: AssignedCargoEntry) {
         setAssignedCargos(prev => {
@@ -437,6 +501,8 @@ export default function GameScreen() {
                     currentPortId?: string;
                     travelId?: string;
                     paused?: boolean;
+                    blockingReason?: string | null;
+                    blockingEventId?: string | null;
                 }[]
             }>).detail;
 
@@ -565,7 +631,7 @@ export default function GameScreen() {
 
         const restoreEvent = (event: ActiveMinigameEventPayload) => {
             if (event.eventType === "RATS") {
-                if (window.__activeRatEventId === event.eventId) return;
+                if (ratEventOffer?.eventId === event.eventId || activeRatMinigame?.eventId === event.eventId) return;
                 window.__activeRatEventId = event.eventId;
                 minigameSessionManager.startSession({
                     minigameType: event.eventType,
@@ -579,7 +645,7 @@ export default function GameScreen() {
             }
 
             if (event.eventType === "STORM") {
-                if (window.__activeStormEventId === event.eventId) return;
+                if (stormEventOffer?.eventId === event.eventId || activeStormMinigame?.eventId === event.eventId) return;
                 window.__activeStormEventId = event.eventId;
                 const shipIconUrl = window.__latestShips?.find(s => s.playerShipId === event.playerShipId)?.iconUrl;
                 minigameSessionManager.startSession({
@@ -594,7 +660,7 @@ export default function GameScreen() {
             }
 
             if (event.eventType === "TREASURE_HUNT") {
-                if (window.__activeTreasureHuntEventId === event.eventId) return;
+                if (treasureHuntEventOffer?.eventId === event.eventId || activeTreasureHuntMinigame?.eventId === event.eventId) return;
                 window.__activeTreasureHuntEventId = event.eventId;
                 const shipIconUrl = window.__latestShips?.find(s => s.playerShipId === event.playerShipId)?.iconUrl;
                 minigameSessionManager.startSession({
@@ -608,7 +674,7 @@ export default function GameScreen() {
                 return;
             }
 
-            if (window.__activeObstacleEventId === event.eventId) return;
+            if (obstacleEventOffer?.eventId === event.eventId || activeObstacleMinigame?.eventId === event.eventId) return;
             window.__activeObstacleEventId = event.eventId;
             const shipIconUrl = window.__latestShips?.find(s => s.playerShipId === event.playerShipId)?.iconUrl;
             const routeViewType = ObstacleRouteViewResolver.resolve(event);
@@ -656,6 +722,151 @@ export default function GameScreen() {
         stormEventOffer,
         treasureHuntEventOffer,
     ]);
+
+    // Authoritative per-tick reconcile: the backend re-advertises the blocking
+    // minigame (reason + eventId) for every paused travel in each ship broadcast.
+    // If the original one-shot WS minigame event was lost or could not be shown
+    // (e.g. a second concurrent minigame of the same type), we re-fetch it from the
+    // server and re-dispatch the normal *-event so the regular handler mounts it.
+    // This is what prevents a travel from staying "blocked forever".
+    useEffect(() => {
+        if (!playerId || !sessionId) return;
+
+        const MINIGAME_REASONS = new Set(["STORM", "OBSTACLE", "RATS", "TREASURE_HUNT"]);
+        const EVENT_NAME_BY_REASON: Record<string, string> = {
+            STORM: "storm-event",
+            OBSTACLE: "obstacle-event",
+            RATS: "rats-event",
+            TREASURE_HUNT: "treasure-hunt-event",
+        };
+
+        const isEventShown = (eventId: string) =>
+            ratEventOffer?.eventId === eventId
+            || stormEventOffer?.eventId === eventId
+            || obstacleEventOffer?.eventId === eventId
+            || treasureHuntEventOffer?.eventId === eventId
+            || activeRatMinigame?.eventId === eventId
+            || activeStormMinigame?.eventId === eventId
+            || activeObstacleMinigame?.eventId === eventId
+            || activeTreasureHuntMinigame?.eventId === eventId;
+
+        const handler = (e: Event) => {
+            const detail = (e as CustomEvent<{
+                ships: {
+                    playerShipId: string;
+                    playerId?: string;
+                    travelId?: string;
+                    paused?: boolean;
+                    blockingReason?: string | null;
+                    blockingEventId?: string | null;
+                }[];
+            }>).detail;
+
+            for (const ship of detail.ships ?? []) {
+                if (ship.playerId && ship.playerId !== playerId) continue;
+                if (!ship.paused) continue;
+                const reason = ship.blockingReason ?? undefined;
+                const eventId = ship.blockingEventId ?? undefined;
+                const travelId = ship.travelId;
+                if (!reason || !eventId || !travelId) continue;
+                if (!MINIGAME_REASONS.has(reason)) continue;
+                if (isEventShown(eventId)) continue;
+                if (minigameReconcileInFlight.current.has(eventId)) continue;
+
+                minigameReconcileInFlight.current.add(eventId);
+                void fetch(`/api/travels/${travelId}/active-event?playerId=${playerId}&sessionId=${sessionId}`, {
+                    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+                })
+                    .then(async res => {
+                        minigameReconcileInFlight.current.delete(eventId);
+                        if (res.status === 204 || !res.ok) return;
+                        const payload = await res.json() as ActiveMinigameEventPayload;
+                        if (payload.playerId !== playerId) return;
+                        if (isEventShown(payload.eventId)) return;
+                        const eventName = EVENT_NAME_BY_REASON[payload.eventType];
+                        if (!eventName) return;
+                        window.dispatchEvent(new CustomEvent(eventName, { detail: payload }));
+                    })
+                    .catch(error => {
+                        minigameReconcileInFlight.current.delete(eventId);
+                        console.error("Failed to reconcile blocking minigame event:", error);
+                    });
+            }
+        };
+
+        window.addEventListener("backend-ship-positions", handler);
+        return () => window.removeEventListener("backend-ship-positions", handler);
+    }, [
+        activeObstacleMinigame,
+        activeRatMinigame,
+        activeStormMinigame,
+        activeTreasureHuntMinigame,
+        authToken,
+        obstacleEventOffer,
+        playerId,
+        ratEventOffer,
+        sessionId,
+        stormEventOffer,
+        treasureHuntEventOffer,
+    ]);
+
+    // Rejoin recovery: a ship can be AWAITING_DOCKING (manuelles Anlegen) without
+    // an assignedCargos entry — e.g. after leave/rejoin, where assignedCargos starts
+    // empty. Reconstruct the docking prompt from the authoritative ship broadcast.
+    useEffect(() => {
+        if (!playerId) return;
+
+        const handler = (e: Event) => {
+            if (showArrivalDocking || pendingArrivalDocking) return;
+
+            const detail = (e as CustomEvent<{
+                ships: {
+                    playerShipId: string;
+                    playerId?: string;
+                    status?: string;
+                    currentPortId?: string;
+                    travelId?: string | null;
+                }[];
+            }>).detail;
+
+            for (const ship of detail.ships ?? []) {
+                if (ship.playerId && ship.playerId !== playerId) continue;
+                if (ship.status !== "AWAITING_DOCKING") continue;
+                const travelId = ship.travelId ?? undefined;
+                if (!travelId) continue;
+                if (arrivedMiniGameShown.current.has(travelId)) continue;
+                // Already tracked via assignedCargos → the existing effect handles it.
+                if (assignedCargos.some(en => en.travelId === travelId)) continue;
+
+                const shipIconUrl = window.__latestShips?.find(s => s.playerShipId === ship.playerShipId)?.iconUrl;
+                const portName = window.__latestPorts?.find(p => p.id === ship.currentPortId)?.name ?? "";
+                const shipName = ownedShipsRef.current.find(s => s.id === ship.playerShipId)?.name ?? "Schiff";
+
+                arrivedMiniGameShown.current.add(travelId);
+                setPendingArrivalDocking({
+                    cargoId: `rejoin-${travelId}`,
+                    shipId: ship.playerShipId,
+                    shipName,
+                    shipIconUrl,
+                    from: "",
+                    to: portName,
+                    weight: 0,
+                    maxCargoCapacity: 0,
+                    destinationPortId: ship.currentPortId ?? "",
+                    speedSetting: 1,
+                    loadingDurationSeconds: 0,
+                    loadingStartedAt: Date.now(),
+                    loadingDone: true,
+                    phase: "awaiting_docking",
+                    travelId,
+                } as AssignedCargoEntry);
+                break;
+            }
+        };
+
+        window.addEventListener("backend-ship-positions", handler);
+        return () => window.removeEventListener("backend-ship-positions", handler);
+    }, [playerId, assignedCargos, showArrivalDocking, pendingArrivalDocking]);
 
     useEffect(() => {
         if (view === "map" || view === "portProfile") {
@@ -2076,7 +2287,7 @@ export default function GameScreen() {
                 <EventNotificationDialog
                     title="Event: Schwerer Sturm"
                     successText="Wenn du genug Sonnen einsammelst, beruhigt sich der Sturm und die Route geht normal weiter."
-                    failText="Wenn du ablehnst, gibt es eine 50/50 Chance den Sturm unbeschadet zu überleben. Bei Misserfolg verliert das Schiff 50% Zustand und ungefähr die Hälfte der geladenen Fracht geht verloren."
+                    failText="Wenn du das Minispiel nicht schaffst, verliert das Schiff 50% Zustand und ungefähr die Hälfte der geladenen Fracht geht verloren. Lehnst du das Event ab, gibt es eine 50/50 Chance, den Sturm unbeschadet zu überstehen, andernfalls entsteht derselbe Schaden."
                     imageSrc={stormDialogImage}
                     imageAlt="Sturm"
                     onAccept={handleStormEventAccept}
@@ -2088,7 +2299,7 @@ export default function GameScreen() {
                 <EventNotificationDialog
                     title="Event: Gefährliche Passage"
                     successText="Wenn du die Passage meisterst, fährt dein Schiff ohne Fracht- oder Zustandsschaden weiter."
-                    failText="Wenn du ablehnst, gilt dieselbe 50/50 Chance wie beim Sturm. Bei Misserfolg halbiert das Backend Schiffszustand und Frachtwert."
+                    failText="Wenn du das Minispiel nicht schaffst, halbieren sich Schiffszustand und Frachtwert. Lehnst du das Event ab, gibt es eine 50/50 Chance, die Passage unbeschadet zu überstehen, andernfalls entsteht derselbe Schaden."
                     imageSrc={obstacleDialogImage}
                     imageAlt="Kompass"
                     onAccept={handleObstacleEventAccept}
