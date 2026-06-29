@@ -186,7 +186,10 @@ public final class RoutePathfinder {
     }
 
     private static double heuristic(double[] a, double[] b) {
-        return 0.0;
+        double dx = Math.abs(a[0] - b[0]);
+        dx = Math.min(dx, 100.0 - dx);
+        double dy = a[1] - b[1];
+        return Math.sqrt(dx * dx + dy * dy);
     }
 
     private static List<String> reconstructPath(Map<String, String> cameFrom, String current) {
