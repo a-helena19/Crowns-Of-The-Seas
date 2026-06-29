@@ -170,6 +170,7 @@ export default function GameScreen() {
     const [leftNotice, setLeftNotice] = useState<{ text: string; kind: 'left' | 'rejoined' } | null>(null);
     const [ownedShips, setOwnedShips] = useState<OwnedShipSummary[]>([]);
     const ownedShipsRef = useRef<OwnedShipSummary[]>([]);
+    const didRehydrateOrdersRef = useRef(false);
     const [luxuryPortIds, setLuxuryPortIds] = useState<string[]>([]);
     const [focusShipIdForCargoManagement, setFocusShipIdForCargoManagement] = useState<string | null>(null);
     const [openCargoForShipId, setOpenCargoForShipId] = useState<string | null>(null);
@@ -271,6 +272,68 @@ export default function GameScreen() {
     useEffect(() => {
         ownedShipsRef.current = ownedShips;
     }, [ownedShips]);
+
+    // Rejoin-Wiederherstellung: assignedCargos lebt nur im Frontend-State und ist nach
+    // einem erneuten Beitritt leer. Wir laden die laufenden Reisen (IN_PROGRESS) vom
+    // Backend nach, damit die Auftragsliste auch nach Verlassen/Beitreten gefüllt ist.
+    // Die Phase wird bewusst auf "en_route" gesetzt; der Schiffs-Broadcast korrigiert sie
+    // beim nächsten Tick auf unloading/awaiting_docking/customs_check/blocked.
+    useEffect(() => {
+        if (didRehydrateOrdersRef.current) return;
+        if (!playerId || !sessionId || !authToken) return;
+        if (ownedShips.length === 0) return;
+        didRehydrateOrdersRef.current = true;
+
+        interface ActiveTravelDTO {
+            travelId: string;
+            playerShipId: string;
+            originPortId?: string;
+            destinationPortId?: string;
+            speedSetting?: number;
+            pilotageServiceBooked?: boolean;
+            pilotageStrikeRevoked?: boolean;
+        }
+
+        fetch(`/api/travels/active/${playerId}`, {
+            headers: { Authorization: `Bearer ${authToken}` },
+        })
+            .then(res => (res.ok ? res.json() : []))
+            .then((travels: ActiveTravelDTO[]) => {
+                if (!Array.isArray(travels) || travels.length === 0) return;
+                setAssignedCargos(prev => {
+                    const knownTravelIds = new Set(prev.map(e => e.travelId).filter(Boolean));
+                    const recovered: AssignedCargoEntry[] = [];
+                    for (const t of travels) {
+                        if (!t.travelId || knownTravelIds.has(t.travelId)) continue;
+                        const ship = ownedShipsRef.current.find(s => s.id === t.playerShipId);
+                        recovered.push({
+                            cargoId: `rejoin-${t.travelId}`,
+                            shipId: t.playerShipId,
+                            shipName: ship?.name ?? "Schiff",
+                            shipIconUrl: ship?.iconUrl
+                                ?? window.__latestShips?.find(s => s.playerShipId === t.playerShipId)?.iconUrl,
+                            from: window.__latestPorts?.find(p => p.id === t.originPortId)?.name ?? "",
+                            to: window.__latestPorts?.find(p => p.id === t.destinationPortId)?.name ?? "",
+                            weight: 0,
+                            maxCargoCapacity: 0,
+                            originPortId: t.originPortId,
+                            destinationPortId: t.destinationPortId ?? "",
+                            speedSetting: t.speedSetting ?? 1,
+                            loadingDurationSeconds: 0,
+                            loadingStartedAt: Date.now(),
+                            loadingDone: true,
+                            phase: "en_route",
+                            travelId: t.travelId,
+                            pilotageUsed: t.pilotageServiceBooked,
+                            pilotageStrikeRevoked: t.pilotageStrikeRevoked,
+                        });
+                    }
+                    if (recovered.length === 0) return prev;
+                    return [...prev, ...recovered];
+                });
+            })
+            .catch(() => { /* nicht-fatal */ });
+    }, [playerId, sessionId, authToken, ownedShips]);
 
     function handleCargoAssigned(entry: AssignedCargoEntry) {
         setAssignedCargos(prev => {

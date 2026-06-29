@@ -55,6 +55,7 @@ interface TutorialViewportSize {
 const STORAGE_PREFIX = "crowns_tutorial_seen_v2";
 const LEGACY_FIRST_JOURNEY_STORAGE_PREFIX = "crowns_tutorial_seen_v1";
 const DISABLED_STORAGE_PREFIX = "crowns_tutorial_disabled_session_v1";
+const FIRST_SESSION_STORAGE_PREFIX = "crowns_tutorial_first_session_v1";
 const RESTART_EVENT = "crowns:start-tutorial";
 
 const TUTORIAL_CHAPTERS: Record<TutorialChapterId, TutorialChapter> = {
@@ -391,6 +392,24 @@ export function areTutorialPromptsDisabled(sessionId: string | null): boolean {
     return isTutorialDisabled(sessionId);
 }
 
+function firstSessionStorageKey(playerId: string | null): string {
+    return `${FIRST_SESSION_STORAGE_PREFIX}:${playerId ?? "guest"}`;
+}
+
+// Tutorials sollen nur automatisch erscheinen, wenn ein Spieler seine allererste
+// Session spielt. Beim ersten Aufruf merken wir uns diese Session dauerhaft und
+// melden danach nur noch true, solange es genau diese Session ist.
+function isPlayersFirstSession(playerId: string | null, sessionId: string | null): boolean {
+    if (!sessionId) return false;
+    const key = firstSessionStorageKey(playerId);
+    const recorded = localStorage.getItem(key);
+    if (recorded === null) {
+        localStorage.setItem(key, sessionId);
+        return true;
+    }
+    return recorded === sessionId;
+}
+
 export function hasSeenTutorial(playerId: string | null, chapterId: TutorialChapterId): boolean {
     return localStorage.getItem(storageKey(playerId, chapterId)) === "true"
         || (chapterId === "firstJourney" && localStorage.getItem(legacyFirstJourneyStorageKey(playerId)) === "true");
@@ -513,6 +532,8 @@ export default function InteractiveTutorial({ playerId, sessionId }: Interactive
 
     useEffect(() => {
         if (isTutorialDisabled(sessionId)) return;
+        if (!isPlayersFirstSession(playerId, sessionId)) return;
+        if (hasSeenTutorial(playerId, "firstJourney")) return;
         const id = window.setTimeout(() => {
             setChapterId("firstJourney");
             setManualReplay(false);
@@ -521,7 +542,7 @@ export default function InteractiveTutorial({ playerId, sessionId }: Interactive
             setMode("prompt");
         }, 650);
         return () => window.clearTimeout(id);
-    }, [sessionId]);
+    }, [playerId, sessionId]);
 
     useEffect(() => {
         const restart = (event: Event) => {
@@ -529,6 +550,7 @@ export default function InteractiveTutorial({ playerId, sessionId }: Interactive
             let nextChapterId = detail?.chapterId ?? "firstJourney";
             if (!TUTORIAL_CHAPTERS[nextChapterId]) return;
             if (isTutorialDisabled(sessionId) && !detail?.force) return;
+            if (!detail?.force && !isPlayersFirstSession(playerId, sessionId)) return;
             if (modeRef.current !== "closed" && !detail?.force) return;
             if (nextChapterId !== "firstJourney" && !hasSeenTutorial(playerId, "firstJourney")) return;
             if (!detail?.force && hasSeenTutorial(playerId, nextChapterId)) return;
