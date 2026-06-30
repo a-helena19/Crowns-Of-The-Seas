@@ -25,13 +25,16 @@ other-links:
   - text: Repository
     href: https://github.com/a-helena19/Crowns-Of-The-Seas
     icon: github
+  - text: Poster
+    href: assets/Poster_Abgabe.pdf
+    icon: file-earmark-pdf
   - text: Live-Demo
     href: http://10.0.40.186
   - text: QR-Code
     href: assets/qr-code.png
     icon: qr-code
 resources:
-  - assets/project-template.zip
+  - assets/crowns-of-the-seas.zip
 ---
 
 ![Titelbild von Crowns of the Seas](assets/thumbnail.png){ width="98%" }
@@ -401,6 +404,7 @@ Die geplanten Funktionen sind vollständig umgesetzt. Für die Zukunft sind weit
 ## Links & Ressourcen
 - Download: [Crowns of the Seas (ZIP)](assets/crowns-of-the-seas.zip)
 - Repository: [github.com/a-helena19/Crowns-Of-The-Seas](https://github.com/a-helena19/Crowns-Of-The-Seas)
+- Poster: [Link](assets/Poster_Abgabe.pdf)
 - Live-Demo: [Link](http://10.0.40.186)
 
   ![QR-Code zur Live-Demo](assets/qr-code.png){width=160px}
