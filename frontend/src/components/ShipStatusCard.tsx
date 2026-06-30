@@ -36,6 +36,7 @@ const STATUS_VISUALS: Record<string, StatusVisual> = {
     EN_ROUTE:        { label: "Unterwegs",        color: "#2f93d6" },
     DAMAGED:         { label: "Beschädigt",       color: "#a32d2d" },
     READY_TO_DEPART: { label: "Reisebereit",      color: "#2f9e54" },
+    AWAITING_DOCKING:{ label: "Wartet auf Anlegemanöver", color: "#68513d" },
     REFUELING:       { label: "Wird betankt",     color: "#2f9e8a" },
     REPAIRING:       { label: "Wird repariert",   color: "#6f7f96" },
 };
