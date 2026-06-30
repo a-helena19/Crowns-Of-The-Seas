@@ -152,13 +152,8 @@ export class ObstacleMinigameScene extends Phaser.Scene {
             line.strokePath();
         }
 
-        if (isViewA) {
-            this.add.text(w / 2, 14, "Felsenpassage", { fontSize: "28px", ...titleStyle })
-                .setOrigin(0.5, 0).setDepth(10);
-        } else {
-            this.add.text(w / 2, 14, "Eisfeld", { fontSize: "28px", ...titleStyle })
-                .setOrigin(0.5, 0).setDepth(10);
-        }
+        this.add.text(w / 2, 14, "Felsenpassage", { fontSize: "28px", ...titleStyle })
+            .setOrigin(0.5, 0).setDepth(10);
     }
 
     private buildGoal() {
