@@ -141,9 +141,10 @@ export default function GameScreen() {
         title: string;
     }[]>([]);
     const [customsToasts, setCustomsToasts] = useState<CustomsToast[]>([]);
-    const [smuggleOffer, setSmuggleOffer] = useState<{
+    const [smuggleOffersByShipId, setSmuggleOffersByShipId] = useState<Record<string, {
         offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
-    } | null>(null);
+    }>>({});
+    const [openSmuggleShipId, setOpenSmuggleShipId] = useState<string | null>(null);
     const [customsInspection, setCustomsInspection] = useState<CustomsInspectionPayload | null>(null);
     const customsQueueRef = useRef<CustomsInspectionPayload[]>([]);
     const [ratEventOffer, setRatEventOffer] = useState<RatMinigameEventPayload | null>(null);
@@ -155,12 +156,8 @@ export default function GameScreen() {
     const [treasureHuntEventOffer, setTreasureHuntEventOffer] = useState<TreasureHuntMinigameEventPayload | null>(null);
     const [activeTreasureHuntMinigame, setActiveTreasureHuntMinigame] = useState<TreasureHuntMinigameEventPayload | null>(null);
     const [openedEventId, setOpenedEventId] = useState<string | null>(null);
-    const [smuggleOpened, setSmuggleOpened] = useState(false);
     const [customsOpened, setCustomsOpened] = useState(false);
 
-    const pendingSmuggleRef = useRef<{
-        offerId: string; portId: string; travelId: string; playerShipId: string; reward: number; cargoDescription: string;
-    } | null>(null);
     const departureActiveRef = useRef(false);
     const arrivedMiniGameShown = useRef<Set<string>>(new Set());
     const [showArrivalDocking, setShowArrivalDocking] = useState<AssignedCargoEntry | null>(null);
@@ -1091,7 +1088,6 @@ export default function GameScreen() {
                 reward: number; cargoDescription: string;
             }>).detail;
             if (data.playerId !== playerId) return;
-            audioEngine.playSfx('smuggleNotification');
             const offer = {
                 offerId: data.offerId,
                 portId: data.portId,
@@ -1100,12 +1096,11 @@ export default function GameScreen() {
                 reward: data.reward,
                 cargoDescription: data.cargoDescription,
             };
-            if (departureActiveRef.current) {
-                pendingSmuggleRef.current = offer;
-            } else {
-                setSmuggleOpened(false);
-                setSmuggleOffer(offer);
-            }
+            setSmuggleOffersByShipId(prev => {
+                if (prev[offer.playerShipId]?.offerId === offer.offerId) return prev;
+                audioEngine.playSfx('smuggleNotification');
+                return { ...prev, [offer.playerShipId]: offer };
+            });
         };
         window.addEventListener("smuggle-offer", handler);
         return () => window.removeEventListener("smuggle-offer", handler);
@@ -1275,47 +1270,54 @@ export default function GameScreen() {
 
     const handleDepartureComplete = useCallback(() => {
         departureActiveRef.current = false;
-        const pending = pendingSmuggleRef.current;
-        if (pending) {
-            pendingSmuggleRef.current = null;
-            setTimeout(() => {
-                setSmuggleOpened(false);
-                setSmuggleOffer(pending);
-            }, 1000);
-        }
     }, []);
 
     const handleDepartureStarted = useCallback(() => {
         departureActiveRef.current = true;
-        pendingSmuggleRef.current = null;
     }, []);
 
     async function handleSmuggleAccept() {
-        if (!smuggleOffer) return;
+        if (!openSmuggleShipId) return;
+        const offer = smuggleOffersByShipId[openSmuggleShipId];
+        if (!offer) return;
         const token = localStorage.getItem("auth_token") ?? "";
         try {
             const res = await fetch(
-                `/api/smuggle/accept?playerId=${playerId}&sessionId=${sessionId}&offerId=${smuggleOffer.offerId}`,
+                `/api/smuggle/accept?playerId=${playerId}&sessionId=${sessionId}&offerId=${offer.offerId}`,
                 { method: "POST", headers: { Authorization: `Bearer ${token}` } }
             );
-            if (res.ok) {
-                setSmuggleOffer(null);
-            } else {
-                setSmuggleOffer(null);
+            if (!res.ok) {
+                console.error("[Smuggle] accept failed", await res.text().catch(() => ""));
+                setOpenSmuggleShipId(null);
+                return;
             }
-        } catch {
-            setSmuggleOffer(null);
+            setSmuggleOffersByShipId(prev => {
+                const next = { ...prev };
+                delete next[openSmuggleShipId];
+                return next;
+            });
+            setOpenSmuggleShipId(null);
+        } catch (err) {
+            console.error("[Smuggle] accept request failed", err);
+            setOpenSmuggleShipId(null);
         }
     }
 
     function handleSmuggleDecline() {
-        if (!smuggleOffer) return;
+        if (!openSmuggleShipId) return;
+        const offer = smuggleOffersByShipId[openSmuggleShipId];
+        if (!offer) return;
         const token = localStorage.getItem("auth_token") ?? "";
         fetch(
-            `/api/smuggle/decline?playerId=${playerId}&offerId=${smuggleOffer.offerId}`,
+            `/api/smuggle/decline?playerId=${playerId}&offerId=${offer.offerId}`,
             { method: "POST", headers: { Authorization: `Bearer ${token}` } }
-        ).catch(() => {});
-        setSmuggleOffer(null);
+        ).catch((err) => console.error("[Smuggle] decline request failed", err));
+        setSmuggleOffersByShipId(prev => {
+            const next = { ...prev };
+            delete next[openSmuggleShipId];
+            return next;
+        });
+        setOpenSmuggleShipId(null);
     }
 
     const submitRatResult = useCallback(async (payload: {
@@ -1975,9 +1977,11 @@ export default function GameScreen() {
             kind: "arrival_docking",
         };
     }
-    if (smuggleOffer && !smuggleOpened && !pendingEventsByShipId[smuggleOffer.playerShipId]) {
-        pendingEventsByShipId[smuggleOffer.playerShipId] = {
-            eventId: smuggleOffer.offerId,
+    for (const shipId of Object.keys(smuggleOffersByShipId)) {
+        if (shipId === openSmuggleShipId) continue;
+        if (pendingEventsByShipId[shipId]) continue;
+        pendingEventsByShipId[shipId] = {
+            eventId: smuggleOffersByShipId[shipId].offerId,
             label: "Schmuggelangebot",
             kind: "smuggle",
         };
@@ -1991,8 +1995,10 @@ export default function GameScreen() {
     }
 
     const urgentShipIds: Record<string, boolean> = {};
-    if (smuggleOffer && !smuggleOpened) {
-        urgentShipIds[smuggleOffer.playerShipId] = true;
+    for (const shipId of Object.keys(smuggleOffersByShipId)) {
+        if (shipId !== openSmuggleShipId) {
+            urgentShipIds[shipId] = true;
+        }
     }
     if (customsInspection && !customsOpened) {
         urgentShipIds[customsInspection.playerShipId] = true;
@@ -2137,7 +2143,7 @@ export default function GameScreen() {
                                     return;
                                 }
                                 if (pendingEvent.kind === "smuggle") {
-                                    setSmuggleOpened(true);
+                                    setOpenSmuggleShipId(ship.id);
                                     return;
                                 }
                                 if (pendingEvent.kind === "customs") {
@@ -2205,12 +2211,13 @@ export default function GameScreen() {
                 />
             ))}
 
-            {smuggleOffer && smuggleOpened && (
+            {openSmuggleShipId && smuggleOffersByShipId[openSmuggleShipId] && (
                 <SmuggleOfferDialog
-                    offerId={smuggleOffer.offerId}
-                    portId={smuggleOffer.portId}
-                    reward={smuggleOffer.reward}
-                    cargoDescription={smuggleOffer.cargoDescription}
+                    key={smuggleOffersByShipId[openSmuggleShipId].offerId}
+                    offerId={smuggleOffersByShipId[openSmuggleShipId].offerId}
+                    portId={smuggleOffersByShipId[openSmuggleShipId].portId}
+                    reward={smuggleOffersByShipId[openSmuggleShipId].reward}
+                    cargoDescription={smuggleOffersByShipId[openSmuggleShipId].cargoDescription}
                     onAccept={handleSmuggleAccept}
                     onDecline={handleSmuggleDecline}
                 />
